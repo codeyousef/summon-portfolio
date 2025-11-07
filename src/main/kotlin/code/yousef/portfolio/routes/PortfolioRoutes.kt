@@ -17,7 +17,10 @@ fun Route.portfolioRoutes(
     contactService: ContactService
 ) {
     get("/") {
-        val html = portfolioRenderer.renderLandingPage(PortfolioLocale.EN)
+        val html = portfolioRenderer.renderLandingPage(
+            locale = PortfolioLocale.EN,
+            servicesModalOpen = call.shouldOpenServicesModal()
+        )
         call.respondText(html, ContentType.Text.Html)
     }
     get("/blog") {
@@ -46,7 +49,7 @@ fun Route.portfolioRoutes(
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
         } else {
-            val html = portfolioRenderer.renderLandingPage(locale)
+            val html = portfolioRenderer.renderLandingPage(locale, servicesModalOpen = call.shouldOpenServicesModal())
             call.respondText(html, ContentType.Text.Html)
         }
     }
@@ -105,3 +108,6 @@ private suspend fun ApplicationCall.receiveContactRequest(): ContactRequest? {
         else -> null
     }
 }
+
+private fun ApplicationCall.shouldOpenServicesModal(): Boolean =
+    request.queryParameters["modal"]?.equals("services", ignoreCase = true) == true

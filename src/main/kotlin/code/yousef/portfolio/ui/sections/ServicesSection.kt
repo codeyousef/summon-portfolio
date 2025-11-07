@@ -3,12 +3,14 @@ package code.yousef.portfolio.ui.sections
 import code.yousef.portfolio.content.model.Service
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.modifier.Modifier
 
 @Composable
@@ -17,6 +19,9 @@ fun ServicesSection(
     locale: PortfolioLocale,
     modifier: Modifier = Modifier()
 ) {
+    val pathPrefix = locale.pathPrefix()
+    val modalHref = if (pathPrefix.isEmpty()) "?modal=services#services" else "$pathPrefix?modal=services#services"
+
     ContentSection(modifier = modifier) {
         Column(
             modifier = Modifier()
@@ -46,6 +51,23 @@ fun ServicesSection(
                 services.forEach { service ->
                     ServiceCard(service = service, locale = locale)
                 }
+            }
+
+            Row(
+                modifier = Modifier()
+                    .style("display", "flex")
+                    .style("justify-content", "center")
+            ) {
+                ButtonLink(
+                    ServicesCopy.openModal.resolve(locale),
+                    modalHref,
+                    Modifier()
+                        .backgroundColor(PortfolioTheme.Colors.accent)
+                        .color("#ffffff")
+                        .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .style("font-weight", "600")
+                )
             }
         }
     }
@@ -85,4 +107,5 @@ private object ServicesCopy {
         en = "Bridging imagination with implementation. Each engagement spans research, architecture, and product polish.",
         ar = "أجسر الخيال بالتنفيذ — من البحث إلى البنية إلى الصقل النهائي."
     )
+    val openModal = LocalizedText("View featured services", "عرض الخدمات المميزة")
 }

@@ -13,13 +13,13 @@ class PortfolioRenderer(
     private val contentService: PortfolioContentService = PortfolioContentService.default()
 ) {
 
-    fun renderLandingPage(locale: PortfolioLocale): String {
+    fun renderLandingPage(locale: PortfolioLocale, servicesModalOpen: Boolean = false): String {
         val renderer = rendererFactory()
         val content = contentService.load()
         renderer.renderHeadElements(headBlockFor(locale))
 
         return renderer.renderComposableRoot {
-            PortfolioLandingPage(content = content, locale = locale)
+            PortfolioLandingPage(content = content, locale = locale, servicesModalOpen = servicesModalOpen)
         }
     }
 

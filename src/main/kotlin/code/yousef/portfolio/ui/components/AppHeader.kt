@@ -43,6 +43,7 @@ fun AppHeader(
         .style("gap", PortfolioTheme.Spacing.lg)
 
     val pathPrefix = locale.pathPrefix()
+    val modalHref = if (pathPrefix.isEmpty()) "?modal=services#services" else "$pathPrefix?modal=services#services"
 
     Row(modifier = containerModifier) {
         Text(
@@ -89,7 +90,7 @@ fun AppHeader(
         ) {
             ButtonLink(
                 LocalizedText("Hire Me", "توظيفي").resolve(locale),
-                if (pathPrefix.isEmpty()) "#contact" else "$pathPrefix#contact",
+                modalHref,
                 Modifier()
                     .backgroundColor(PortfolioTheme.Colors.accent)
                     .color("#ffffff")
