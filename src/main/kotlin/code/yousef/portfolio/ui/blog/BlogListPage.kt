@@ -1,11 +1,9 @@
-package code.yousef.portfolio.ui.sections
+package code.yousef.portfolio.ui.blog
 
 import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ui.blog.blogDetailHref
-import code.yousef.portfolio.ui.blog.blogListHref
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
@@ -16,45 +14,45 @@ import code.yousef.summon.modifier.Modifier
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun BlogTeaserSection(
+fun BlogListPage(
     posts: List<BlogPost>,
-    locale: PortfolioLocale,
-    modifier: Modifier = Modifier()
+    locale: PortfolioLocale
 ) {
-    val formatter = if (locale == PortfolioLocale.AR) {
-        DateTimeFormatter.ofPattern("dd MMMM yyyy")
-    } else {
-        DateTimeFormatter.ofPattern("MMMM d, yyyy")
-    }
-    ContentSection(modifier = modifier) {
+    val formatter = dateFormatter(locale)
+    ContentSection(surface = false) {
         Column(
             modifier = Modifier()
                 .style("display", "flex")
                 .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.md)
+                .style("gap", PortfolioTheme.Spacing.xl)
         ) {
-            Text(
-                text = BlogCopy.title.resolve(locale),
-                modifier = Modifier()
-                    .style("font-size", "2.5rem")
-                    .style("font-weight", "700")
-            )
-            Text(
-                text = BlogCopy.subtitle.resolve(locale),
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.textSecondary)
-                    .style("line-height", "1.8")
-            )
-
-            val featured = posts.sortedByDescending { it.publishedAt }.take(2)
             Column(
                 modifier = Modifier()
                     .style("display", "flex")
                     .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.md)
+                    .style("gap", PortfolioTheme.Spacing.sm)
             ) {
-                featured.forEach { post ->
-                    val detailHref = blogDetailHref(locale, post.slug)
+                Text(
+                    text = BlogListCopy.title.resolve(locale),
+                    modifier = Modifier()
+                        .style("font-size", "3rem")
+                        .style("font-weight", "700")
+                )
+                Text(
+                    text = BlogListCopy.subtitle.resolve(locale),
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.textSecondary)
+                        .style("line-height", "1.8")
+                )
+            }
+
+            Column(
+                modifier = Modifier()
+                    .style("display", "flex")
+                    .style("flex-direction", "column")
+                    .style("gap", PortfolioTheme.Spacing.lg)
+            ) {
+                posts.sortedByDescending { it.publishedAt }.forEach { post ->
                     Column(
                         modifier = Modifier()
                             .style("display", "flex")
@@ -68,14 +66,19 @@ fun BlogTeaserSection(
                         Text(
                             text = post.title.resolve(locale),
                             modifier = Modifier()
-                                .style("font-size", "1.5rem")
+                                .style("font-size", "1.75rem")
                                 .style("font-weight", "600")
                         )
-                        Text(
-                            text = formatter.format(post.publishedAt),
+                        Row(
                             modifier = Modifier()
+                                .style("display", "flex")
+                                .style("gap", PortfolioTheme.Spacing.sm)
                                 .color(PortfolioTheme.Colors.textSecondary)
-                        )
+                        ) {
+                            Text(formatter.format(post.publishedAt))
+                            Text("•")
+                            Text(BlogListCopy.byLabel.resolve(locale) + " " + post.author)
+                        }
                         Text(
                             text = post.excerpt.resolve(locale),
                             modifier = Modifier()
@@ -83,11 +86,11 @@ fun BlogTeaserSection(
                                 .style("line-height", "1.7")
                         )
                         Link(
-                            BlogCopy.readMore.resolve(locale),
+                            BlogListCopy.readMore.resolve(locale),
                             Modifier()
                                 .color(PortfolioTheme.Colors.accentAlt)
                                 .style("font-weight", "600"),
-                            detailHref,
+                            blogDetailHref(locale, post.slug),
                             "_self",
                             "",
                             false,
@@ -99,37 +102,28 @@ fun BlogTeaserSection(
                     }
                 }
             }
-
-            Row(
-                modifier = Modifier()
-                    .style("display", "flex")
-                    .style("justify-content", "flex-end")
-            ) {
-                Link(
-                    BlogCopy.viewAll.resolve(locale),
-                    Modifier()
-                        .color(PortfolioTheme.Colors.textSecondary)
-                        .style("font-weight", "600"),
-                    blogListHref(locale),
-                    "_self",
-                    "",
-                    false,
-                    false,
-                    "",
-                    "",
-                    {}
-                )
-            }
         }
     }
 }
 
-private object BlogCopy {
-    val title = LocalizedText("Latest Writing", "أحدث المقالات")
+private object BlogListCopy {
+    val title = LocalizedText("Thoughts & Writing", "أفكار وكتابات")
     val subtitle = LocalizedText(
-        en = "Deep dives on systems design, tools, and creative engineering. New essays ship as soon as they're battle-tested.",
-        ar = "مقالات متعمقة حول تصميم الأنظمة والأدوات والهندسة الإبداعية."
+        en = "Deep dives on systems, frameworks, and creative engineering.",
+        ar = "مقالات متعمقة حول الأنظمة والأطر والهندسة الإبداعية."
     )
     val readMore = LocalizedText("Read more →", "اقرأ المزيد ←")
-    val viewAll = LocalizedText("View all posts", "عرض جميع المقالات")
+    val byLabel = LocalizedText("By", "بواسطة")
 }
+
+fun blogDetailHref(locale: PortfolioLocale, slug: String): String =
+    if (locale == PortfolioLocale.EN) "/blog/$slug" else "/${locale.code}/blog/$slug"
+
+fun blogListHref(locale: PortfolioLocale): String =
+    if (locale == PortfolioLocale.EN) "/blog" else "/${locale.code}/blog"
+
+private fun dateFormatter(locale: PortfolioLocale): DateTimeFormatter =
+    if (locale == PortfolioLocale.AR)
+        DateTimeFormatter.ofPattern("dd MMMM yyyy")
+    else
+        DateTimeFormatter.ofPattern("MMMM d, yyyy")

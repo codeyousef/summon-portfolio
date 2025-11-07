@@ -4,3 +4,6 @@ ktor:
       - code.yousef.ApplicationKt.module
   deployment:
     port: 8080
+  plugins:
+    contentnegotiation:
+      json: true

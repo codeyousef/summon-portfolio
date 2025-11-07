@@ -21,4 +21,7 @@ class StaticBlogRepository : BlogRepository {
     private val data: List<BlogPost> = PortfolioContentSeed.blogPosts
 
     override fun list(): List<BlogPost> = data
+
+    override fun findBySlug(slug: String): BlogPost? =
+        data.firstOrNull { it.slug.equals(slug, ignoreCase = true) }
 }

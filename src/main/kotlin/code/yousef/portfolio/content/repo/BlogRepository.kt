@@ -4,4 +4,5 @@ import code.yousef.portfolio.content.model.BlogPost
 
 interface BlogRepository {
     fun list(): List<BlogPost>
+    fun findBySlug(slug: String): BlogPost?
 }

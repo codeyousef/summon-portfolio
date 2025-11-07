@@ -6,9 +6,9 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.input.TextArea
 import code.yousef.summon.components.input.TextField
 import code.yousef.summon.components.input.TextFieldType
+import code.yousef.summon.components.input.TextArea
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
