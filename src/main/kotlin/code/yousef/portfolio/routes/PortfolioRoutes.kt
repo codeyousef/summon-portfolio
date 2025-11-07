@@ -5,15 +5,11 @@ import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.call
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Route.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,
@@ -35,7 +31,11 @@ fun Route.portfolioRoutes(
         call.respondText(result.html, ContentType.Text.Html, status)
     }
     post("/api/contact") {
-        val request = call.receive<ContactRequest>()
+        val request = call.receiveContactRequest()
+        if (request == null) {
+            call.respond(HttpStatusCode.UnsupportedMediaType, mapOf("error" to "Unsupported content type"))
+            return@post
+        }
         when (val result = contactService.submit(request)) {
             is ContactService.Result.Success -> call.respond(HttpStatusCode.Created, mapOf("status" to "ok"))
             is ContactService.Result.Error -> call.respond(HttpStatusCode.BadRequest, mapOf("error" to result.reason))
@@ -75,11 +75,33 @@ fun Route.portfolioRoutes(
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
         } else {
-            val request = call.receive<ContactRequest>()
+            val request = call.receiveContactRequest()
+            if (request == null) {
+                call.respond(HttpStatusCode.UnsupportedMediaType, mapOf("error" to "Unsupported content type"))
+                return@post
+            }
             when (val result = contactService.submit(request)) {
                 is ContactService.Result.Success -> call.respond(HttpStatusCode.Created, mapOf("status" to "ok"))
                 is ContactService.Result.Error -> call.respond(HttpStatusCode.BadRequest, mapOf("error" to result.reason))
             }
         }
+    }
+}
+
+private suspend fun ApplicationCall.receiveContactRequest(): ContactRequest? {
+    val contentType = request.contentType()
+    return when {
+        contentType == ContentType.Application.Json -> receive<ContactRequest>()
+        contentType == ContentType.Application.FormUrlEncoded -> {
+            val params = receiveParameters()
+            ContactRequest(
+                name = params["name"].orEmpty(),
+                email = params["email"],
+                whatsapp = params["whatsapp"].orEmpty(),
+                requirements = params["requirements"].orEmpty()
+            )
+        }
+
+        else -> null
     }
 }
