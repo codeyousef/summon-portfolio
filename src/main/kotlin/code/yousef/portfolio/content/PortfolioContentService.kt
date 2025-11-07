@@ -1,12 +1,6 @@
 package code.yousef.portfolio.content
 
-import code.yousef.portfolio.content.repo.BlogRepository
-import code.yousef.portfolio.content.repo.ProjectRepository
-import code.yousef.portfolio.content.repo.ServiceRepository
-
-import code.yousef.portfolio.content.repo.StaticBlogRepository
-import code.yousef.portfolio.content.repo.StaticProjectRepository
-import code.yousef.portfolio.content.repo.StaticServiceRepository
+import code.yousef.portfolio.content.repo.*
 import code.yousef.portfolio.content.seed.PortfolioContentSeed
 
 class PortfolioContentService(

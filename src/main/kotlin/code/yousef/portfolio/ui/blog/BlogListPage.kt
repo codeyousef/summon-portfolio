@@ -41,7 +41,7 @@ fun BlogListPage(
                 Text(
                     text = BlogListCopy.subtitle.resolve(locale),
                     modifier = Modifier()
-                        .color(PortfolioTheme.Colors.textSecondary)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .style("line-height", "1.8")
                 )
             }
@@ -58,10 +58,10 @@ fun BlogListPage(
                             .style("display", "flex")
                             .style("flex-direction", "column")
                             .style("gap", PortfolioTheme.Spacing.xs)
-                            .backgroundColor(PortfolioTheme.Colors.surface)
+                            .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
-                            .borderColor(PortfolioTheme.Colors.border)
+                            .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.lg)
                             .style("padding", PortfolioTheme.Spacing.lg)
                     ) {
@@ -75,7 +75,7 @@ fun BlogListPage(
                             modifier = Modifier()
                                 .style("display", "flex")
                                 .style("gap", PortfolioTheme.Spacing.sm)
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         ) {
                             Text(formatter.format(post.publishedAt))
                             Text("•")
@@ -84,13 +84,13 @@ fun BlogListPage(
                         Text(
                             text = post.excerpt.resolve(locale),
                             modifier = Modifier()
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .style("line-height", "1.7")
                         )
                         Link(
                             BlogListCopy.readMore.resolve(locale),
                             Modifier()
-                                .color(PortfolioTheme.Colors.accentAlt)
+                                .color(PortfolioTheme.Colors.ACCENT_ALT)
                                 .style("font-weight", "600"),
                             blogDetailHref(locale, post.slug),
                             "_self",

@@ -37,7 +37,7 @@ fun AdminDashboardPage(
             Text(
                 text = "Review projects, services, and inbound contact requests in one place.",
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.textSecondary)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .style("line-height", "1.8")
             )
         }
@@ -59,7 +59,7 @@ fun AdminDashboardPage(
                             .padding(PortfolioTheme.Spacing.sm)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
-                            .borderColor(PortfolioTheme.Colors.border)
+                            .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.md)
                     ) {
                         Text(
@@ -69,7 +69,7 @@ fun AdminDashboardPage(
                         )
                         Text(
                             text = "${project.layerLabel.resolve(locale)} · ${project.category.label.resolve(locale)}",
-                            modifier = Modifier().color(PortfolioTheme.Colors.textSecondary)
+                            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         )
                     }
                 }
@@ -93,7 +93,7 @@ fun AdminDashboardPage(
                         Text(
                             text = service.description.resolve(locale),
                             modifier = Modifier()
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .style("line-height", "1.6")
                         )
                     }
@@ -112,7 +112,7 @@ fun AdminDashboardPage(
                             .padding(PortfolioTheme.Spacing.sm)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
-                            .borderColor(PortfolioTheme.Colors.border)
+                            .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.md)
                     ) {
                         Text(
@@ -122,19 +122,19 @@ fun AdminDashboardPage(
                         submission.email?.let {
                             Text(
                                 text = it,
-                                modifier = Modifier().color(PortfolioTheme.Colors.textSecondary)
+                                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
                             )
                         }
                         Text(
                             text = submission.requirements,
                             modifier = Modifier()
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .style("line-height", "1.5")
                         )
                         Text(
                             text = dateFormatter.format(submission.createdAt),
                             modifier = Modifier()
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .style("font-size", "0.8rem")
                         )
                     }
@@ -154,10 +154,10 @@ private fun AdminCard(
         modifier = Modifier()
             .style("display", "flex")
             .style("gap", PortfolioTheme.Spacing.sm)
-            .backgroundColor(PortfolioTheme.Colors.surface)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.border)
+            .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
             .style("padding", PortfolioTheme.Spacing.lg)
     ) {
@@ -170,7 +170,7 @@ private fun AdminCard(
         Text(
             text = description,
             modifier = Modifier()
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("font-size", "0.9rem")
         )
         Column(

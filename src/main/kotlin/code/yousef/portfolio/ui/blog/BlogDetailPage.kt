@@ -42,7 +42,7 @@ fun BlogDetailPage(
                     modifier = Modifier()
                         .style("display", "flex")
                         .style("gap", PortfolioTheme.Spacing.sm)
-                        .color(PortfolioTheme.Colors.textSecondary)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 ) {
                     Text(formatter.format(post.publishedAt))
                     Text("•")
@@ -65,9 +65,9 @@ fun BlogDetailPage(
                                 .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
                                 .borderWidth(1)
                                 .borderStyle(BorderStyle.Solid)
-                                .borderColor(PortfolioTheme.Colors.border)
+                                .borderColor(PortfolioTheme.Colors.BORDER)
                                 .borderRadius(PortfolioTheme.Radii.pill)
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .style("font-size", "0.75rem")
                         )
                     }
@@ -85,7 +85,7 @@ fun BlogDetailPage(
                     Text(
                         text = paragraph.trim(),
                         modifier = Modifier()
-                            .color(PortfolioTheme.Colors.textSecondary)
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                             .style("line-height", "1.8")
                     )
                 }
@@ -94,7 +94,7 @@ fun BlogDetailPage(
             Link(
                 BlogDetailCopy.back.resolve(locale),
                 Modifier()
-                    .color(PortfolioTheme.Colors.accentAlt)
+                    .color(PortfolioTheme.Colors.ACCENT_ALT)
                     .style("font-weight", "600"),
                 blogListHref(locale),
                 "_self",
@@ -128,12 +128,12 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
             Text(
                 text = BlogDetailCopy.notFoundBody.resolve(locale),
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.textSecondary)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
             Link(
                 BlogDetailCopy.back.resolve(locale),
                 Modifier()
-                    .color(PortfolioTheme.Colors.accentAlt)
+                    .color(PortfolioTheme.Colors.ACCENT_ALT)
                     .style("font-weight", "600"),
                 blogListHref(locale),
                 "_self",

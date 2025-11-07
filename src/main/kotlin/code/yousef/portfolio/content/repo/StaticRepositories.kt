@@ -1,8 +1,8 @@
 package code.yousef.portfolio.content.repo
 
+import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.Service
-import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.seed.PortfolioContentSeed
 
 class StaticProjectRepository : ProjectRepository {

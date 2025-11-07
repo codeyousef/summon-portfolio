@@ -27,7 +27,7 @@ fun HeroSection(
             text = hero.eyebrow.resolve(locale),
             modifier = Modifier()
                 .style("font-size", "0.9rem")
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
 
         H1(
@@ -35,15 +35,15 @@ fun HeroSection(
             modifier = Modifier()
                 .style("font-size", "4.5rem")
                 .style("font-weight", "800")
-                .style("letter-spacing", PortfolioTheme.Typography.heroTracking)
+                .style("letter-spacing", PortfolioTheme.Typography.HERO_TRACKING)
         )
         H1(
             text = hero.titleSecondary.resolve(locale),
             modifier = Modifier()
                 .style("font-size", "4.5rem")
                 .style("font-weight", "800")
-                .style("letter-spacing", PortfolioTheme.Typography.heroTracking)
-                .style("background", PortfolioTheme.Gradients.accent)
+                .style("letter-spacing", PortfolioTheme.Typography.HERO_TRACKING)
+                .style("background", PortfolioTheme.Gradients.ACCENT)
                 .style("-webkit-background-clip", "text")
                 .style("color", "transparent")
         )
@@ -52,7 +52,7 @@ fun HeroSection(
             text = hero.subtitle.resolve(locale),
             modifier = Modifier()
                 .style("font-size", "1.2rem")
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("line-height", "1.8")
         )
 
@@ -68,7 +68,7 @@ fun HeroSection(
             Link(
                 primaryCta,
                 Modifier()
-                    .backgroundColor(PortfolioTheme.Colors.accentAlt)
+                    .backgroundColor(PortfolioTheme.Colors.ACCENT_ALT)
                     .color("#050505")
                     .padding("${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
                     .borderRadius(PortfolioTheme.Radii.pill)
@@ -81,15 +81,15 @@ fun HeroSection(
                 "",
                 "",
                 {}
-        )
-        ButtonLink(
-            secondaryCta,
-            "#contact",
-            Modifier()
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.border)
-                    .color(PortfolioTheme.Colors.textPrimary)
+            )
+            ButtonLink(
+                secondaryCta,
+                "#contact",
+                Modifier()
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(PortfolioTheme.Colors.BORDER)
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .padding("${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
                     .borderRadius(PortfolioTheme.Radii.pill)
             )
@@ -114,10 +114,10 @@ private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
         modifier = Modifier()
             .style("gap", PortfolioTheme.Spacing.xs)
             .padding(PortfolioTheme.Spacing.md)
-            .backgroundColor(PortfolioTheme.Colors.surfaceStrong)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.border)
+            .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.md)
             .style("min-width", 220.px)
             .style("flex", "1 1 220px")
@@ -131,14 +131,14 @@ private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
         Text(
             text = metric.label.resolve(locale),
             modifier = Modifier()
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("font-size", "0.9rem")
                 .style("font-weight", "600")
         )
         Paragraph(
             text = metric.detail.resolve(locale),
             modifier = Modifier()
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("font-size", "0.85rem")
         )
     }

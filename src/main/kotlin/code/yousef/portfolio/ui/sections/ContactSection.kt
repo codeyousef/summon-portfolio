@@ -50,7 +50,7 @@ fun ContactSection(
                 Text(
                     text = ContactCopy.subtitle.resolve(locale),
                     modifier = Modifier()
-                        .color(PortfolioTheme.Colors.textSecondary)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .style("line-height", "1.8")
                 )
                 Column(
@@ -69,7 +69,7 @@ fun ContactSection(
                         ContactCopy.schedule.resolve(locale),
                         "mailto:yousef.baitalmal.dev@email.com",
                         Modifier()
-                            .backgroundColor(PortfolioTheme.Colors.accent)
+                            .backgroundColor(PortfolioTheme.Colors.ACCENT)
                             .color("#ffffff")
                             .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
                             .borderRadius(PortfolioTheme.Radii.pill)
@@ -155,10 +155,10 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 .style("display", "flex")
                 .style("flex-direction", "column")
                 .style("gap", PortfolioTheme.Spacing.md)
-                .backgroundColor(PortfolioTheme.Colors.surface)
+                .backgroundColor(PortfolioTheme.Colors.SURFACE)
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.border)
+                .borderColor(PortfolioTheme.Colors.BORDER)
                 .borderRadius(PortfolioTheme.Radii.lg)
                 .style("padding", PortfolioTheme.Spacing.lg)
         ) {
@@ -167,7 +167,7 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                     text = message,
                     modifier = Modifier()
                         .backgroundColor("rgba(61, 213, 152, 0.12)")
-                        .color(PortfolioTheme.Colors.success)
+                        .color(PortfolioTheme.Colors.SUCCESS)
                         .style("font-weight", "600")
                         .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
                         .borderRadius(PortfolioTheme.Radii.sm)
@@ -178,7 +178,7 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                     text = message,
                     modifier = Modifier()
                         .backgroundColor("rgba(255, 77, 77, 0.18)")
-                        .color(PortfolioTheme.Colors.danger)
+                        .color(PortfolioTheme.Colors.DANGER)
                         .style("font-weight", "600")
                         .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
                         .borderRadius(PortfolioTheme.Radii.sm)
@@ -236,7 +236,7 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 onClick = {},
                 label = ContactCopy.submit.resolve(locale),
                 modifier = Modifier()
-                    .backgroundColor(PortfolioTheme.Colors.accentAlt)
+                    .backgroundColor(PortfolioTheme.Colors.ACCENT_ALT)
                     .color("#050505")
                     .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
                     .borderRadius(PortfolioTheme.Radii.pill)
@@ -256,7 +256,7 @@ private fun FieldError(message: String) {
     Text(
         text = message,
         modifier = Modifier()
-            .color(PortfolioTheme.Colors.danger)
+            .color(PortfolioTheme.Colors.DANGER)
             .style("font-size", "0.85rem")
             .style("font-weight", "600")
     )

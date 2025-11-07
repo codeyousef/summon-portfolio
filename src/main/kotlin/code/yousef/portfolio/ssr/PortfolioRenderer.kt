@@ -22,15 +22,33 @@ class PortfolioRenderer(
     private fun headBlockFor(locale: PortfolioLocale): (HeadScope) -> Unit = { head ->
         val canonical = canonicalUrl(locale)
         head.title("Yousef Baitalmal · Summon Portfolio")
-        head.meta("description", "Engineering from first principles — systems, frameworks, and immersive experiences powered by Summon and Ktor.", null, null, null)
+        head.meta(
+            "description",
+            "Engineering from first principles — systems, frameworks, and immersive experiences powered by Summon and Ktor.",
+            null,
+            null,
+            null
+        )
         head.meta(null, "Yousef Baitalmal · Engineering from First Principles", "og:title", null, null)
-        head.meta(null, "Follow the journey across language, framework, and experience layers built with Summon.", "og:description", null, null)
+        head.meta(
+            null,
+            "Follow the journey across language, framework, and experience layers built with Summon.",
+            "og:description",
+            null,
+            null
+        )
         head.meta(null, "website", "og:type", null, null)
         head.meta(null, canonical, "og:url", null, null)
         head.meta(null, locale.code, "og:locale", null, null)
         head.meta("twitter:card", "summary_large_image", null, null, null)
         head.meta("twitter:title", "Yousef Baitalmal · Summon Portfolio", null, null, null)
-        head.meta("twitter:description", "Summon-powered storytelling for systems, frameworks, and immersive experiences.", null, null, null)
+        head.meta(
+            "twitter:description",
+            "Summon-powered storytelling for systems, frameworks, and immersive experiences.",
+            null,
+            null,
+            null
+        )
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)

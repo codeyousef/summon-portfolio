@@ -57,7 +57,7 @@ private fun SectionHeading(locale: PortfolioLocale) {
                 .style("letter-spacing", "0.25em")
                 .style("font-size", "0.75rem")
                 .style("text-transform", "uppercase")
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
         Text(
             text = ProjectsCopy.projectsTitle.resolve(locale),
@@ -68,7 +68,7 @@ private fun SectionHeading(locale: PortfolioLocale) {
         Text(
             text = ProjectsCopy.projectsDescription.resolve(locale),
             modifier = Modifier()
-                .style("color", PortfolioTheme.Colors.textSecondary)
+                .style("color", PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("line-height", "1.8")
         )
     }
@@ -89,9 +89,9 @@ private fun CategoryLegend(locale: PortfolioLocale) {
                     .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.md}")
                     .borderWidth(1)
                     .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.border)
+                    .borderColor(PortfolioTheme.Colors.BORDER)
                     .borderRadius(PortfolioTheme.Radii.pill)
-                    .color(PortfolioTheme.Colors.textSecondary)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .style("font-size", "0.85rem")
             )
         }
@@ -106,12 +106,12 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             .style("flex-direction", "column")
             .style("gap", PortfolioTheme.Spacing.sm)
             .style("padding", PortfolioTheme.Spacing.lg)
-            .backgroundColor(PortfolioTheme.Colors.surface)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.border)
+            .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .style("box-shadow", PortfolioTheme.Shadows.low)
+            .style("box-shadow", PortfolioTheme.Shadows.LOW)
     ) {
         Row(
             modifier = Modifier()
@@ -128,7 +128,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
                     text = project.layerLabel.resolve(locale),
                     modifier = Modifier()
                         .style("font-size", "0.8rem")
-                        .color(PortfolioTheme.Colors.textSecondary)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .style("text-transform", "uppercase")
                 )
                 Text(
@@ -142,7 +142,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
                 text = project.category.label.resolve(locale),
                 modifier = Modifier()
                     .style("font-size", "0.85rem")
-                    .color(PortfolioTheme.Colors.textSecondary)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
         }
 
@@ -155,7 +155,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
         Text(
             text = project.description.resolve(locale),
             modifier = Modifier()
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("line-height", "1.7")
         )
 
@@ -173,9 +173,9 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
                             .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
-                            .borderColor(PortfolioTheme.Colors.border)
+                            .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.pill)
-                            .color(PortfolioTheme.Colors.textSecondary)
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                             .style("font-size", "0.75rem")
                     )
                 }

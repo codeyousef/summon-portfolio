@@ -6,10 +6,10 @@ enum class PortfolioLocale(val code: String, val direction: String) {
 
     companion object {
         fun fromCode(code: String?): PortfolioLocale =
-            values().firstOrNull { it.code.equals(code, ignoreCase = true) } ?: EN
+            entries.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: EN
 
         fun exact(code: String?): PortfolioLocale? =
-            values().firstOrNull { it.code.equals(code, ignoreCase = true) }
+            entries.firstOrNull { it.code.equals(code, ignoreCase = true) }
     }
 }
 

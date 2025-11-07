@@ -35,10 +35,10 @@ fun AppHeader(
     val navItems = defaultNavItems
     val containerModifier = modifier
         .style("width", "100%")
-        .backgroundColor(PortfolioTheme.Colors.surface)
+        .backgroundColor(PortfolioTheme.Colors.SURFACE)
         .borderWidth(1)
         .borderStyle(BorderStyle.Solid)
-        .borderColor(PortfolioTheme.Colors.border)
+        .borderColor(PortfolioTheme.Colors.BORDER)
         .borderRadius(PortfolioTheme.Radii.lg)
         .style("padding", PortfolioTheme.Spacing.md)
         .style("backdrop-filter", "blur(16px)")
@@ -54,7 +54,7 @@ fun AppHeader(
             text = "YOUSEF BAITALMAL",
             modifier = Modifier()
                 .style("font-size", "0.9rem")
-                .style("letter-spacing", PortfolioTheme.Typography.heroTracking)
+                .style("letter-spacing", PortfolioTheme.Typography.HERO_TRACKING)
                 .style("font-weight", "700")
         )
 
@@ -69,7 +69,7 @@ fun AppHeader(
                 Link(
                     item.label.resolve(locale),
                     Modifier()
-                        .color(PortfolioTheme.Colors.textSecondary)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .style("font-size", "0.85rem")
                         .style("text-transform", "uppercase")
                         .style("letter-spacing", "0.08em")
@@ -96,7 +96,7 @@ fun AppHeader(
                 onClick = { onRequestServices() },
                 label = LocalizedText("Hire Me", "توظيفي").resolve(locale),
                 modifier = Modifier()
-                    .backgroundColor(PortfolioTheme.Colors.accent)
+                    .backgroundColor(PortfolioTheme.Colors.ACCENT)
                     .color("#ffffff")
                     .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.lg}")
                     .borderRadius(PortfolioTheme.Radii.pill)
@@ -121,14 +121,14 @@ private fun LocaleToggle(current: PortfolioLocale) {
             .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.border)
+            .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.pill)
     ) {
         LocaleToggleButton(locale = PortfolioLocale.EN, current = current)
         Text(
             text = "|",
             modifier = Modifier()
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("font-size", "0.75rem")
         )
         LocaleToggleButton(locale = PortfolioLocale.AR, current = current)
@@ -141,8 +141,8 @@ private fun LocaleToggleButton(locale: PortfolioLocale, current: PortfolioLocale
     Link(
         locale.code.uppercase(),
         Modifier()
-            .color(if (isActive) PortfolioTheme.Colors.background else PortfolioTheme.Colors.textSecondary)
-            .backgroundColor(if (isActive) PortfolioTheme.Colors.accentAlt else "transparent")
+            .color(if (isActive) PortfolioTheme.Colors.BACKGROUND else PortfolioTheme.Colors.TEXT_SECONDARY)
+            .backgroundColor(if (isActive) PortfolioTheme.Colors.ACCENT_ALT else "transparent")
             .style("font-size", "0.75rem")
             .style("font-weight", "600")
             .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")

@@ -38,7 +38,10 @@ object PortfolioContentSeed {
             HeroMetric(
                 value = "2",
                 label = LocalizedText("Live Languages", "لغتان"),
-                detail = LocalizedText("English + Arabic with RTL support.", "الإنجليزية + العربية مع دعم الاتجاه من اليمين لليسار.")
+                detail = LocalizedText(
+                    "English + Arabic with RTL support.",
+                    "الإنجليزية + العربية مع دعم الاتجاه من اليمين لليسار."
+                )
             )
         )
     )

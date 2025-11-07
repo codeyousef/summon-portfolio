@@ -37,7 +37,7 @@ fun ServicesSection(
             Text(
                 text = ServicesCopy.subtitle.resolve(locale),
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.textSecondary)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .style("line-height", "1.8")
             )
 
@@ -61,7 +61,7 @@ fun ServicesSection(
                     onClick = { onRequestServices() },
                     label = ServicesCopy.openModal.resolve(locale),
                     modifier = Modifier()
-                        .backgroundColor(PortfolioTheme.Colors.accent)
+                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
                         .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
                         .borderRadius(PortfolioTheme.Radii.pill)
@@ -84,12 +84,12 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
             .style("flex-direction", "column")
             .style("gap", PortfolioTheme.Spacing.sm)
             .style("padding", PortfolioTheme.Spacing.lg)
-            .backgroundColor(PortfolioTheme.Colors.surface)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.border)
+            .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .style("box-shadow", PortfolioTheme.Shadows.low)
+            .style("box-shadow", PortfolioTheme.Shadows.LOW)
     ) {
         Text(
             text = service.title.resolve(locale),
@@ -100,7 +100,7 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
         Text(
             text = service.description.resolve(locale),
             modifier = Modifier()
-                .color(PortfolioTheme.Colors.textSecondary)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .style("line-height", "1.6")
         )
     }

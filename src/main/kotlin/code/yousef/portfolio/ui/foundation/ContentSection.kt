@@ -22,10 +22,10 @@ fun ContentSection(
     Box(modifier = wrapperModifier) {
         Column(
             modifier = Modifier()
-                .backgroundColor(if (surface) PortfolioTheme.Colors.surface else "transparent")
+                .backgroundColor(if (surface) PortfolioTheme.Colors.SURFACE else "transparent")
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.border)
+                .borderColor(PortfolioTheme.Colors.BORDER)
                 .borderRadius(PortfolioTheme.Radii.lg)
                 .padding(PortfolioTheme.Spacing.xl)
                 .style("gap", PortfolioTheme.Spacing.lg)

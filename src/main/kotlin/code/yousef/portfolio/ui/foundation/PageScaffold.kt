@@ -15,9 +15,9 @@ fun PageScaffold(
 ) {
     val scaffoldModifier = modifier
         .style("min-height", "100vh")
-        .backgroundColor(PortfolioTheme.Colors.background)
-        .color(PortfolioTheme.Colors.textPrimary)
-        .style("font-family", PortfolioTheme.Typography.fontSans)
+        .backgroundColor(PortfolioTheme.Colors.BACKGROUND)
+        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+        .style("font-family", PortfolioTheme.Typography.FONT_SANS)
         .style("position", "relative")
         .style("overflow", "hidden")
         .attribute("lang", locale.code)
@@ -43,7 +43,7 @@ private fun GradientBackdrop() {
         modifier = Modifier()
             .style("position", "absolute")
             .style("inset", "0")
-            .style("background", PortfolioTheme.Gradients.hero)
+            .style("background", PortfolioTheme.Gradients.HERO)
             .style("filter", "blur(90px) saturate(130%)")
             .style("opacity", "0.9")
             .style("z-index", "1")

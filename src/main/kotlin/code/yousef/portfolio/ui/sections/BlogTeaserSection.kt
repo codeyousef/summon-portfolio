@@ -42,7 +42,7 @@ fun BlogTeaserSection(
             Text(
                 text = BlogCopy.subtitle.resolve(locale),
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.textSecondary)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .style("line-height", "1.8")
             )
 
@@ -60,10 +60,10 @@ fun BlogTeaserSection(
                             .style("display", "flex")
                             .style("flex-direction", "column")
                             .style("gap", PortfolioTheme.Spacing.xs)
-                            .backgroundColor(PortfolioTheme.Colors.surface)
+                            .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
-                            .borderColor(PortfolioTheme.Colors.border)
+                            .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.lg)
                             .style("padding", PortfolioTheme.Spacing.lg)
                     ) {
@@ -76,18 +76,18 @@ fun BlogTeaserSection(
                         Text(
                             text = formatter.format(post.publishedAt),
                             modifier = Modifier()
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         )
                         Text(
                             text = post.excerpt.resolve(locale),
                             modifier = Modifier()
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .style("line-height", "1.7")
                         )
                         Link(
                             BlogCopy.readMore.resolve(locale),
                             Modifier()
-                                .color(PortfolioTheme.Colors.accentAlt)
+                                .color(PortfolioTheme.Colors.ACCENT_ALT)
                                 .style("font-weight", "600"),
                             detailHref,
                             "_self",
@@ -110,7 +110,7 @@ fun BlogTeaserSection(
                 Link(
                     BlogCopy.viewAll.resolve(locale),
                     Modifier()
-                        .color(PortfolioTheme.Colors.textSecondary)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .style("font-weight", "600"),
                     blogListHref(locale),
                     "_self",

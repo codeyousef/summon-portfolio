@@ -57,7 +57,7 @@ fun ServicesOverlay(
                     label = ServicesOverlayCopy.close.resolve(locale),
                     modifier = Modifier()
                         .backgroundColor("transparent")
-                        .color(PortfolioTheme.Colors.textSecondary)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .style("font-weight", "600")
                         .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}"),
                     variant = ButtonVariant.SECONDARY,
@@ -70,7 +70,7 @@ fun ServicesOverlay(
             Text(
                 text = ServicesOverlayCopy.subtitle.resolve(locale),
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.textSecondary)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .style("line-height", "1.8")
             )
 
@@ -86,10 +86,10 @@ fun ServicesOverlay(
                             .style("display", "flex")
                             .style("flex-direction", "column")
                             .style("gap", PortfolioTheme.Spacing.sm)
-                            .backgroundColor(PortfolioTheme.Colors.surface)
+                            .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
-                            .borderColor(PortfolioTheme.Colors.border)
+                            .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.lg)
                             .style("padding", PortfolioTheme.Spacing.lg)
                     ) {
@@ -102,7 +102,7 @@ fun ServicesOverlay(
                         Text(
                             text = service.description.resolve(locale),
                             modifier = Modifier()
-                                .color(PortfolioTheme.Colors.textSecondary)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .style("line-height", "1.6")
                         )
                     }
@@ -118,7 +118,7 @@ fun ServicesOverlay(
                     ServicesOverlayCopy.cta.resolve(locale),
                     contactHref,
                     Modifier()
-                        .backgroundColor(PortfolioTheme.Colors.accent)
+                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
                         .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
                         .borderRadius(PortfolioTheme.Radii.pill)
