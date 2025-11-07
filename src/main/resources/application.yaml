@@ -1,0 +1,6 @@
+ktor:
+  application:
+    modules:
+      - code.yousef.ApplicationKt.module
+  deployment:
+    port: 8080
