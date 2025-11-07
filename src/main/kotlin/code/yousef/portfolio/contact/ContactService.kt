@@ -1,7 +1,7 @@
 package code.yousef.portfolio.contact
 
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 class ContactService(
     private val repository: ContactRepository = InMemoryContactRepository()
@@ -19,6 +19,8 @@ class ContactService(
         repository.save(submission)
         return Result.Success(submission)
     }
+
+    fun list(): List<ContactSubmission> = repository.list()
 
     private fun ContactRequest.validate(): String? {
         if (name.isBlank()) return "Name is required"
