@@ -5,7 +5,9 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.minHeight
 
 @Composable
 fun PageScaffold(
@@ -14,12 +16,12 @@ fun PageScaffold(
     content: () -> Unit
 ) {
     val scaffoldModifier = modifier
-        .style("min-height", "100vh")
+        .minHeight("100vh")
         .backgroundColor(PortfolioTheme.Colors.BACKGROUND)
         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-        .style("font-family", PortfolioTheme.Typography.FONT_SANS)
-        .style("position", "relative")
-        .style("overflow", "hidden")
+        .fontFamily(PortfolioTheme.Typography.FONT_SANS)
+        .position(Position.Relative)
+        .overflow(Overflow.Hidden)
         .attribute("lang", locale.code)
         .attribute("dir", locale.direction)
 
@@ -27,10 +29,10 @@ fun PageScaffold(
         GradientBackdrop()
         Column(
             modifier = Modifier()
-                .style("position", "relative")
-                .style("z-index", "2")
+                .position(Position.Relative)
+                .zIndex(2)
                 .padding(PortfolioTheme.Spacing.xl)
-                .style("gap", PortfolioTheme.Spacing.xl)
+                .gap(PortfolioTheme.Spacing.xl)
         ) {
             content()
         }
@@ -41,11 +43,11 @@ fun PageScaffold(
 private fun GradientBackdrop() {
     Box(
         modifier = Modifier()
-            .style("position", "absolute")
+            .position(Position.Absolute)
+            .backgroundColor(PortfolioTheme.Gradients.HERO)
+            .opacity(0.9F)
+            .zIndex(1)
             .style("inset", "0")
-            .style("background", PortfolioTheme.Gradients.HERO)
             .style("filter", "blur(90px) saturate(130%)")
-            .style("opacity", "0.9")
-            .style("z-index", "1")
     ) { }
 }

@@ -11,7 +11,12 @@ import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.input.IconPosition
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.extensions.percent
+import code.yousef.summon.extensions.px
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
 
 private data class NavItem(
     val label: LocalizedText,
@@ -34,18 +39,18 @@ fun AppHeader(
 ) {
     val navItems = defaultNavItems
     val containerModifier = modifier
-        .style("width", "100%")
+        .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
         .borderWidth(1)
         .borderStyle(BorderStyle.Solid)
         .borderColor(PortfolioTheme.Colors.BORDER)
         .borderRadius(PortfolioTheme.Radii.lg)
-        .style("padding", PortfolioTheme.Spacing.md)
-        .style("backdrop-filter", "blur(16px)")
-        .style("display", "flex")
-        .style("align-items", "center")
-        .style("justify-content", "space-between")
-        .style("gap", PortfolioTheme.Spacing.lg)
+        .padding(PortfolioTheme.Spacing.md)
+        .backdropBlur(16.px)
+        .display(Display.Flex)
+        .alignItems(AlignItems.Center)
+        .justifyContent(JustifyContent.SpaceBetween)
+        .gap(PortfolioTheme.Spacing.lg)
 
     val pathPrefix = locale.pathPrefix()
 
@@ -53,16 +58,16 @@ fun AppHeader(
         Text(
             text = "YOUSEF BAITALMAL",
             modifier = Modifier()
-                .style("font-size", "0.9rem")
-                .style("letter-spacing", PortfolioTheme.Typography.HERO_TRACKING)
-                .style("font-weight", "700")
+                .fontSize(0.9.rem)
+                .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
+                .fontWeight(700)
         )
 
         Row(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("align-items", "center")
-                .style("gap", PortfolioTheme.Spacing.md)
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.md)
         ) {
             navItems.forEach { item ->
                 val anchorHref = if (pathPrefix.isEmpty()) "#${item.anchor}" else "$pathPrefix#${item.anchor}"
@@ -70,27 +75,27 @@ fun AppHeader(
                     item.label.resolve(locale),
                     Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .style("font-size", "0.85rem")
-                        .style("text-transform", "uppercase")
-                        .style("letter-spacing", "0.08em")
-                        .attribute("aria-label", item.label.resolve(locale)),
+                        .fontSize(0.85.rem)
+                        .textTransform(TextTransform.Uppercase)
+                        .letterSpacing(0.08.rem)
+                        .ariaLabel(item.label.resolve(locale)),
                     anchorHref,
                     "_self",
                     "",
                     false,
-                    false,
-                    "",
-                    "",
-                    {}
+                    isNoFollow = false,
+                    ariaLabel = "",
+                    ariaDescribedBy = "",
+                    content = {}
                 )
             }
         }
 
         Row(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("align-items", "center")
-                .style("gap", PortfolioTheme.Spacing.md)
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.md)
         ) {
             Button(
                 onClick = { onRequestServices() },
@@ -98,9 +103,9 @@ fun AppHeader(
                 modifier = Modifier()
                     .backgroundColor(PortfolioTheme.Colors.ACCENT)
                     .color("#ffffff")
-                    .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.lg}")
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
                     .borderRadius(PortfolioTheme.Radii.pill)
-                    .style("font-weight", "600"),
+                    .fontWeight(600),
                 variant = ButtonVariant.PRIMARY,
                 false,
                 "",
@@ -115,10 +120,10 @@ fun AppHeader(
 private fun LocaleToggle(current: PortfolioLocale) {
     Row(
         modifier = Modifier()
-            .style("display", "inline-flex")
-            .style("align-items", "center")
-            .style("gap", PortfolioTheme.Spacing.xs)
-            .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
+            .display(Display.InlineFlex)
+            .alignItems(AlignItems.Center)
+            .gap(PortfolioTheme.Spacing.xs)
+            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
@@ -129,7 +134,7 @@ private fun LocaleToggle(current: PortfolioLocale) {
             text = "|",
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("font-size", "0.75rem")
+                .fontSize(0.75.rem)
         )
         LocaleToggleButton(locale = PortfolioLocale.AR, current = current)
     }
@@ -143,17 +148,17 @@ private fun LocaleToggleButton(locale: PortfolioLocale, current: PortfolioLocale
         Modifier()
             .color(if (isActive) PortfolioTheme.Colors.BACKGROUND else PortfolioTheme.Colors.TEXT_SECONDARY)
             .backgroundColor(if (isActive) PortfolioTheme.Colors.ACCENT_ALT else "transparent")
-            .style("font-size", "0.75rem")
-            .style("font-weight", "600")
-            .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
+            .fontSize(0.75.rem)
+            .fontWeight(600)
+            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
             .borderRadius(PortfolioTheme.Radii.pill),
         if (locale == PortfolioLocale.EN) "/" else "/${locale.code}",
         "_self",
         "",
-        false,
-        false,
-        "",
-        "",
-        {}
+        isExternal = false,
+        isNoFollow = false,
+        ariaLabel = "",
+        ariaDescribedBy = "",
+        content = {}
     )
 }

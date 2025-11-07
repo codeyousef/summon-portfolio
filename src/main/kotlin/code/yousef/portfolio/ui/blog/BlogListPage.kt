@@ -10,7 +10,11 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -22,59 +26,59 @@ fun BlogListPage(
     ContentSection(surface = false) {
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.xl)
+                .display(Display.Flex)
+                .flexDirection("column")
+                .gap(PortfolioTheme.Spacing.xl)
         ) {
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.sm)
+                    .display(Display.Flex)
+                    .flexDirection("column")
+                    .gap(PortfolioTheme.Spacing.sm)
             ) {
                 Text(
                     text = BlogListCopy.title.resolve(locale),
                     modifier = Modifier()
-                        .style("font-size", "3rem")
-                        .style("font-weight", "700")
+                        .fontSize(3.rem)
+                        .fontWeight(700)
                 )
                 Text(
                     text = BlogListCopy.subtitle.resolve(locale),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .style("line-height", "1.8")
+                        .lineHeight(1.8)
                 )
             }
 
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.lg)
+                    .display(Display.Flex)
+                    .flexDirection("column")
+                    .gap(PortfolioTheme.Spacing.lg)
             ) {
                 posts.sortedByDescending { it.publishedAt }.forEach { post ->
                     Column(
                         modifier = Modifier()
-                            .style("display", "flex")
-                            .style("flex-direction", "column")
-                            .style("gap", PortfolioTheme.Spacing.xs)
+                            .display(Display.Flex)
+                            .flexDirection("column")
+                            .gap(PortfolioTheme.Spacing.xs)
                             .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
                             .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.lg)
-                            .style("padding", PortfolioTheme.Spacing.lg)
+                            .padding(PortfolioTheme.Spacing.lg)
                     ) {
                         Text(
                             text = post.title.resolve(locale),
                             modifier = Modifier()
-                                .style("font-size", "1.75rem")
-                                .style("font-weight", "600")
+                                .fontSize(1.75.rem)
+                                .fontWeight(600)
                         )
                         Row(
                             modifier = Modifier()
-                                .style("display", "flex")
-                                .style("gap", PortfolioTheme.Spacing.sm)
+                                .display(Display.Flex)
+                                .gap(PortfolioTheme.Spacing.sm)
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         ) {
                             Text(formatter.format(post.publishedAt))
@@ -85,21 +89,21 @@ fun BlogListPage(
                             text = post.excerpt.resolve(locale),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .style("line-height", "1.7")
+                                .lineHeight(1.7)
                         )
                         Link(
                             BlogListCopy.readMore.resolve(locale),
                             Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)
-                                .style("font-weight", "600"),
+                                .fontWeight(600),
                             blogDetailHref(locale, post.slug),
                             "_self",
                             "",
-                            false,
-                            false,
-                            "",
-                            "",
-                            {}
+                            isExternal = false,
+                            isNoFollow = false,
+                            ariaLabel = "",
+                            ariaDescribedBy = "",
+                            content = {}
                         )
                     }
                 }

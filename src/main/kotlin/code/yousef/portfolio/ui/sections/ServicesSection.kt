@@ -12,7 +12,13 @@ import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.input.IconPosition
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
+import code.yousef.summon.modifier.LayoutModifierExtras.gridTemplateColumns
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.lineHeight
 
 @Composable
 fun ServicesSection(
@@ -24,28 +30,28 @@ fun ServicesSection(
     ContentSection(modifier = modifier) {
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.md)
+                .display(Display.Flex)
+                .flexDirection("column")
+                .gap(PortfolioTheme.Spacing.md)
         ) {
             Text(
                 text = ServicesCopy.title.resolve(locale),
                 modifier = Modifier()
-                    .style("font-size", "2.5rem")
-                    .style("font-weight", "700")
+                    .fontSize(2.5.rem)
+                    .fontWeight(700)
             )
             Text(
                 text = ServicesCopy.subtitle.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                    .style("line-height", "1.8")
+                    .lineHeight(1.8)
             )
 
             Row(
                 modifier = Modifier()
-                    .style("display", "grid")
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(220px, 1fr))")
-                    .style("gap", PortfolioTheme.Spacing.md)
+                    .display(Display.Grid)
+                    .gridTemplateColumns("repeat(auto-fit, minmax(220px, 1fr))")
+                    .gap(PortfolioTheme.Spacing.md)
             ) {
                 services.forEach { service ->
                     ServiceCard(service = service, locale = locale)
@@ -54,8 +60,8 @@ fun ServicesSection(
 
             Row(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("justify-content", "center")
+                    .display(Display.Flex)
+                    .justifyContent(JustifyContent.Center)
             ) {
                 Button(
                     onClick = { onRequestServices() },
@@ -63,9 +69,9 @@ fun ServicesSection(
                     modifier = Modifier()
                         .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
-                        .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                         .borderRadius(PortfolioTheme.Radii.pill)
-                        .style("font-weight", "600"),
+                        .fontWeight(600),
                     variant = ButtonVariant.PRIMARY,
                     false,
                     "",
@@ -80,28 +86,28 @@ fun ServicesSection(
 private fun ServiceCard(service: Service, locale: PortfolioLocale) {
     Column(
         modifier = Modifier()
-            .style("display", "flex")
-            .style("flex-direction", "column")
-            .style("gap", PortfolioTheme.Spacing.sm)
-            .style("padding", PortfolioTheme.Spacing.lg)
+            .display(Display.Flex)
+            .flexDirection("column")
+            .gap(PortfolioTheme.Spacing.sm)
+            .padding(PortfolioTheme.Spacing.lg)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .style("box-shadow", PortfolioTheme.Shadows.LOW)
+            .boxShadow(PortfolioTheme.Shadows.LOW)
     ) {
         Text(
             text = service.title.resolve(locale),
             modifier = Modifier()
-                .style("font-size", "1.2rem")
-                .style("font-weight", "600")
+                .fontSize(1.2.rem)
+                .fontWeight(600)
         )
         Text(
             text = service.description.resolve(locale),
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("line-height", "1.6")
+                .lineHeight(1.6)
         )
     }
 }

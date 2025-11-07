@@ -10,7 +10,13 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
+import code.yousef.summon.modifier.LayoutModifiers.flexWrap
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.lineHeight
 
 @Composable
 fun ProjectsSection(
@@ -23,17 +29,17 @@ fun ProjectsSection(
     ContentSection(modifier = modifier, surface = false) {
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.lg)
+                .display(Display.Flex)
+                .flexDirection("column")
+                .gap(PortfolioTheme.Spacing.lg)
         ) {
             SectionHeading(locale = locale)
             CategoryLegend(locale = locale)
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.lg)
+                    .display(Display.Flex)
+                    .flexDirection("column")
+                    .gap(PortfolioTheme.Spacing.lg)
             ) {
                 sortedProjects.forEach { project ->
                     ProjectCard(project = project, locale = locale)
@@ -47,29 +53,29 @@ fun ProjectsSection(
 private fun SectionHeading(locale: PortfolioLocale) {
     Column(
         modifier = Modifier()
-            .style("display", "flex")
-            .style("flex-direction", "column")
-            .style("gap", PortfolioTheme.Spacing.xs)
+            .display(Display.Flex)
+            .flexDirection("column")
+            .gap(PortfolioTheme.Spacing.xs)
     ) {
         Text(
             text = ProjectsCopy.projectsEyebrow.resolve(locale),
             modifier = Modifier()
-                .style("letter-spacing", "0.25em")
-                .style("font-size", "0.75rem")
-                .style("text-transform", "uppercase")
+                .letterSpacing(0.25.rem)
+                .textTransform(TextTransform.Uppercase)
+                .fontSize(0.75.rem)
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
         Text(
             text = ProjectsCopy.projectsTitle.resolve(locale),
             modifier = Modifier()
-                .style("font-size", "2.5rem")
-                .style("font-weight", "700")
+                .fontSize(2.5.rem)
+                .fontWeight(700)
         )
         Text(
             text = ProjectsCopy.projectsDescription.resolve(locale),
             modifier = Modifier()
-                .style("color", PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("line-height", "1.8")
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                .lineHeight(1.8)
         )
     }
 }
@@ -78,21 +84,21 @@ private fun SectionHeading(locale: PortfolioLocale) {
 private fun CategoryLegend(locale: PortfolioLocale) {
     Row(
         modifier = Modifier()
-            .style("display", "flex")
-            .style("flex-wrap", "wrap")
-            .style("gap", PortfolioTheme.Spacing.sm)
+            .display(Display.Flex)
+            .flexWrap("wrap")
+            .gap(PortfolioTheme.Spacing.sm)
     ) {
         ProjectCategory.values().forEach { category ->
             Text(
                 text = category.label.resolve(locale),
                 modifier = Modifier()
-                    .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.md}")
+                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.md)
                     .borderWidth(1)
                     .borderStyle(BorderStyle.Solid)
                     .borderColor(PortfolioTheme.Colors.BORDER)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                    .style("font-size", "0.85rem")
+                    .fontSize(0.85.rem)
             )
         }
     }
@@ -102,46 +108,46 @@ private fun CategoryLegend(locale: PortfolioLocale) {
 private fun ProjectCard(project: Project, locale: PortfolioLocale) {
     Column(
         modifier = Modifier()
-            .style("display", "flex")
-            .style("flex-direction", "column")
-            .style("gap", PortfolioTheme.Spacing.sm)
-            .style("padding", PortfolioTheme.Spacing.lg)
+            .display(Display.Flex)
+            .flexDirection("column")
+            .gap(PortfolioTheme.Spacing.sm)
+            .padding(PortfolioTheme.Spacing.lg)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .style("box-shadow", PortfolioTheme.Shadows.LOW)
+            .boxShadow(PortfolioTheme.Shadows.LOW)
     ) {
         Row(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("justify-content", "space-between")
-                .style("align-items", "center")
+                .display(Display.Flex)
+                .justifyContent(JustifyContent.SpaceBetween)
+                .alignItems(AlignItems.Center)
         ) {
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
+                    .display(Display.Flex)
+                    .flexDirection("column")
             ) {
                 Text(
                     text = project.layerLabel.resolve(locale),
                     modifier = Modifier()
-                        .style("font-size", "0.8rem")
+                        .fontSize(0.8.rem)
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .style("text-transform", "uppercase")
+                        .textTransform(TextTransform.Uppercase)
                 )
                 Text(
                     text = project.layerName.resolve(locale),
                     modifier = Modifier()
-                        .style("font-size", "0.9rem")
-                        .style("font-weight", "600")
+                        .fontSize(0.9.rem)
+                        .fontWeight(600)
                 )
             }
             Text(
                 text = project.category.label.resolve(locale),
                 modifier = Modifier()
-                    .style("font-size", "0.85rem")
+                    .fontSize(0.85.rem)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
         }
@@ -149,34 +155,34 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
         Text(
             text = project.title.resolve(locale),
             modifier = Modifier()
-                .style("font-size", "2rem")
-                .style("font-weight", "700")
+                .fontSize(2.rem)
+                .fontWeight(700)
         )
         Text(
             text = project.description.resolve(locale),
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("line-height", "1.7")
+                .lineHeight(1.7)
         )
 
         if (project.technologies.isNotEmpty()) {
             Row(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-wrap", "wrap")
-                    .style("gap", PortfolioTheme.Spacing.xs)
+                    .display(Display.Flex)
+                    .flexWrap("wrap")
+                    .gap(PortfolioTheme.Spacing.xs)
             ) {
                 project.technologies.forEach { tech ->
                     Text(
                         text = tech,
                         modifier = Modifier()
-                            .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
+                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
                             .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.pill)
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .style("font-size", "0.75rem")
+                            .fontSize(0.75.rem)
                     )
                 }
             }

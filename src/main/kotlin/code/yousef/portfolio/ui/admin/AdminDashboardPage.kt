@@ -11,7 +11,12 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
@@ -31,21 +36,21 @@ fun AdminDashboardPage(
             Text(
                 text = "Admin Dashboard",
                 modifier = Modifier()
-                    .style("font-size", "2.25rem")
-                    .style("font-weight", "700")
+                    .fontSize(2.25.rem)
+                    .fontWeight(700)
             )
             Text(
                 text = "Review projects, services, and inbound contact requests in one place.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                    .style("line-height", "1.8")
+                    .lineHeight(1.8)
             )
         }
         Row(
             modifier = Modifier()
-                .style("display", "grid")
-                .style("grid-template-columns", "repeat(auto-fit, minmax(320px, 1fr))")
-                .style("gap", PortfolioTheme.Spacing.lg)
+                .display(Display.Grid)
+                .gridTemplateColumns("repeat(auto-fit, minmax(320px, 1fr))")
+                .gap(PortfolioTheme.Spacing.lg)
         ) {
             AdminCard(
                 title = "Projects (${content.projects.size})",
@@ -54,8 +59,8 @@ fun AdminDashboardPage(
                 content.projects.sortedBy { it.order }.take(6).forEach { project ->
                     Column(
                         modifier = Modifier()
-                            .style("display", "flex")
-                            .style("gap", PortfolioTheme.Spacing.xs)
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.xs)
                             .padding(PortfolioTheme.Spacing.sm)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
@@ -64,8 +69,7 @@ fun AdminDashboardPage(
                     ) {
                         Text(
                             text = project.title.resolve(locale),
-                            modifier = Modifier()
-                                .style("font-weight", "700")
+                            modifier = Modifier().fontWeight(700)
                         )
                         Text(
                             text = "${project.layerLabel.resolve(locale)} · ${project.category.label.resolve(locale)}",
@@ -81,20 +85,20 @@ fun AdminDashboardPage(
                 content.services.sortedBy { it.order }.forEach { service ->
                     Column(
                         modifier = Modifier()
-                            .style("display", "flex")
-                            .style("gap", PortfolioTheme.Spacing.xs)
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.xs)
                             .padding(PortfolioTheme.Spacing.sm)
                     ) {
                         Text(
                             text = service.title.resolve(locale),
                             modifier = Modifier()
-                                .style("font-weight", "600")
+                                .fontWeight(600)
                         )
                         Text(
                             text = service.description.resolve(locale),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .style("line-height", "1.6")
+                                .lineHeight(1.6)
                         )
                     }
                 }
@@ -107,8 +111,8 @@ fun AdminDashboardPage(
                 content.contacts.sortedByDescending { it.createdAt }.take(8).forEach { submission ->
                     Column(
                         modifier = Modifier()
-                            .style("display", "flex")
-                            .style("gap", PortfolioTheme.Spacing.xs)
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.xs)
                             .padding(PortfolioTheme.Spacing.sm)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
@@ -117,7 +121,7 @@ fun AdminDashboardPage(
                     ) {
                         Text(
                             text = "${submission.name} · ${submission.whatsapp}",
-                            modifier = Modifier().style("font-weight", "600")
+                            modifier = Modifier().fontWeight(600)
                         )
                         submission.email?.let {
                             Text(
@@ -129,13 +133,13 @@ fun AdminDashboardPage(
                             text = submission.requirements,
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .style("line-height", "1.5")
+                                .lineHeight(1.5)
                         )
                         Text(
                             text = dateFormatter.format(submission.createdAt),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .style("font-size", "0.8rem")
+                                .fontSize(0.8.rem)
                         )
                     }
                 }
@@ -152,31 +156,31 @@ private fun AdminCard(
 ) {
     Column(
         modifier = Modifier()
-            .style("display", "flex")
-            .style("gap", PortfolioTheme.Spacing.sm)
+            .display(Display.Flex)
+            .gap(PortfolioTheme.Spacing.xs)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .style("padding", PortfolioTheme.Spacing.lg)
+            .padding(PortfolioTheme.Spacing.lg)
     ) {
         Text(
             text = title,
             modifier = Modifier()
-                .style("font-size", "1.25rem")
-                .style("font-weight", "600")
+                .fontSize(1.25.rem)
+                .fontWeight(600)
         )
         Text(
             text = description,
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("font-size", "0.9rem")
+                .fontSize(0.9.rem)
         )
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("gap", PortfolioTheme.Spacing.sm)
+                .display(Display.Flex)
+                .gap(PortfolioTheme.Spacing.sm)
         ) {
             content()
         }

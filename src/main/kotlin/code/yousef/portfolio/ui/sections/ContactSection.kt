@@ -12,8 +12,16 @@ import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.effects.HttpResponse
 import code.yousef.summon.effects.createHttpClient
+import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
+import code.yousef.summon.modifier.LayoutModifierExtras.gridTemplateColumns
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.minHeight
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.lineHeight
 import code.yousef.summon.runtime.LaunchedEffect
 import code.yousef.summon.runtime.remember
 import code.yousef.summon.runtime.rememberMutableStateOf
@@ -31,39 +39,39 @@ fun ContactSection(
     ContentSection(modifier = modifier) {
         Row(
             modifier = Modifier()
-                .style("display", "grid")
-                .style("grid-template-columns", "repeat(auto-fit, minmax(320px, 1fr))")
-                .style("gap", PortfolioTheme.Spacing.xl)
+                .display(Display.Grid)
+                .gridTemplateColumns("repeat(auto-fit, minmax(320px, 1fr))")
+                .gap(PortfolioTheme.Spacing.xl)
         ) {
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.md)
+                    .display(Display.Flex)
+                    .flexDirection("column")
+                    .gap(PortfolioTheme.Spacing.md)
             ) {
                 Text(
                     text = ContactCopy.title.resolve(locale),
                     modifier = Modifier()
-                        .style("font-size", "2.5rem")
-                        .style("font-weight", "700")
+                        .fontSize(2.5.rem)
+                        .fontWeight(700)
                 )
                 Text(
                     text = ContactCopy.subtitle.resolve(locale),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .style("line-height", "1.8")
+                        .lineHeight(1.8)
                 )
                 Column(
                     modifier = Modifier()
-                        .style("display", "flex")
-                        .style("flex-direction", "column")
-                        .style("gap", PortfolioTheme.Spacing.sm)
+                        .display(Display.Flex)
+                        .flexDirection("column")
+                        .gap(PortfolioTheme.Spacing.sm)
                 ) {
                     Text(
                         text = "yousef.baitalmal.dev@email.com",
                         modifier = Modifier()
-                            .style("font-size", "1.1rem")
-                            .style("font-weight", "600")
+                            .fontSize(1.1.rem)
+                            .fontWeight(600)
                     )
                     ButtonLink(
                         ContactCopy.schedule.resolve(locale),
@@ -71,7 +79,7 @@ fun ContactSection(
                         Modifier()
                             .backgroundColor(PortfolioTheme.Colors.ACCENT)
                             .color("#ffffff")
-                            .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
+                            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                             .borderRadius(PortfolioTheme.Radii.pill)
                     )
                 }
@@ -152,15 +160,15 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
     ) {
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.md)
+                .display(Display.Flex)
+                .flexDirection("column")
+                .gap(PortfolioTheme.Spacing.md)
                 .backgroundColor(PortfolioTheme.Colors.SURFACE)
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
                 .borderColor(PortfolioTheme.Colors.BORDER)
                 .borderRadius(PortfolioTheme.Radii.lg)
-                .style("padding", PortfolioTheme.Spacing.lg)
+                .padding(PortfolioTheme.Spacing.lg)
         ) {
             successMessage.value?.let { message ->
                 Text(
@@ -168,8 +176,8 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                     modifier = Modifier()
                         .backgroundColor("rgba(61, 213, 152, 0.12)")
                         .color(PortfolioTheme.Colors.SUCCESS)
-                        .style("font-weight", "600")
-                        .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
+                        .fontWeight(600)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                         .borderRadius(PortfolioTheme.Radii.sm)
                 )
             }
@@ -179,23 +187,23 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                     modifier = Modifier()
                         .backgroundColor("rgba(255, 77, 77, 0.18)")
                         .color(PortfolioTheme.Colors.DANGER)
-                        .style("font-weight", "600")
-                        .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
+                        .fontWeight(600)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                         .borderRadius(PortfolioTheme.Radii.sm)
                 )
             }
             Text(
                 text = ContactCopy.formTitle.resolve(locale),
                 modifier = Modifier()
-                    .style("font-size", "1.2rem")
-                    .style("font-weight", "600")
+                    .fontSize(1.2.rem)
+                    .fontWeight(600)
             )
             TextField(
                 value = name.value,
                 onValueChange = { name.value = it },
                 placeholder = ContactCopy.namePlaceholder.resolve(locale),
                 modifier = Modifier()
-                    .style("width", "100%")
+                    .width(100.percent)
                     .attribute("name", "name")
                     .attribute("required", "required")
             )
@@ -206,7 +214,7 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 placeholder = ContactCopy.emailPlaceholder.resolve(locale),
                 type = TextFieldType.Email,
                 modifier = Modifier()
-                    .style("width", "100%")
+                    .width(100.percent)
                     .attribute("name", "email")
             )
             fieldErrors.value["email"]?.let { FieldError(it) }
@@ -215,7 +223,7 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 onValueChange = { whatsapp.value = it },
                 placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
                 modifier = Modifier()
-                    .style("width", "100%")
+                    .width(100.percent)
                     .attribute("name", "whatsapp")
                     .attribute("required", "required")
             )
@@ -224,9 +232,9 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 value = requirements.value,
                 onValueChange = { requirements.value = it },
                 modifier = Modifier()
-                    .style("width", "100%")
-                    .style("min-height", 140.px)
-                    .style("align-items", "flex-start")
+                    .width(100.percent)
+                    .minHeight(140.px)
+                    .alignItems(AlignItems.FlexStart)
                     .attribute("name", "requirements")
                     .attribute("required", "required"),
                 placeholder = ContactCopy.requirementsPlaceholder.resolve(locale)
@@ -238,9 +246,9 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 modifier = Modifier()
                     .backgroundColor(PortfolioTheme.Colors.ACCENT_ALT)
                     .color("#050505")
-                    .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                     .borderRadius(PortfolioTheme.Radii.pill)
-                    .style("text-align", "center")
+                    .textAlign(TextAlign.Center)
                     .attribute("type", "submit"),
                 variant = ButtonVariant.PRIMARY,
                 submitting.value,
@@ -257,8 +265,8 @@ private fun FieldError(message: String) {
         text = message,
         modifier = Modifier()
             .color(PortfolioTheme.Colors.DANGER)
-            .style("font-size", "0.85rem")
-            .style("font-weight", "600")
+            .fontSize(0.85.rem)
+            .fontWeight(600)
     )
 }
 

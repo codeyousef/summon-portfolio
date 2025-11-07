@@ -25,7 +25,7 @@ fun PortfolioLandingPage(
 
     PageScaffold(locale = locale) {
         AppHeader(locale = locale, onRequestServices = openServicesModal)
-        Spacer(modifier = Modifier().style("height", 12.px))
+        Spacer(modifier = Modifier().height(12.px))
         HeroSection(hero = content.hero, locale = locale, modifier = Modifier().id("hero"))
         ProjectsSection(projects = content.projects, locale = locale, modifier = Modifier().id("projects"))
         ServicesSection(

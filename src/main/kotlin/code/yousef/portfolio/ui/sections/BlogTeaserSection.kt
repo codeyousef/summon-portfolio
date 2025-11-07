@@ -12,7 +12,12 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -29,49 +34,49 @@ fun BlogTeaserSection(
     ContentSection(modifier = modifier) {
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.md)
+                .display(Display.Flex)
+                .flexDirection("column")
+                .gap(PortfolioTheme.Spacing.md)
         ) {
             Text(
                 text = BlogCopy.title.resolve(locale),
                 modifier = Modifier()
-                    .style("font-size", "2.5rem")
-                    .style("font-weight", "700")
+                    .fontSize(2.5.rem)
+                    .fontWeight(700)
             )
             Text(
                 text = BlogCopy.subtitle.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                    .style("line-height", "1.8")
+                    .lineHeight(1.8)
             )
 
             val featured = posts.sortedByDescending { it.publishedAt }.take(2)
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.md)
+                    .display(Display.Flex)
+                    .flexDirection("column")
+                    .gap(PortfolioTheme.Spacing.md)
             ) {
                 featured.forEach { post ->
                     val detailHref = blogDetailHref(locale, post.slug)
                     Column(
                         modifier = Modifier()
-                            .style("display", "flex")
-                            .style("flex-direction", "column")
-                            .style("gap", PortfolioTheme.Spacing.xs)
+                            .display(Display.Flex)
+                            .flexDirection("column")
+                            .gap(PortfolioTheme.Spacing.xs)
                             .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)
                             .borderStyle(BorderStyle.Solid)
                             .borderColor(PortfolioTheme.Colors.BORDER)
                             .borderRadius(PortfolioTheme.Radii.lg)
-                            .style("padding", PortfolioTheme.Spacing.lg)
+                            .padding(PortfolioTheme.Spacing.lg)
                     ) {
                         Text(
                             text = post.title.resolve(locale),
                             modifier = Modifier()
-                                .style("font-size", "1.5rem")
-                                .style("font-weight", "600")
+                                .fontSize(1.5.rem)
+                                .fontWeight(600)
                         )
                         Text(
                             text = formatter.format(post.publishedAt),
@@ -82,13 +87,13 @@ fun BlogTeaserSection(
                             text = post.excerpt.resolve(locale),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .style("line-height", "1.7")
+                                .lineHeight(1.7)
                         )
                         Link(
                             BlogCopy.readMore.resolve(locale),
                             Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)
-                                .style("font-weight", "600"),
+                                .fontWeight(600),
                             detailHref,
                             "_self",
                             "",
@@ -104,22 +109,22 @@ fun BlogTeaserSection(
 
             Row(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("justify-content", "flex-end")
+                    .display(Display.Flex)
+                    .justifyContent(JustifyContent.FlexEnd)
             ) {
                 Link(
                     BlogCopy.viewAll.resolve(locale),
                     Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .style("font-weight", "600"),
+                        .fontWeight(600),
                     blogListHref(locale),
                     "_self",
                     "",
-                    false,
-                    false,
-                    "",
-                    "",
-                    {}
+                    isExternal = false,
+                    isNoFollow = false,
+                    ariaLabel = "",
+                    ariaDescribedBy = "",
+                    content = {}
                 )
             }
         }

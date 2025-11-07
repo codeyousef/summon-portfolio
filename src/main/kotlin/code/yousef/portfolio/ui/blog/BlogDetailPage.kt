@@ -10,7 +10,12 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifiers.flexDirection
+import code.yousef.summon.modifier.LayoutModifiers.flexWrap
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -22,26 +27,27 @@ fun BlogDetailPage(
     ContentSection(surface = false) {
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.lg)
+                .display(Display.Flex)
+                .flexDirection("column")
+                .gap(PortfolioTheme.Spacing.lg)
+
         ) {
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.xs)
+                    .display(Display.Flex)
+                    .flexDirection("column")
+                    .gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(
                     text = post.title.resolve(locale),
                     modifier = Modifier()
-                        .style("font-size", "3rem")
-                        .style("font-weight", "700")
+                        .fontSize(3.rem)
+                        .fontWeight(700)
                 )
                 Row(
                     modifier = Modifier()
-                        .style("display", "flex")
-                        .style("gap", PortfolioTheme.Spacing.sm)
+                        .display(Display.Flex)
+                        .gap(PortfolioTheme.Spacing.sm)
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 ) {
                     Text(formatter.format(post.publishedAt))
@@ -54,21 +60,21 @@ fun BlogDetailPage(
                 }
                 Row(
                     modifier = Modifier()
-                        .style("display", "flex")
-                        .style("gap", PortfolioTheme.Spacing.xs)
-                        .style("flex-wrap", "wrap")
+                        .display(Display.Flex)
+                        .gap(PortfolioTheme.Spacing.xs)
+                        .flexWrap("wrap")
                 ) {
                     post.tags.forEach { tag ->
                         Text(
                             text = tag,
                             modifier = Modifier()
-                                .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
+                                .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                                 .borderWidth(1)
                                 .borderStyle(BorderStyle.Solid)
                                 .borderColor(PortfolioTheme.Colors.BORDER)
                                 .borderRadius(PortfolioTheme.Radii.pill)
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .style("font-size", "0.75rem")
+                                .fontSize(0.75.rem)
                         )
                     }
                 }
@@ -77,16 +83,16 @@ fun BlogDetailPage(
             val paragraphs = post.content.resolve(locale).split("\n\n")
             Column(
                 modifier = Modifier()
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("gap", PortfolioTheme.Spacing.md)
+                    .display(Display.Flex)
+                    .flexDirection("column")
+                    .gap(PortfolioTheme.Spacing.md)
             ) {
                 paragraphs.forEach { paragraph ->
                     Text(
                         text = paragraph.trim(),
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .style("line-height", "1.8")
+                            .lineHeight(1.8)
                     )
                 }
             }
@@ -95,15 +101,15 @@ fun BlogDetailPage(
                 BlogDetailCopy.back.resolve(locale),
                 Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .style("font-weight", "600"),
+                    .fontWeight(600),
                 blogListHref(locale),
                 "_self",
                 "",
-                false,
-                false,
-                "",
-                "",
-                {}
+                isExternal = false,
+                isNoFollow = false,
+                ariaLabel = "",
+                ariaDescribedBy = "",
+                content = {}
             )
         }
     }
@@ -114,16 +120,16 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
     ContentSection(surface = false) {
         Column(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("gap", PortfolioTheme.Spacing.md)
-                .style("text-align", "center")
+                .display(Display.Flex)
+                .flexDirection("column")
+                .gap(PortfolioTheme.Spacing.md)
+                .textAlign(TextAlign.Center)
         ) {
             Text(
                 text = BlogDetailCopy.notFoundTitle.resolve(locale),
                 modifier = Modifier()
-                    .style("font-size", "2rem")
-                    .style("font-weight", "700")
+                    .fontSize(2.rem)
+                    .fontWeight(700)
             )
             Text(
                 text = BlogDetailCopy.notFoundBody.resolve(locale),
@@ -134,15 +140,15 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
                 BlogDetailCopy.back.resolve(locale),
                 Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .style("font-weight", "600"),
+                    .fontWeight(600),
                 blogListHref(locale),
                 "_self",
                 "",
-                false,
-                false,
-                "",
-                "",
-                {}
+                isExternal = false,
+                isNoFollow = false,
+                ariaLabel = "",
+                ariaDescribedBy = "",
+                content = {}
             )
         }
     }

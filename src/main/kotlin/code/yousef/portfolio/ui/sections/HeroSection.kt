@@ -13,8 +13,16 @@ import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.core.style.Color
 import code.yousef.summon.extensions.px
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.LayoutModifiers.flexWrap
+import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.minWidth
+import code.yousef.summon.modifier.StylingModifiers.color
+import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.lineHeight
 
 @Composable
 fun HeroSection(
@@ -26,34 +34,34 @@ fun HeroSection(
         Text(
             text = hero.eyebrow.resolve(locale),
             modifier = Modifier()
-                .style("font-size", "0.9rem")
+                .fontSize(0.9.rem)
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
 
         H1(
             text = hero.titlePrimary.resolve(locale),
             modifier = Modifier()
-                .style("font-size", "4.5rem")
-                .style("font-weight", "800")
-                .style("letter-spacing", PortfolioTheme.Typography.HERO_TRACKING)
+                .fontSize(4.5.rem)
+                .fontWeight(800)
+                .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
         )
         H1(
             text = hero.titleSecondary.resolve(locale),
             modifier = Modifier()
-                .style("font-size", "4.5rem")
-                .style("font-weight", "800")
-                .style("letter-spacing", PortfolioTheme.Typography.HERO_TRACKING)
-                .style("background", PortfolioTheme.Gradients.ACCENT)
+                .fontSize(4.5.rem)
+                .fontWeight(800)
+                .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
+                .background(PortfolioTheme.Gradients.ACCENT)
+                .color(Color.TRANSPARENT)
                 .style("-webkit-background-clip", "text")
-                .style("color", "transparent")
         )
 
         Paragraph(
             text = hero.subtitle.resolve(locale),
             modifier = Modifier()
-                .style("font-size", "1.2rem")
+                .fontSize(1.2.rem)
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("line-height", "1.8")
+                .lineHeight(1.8)
         )
 
         val primaryCta = hero.ctaPrimary.resolve(locale)
@@ -61,18 +69,18 @@ fun HeroSection(
 
         Row(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("gap", PortfolioTheme.Spacing.md)
-                .style("flex-wrap", "wrap")
+                .display(Display.Flex)
+                .gap(PortfolioTheme.Spacing.md)
+                .flexWrap("wrap")
         ) {
             Link(
                 primaryCta,
                 Modifier()
                     .backgroundColor(PortfolioTheme.Colors.ACCENT_ALT)
                     .color("#050505")
-                    .padding("${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                     .borderRadius(PortfolioTheme.Radii.pill)
-                    .style("font-weight", "600"),
+                    .fontWeight(600),
                 "#projects",
                 "_self",
                 "",
@@ -90,16 +98,16 @@ fun HeroSection(
                     .borderStyle(BorderStyle.Solid)
                     .borderColor(PortfolioTheme.Colors.BORDER)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .padding("${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                     .borderRadius(PortfolioTheme.Radii.pill)
             )
         }
 
         Row(
             modifier = Modifier()
-                .style("display", "flex")
-                .style("gap", PortfolioTheme.Spacing.md)
-                .style("flex-wrap", "wrap")
+                .display(Display.Flex)
+                .gap(PortfolioTheme.Spacing.md)
+                .flexWrap("wrap")
         ) {
             hero.metrics.forEach { metric ->
                 HeroMetricCard(metric = metric, locale = locale)
@@ -112,34 +120,34 @@ fun HeroSection(
 private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
     Column(
         modifier = Modifier()
-            .style("gap", PortfolioTheme.Spacing.xs)
+            .gap(PortfolioTheme.Spacing.xs)
             .padding(PortfolioTheme.Spacing.md)
             .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.md)
-            .style("min-width", 220.px)
+            .minWidth(220.px)
             .style("flex", "1 1 220px")
     ) {
         Text(
             text = metric.value,
             modifier = Modifier()
-                .style("font-size", "2rem")
-                .style("font-weight", "700")
+                .fontSize(2.rem)
+                .fontWeight(700)
         )
         Text(
             text = metric.label.resolve(locale),
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("font-size", "0.9rem")
-                .style("font-weight", "600")
+                .fontSize(0.9.rem)
+                .fontWeight(600)
         )
         Paragraph(
             text = metric.detail.resolve(locale),
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .style("font-size", "0.85rem")
+                .fontSize(0.85.rem)
         )
     }
 }
