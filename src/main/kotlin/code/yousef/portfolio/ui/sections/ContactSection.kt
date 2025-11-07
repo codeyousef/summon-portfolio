@@ -10,7 +10,8 @@ import code.yousef.summon.components.input.*
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.extensions.px
+import code.yousef.summon.modifier.*
 
 @Composable
 fun ContactSection(
@@ -86,7 +87,9 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 .style("flex-direction", "column")
                 .style("gap", PortfolioTheme.Spacing.md)
                 .backgroundColor(PortfolioTheme.Colors.surface)
-                .border("1px", "solid", PortfolioTheme.Colors.border)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.border)
                 .borderRadius(PortfolioTheme.Radii.lg)
                 .style("padding", PortfolioTheme.Spacing.lg)
         ) {
@@ -128,7 +131,7 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                 onValueChange = {},
                 modifier = Modifier()
                     .style("width", "100%")
-                    .style("min-height", "140px")
+                    .style("min-height", 140.px)
                     .style("align-items", "flex-start")
                     .attribute("name", "requirements")
                     .attribute("required", "required"),

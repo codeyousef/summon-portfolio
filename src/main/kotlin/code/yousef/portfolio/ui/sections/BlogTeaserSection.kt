@@ -12,7 +12,7 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.Link
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.modifier.*
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -61,7 +61,9 @@ fun BlogTeaserSection(
                             .style("flex-direction", "column")
                             .style("gap", PortfolioTheme.Spacing.xs)
                             .backgroundColor(PortfolioTheme.Colors.surface)
-                            .border("1px", "solid", PortfolioTheme.Colors.border)
+                            .borderWidth(1)
+                            .borderStyle(BorderStyle.Solid)
+                            .borderColor(PortfolioTheme.Colors.border)
                             .borderRadius(PortfolioTheme.Radii.lg)
                             .style("padding", PortfolioTheme.Spacing.lg)
                     ) {

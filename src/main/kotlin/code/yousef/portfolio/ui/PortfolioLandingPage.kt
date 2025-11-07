@@ -8,7 +8,9 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.sections.*
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.layout.Spacer
+import code.yousef.summon.extensions.px
 import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.runtime.rememberMutableStateOf
 
 @Composable
 fun PortfolioLandingPage(
@@ -16,23 +18,30 @@ fun PortfolioLandingPage(
     locale: PortfolioLocale,
     servicesModalOpen: Boolean = false
 ) {
-    val basePath = if (locale == PortfolioLocale.EN) "/" else "/${locale.code}"
     val contactHref = if (locale == PortfolioLocale.EN) "/#contact" else "/${locale.code}#contact"
+    val servicesModalState = rememberMutableStateOf(servicesModalOpen)
+    val openServicesModal = { servicesModalState.value = true }
+    val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
-        Spacer(modifier = Modifier().style("height", "12px"))
+        AppHeader(locale = locale, onRequestServices = openServicesModal)
+        Spacer(modifier = Modifier().style("height", 12.px))
         HeroSection(hero = content.hero, locale = locale, modifier = Modifier().id("hero"))
         ProjectsSection(projects = content.projects, locale = locale, modifier = Modifier().id("projects"))
-        ServicesSection(services = content.services, locale = locale, modifier = Modifier().id("services"))
+        ServicesSection(
+            services = content.services,
+            locale = locale,
+            onRequestServices = openServicesModal,
+            modifier = Modifier().id("services")
+        )
         ContactSection(locale = locale, modifier = Modifier().id("contact"))
         BlogTeaserSection(posts = content.blogPosts, locale = locale, modifier = Modifier().id("blog"))
         ServicesOverlay(
-            open = servicesModalOpen,
+            open = servicesModalState.value,
             services = content.services,
             locale = locale,
-            closeHref = basePath,
-            contactHref = contactHref
+            contactHref = contactHref,
+            onClose = closeServicesModal
         )
     }
 }

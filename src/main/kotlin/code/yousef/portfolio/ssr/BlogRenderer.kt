@@ -6,35 +6,107 @@ import code.yousef.portfolio.content.repo.StaticBlogRepository
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.blog.BlogDetailPage
 import code.yousef.portfolio.ui.blog.BlogListPage
-import code.yousef.summon.runtime.PlatformRenderer
+import code.yousef.portfolio.ui.blog.BlogNotFoundPage
+import code.yousef.summon.seo.HeadScope
+import io.ktor.http.*
 
 class BlogRenderer(
-    private val rendererFactory: () -> PlatformRenderer = { PlatformRenderer() },
     private val repository: BlogRepository = StaticBlogRepository()
 ) {
-    fun renderList(locale: PortfolioLocale): String {
-        val renderer = rendererFactory()
+    fun renderList(locale: PortfolioLocale): SummonPage {
         val posts = repository.list()
-        return renderer.renderComposableRoot {
-            BlogListPage(posts = posts, locale = locale)
-        }
+        return SummonPage(
+            head = listHead(locale),
+            content = { BlogListPage(posts = posts, locale = locale) }
+        )
     }
 
     fun renderDetail(locale: PortfolioLocale, slug: String): RenderResult {
-        val renderer = rendererFactory()
         val post = repository.findBySlug(slug)
-        val html = renderer.renderComposableRoot {
-            if (post != null) {
-                BlogDetailPage(post = post, locale = locale)
-            } else {
-                code.yousef.portfolio.ui.blog.BlogNotFoundPage(locale = locale)
+        val page = SummonPage(
+            head = detailHead(locale, post, slug),
+            content = {
+                if (post != null) {
+                    BlogDetailPage(post = post, locale = locale)
+                } else {
+                    BlogNotFoundPage(locale = locale)
+                }
             }
-        }
-        return RenderResult(html = html, post = post)
+        )
+        val status = if (post == null) HttpStatusCode.NotFound else HttpStatusCode.OK
+        return RenderResult(page = page, status = status)
     }
 
     data class RenderResult(
-        val html: String,
-        val post: BlogPost?
+        val page: SummonPage,
+        val status: HttpStatusCode
     )
+
+    private fun listHead(locale: PortfolioLocale): (HeadScope) -> Unit = { head ->
+        val canonical = blogCanonical(locale)
+        head.title("Articles · Yousef Baitalmal")
+        head.meta(
+            "description",
+            "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
+            null,
+            null,
+            null
+        )
+        head.meta(null, "Articles · Yousef Baitalmal", "og:title", null, null)
+        head.meta(
+            null,
+            "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
+            "og:description",
+            null,
+            null
+        )
+        head.meta(null, "website", "og:type", null, null)
+        head.meta(null, canonical, "og:url", null, null)
+        head.meta(null, locale.code, "og:locale", null, null)
+        head.meta("twitter:card", "summary_large_image", null, null, null)
+        head.meta("twitter:title", "Articles · Yousef Baitalmal", null, null, null)
+        head.meta(
+            "twitter:description",
+            "Summon-first engineering notes, release write-ups, and systems breakdowns.",
+            null,
+            null,
+            null
+        )
+        head.link("canonical", canonical, null, null, null, null)
+        head.link("alternate", blogCanonical(PortfolioLocale.EN), "en", null, null, null)
+        head.link("alternate", blogCanonical(PortfolioLocale.AR), "ar", null, null, null)
+        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+    }
+
+    private fun detailHead(locale: PortfolioLocale, post: BlogPost?, slug: String): (HeadScope) -> Unit = { head ->
+        val canonical = blogDetailCanonical(locale, slug)
+        val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef Baitalmal"
+        val description = post?.excerpt?.resolve(locale) ?: "The requested article could not be located."
+        head.title(title)
+        head.meta("description", description, null, null, null)
+        head.meta(null, title, "og:title", null, null)
+        head.meta(null, description, "og:description", null, null)
+        head.meta(null, if (post != null) "article" else "website", "og:type", null, null)
+        head.meta(null, canonical, "og:url", null, null)
+        head.meta(null, locale.code, "og:locale", null, null)
+        head.meta("twitter:card", "summary_large_image", null, null, null)
+        head.meta("twitter:title", title, null, null, null)
+        head.meta("twitter:description", description, null, null, null)
+        head.link("canonical", canonical, null, null, null, null)
+        head.link("alternate", blogDetailCanonical(PortfolioLocale.EN, slug), "en", null, null, null)
+        head.link("alternate", blogDetailCanonical(PortfolioLocale.AR, slug), "ar", null, null, null)
+        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+    }
+
+    private fun blogCanonical(locale: PortfolioLocale): String =
+        when (locale) {
+            PortfolioLocale.EN -> "$SITE_URL/blog"
+            else -> "$SITE_URL/${locale.code}/blog"
+        }
+
+    private fun blogDetailCanonical(locale: PortfolioLocale, slug: String): String =
+        when (locale) {
+            PortfolioLocale.EN -> "$SITE_URL/blog/$slug"
+            else -> "$SITE_URL/${locale.code}/blog/$slug"
+        }
 }

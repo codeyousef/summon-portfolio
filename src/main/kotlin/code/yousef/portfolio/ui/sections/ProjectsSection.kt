@@ -10,7 +10,7 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.modifier.*
 
 @Composable
 fun ProjectsSection(
@@ -87,7 +87,9 @@ private fun CategoryLegend(locale: PortfolioLocale) {
                 text = category.label.resolve(locale),
                 modifier = Modifier()
                     .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.md}")
-                    .border("1px", "solid", PortfolioTheme.Colors.border)
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(PortfolioTheme.Colors.border)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .color(PortfolioTheme.Colors.textSecondary)
                     .style("font-size", "0.85rem")
@@ -105,7 +107,9 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             .style("gap", PortfolioTheme.Spacing.sm)
             .style("padding", PortfolioTheme.Spacing.lg)
             .backgroundColor(PortfolioTheme.Colors.surface)
-            .border("1px", "solid", PortfolioTheme.Colors.border)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.border)
             .borderRadius(PortfolioTheme.Radii.lg)
             .style("box-shadow", PortfolioTheme.Shadows.low)
     ) {
@@ -167,7 +171,9 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
                         text = tech,
                         modifier = Modifier()
                             .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
-                            .border("1px", "solid", PortfolioTheme.Colors.border)
+                            .borderWidth(1)
+                            .borderStyle(BorderStyle.Solid)
+                            .borderColor(PortfolioTheme.Colors.border)
                             .borderRadius(PortfolioTheme.Radii.pill)
                             .color(PortfolioTheme.Colors.textSecondary)
                             .style("font-size", "0.75rem")

@@ -3,24 +3,20 @@ package code.yousef.portfolio.ssr
 import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
-import code.yousef.summon.runtime.PlatformRenderer
 import code.yousef.summon.seo.HeadScope
 
-private const val SITE_URL = "https://portfolio.summon.local"
-
 class PortfolioRenderer(
-    private val rendererFactory: () -> PlatformRenderer = { PlatformRenderer() },
     private val contentService: PortfolioContentService = PortfolioContentService.default()
 ) {
 
-    fun renderLandingPage(locale: PortfolioLocale, servicesModalOpen: Boolean = false): String {
-        val renderer = rendererFactory()
+    fun landingPage(locale: PortfolioLocale, servicesModalOpen: Boolean = false): SummonPage {
         val content = contentService.load()
-        renderer.renderHeadElements(headBlockFor(locale))
-
-        return renderer.renderComposableRoot {
-            PortfolioLandingPage(content = content, locale = locale, servicesModalOpen = servicesModalOpen)
-        }
+        return SummonPage(
+            head = headBlockFor(locale),
+            content = {
+                PortfolioLandingPage(content = content, locale = locale, servicesModalOpen = servicesModalOpen)
+            }
+        )
     }
 
     private fun headBlockFor(locale: PortfolioLocale): (HeadScope) -> Unit = { head ->
@@ -38,6 +34,7 @@ class PortfolioRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)
+        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
     }
 
     private fun canonicalUrl(locale: PortfolioLocale): String =

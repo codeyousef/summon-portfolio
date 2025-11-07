@@ -10,7 +10,7 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.Link
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.modifier.*
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -63,7 +63,9 @@ fun BlogDetailPage(
                             text = tag,
                             modifier = Modifier()
                                 .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
-                                .border("1px", "solid", PortfolioTheme.Colors.border)
+                                .borderWidth(1)
+                                .borderStyle(BorderStyle.Solid)
+                                .borderColor(PortfolioTheme.Colors.border)
                                 .borderRadius(PortfolioTheme.Radii.pill)
                                 .color(PortfolioTheme.Colors.textSecondary)
                                 .style("font-size", "0.75rem")

@@ -6,10 +6,12 @@ import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
+import code.yousef.summon.components.input.Button
+import code.yousef.summon.components.input.ButtonVariant
+import code.yousef.summon.components.input.IconPosition
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.Link
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.modifier.*
 
 private data class NavItem(
     val label: LocalizedText,
@@ -27,13 +29,16 @@ private val defaultNavItems = listOf(
 @Composable
 fun AppHeader(
     locale: PortfolioLocale,
-    modifier: Modifier = Modifier()
+    modifier: Modifier = Modifier(),
+    onRequestServices: () -> Unit
 ) {
     val navItems = defaultNavItems
     val containerModifier = modifier
         .style("width", "100%")
         .backgroundColor(PortfolioTheme.Colors.surface)
-        .border("1px", "solid", PortfolioTheme.Colors.border)
+        .borderWidth(1)
+        .borderStyle(BorderStyle.Solid)
+        .borderColor(PortfolioTheme.Colors.border)
         .borderRadius(PortfolioTheme.Radii.lg)
         .style("padding", PortfolioTheme.Spacing.md)
         .style("backdrop-filter", "blur(16px)")
@@ -43,7 +48,6 @@ fun AppHeader(
         .style("gap", PortfolioTheme.Spacing.lg)
 
     val pathPrefix = locale.pathPrefix()
-    val modalHref = if (pathPrefix.isEmpty()) "?modal=services#services" else "$pathPrefix?modal=services#services"
 
     Row(modifier = containerModifier) {
         Text(
@@ -88,15 +92,19 @@ fun AppHeader(
                 .style("align-items", "center")
                 .style("gap", PortfolioTheme.Spacing.md)
         ) {
-            ButtonLink(
-                LocalizedText("Hire Me", "توظيفي").resolve(locale),
-                modalHref,
-                Modifier()
+            Button(
+                onClick = { onRequestServices() },
+                label = LocalizedText("Hire Me", "توظيفي").resolve(locale),
+                modifier = Modifier()
                     .backgroundColor(PortfolioTheme.Colors.accent)
                     .color("#ffffff")
                     .style("padding", "${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.lg}")
                     .borderRadius(PortfolioTheme.Radii.pill)
-                    .style("font-weight", "600")
+                    .style("font-weight", "600"),
+                variant = ButtonVariant.PRIMARY,
+                false,
+                "",
+                IconPosition.START
             )
             LocaleToggle(current = locale)
         }
@@ -111,7 +119,9 @@ private fun LocaleToggle(current: PortfolioLocale) {
             .style("align-items", "center")
             .style("gap", PortfolioTheme.Spacing.xs)
             .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}")
-            .border("1px", "solid", PortfolioTheme.Colors.border)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.border)
             .borderRadius(PortfolioTheme.Radii.pill)
     ) {
         LocaleToggleButton(locale = PortfolioLocale.EN, current = current)

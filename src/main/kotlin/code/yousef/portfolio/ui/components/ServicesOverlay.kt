@@ -9,26 +9,29 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.feedback.Modal
 import code.yousef.summon.components.feedback.ModalSize
 import code.yousef.summon.components.feedback.ModalVariant
+import code.yousef.summon.components.input.Button
+import code.yousef.summon.components.input.ButtonVariant
+import code.yousef.summon.components.input.IconPosition
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.modifier.*
 
 @Composable
 fun ServicesOverlay(
     open: Boolean,
     services: List<Service>,
     locale: PortfolioLocale,
-    closeHref: String,
-    contactHref: String
+    contactHref: String,
+    onClose: () -> Unit
 ) {
     Modal(
         isOpen = open,
-        onDismiss = {},
+        onDismiss = onClose,
         variant = ModalVariant.DEFAULT,
         size = ModalSize.LARGE,
-        dismissOnBackdropClick = false,
-        showCloseButton = false
+        dismissOnBackdropClick = true,
+        showCloseButton = true
     ) {
         Column(
             modifier = Modifier()
@@ -49,13 +52,18 @@ fun ServicesOverlay(
                         .style("font-size", "2.5rem")
                         .style("font-weight", "700")
                 )
-                ButtonLink(
-                    ServicesOverlayCopy.close.resolve(locale),
-                    closeHref,
-                    Modifier()
+                Button(
+                    onClick = { onClose() },
+                    label = ServicesOverlayCopy.close.resolve(locale),
+                    modifier = Modifier()
                         .backgroundColor("transparent")
                         .color(PortfolioTheme.Colors.textSecondary)
                         .style("font-weight", "600")
+                        .style("padding", "${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm}"),
+                    variant = ButtonVariant.SECONDARY,
+                    false,
+                    "",
+                    IconPosition.START
                 )
             }
 
@@ -79,7 +87,9 @@ fun ServicesOverlay(
                             .style("flex-direction", "column")
                             .style("gap", PortfolioTheme.Spacing.sm)
                             .backgroundColor(PortfolioTheme.Colors.surface)
-                            .border("1px", "solid", PortfolioTheme.Colors.border)
+                            .borderWidth(1)
+                            .borderStyle(BorderStyle.Solid)
+                            .borderColor(PortfolioTheme.Colors.border)
                             .borderRadius(PortfolioTheme.Radii.lg)
                             .style("padding", PortfolioTheme.Spacing.lg)
                     ) {

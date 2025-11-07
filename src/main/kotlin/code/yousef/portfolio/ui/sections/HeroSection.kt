@@ -13,7 +13,8 @@ import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.Link
-import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.extensions.px
+import code.yousef.summon.modifier.*
 
 @Composable
 fun HeroSection(
@@ -85,7 +86,9 @@ fun HeroSection(
             secondaryCta,
             "#contact",
             Modifier()
-                .border("1px", "solid", PortfolioTheme.Colors.border)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.border)
                     .color(PortfolioTheme.Colors.textPrimary)
                     .padding("${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.xl}")
                     .borderRadius(PortfolioTheme.Radii.pill)
@@ -112,9 +115,11 @@ private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
             .style("gap", PortfolioTheme.Spacing.xs)
             .padding(PortfolioTheme.Spacing.md)
             .backgroundColor(PortfolioTheme.Colors.surfaceStrong)
-            .border("1px", "solid", PortfolioTheme.Colors.border)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.border)
             .borderRadius(PortfolioTheme.Radii.md)
-            .style("min-width", "220px")
+            .style("min-width", 220.px)
             .style("flex", "1 1 220px")
     ) {
         Text(

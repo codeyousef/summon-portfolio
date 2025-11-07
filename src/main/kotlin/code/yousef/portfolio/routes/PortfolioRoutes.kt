@@ -5,6 +5,9 @@ import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
+import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
+import code.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -17,21 +20,20 @@ fun Route.portfolioRoutes(
     contactService: ContactService
 ) {
     get("/") {
-        val html = portfolioRenderer.renderLandingPage(
+        val page = portfolioRenderer.landingPage(
             locale = PortfolioLocale.EN,
             servicesModalOpen = call.shouldOpenServicesModal()
         )
-        call.respondText(html, ContentType.Text.Html)
+        call.respondSummonPage(page)
     }
     get("/blog") {
-        val html = blogRenderer.renderList(PortfolioLocale.EN)
-        call.respondText(html, ContentType.Text.Html)
+        val page = blogRenderer.renderList(PortfolioLocale.EN)
+        call.respondSummonPage(page)
     }
     get("/blog/{slug}") {
         val slug = call.parameters["slug"].orEmpty()
         val result = blogRenderer.renderDetail(PortfolioLocale.EN, slug)
-        val status = if (result.post == null) HttpStatusCode.NotFound else HttpStatusCode.OK
-        call.respondText(result.html, ContentType.Text.Html, status)
+        call.respondSummonPage(result.page, result.status)
     }
     post("/api/contact") {
         val request = call.receiveContactRequest()
@@ -49,8 +51,8 @@ fun Route.portfolioRoutes(
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
         } else {
-            val html = portfolioRenderer.renderLandingPage(locale, servicesModalOpen = call.shouldOpenServicesModal())
-            call.respondText(html, ContentType.Text.Html)
+            val page = portfolioRenderer.landingPage(locale, servicesModalOpen = call.shouldOpenServicesModal())
+            call.respondSummonPage(page)
         }
     }
     get("/{locale}/blog") {
@@ -58,8 +60,8 @@ fun Route.portfolioRoutes(
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
         } else {
-            val html = blogRenderer.renderList(locale)
-            call.respondText(html, ContentType.Text.Html)
+            val page = blogRenderer.renderList(locale)
+            call.respondSummonPage(page)
         }
     }
     get("/{locale}/blog/{slug}") {
@@ -69,8 +71,7 @@ fun Route.portfolioRoutes(
         } else {
             val slug = call.parameters["slug"].orEmpty()
             val result = blogRenderer.renderDetail(locale, slug)
-            val status = if (result.post == null) HttpStatusCode.NotFound else HttpStatusCode.OK
-            call.respondText(result.html, ContentType.Text.Html, status)
+            call.respondSummonPage(result.page, result.status)
         }
     }
     post("/{locale}/api/contact") {
@@ -111,3 +112,11 @@ private suspend fun ApplicationCall.receiveContactRequest(): ContactRequest? {
 
 private fun ApplicationCall.shouldOpenServicesModal(): Boolean =
     request.queryParameters["modal"]?.equals("services", ignoreCase = true) == true
+
+private suspend fun ApplicationCall.respondSummonPage(page: SummonPage, status: HttpStatusCode = HttpStatusCode.OK) {
+    respondSummonHydrated(status) {
+        val renderer = getPlatformRenderer()
+        renderer.renderHeadElements(page.head)
+        page.content()
+    }
+}
