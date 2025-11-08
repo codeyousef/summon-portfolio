@@ -16,6 +16,7 @@ import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.textDecoration
 
 private data class NavItem(
     val label: LocalizedText,
@@ -140,7 +141,7 @@ private fun LocaleToggleButton(locale: PortfolioLocale, current: PortfolioLocale
         label = locale.code.uppercase(),
         dataAttributes = mapOf("locale" to locale.code),
         modifier = Modifier()
-            .style("text-decoration", "none")
+            .textDecoration("none")
             .color(if (isActive) PortfolioTheme.Colors.BACKGROUND else PortfolioTheme.Colors.TEXT_SECONDARY)
             .backgroundColor(if (isActive) PortfolioTheme.Colors.ACCENT_ALT else "transparent")
             .fontSize(0.75.rem)

@@ -16,12 +16,15 @@ import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.ButtonLink
+import code.yousef.summon.core.style.Color
+import code.yousef.summon.extensions.px
+import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
+import code.yousef.summon.modifier.StylingModifiers.color
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.time.Year
@@ -61,7 +64,7 @@ fun HeroSection(
                             "linear-gradient(180deg, #fff, #dfdfea 65%, #c5c5d4)"
                         )
                         .style("-webkit-background-clip", "text")
-                        .style("color", "transparent")
+                        .color(Color.TRANSPARENT)
                         .style("text-shadow", "0 1px 0 #ffffff33")
                 )
                 Text(
@@ -105,7 +108,7 @@ private fun HeroNav(eyebrow: String) {
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .style("background", PortfolioTheme.Gradients.GLASS)
+            .background(PortfolioTheme.Gradients.GLASS)
             .boxShadow(PortfolioTheme.Shadows.LOW)
     ) {
         Row(
@@ -143,28 +146,33 @@ private fun HeroNav(eyebrow: String) {
 private fun LogoOrb() {
     Box(
         modifier = Modifier()
-            .style("width", "38px")
-            .style("height", "38px")
-            .borderRadius("14px")
-            .style(
-                "background",
-                "radial-gradient(120% 120% at 30% 20%, ${PortfolioTheme.Colors.ACCENT_ALT}," +
-                        " ${PortfolioTheme.Colors.ACCENT} 35%, #5e0f27 60%, #14070e 100%)"
-            )
+            .width(38.px)
+            .height(38.px)
+            .borderRadius(14.px)
+            .backgroundLayers {
+                radialGradient {
+                    size("120%", "120%")
+                    position("30%", "20%")
+                    colorStop(PortfolioTheme.Colors.ACCENT_ALT.toString(), "0%")
+                    colorStop(PortfolioTheme.Colors.ACCENT.toString(), "35%")
+                    colorStop("#5e0f27", "60%")
+                    colorStop("#14070e", "100%")
+                }
+            }
             .boxShadow("inset 0 0 20px #0009, 0 10px 30px #0009")
             .position(Position.Relative)
     ) {
         Box(
             modifier = Modifier()
                 .position(Position.Absolute)
-                .style("inset", "-1px")
-                .borderRadius("14px")
+                .inset((-1).px)
+                .borderRadius(14.px)
                 .style(
                     "background",
                     "conic-gradient(from 210deg, #ffffff88, #ffffff00 40% 70%, #ffffff33)"
                 )
                 .style("filter", "blur(0.5px)")
-                .style("mix-blend-mode", "overlay")
+                .mixBlendMode(BlendMode.Overlay)
         ) {}
     }
 }
@@ -181,9 +189,12 @@ private fun GlassPill(text: String, emphasize: Boolean = false, modifier: Modifi
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.pill)
-            .style("background", if (emphasize) PortfolioTheme.Gradients.ACCENT else PortfolioTheme.Gradients.GLASS)
+            .background(
+                "background",
+                if (emphasize) PortfolioTheme.Gradients.ACCENT else PortfolioTheme.Gradients.GLASS
+            )
             .fontWeight(if (emphasize) 800 else 600)
-            .fontSize("0.85rem")
+            .fontSize(0.85.rem)
     )
 }
 
@@ -252,7 +263,7 @@ private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
             text = metric.label.resolve(locale),
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .fontSize("0.95rem")
+                .fontSize(0.95.rem)
                 .fontWeight(600)
         )
         Paragraph(
@@ -273,9 +284,9 @@ private fun HeroMockCard() {
     ) {
         Column(
             modifier = Modifier()
-                .style("aspect-ratio", "1.35 / 1")
+                .aspectRatio(1.35 / 1)
                 .borderRadius(PortfolioTheme.Radii.lg)
-                .style("background", PortfolioTheme.Gradients.CARD)
+                .background(PortfolioTheme.Gradients.CARD)
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
                 .borderColor(PortfolioTheme.Colors.BORDER)
@@ -289,7 +300,7 @@ private fun HeroMockCard() {
                     .borderStyle(BorderStyle.Solid)
                     .borderColor(PortfolioTheme.Colors.BORDER)
                     .borderRadius(PortfolioTheme.Radii.md)
-                    .style("height", "42px")
+                    .height(42.px)
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .gap(PortfolioTheme.Spacing.sm)
@@ -298,8 +309,8 @@ private fun HeroMockCard() {
                 repeat(3) {
                     Box(
                         modifier = Modifier()
-                            .style("width", "10px")
-                            .style("height", "10px")
+                            .width(10.px)
+                            .height(10.px)
                             .borderRadius(PortfolioTheme.Radii.pill)
                             .backgroundColor("#ffffff22")
                     ) {}
@@ -437,55 +448,66 @@ fun ContactCtaSection() {
                 label = "Copy Email",
                 modifier = Modifier()
                     .id("copyEmail")
-                    .style("height", "52px")
+                    .height(52.px)
                     .padding("0", PortfolioTheme.Spacing.lg)
                     .borderRadius(PortfolioTheme.Radii.md)
                     .display(Display.InlineFlex)
                     .alignItems(AlignItems.Center)
                     .justifyContent(JustifyContent.Center)
-                    .style("background", PortfolioTheme.Gradients.ACCENT)
+                    .background(PortfolioTheme.Gradients.ACCENT)
                     .color("#ffffff")
-                    .fontWeight(800),
+                    .fontWeight(800)
+                    .lineHeight(1.0)
+                    .style("white-space", "nowrap"),
                 dataAttributes = mapOf("copy" to "email"),
                 variant = ButtonVariant.PRIMARY,
                 disabled = false
             )
-            ButtonLink(
+            Button(
+                onClick = null,
                 label = "View Repo",
-                href = "https://github.com/codeyousef/summon",
-                target = "_blank",
-                dataHref = "https://github.com/codeyousef/summon",
-                dataAttributes = mapOf("cta" to "contact-repo"),
                 modifier = Modifier()
                     .borderWidth(1)
                     .borderStyle(BorderStyle.Solid)
                     .borderColor(PortfolioTheme.Colors.BORDER)
-                    .style("background", PortfolioTheme.Gradients.GLASS)
+                    .background(PortfolioTheme.Gradients.GLASS)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .padding("0", PortfolioTheme.Spacing.lg)
-                    .style("height", "52px")
+                    .height(52.px)
                     .display(Display.InlineFlex)
                     .alignItems(AlignItems.Center)
                     .justifyContent(JustifyContent.Center)
                     .borderRadius(PortfolioTheme.Radii.md)
+                    .lineHeight(1.0)
+                    .style("white-space", "nowrap")
+                    .dataAttribute("href", "https://github.com/codeyousef/summon")
+                    .attribute("type", "button"),
+                variant = ButtonVariant.SECONDARY,
+                disabled = false,
+                dataAttributes = mapOf("cta" to "contact-repo")
             )
-            ButtonLink(
+            Button(
+                onClick = null,
                 label = "Docs (this page)",
-                href = "#get-started",
-                dataHref = "#get-started",
-                dataAttributes = mapOf("cta" to "contact-docs"),
                 modifier = Modifier()
                     .borderWidth(1)
                     .borderStyle(BorderStyle.Solid)
                     .borderColor(PortfolioTheme.Colors.BORDER)
-                    .style("background", PortfolioTheme.Gradients.GLASS)
+                    .background(PortfolioTheme.Gradients.GLASS)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .padding("0", PortfolioTheme.Spacing.lg)
-                    .style("height", "52px")
+                    .height(52.px)
                     .display(Display.InlineFlex)
                     .alignItems(AlignItems.Center)
                     .justifyContent(JustifyContent.Center)
                     .borderRadius(PortfolioTheme.Radii.md)
+                    .lineHeight(1.0)
+                    .style("white-space", "nowrap")
+                    .attribute("type", "button")
+                    .dataAttribute("href", "#get-started"),
+                variant = ButtonVariant.SECONDARY,
+                disabled = false,
+                dataAttributes = mapOf("cta" to "contact-docs")
             )
         }
     }
@@ -583,44 +605,54 @@ private fun Lead(text: String) {
 
 @Composable
 private fun PrimaryButton(text: String, href: String, modifier: Modifier = Modifier()) {
-    ButtonLink(
+    Button(
+        onClick = null,
         label = text,
-        href = href,
-        dataHref = href,
         modifier = modifier
             .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
-            .style("height", "52px")
-            .style("background", PortfolioTheme.Gradients.ACCENT)
+            .height(52.px)
+            .background(PortfolioTheme.Gradients.ACCENT)
             .boxShadow("0 10px 30px rgba(176,18,53,.38), inset 0 1px 0 #ffffff77")
             .color("#ffffff")
             .padding("0", PortfolioTheme.Spacing.lg)
             .borderRadius(PortfolioTheme.Radii.md)
             .fontWeight(800)
-            .letterSpacing("0.3px"),
+            .letterSpacing("0.3px")
+            .lineHeight(1.0)
+            .style("white-space", "nowrap")
+            .attribute("type", "button")
+            .dataAttribute("href", href),
+        variant = ButtonVariant.PRIMARY,
+        disabled = false,
         dataAttributes = mapOf("cta" to "hero-primary")
     )
 }
 
 @Composable
 private fun GhostButton(text: String, href: String, modifier: Modifier = Modifier()) {
-    ButtonLink(
+    Button(
+        onClick = null,
         label = text,
-        href = href,
-        dataHref = href,
         modifier = modifier
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
-            .style("background", PortfolioTheme.Gradients.GLASS)
+            .background(PortfolioTheme.Gradients.GLASS)
             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
             .padding("0", PortfolioTheme.Spacing.lg)
-            .style("height", "52px")
+            .height(52.px)
             .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
-            .borderRadius(PortfolioTheme.Radii.md),
+            .borderRadius(PortfolioTheme.Radii.md)
+            .lineHeight(1.0)
+            .style("white-space", "nowrap")
+            .attribute("type", "button")
+            .dataAttribute("href", href),
+        variant = ButtonVariant.SECONDARY,
+        disabled = false,
         dataAttributes = mapOf("cta" to "hero-secondary")
     )
 }
@@ -634,14 +666,16 @@ private fun GhostActionButton(text: String, onClick: () -> Unit) {
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
-            .style("background", PortfolioTheme.Gradients.GLASS)
+            .background(PortfolioTheme.Gradients.GLASS)
             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
             .padding("0", PortfolioTheme.Spacing.lg)
-            .style("height", "52px")
+            .height(52.px)
             .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
-            .borderRadius(PortfolioTheme.Radii.md),
+            .borderRadius(PortfolioTheme.Radii.md)
+            .lineHeight(1.0)
+            .style("white-space", "nowrap"),
         variant = ButtonVariant.SECONDARY,
         disabled = false,
         dataAttributes = mapOf("analytics" to "hero-services")
@@ -658,15 +692,18 @@ private fun CodeBlock(lines: List<String>, showCopyButton: Boolean = false) {
             .borderColor("#ffffff14")
             .borderRadius(PortfolioTheme.Radii.md)
             .padding(PortfolioTheme.Spacing.md)
-            .style("font", "500 14px/1.6 ${PortfolioTheme.Typography.FONT_MONO}")
-            .style("overflow", "auto")
+            .fontWeight(FontWeight.Medium)
+            .fontSize(14.px)
+            .lineHeight(1.6)
+            .fontFamily(PortfolioTheme.Typography.FONT_MONO)
+            .overflow(Overflow.Auto)
     ) {
         if (showCopyButton) {
             Row(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.FlexEnd)
-                    .style("margin-bottom", PortfolioTheme.Spacing.sm)
+                    .marginBottom(PortfolioTheme.Spacing.sm)
             ) {
                 Button(
                     onClick = null,

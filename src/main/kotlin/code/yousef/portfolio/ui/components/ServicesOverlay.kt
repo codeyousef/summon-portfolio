@@ -13,7 +13,6 @@ import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -117,17 +116,22 @@ fun ServicesOverlay(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.FlexEnd)
             ) {
-                ButtonLink(
+                Button(
+                    onClick = null,
                     label = ServicesOverlayCopy.cta.resolve(locale),
-                    href = contactHref,
-                    dataHref = contactHref,
-                    dataAttributes = mapOf("cta" to "services-overlay"),
                     modifier = Modifier()
                         .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                         .borderRadius(PortfolioTheme.Radii.pill)
                         .fontWeight(600)
+                        .lineHeight(1.0)
+                        .style("white-space", "nowrap")
+                        .attribute("type", "button")
+                        .attribute("data-href", contactHref),
+                    variant = ButtonVariant.PRIMARY,
+                    disabled = false,
+                    dataAttributes = mapOf("cta" to "services-overlay")
                 )
             }
         }

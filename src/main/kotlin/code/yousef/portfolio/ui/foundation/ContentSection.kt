@@ -19,7 +19,6 @@ fun ContentSection(
         .maxWidth(1200.px)
         .width(100.percent)
         .style("margin", "0 auto")
-        .style("width", "100%")
         .padding(PortfolioTheme.Spacing.xl)
 
     Box(modifier = wrapperModifier) {
