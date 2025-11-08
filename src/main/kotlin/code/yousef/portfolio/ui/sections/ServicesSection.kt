@@ -30,7 +30,7 @@ fun ServicesSection(
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.md)
         ) {
             Text(
@@ -84,7 +84,7 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection("column")
+            .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.sm)
             .padding(PortfolioTheme.Spacing.lg)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)

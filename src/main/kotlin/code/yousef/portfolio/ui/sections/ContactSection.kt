@@ -16,6 +16,7 @@ import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.AttributeModifiers.buttonType
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
@@ -46,7 +47,7 @@ fun ContactSection(
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
             ) {
                 Text(
@@ -64,7 +65,7 @@ fun ContactSection(
                 Column(
                     modifier = Modifier()
                         .display(Display.Flex)
-                        .flexDirection("column")
+                        .flexDirection(FlexDirection.Column)
                         .gap(PortfolioTheme.Spacing.sm)
                 ) {
                     Text(
@@ -163,7 +164,7 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.md)
                 .backgroundColor(PortfolioTheme.Colors.SURFACE)
                 .borderWidth(1)
@@ -239,7 +240,7 @@ private fun InputField(
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection("column")
+            .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.xs)
     ) {
         TextField(
@@ -281,7 +282,7 @@ private fun TextAreaField(
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection("column")
+            .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.xs)
     ) {
         TextArea(
@@ -324,7 +325,7 @@ private fun SubmitButton(locale: PortfolioLocale, submitting: Boolean) {
             .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
             .borderRadius(PortfolioTheme.Radii.pill)
             .textAlign(TextAlign.Center)
-            .attribute("type", "submit"),
+            .buttonType(ButtonType.Submit),
         variant = ButtonVariant.PRIMARY,
         disabled = submitting,
         dataAttributes = mapOf("form" to "contact-submit")

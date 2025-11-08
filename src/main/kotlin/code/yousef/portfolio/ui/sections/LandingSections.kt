@@ -19,7 +19,9 @@ import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.core.style.Color
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
+import code.yousef.summon.extensions.vw
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.AttributeModifiers.buttonType
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
@@ -43,34 +45,38 @@ fun HeroSection(
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("row")
+                .flexDirection(FlexDirection.Row)
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.xl)
-                .flexWrap("wrap")
+                .flexWrap(FlexWrap.Wrap)
         ) {
             Column(
                 modifier = Modifier()
                     .gap(PortfolioTheme.Spacing.md)
-                    .style("flex", "1 1 480px")
+                    .flex(grow = 1, shrink = 1, basis = "480px")
             ) {
                 Text(
                     text = primaryTitle,
                     modifier = Modifier()
-                        .fontSize("clamp(38px, 7.2vw, 96px)")
+                        .fontSize(cssClamp(38.px, 7.2.vw, 96.px))
                         .fontWeight(900)
                         .letterSpacing("-0.02em")
-                        .style(
-                            "background",
-                            "linear-gradient(180deg, #fff, #dfdfea 65%, #c5c5d4)"
-                        )
-                        .style("-webkit-background-clip", "text")
+                        .backgroundLayers {
+                            linearGradient {
+                                direction("180deg")
+                                colorStop("#ffffff", "0%")
+                                colorStop("#dfdfea", "65%")
+                                colorStop("#c5c5d4", "100%")
+                            }
+                        }
+                        .backgroundClipText()
                         .color(Color.TRANSPARENT)
                         .style("text-shadow", "0 1px 0 #ffffff33")
                 )
                 Text(
                     text = secondaryTitle,
                     modifier = Modifier()
-                        .fontSize("clamp(32px, 6vw, 72px)")
+                        .fontSize(cssClamp(32.px, 6.vw, 72.px))
                         .fontWeight(700)
                         .letterSpacing("-0.02em")
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
@@ -79,7 +85,7 @@ fun HeroSection(
                     text = subtitle,
                     modifier = Modifier()
                         .color("#cfcfe0")
-                        .fontSize("clamp(16px, 2.2vw, 22px)")
+                        .fontSize(cssClamp(16.px, 2.2.vw, 22.px))
                         .lineHeight(1.5)
                 )
                 CtaRow(
@@ -102,7 +108,7 @@ private fun HeroNav(eyebrow: String) {
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.SpaceBetween)
             .gap(PortfolioTheme.Spacing.md)
-            .flexWrap("wrap")
+            .flexWrap(FlexWrap.Wrap)
             .padding(PortfolioTheme.Spacing.md)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
@@ -127,7 +133,7 @@ private fun HeroNav(eyebrow: String) {
                     text = eyebrow,
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .fontSize("0.85rem")
+                        .fontSize(0.85.rem)
                 )
             }
             GlassPill(text = "Summon", emphasize = true)
@@ -136,8 +142,8 @@ private fun HeroNav(eyebrow: String) {
             text = "Palette ▸ Maroon",
             modifier = Modifier()
                 .id("palette")
-                .cursor("pointer")
-                .attribute("data-palette", "toggle")
+                .cursor(Cursor.Pointer)
+                .dataAttribute("palette", "toggle")
         )
     }
 }
@@ -153,13 +159,16 @@ private fun LogoOrb() {
                 radialGradient {
                     size("120%", "120%")
                     position("30%", "20%")
-                    colorStop(PortfolioTheme.Colors.ACCENT_ALT.toString(), "0%")
-                    colorStop(PortfolioTheme.Colors.ACCENT.toString(), "35%")
+                    colorStop(PortfolioTheme.Colors.ACCENT_ALT, "0%")
+                    colorStop(PortfolioTheme.Colors.ACCENT, "35%")
                     colorStop("#5e0f27", "60%")
                     colorStop("#14070e", "100%")
                 }
             }
-            .boxShadow("inset 0 0 20px #0009, 0 10px 30px #0009")
+            .multipleShadows(
+                shadowConfig(0, 0, 20, 0, Color.hex("#00000099"), true),
+                shadowConfig(0, 10, 30, 0, Color.hex("#00000099"))
+            )
             .position(Position.Relative)
     ) {
         Box(
@@ -167,11 +176,16 @@ private fun LogoOrb() {
                 .position(Position.Absolute)
                 .inset((-1).px)
                 .borderRadius(14.px)
-                .style(
-                    "background",
-                    "conic-gradient(from 210deg, #ffffff88, #ffffff00 40% 70%, #ffffff33)"
-                )
-                .style("filter", "blur(0.5px)")
+                .backgroundLayers {
+                    conicGradient {
+                        from("210deg")
+                        colorStop("#ffffff88")
+                        colorStop("#ffffff00", "40%")
+                        colorStop("#ffffff00", "70%")
+                        colorStop("#ffffff33")
+                    }
+                }
+                .filter { blur(0.5) }
                 .mixBlendMode(BlendMode.Overlay)
         ) {}
     }
@@ -190,7 +204,6 @@ private fun GlassPill(text: String, emphasize: Boolean = false, modifier: Modifi
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.pill)
             .background(
-                "background",
                 if (emphasize) PortfolioTheme.Gradients.ACCENT else PortfolioTheme.Gradients.GLASS
             )
             .fontWeight(if (emphasize) 800 else 600)
@@ -208,7 +221,7 @@ private fun CtaRow(
         modifier = Modifier()
             .display(Display.Flex)
             .gap(PortfolioTheme.Spacing.sm)
-            .flexWrap("wrap")
+            .flexWrap(FlexWrap.Wrap)
             .justifyContent(JustifyContent.FlexStart)
     ) {
         PrimaryButton(
@@ -232,7 +245,7 @@ private fun HeroMetricsRow(
         modifier = Modifier()
             .display(Display.Flex)
             .gap(PortfolioTheme.Spacing.sm)
-            .flexWrap("wrap")
+            .flexWrap(FlexWrap.Wrap)
     ) {
         metrics.forEach { metric ->
             HeroMetricCard(metric = metric, locale = locale)
@@ -246,7 +259,7 @@ private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
         modifier = Modifier()
             .gap(PortfolioTheme.Spacing.xs)
             .padding(PortfolioTheme.Spacing.md)
-            .style("flex", "1 1 220px")
+            .flex(grow = 1, shrink = 1, basis = "220px")
             .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
@@ -256,7 +269,7 @@ private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
         Text(
             text = metric.value,
             modifier = Modifier()
-                .fontSize("2rem")
+                .fontSize(2.rem)
                 .fontWeight(700)
         )
         Text(
@@ -279,7 +292,7 @@ private fun HeroMetricCard(metric: HeroMetric, locale: PortfolioLocale) {
 private fun HeroMockCard() {
     Column(
         modifier = Modifier()
-            .style("flex", "1 1 360px")
+            .flex(grow = 1, shrink = 1, basis = "360px")
             .gap(PortfolioTheme.Spacing.md)
     ) {
         Column(
@@ -441,7 +454,7 @@ fun ContactCtaSection() {
             modifier = Modifier()
                 .display(Display.Flex)
                 .gap(PortfolioTheme.Spacing.sm)
-                .flexWrap("wrap")
+                .flexWrap(FlexWrap.Wrap)
         ) {
             Button(
                 onClick = null,
@@ -458,7 +471,7 @@ fun ContactCtaSection() {
                     .color("#ffffff")
                     .fontWeight(800)
                     .lineHeight(1.0)
-                    .style("white-space", "nowrap"),
+                    .whiteSpace(WhiteSpace.NoWrap),
                 dataAttributes = mapOf("copy" to "email"),
                 variant = ButtonVariant.PRIMARY,
                 disabled = false
@@ -479,9 +492,9 @@ fun ContactCtaSection() {
                     .justifyContent(JustifyContent.Center)
                     .borderRadius(PortfolioTheme.Radii.md)
                     .lineHeight(1.0)
-                    .style("white-space", "nowrap")
+                    .whiteSpace(WhiteSpace.NoWrap)
                     .dataAttribute("href", "https://github.com/codeyousef/summon")
-                    .attribute("type", "button"),
+                    .buttonType(ButtonType.Button),
                 variant = ButtonVariant.SECONDARY,
                 disabled = false,
                 dataAttributes = mapOf("cta" to "contact-repo")
@@ -502,8 +515,8 @@ fun ContactCtaSection() {
                     .justifyContent(JustifyContent.Center)
                     .borderRadius(PortfolioTheme.Radii.md)
                     .lineHeight(1.0)
-                    .style("white-space", "nowrap")
-                    .attribute("type", "button")
+                    .whiteSpace(WhiteSpace.NoWrap)
+                    .buttonType(ButtonType.Button)
                     .dataAttribute("href", "#get-started"),
                 variant = ButtonVariant.SECONDARY,
                 disabled = false,
@@ -519,7 +532,7 @@ fun PortfolioFooter() {
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexWrap("wrap")
+                .flexWrap(FlexWrap.Wrap)
                 .gap(PortfolioTheme.Spacing.sm)
         ) {
             listOf(
@@ -588,7 +601,7 @@ private fun H2(text: String) {
     Text(
         text = text,
         modifier = Modifier()
-            .fontSize("clamp(22px, 3.6vw, 36px)")
+            .fontSize(cssClamp(22.px, 3.6.vw, 36.px))
             .fontWeight(700)
     )
 }
@@ -614,15 +627,18 @@ private fun PrimaryButton(text: String, href: String, modifier: Modifier = Modif
             .justifyContent(JustifyContent.Center)
             .height(52.px)
             .background(PortfolioTheme.Gradients.ACCENT)
-            .boxShadow("0 10px 30px rgba(176,18,53,.38), inset 0 1px 0 #ffffff77")
+            .multipleShadows(
+                shadowConfig(0, 10, 30, 0, Color.hex("#b0123561")),
+                shadowConfig(0, 1, 0, 0, Color.hex("#ffffff77"), true)
+            )
             .color("#ffffff")
             .padding("0", PortfolioTheme.Spacing.lg)
             .borderRadius(PortfolioTheme.Radii.md)
             .fontWeight(800)
-            .letterSpacing("0.3px")
+            .letterSpacing(0.3.px)
             .lineHeight(1.0)
-            .style("white-space", "nowrap")
-            .attribute("type", "button")
+            .whiteSpace(WhiteSpace.NoWrap)
+            .buttonType(ButtonType.Button)
             .dataAttribute("href", href),
         variant = ButtonVariant.PRIMARY,
         disabled = false,
@@ -648,8 +664,8 @@ private fun GhostButton(text: String, href: String, modifier: Modifier = Modifie
             .justifyContent(JustifyContent.Center)
             .borderRadius(PortfolioTheme.Radii.md)
             .lineHeight(1.0)
-            .style("white-space", "nowrap")
-            .attribute("type", "button")
+            .whiteSpace(WhiteSpace.NoWrap)
+            .buttonType(ButtonType.Button)
             .dataAttribute("href", href),
         variant = ButtonVariant.SECONDARY,
         disabled = false,
@@ -675,7 +691,7 @@ private fun GhostActionButton(text: String, onClick: () -> Unit) {
             .justifyContent(JustifyContent.Center)
             .borderRadius(PortfolioTheme.Radii.md)
             .lineHeight(1.0)
-            .style("white-space", "nowrap"),
+            .whiteSpace(WhiteSpace.NoWrap),
         variant = ButtonVariant.SECONDARY,
         disabled = false,
         dataAttributes = mapOf("analytics" to "hero-services")

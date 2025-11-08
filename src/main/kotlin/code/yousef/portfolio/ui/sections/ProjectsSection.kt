@@ -30,7 +30,7 @@ fun ProjectsSection(
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
             SectionHeading(locale = locale)
@@ -38,7 +38,7 @@ fun ProjectsSection(
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 sortedProjects.forEach { project ->
@@ -54,7 +54,7 @@ private fun SectionHeading(locale: PortfolioLocale) {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection("column")
+            .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.xs)
     ) {
         Text(
@@ -85,7 +85,7 @@ private fun CategoryLegend(locale: PortfolioLocale) {
     Row(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexWrap("wrap")
+            .flexWrap(FlexWrap.Wrap)
             .gap(PortfolioTheme.Spacing.sm)
     ) {
         ProjectCategory.values().forEach { category ->
@@ -109,7 +109,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection("column")
+            .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.sm)
             .padding(PortfolioTheme.Spacing.lg)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
@@ -128,7 +128,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
             ) {
                 Text(
                     text = project.layerLabel.resolve(locale),
@@ -169,7 +169,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             Row(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexWrap("wrap")
+                    .flexWrap(FlexWrap.Wrap)
                     .gap(PortfolioTheme.Spacing.xs)
             ) {
                 project.technologies.forEach { tech ->

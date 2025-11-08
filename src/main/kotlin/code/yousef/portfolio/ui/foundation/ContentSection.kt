@@ -4,6 +4,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
+import code.yousef.summon.core.style.Color
 import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.modifier.*
@@ -18,7 +19,7 @@ fun ContentSection(
     val wrapperModifier = modifier
         .maxWidth(1200.px)
         .width(100.percent)
-        .style("margin", "0 auto")
+        .marginHorizontalAutoZero()
         .padding(PortfolioTheme.Spacing.xl)
 
     Box(modifier = wrapperModifier) {
@@ -31,7 +32,15 @@ fun ContentSection(
                 .borderRadius(PortfolioTheme.Radii.lg)
                 .padding(PortfolioTheme.Spacing.xl)
                 .gap(PortfolioTheme.Spacing.lg)
-                .boxShadow("0 30px 120px rgba(2,4,24,0.45)")
+                .multipleShadows(
+                    shadowConfig(
+                        0,
+                        30,
+                        120,
+                        0,
+                        Color.hex("#02041873")
+                    )
+                )
         ) {
             content()
         }

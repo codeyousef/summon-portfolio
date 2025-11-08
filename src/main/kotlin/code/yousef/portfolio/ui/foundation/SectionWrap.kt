@@ -3,8 +3,13 @@ package code.yousef.portfolio.ui.foundation
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.layout.Column
+import code.yousef.summon.extensions.px
+import code.yousef.summon.extensions.vw
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.Modifier
+import code.yousef.summon.modifier.cssClamp
+import code.yousef.summon.modifier.cssMin
+import code.yousef.summon.modifier.marginHorizontalAutoZero
 
 @Composable
 fun SectionWrap(
@@ -13,9 +18,9 @@ fun SectionWrap(
 ) {
     Column(
         modifier = modifier
-            .style("width", "min(1200px, 92vw)")
-            .style("margin", "0 auto")
-            .style("padding", "clamp(22px, 4vw, 48px) 0")
+            .width(cssMin(1200.px, 92.vw))
+            .marginHorizontalAutoZero()
+            .padding("${cssClamp(22.px, 4.vw, 48.px)} 0")
             .gap(PortfolioTheme.Spacing.lg)
     ) {
         content()

@@ -15,6 +15,7 @@ import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
+import code.yousef.summon.modifier.AttributeModifiers.buttonType
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
@@ -40,7 +41,7 @@ fun ServicesOverlay(
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.lg)
                 .padding(PortfolioTheme.Spacing.xl)
         ) {
@@ -86,7 +87,7 @@ fun ServicesOverlay(
                     Column(
                         modifier = Modifier()
                             .display(Display.Flex)
-                            .flexDirection("column")
+                            .flexDirection(FlexDirection.Column)
                             .gap(PortfolioTheme.Spacing.sm)
                             .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)
@@ -126,9 +127,9 @@ fun ServicesOverlay(
                         .borderRadius(PortfolioTheme.Radii.pill)
                         .fontWeight(600)
                         .lineHeight(1.0)
-                        .style("white-space", "nowrap")
-                        .attribute("type", "button")
-                        .attribute("data-href", contactHref),
+                        .whiteSpace(WhiteSpace.NoWrap)
+                        .buttonType(ButtonType.Button)
+                        .dataAttribute("href", contactHref),
                     variant = ButtonVariant.PRIMARY,
                     disabled = false,
                     dataAttributes = mapOf("cta" to "services-overlay")

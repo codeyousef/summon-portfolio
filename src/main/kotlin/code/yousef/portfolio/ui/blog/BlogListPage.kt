@@ -27,13 +27,13 @@ fun BlogListPage(
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.xl)
         ) {
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.sm)
             ) {
                 Text(
@@ -53,14 +53,14 @@ fun BlogListPage(
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 posts.sortedByDescending { it.publishedAt }.forEach { post ->
                     Column(
                         modifier = Modifier()
                             .display(Display.Flex)
-                            .flexDirection("column")
+                            .flexDirection(FlexDirection.Column)
                             .gap(PortfolioTheme.Spacing.xs)
                             .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)

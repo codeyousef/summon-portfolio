@@ -35,7 +35,7 @@ fun BlogTeaserSection(
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.md)
         ) {
             Text(
@@ -55,7 +55,7 @@ fun BlogTeaserSection(
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
             ) {
                 featured.forEach { post ->
@@ -63,7 +63,7 @@ fun BlogTeaserSection(
                     Column(
                         modifier = Modifier()
                             .display(Display.Flex)
-                            .flexDirection("column")
+                            .flexDirection(FlexDirection.Column)
                             .gap(PortfolioTheme.Spacing.xs)
                             .backgroundColor(PortfolioTheme.Colors.SURFACE)
                             .borderWidth(1)

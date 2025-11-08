@@ -28,14 +28,14 @@ fun BlogDetailPage(
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.lg)
 
         ) {
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(
@@ -62,7 +62,7 @@ fun BlogDetailPage(
                     modifier = Modifier()
                         .display(Display.Flex)
                         .gap(PortfolioTheme.Spacing.xs)
-                        .flexWrap("wrap")
+                        .flexWrap(FlexWrap.Wrap)
                 ) {
                     post.tags.forEach { tag ->
                         Text(
@@ -84,7 +84,7 @@ fun BlogDetailPage(
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
-                    .flexDirection("column")
+                    .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
             ) {
                 paragraphs.forEach { paragraph ->
@@ -116,7 +116,7 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection("column")
+                .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.md)
                 .textAlign(TextAlign.Center)
         ) {

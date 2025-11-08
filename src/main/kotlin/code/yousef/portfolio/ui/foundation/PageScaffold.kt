@@ -49,7 +49,13 @@ fun PageScaffold(
             }
         }
         .backgroundColor(PortfolioTheme.Colors.BACKGROUND_ALT)
-        .style("background-blend-mode", "screen, screen, screen, normal, normal")
+        .backgroundBlendModes(
+            BlendMode.Screen,
+            BlendMode.Screen,
+            BlendMode.Screen,
+            BlendMode.Normal,
+            BlendMode.Normal
+        )
         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
         .fontFamily(PortfolioTheme.Typography.FONT_SANS)
         .position(Position.Relative)
@@ -117,4 +123,3 @@ private fun WebGlScript() {
         defer = true
     )
 }
-
