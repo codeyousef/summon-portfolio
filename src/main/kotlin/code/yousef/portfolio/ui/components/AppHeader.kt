@@ -8,6 +8,7 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
+import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.extensions.percent
@@ -18,17 +19,22 @@ import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.textDecoration
 
+private sealed interface NavTarget {
+    data class Section(val id: String) : NavTarget
+    data class Page(val path: String) : NavTarget
+}
+
 private data class NavItem(
     val label: LocalizedText,
-    val anchor: String
+    val target: NavTarget
 )
 
 private val defaultNavItems = listOf(
-    NavItem(LocalizedText("Hero", "الرئيسية"), "hero"),
-    NavItem(LocalizedText("Projects", "المشاريع"), "projects"),
-    NavItem(LocalizedText("Services", "الخدمات"), "services"),
-    NavItem(LocalizedText("Blog", "المدونة"), "blog"),
-    NavItem(LocalizedText("Contact", "اتصل"), "contact")
+    NavItem(LocalizedText("About", "حول"), NavTarget.Section("hero")),
+    NavItem(LocalizedText("Projects", "المشاريع"), NavTarget.Page("/projects")),
+    NavItem(LocalizedText("Services", "الخدمات"), NavTarget.Page("/services")),
+    NavItem(LocalizedText("Blog", "المدونة"), NavTarget.Page("/blog")),
+    NavItem(LocalizedText("Contact", "اتصل"), NavTarget.Section("contact"))
 )
 
 @Composable
@@ -52,8 +58,6 @@ fun AppHeader(
         .justifyContent(JustifyContent.SpaceBetween)
         .gap(PortfolioTheme.Spacing.lg)
 
-    val pathPrefix = locale.pathPrefix()
-
     Row(modifier = containerModifier) {
         Text(
             text = "YOUSEF BAITALMAL",
@@ -70,17 +74,22 @@ fun AppHeader(
                 .gap(PortfolioTheme.Spacing.md)
         ) {
             navItems.forEach { item ->
-                val anchorHref = if (pathPrefix.isEmpty()) "#${item.anchor}" else "$pathPrefix#${item.anchor}"
-                AnchorLink(
-                    href = anchorHref,
-                    dataHref = anchorHref,
-                    label = item.label.resolve(locale),
-                    dataAttributes = mapOf("nav" to item.anchor),
+                val href = item.target.href(locale)
+                val label = item.label.resolve(locale)
+                navLink(
+                    label = label,
+                    href = href,
                     modifier = Modifier()
+                        .textDecoration("none")
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .fontSize(0.85.rem)
                         .textTransform(TextTransform.Uppercase)
                         .letterSpacing(0.08.rem)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .opacity(0.9F),
+                    dataAttributes = mapOf("nav" to label.lowercase()),
+                    useClientNavigation = item.target is NavTarget.Section
                 )
             }
         }
@@ -135,11 +144,9 @@ private fun LocaleToggle(current: PortfolioLocale) {
 @Composable
 private fun LocaleToggleButton(locale: PortfolioLocale, current: PortfolioLocale) {
     val isActive = locale == current
-    AnchorLink(
-        href = if (locale == PortfolioLocale.EN) "/" else "/${locale.code}",
-        dataHref = if (locale == PortfolioLocale.EN) "/" else "/${locale.code}",
+    navLink(
         label = locale.code.uppercase(),
-        dataAttributes = mapOf("locale" to locale.code),
+        href = if (locale == PortfolioLocale.EN) "/" else "/${locale.code}",
         modifier = Modifier()
             .textDecoration("none")
             .color(if (isActive) PortfolioTheme.Colors.BACKGROUND else PortfolioTheme.Colors.TEXT_SECONDARY)
@@ -147,6 +154,53 @@ private fun LocaleToggleButton(locale: PortfolioLocale, current: PortfolioLocale
             .fontSize(0.75.rem)
             .fontWeight(600)
             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .borderRadius(PortfolioTheme.Radii.pill)
+            .borderRadius(PortfolioTheme.Radii.pill),
+        dataAttributes = mapOf("locale" to locale.code),
+        useClientNavigation = false
     )
+}
+
+private fun NavTarget.href(locale: PortfolioLocale): String {
+    val prefix = locale.pathPrefix()
+    return when (this) {
+        is NavTarget.Section -> {
+            val home = if (prefix.isEmpty()) "/" else prefix
+            "$home#${this.id}"
+        }
+
+        is NavTarget.Page -> if (prefix.isEmpty()) path else "$prefix${this.path}"
+    }
+}
+
+private fun navLink(
+    label: String,
+    href: String,
+    modifier: Modifier,
+    dataAttributes: Map<String, String>,
+    useClientNavigation: Boolean
+) {
+    if (useClientNavigation) {
+        Box(
+            modifier = modifier
+                .attribute("role", "link")
+                .attribute("tabindex", "0")
+                .dataAttribute("href", href)
+        ) {
+            Text(text = label)
+        }
+    } else {
+        AnchorLink(
+            label = label,
+            href = href,
+            modifier = modifier,
+            target = null,
+            rel = null,
+            title = null,
+            id = null,
+            ariaLabel = null,
+            ariaDescribedBy = null,
+            dataHref = null,
+            dataAttributes = dataAttributes
+        )
+    }
 }

@@ -7,8 +7,8 @@ import java.time.LocalDate
 object PortfolioContentSeed {
     val hero: HeroContent = HeroContent(
         eyebrow = LocalizedText(
-            en = "Scroll ↓ to enter the stack",
-            ar = "مرر للأسفل للدخول إلى المكدس"
+            en = "Principal Engineer & Creative Director",
+            ar = "مهندس أول ومبدع تجارب"
         ),
         titlePrimary = LocalizedText(
             en = "Engineering",
@@ -19,8 +19,8 @@ object PortfolioContentSeed {
             ar = "من المبادئ الأولى."
         ),
         subtitle = LocalizedText(
-            en = "I craft immersive software experiences by layering high-performance systems work, Summon’s composable UI primitives, and expressive storytelling surfaces.",
-            ar = "أصمم تجارب برمجية غامرة عبر تكديس هندسة الأنظمة عالية الأداء، ومكونات Summon التركيبية، وسرد قصصي تفاعلي."
+            en = "I craft immersive software experiences by layering languages, frameworks, and storytelling surfaces for teams who need expressive, high-performance products.",
+            ar = "أصمم تجارب برمجية غامرة عبر تكديس اللغات والأطر وطبقات السرد لفِرق تحتاج إلى منتجات معبّرة وعالية الأداء."
         ),
         ctaPrimary = LocalizedText("Explore Work", "استكشف الأعمال"),
         ctaSecondary = LocalizedText("Open Contact Form", "افتح نموذج الاتصال"),

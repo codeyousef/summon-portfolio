@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui
 
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.components.ServicesOverlay
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.sections.*
@@ -21,11 +22,8 @@ fun PortfolioLandingPage(
     val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
+        AppHeader(locale = locale, onRequestServices = openServicesModal)
         HeroSection(hero = content.hero, locale = locale, onRequestServices = openServicesModal)
-        QuickStartSection()
-        FeatureSection()
-        ProjectSection()
-        ContactCtaSection()
         ProjectsSection(
             projects = content.projects,
             locale = locale,
@@ -43,7 +41,7 @@ fun PortfolioLandingPage(
             modifier = Modifier().id("blog")
         )
         ContactSection(locale = locale, modifier = Modifier().id("contact"))
-        PortfolioFooter()
+        PortfolioFooter(locale = locale)
         ServicesOverlay(
             open = servicesModalState.value,
             services = content.services,

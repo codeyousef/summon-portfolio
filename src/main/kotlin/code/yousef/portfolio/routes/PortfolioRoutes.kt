@@ -33,6 +33,20 @@ fun Route.portfolioRoutes(
         )
         call.respondSummonPage(page)
     }
+    get("/projects") {
+        val page = portfolioRenderer.projectsPage(
+            locale = PortfolioLocale.EN,
+            servicesModalOpen = call.shouldOpenServicesModal()
+        )
+        call.respondSummonPage(page)
+    }
+    get("/services") {
+        val page = portfolioRenderer.servicesPage(
+            locale = PortfolioLocale.EN,
+            servicesModalOpen = call.shouldOpenServicesModal()
+        )
+        call.respondSummonPage(page)
+    }
     get("/blog") {
         val page = blogRenderer.renderList(PortfolioLocale.EN)
         call.respondSummonPage(page)
@@ -138,6 +152,30 @@ fun Route.portfolioRoutes(
             val slug = call.parameters["slug"].orEmpty()
             val result = blogRenderer.renderDetail(locale, slug)
             call.respondSummonPage(result.page, result.status)
+        }
+    }
+    get("/{locale}/projects") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            val page = portfolioRenderer.projectsPage(
+                locale = locale,
+                servicesModalOpen = call.shouldOpenServicesModal()
+            )
+            call.respondSummonPage(page)
+        }
+    }
+    get("/{locale}/services") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            val page = portfolioRenderer.servicesPage(
+                locale = locale,
+                servicesModalOpen = call.shouldOpenServicesModal()
+            )
+            call.respondSummonPage(page)
         }
     }
     post("/{locale}/api/contact") {

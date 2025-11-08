@@ -99,12 +99,12 @@ fun BlogDetailPage(
 
             AnchorLink(
                 href = blogListHref(locale),
-                dataHref = blogListHref(locale),
                 label = BlogDetailCopy.back.resolve(locale),
                 dataAttributes = mapOf("blog-link" to "back"),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .fontWeight(600)
+                    .fontWeight(600),
+                dataHref = null
             )
         }
     }
@@ -133,12 +133,12 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
             )
             AnchorLink(
                 href = blogListHref(locale),
-                dataHref = blogListHref(locale),
                 label = BlogDetailCopy.back.resolve(locale),
                 dataAttributes = mapOf("blog-link" to "not-found-back"),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .fontWeight(600)
+                    .fontWeight(600),
+                dataHref = null
             )
         }
     }

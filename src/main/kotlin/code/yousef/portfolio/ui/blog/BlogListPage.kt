@@ -93,12 +93,12 @@ fun BlogListPage(
                         )
                         AnchorLink(
                             href = blogDetailHref(locale, post.slug),
-                            dataHref = blogDetailHref(locale, post.slug),
                             label = BlogListCopy.readMore.resolve(locale),
                             dataAttributes = mapOf("blog-link" to post.slug),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)
-                                .fontWeight(600)
+                                .fontWeight(600),
+                            dataHref = null
                         )
                     }
                 }

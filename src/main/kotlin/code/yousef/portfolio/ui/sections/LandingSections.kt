@@ -4,7 +4,9 @@ package code.yousef.portfolio.ui.sections
 
 import code.yousef.portfolio.content.model.HeroContent
 import code.yousef.portfolio.content.model.HeroMetric
+import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.summon.annotation.Composable
@@ -25,7 +27,6 @@ import code.yousef.summon.modifier.AttributeModifiers.buttonType
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.color
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
@@ -41,7 +42,10 @@ fun HeroSection(
     val secondaryTitle = hero.titleSecondary.resolve(locale)
     val subtitle = hero.subtitle.resolve(locale)
     SectionWrap(modifier = Modifier().id("hero")) {
-        HeroNav(eyebrow = hero.eyebrow.resolve(locale))
+        HeroIntroCard(
+            tagline = hero.eyebrow.resolve(locale),
+            locale = locale
+        )
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -100,8 +104,18 @@ fun HeroSection(
     }
 }
 
+private val availabilityText = LocalizedText(
+    en = "Open for select 2025 collaborations",
+    ar = "متاح لمشاريع مختارة في 2025"
+)
+
+private val baseLocationText = LocalizedText(
+    en = "Based in Dubai · Working globally",
+    ar = "مقيم في دبي · أعمل عالميًا"
+)
+
 @Composable
-private fun HeroNav(eyebrow: String) {
+private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
     Row(
         modifier = Modifier()
             .display(Display.Flex)
@@ -124,26 +138,33 @@ private fun HeroNav(eyebrow: String) {
                 .gap(PortfolioTheme.Spacing.sm)
         ) {
             LogoOrb()
-            Column {
+            Column(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(PortfolioTheme.Spacing.xs)
+            ) {
                 Text(
                     text = "Yousef Baitalmal",
                     modifier = Modifier().fontWeight(800)
                 )
                 Text(
-                    text = eyebrow,
+                    text = tagline,
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .fontSize(0.85.rem)
                 )
+                Text(
+                    text = baseLocationText.resolve(locale),
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .fontSize(0.8.rem)
+                )
             }
-            GlassPill(text = "Summon", emphasize = true)
         }
         GlassPill(
-            text = "Palette ▸ Maroon",
-            modifier = Modifier()
-                .id("palette")
-                .cursor(Cursor.Pointer)
-                .dataAttribute("palette", "toggle")
+            text = availabilityText.resolve(locale),
+            emphasize = true
         )
     }
 }
@@ -329,7 +350,7 @@ private fun HeroMockCard() {
                     ) {}
                 }
                 Text(
-                    text = "summon/pages/Home.kt",
+                    text = "portfolio/pages/Home.kt",
                     modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 )
             }
@@ -339,8 +360,8 @@ private fun HeroMockCard() {
                     "  html {",
                     "    head { title(\"Yousef — Portfolio\") }",
                     "    body {",
-                    "      header { h1(\"Hello from Summon\") }",
-                    "      section { p(\"SSR first paint. Islands for interactivity.\") }",
+                    "      header { h1(\"Hello from Yousef\") }",
+                    "      section { p(\"Engineering from first principles.\") }",
                     "      clientIsland { /* mount your widget here */ }",
                     "    }",
                     "  }",
@@ -352,182 +373,19 @@ private fun HeroMockCard() {
 }
 
 @Composable
-fun QuickStartSection() {
-    SectionWrap(modifier = Modifier().id("get-started")) {
-        H2("Summon in 60 seconds")
-        Lead("Scaffold a Ktor app, register a page, ship. You can swap Ktor for Spring/Quarkus later.")
-        Row(
-            modifier = Modifier()
-                .display(Display.Grid)
-                .gridTemplateColumns("repeat(auto-fit, minmax(280px, 1fr))")
-                .gap(PortfolioTheme.Spacing.md)
-        ) {
-            CardSurface {
-                Text("Install & run", modifier = Modifier().fontWeight(600))
-                CodeBlock(listOf("./gradlew :apps:app:run"), showCopyButton = true)
-                Lead("Open http://localhost:8080. You’ll see the Home page rendered by Summon.")
-            }
-            CardSurface {
-                Text("Minimal page (Kotlin)", modifier = Modifier().fontWeight(600))
-                CodeBlock(
-                    listOf(
-                        "val Home = page(\"/\") {",
-                        "  html { head { title(\"Summon\") };",
-                        "    body { h1(\"It works\") }",
-                        "  }",
-                        " }"
-                    ),
-                    showCopyButton = true
-                )
-                Lead("Register it once in your server and you’re done.")
-            }
-        }
+fun PortfolioFooter(locale: PortfolioLocale) {
+    val prefix = locale.pathPrefix()
+    val homePath = if (prefix.isEmpty()) "/" else prefix
+    val localizedPage: (String) -> String = { path ->
+        if (prefix.isEmpty()) path else "$prefix$path"
     }
-}
-
-@Composable
-fun FeatureSection() {
-    SectionWrap(modifier = Modifier().id("features")) {
-        H2("Why Summon")
-        Lead("Purpose-built for Kotlin web apps that need SEO, speed, and control without a mountain of JS.")
-        Row(
-            modifier = Modifier()
-                .display(Display.Grid)
-                .gridTemplateColumns("repeat(auto-fit, minmax(240px, 1fr))")
-                .gap(PortfolioTheme.Spacing.md)
-        ) {
-            FeatureCard(
-                "SSR first • hydrate later",
-                "Search-friendly HTML on first paint; hydrate only islands that need it."
-            )
-            FeatureCard("Backend-agnostic", "Ktor today. Spring/Quarkus adapters ready when you are.")
-            FeatureCard("Router & SEO", "File or function-based pages, meta helpers, and sitemap hooks.")
-        }
-    }
-}
-
-@Composable
-fun ProjectSection() {
-    SectionWrap(modifier = Modifier().id("project")) {
-        H2("Project: Summon")
-        Lead("Roadmap: 0.2 adds hydrated response helpers, router bridge, and head/SEO templates.")
-        Row(
-            modifier = Modifier()
-                .display(Display.Grid)
-                .gridTemplateColumns("repeat(auto-fit, minmax(280px, 1fr))")
-                .gap(PortfolioTheme.Spacing.md)
-        ) {
-            CardSurface {
-                Text("Install (Gradle)", modifier = Modifier().fontWeight(600))
-                CodeBlock(
-                    listOf(
-                        "repositories { mavenCentral() }",
-                        "dependencies {",
-                        "  implementation(\"io.github.codeyousef.summon:runtime:<ver>\")",
-                        "  implementation(\"io.github.codeyousef.summon:ktor:<ver>\")",
-                        "}"
-                    ),
-                    showCopyButton = true
-                )
-            }
-            CardSurface {
-                Text("Register routes (Ktor)", modifier = Modifier().fontWeight(600))
-                CodeBlock(
-                    listOf(
-                        "fun Application.configureSummonPages() = routing {",
-                        "  summonRouting { mount(Home) }",
-                        "}"
-                    ),
-                    showCopyButton = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ContactCtaSection() {
-    SectionWrap(modifier = Modifier().id("contact")) {
-        H2("Get in touch")
-        Lead("Want to collaborate or use Summon in production? Reach out and I’ll help you ship.")
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .gap(PortfolioTheme.Spacing.sm)
-                .flexWrap(FlexWrap.Wrap)
-        ) {
-            Button(
-                onClick = null,
-                label = "Copy Email",
-                modifier = Modifier()
-                    .id("copyEmail")
-                    .height(52.px)
-                    .padding("0", PortfolioTheme.Spacing.lg)
-                    .borderRadius(PortfolioTheme.Radii.md)
-                    .display(Display.InlineFlex)
-                    .alignItems(AlignItems.Center)
-                    .justifyContent(JustifyContent.Center)
-                    .background(PortfolioTheme.Gradients.ACCENT)
-                    .color("#ffffff")
-                    .fontWeight(800)
-                    .lineHeight(1.0)
-                    .whiteSpace(WhiteSpace.NoWrap),
-                dataAttributes = mapOf("copy" to "email"),
-                variant = ButtonVariant.PRIMARY,
-                disabled = false
-            )
-            Button(
-                onClick = null,
-                label = "View Repo",
-                modifier = Modifier()
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .background(PortfolioTheme.Gradients.GLASS)
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .padding("0", PortfolioTheme.Spacing.lg)
-                    .height(52.px)
-                    .display(Display.InlineFlex)
-                    .alignItems(AlignItems.Center)
-                    .justifyContent(JustifyContent.Center)
-                    .borderRadius(PortfolioTheme.Radii.md)
-                    .lineHeight(1.0)
-                    .whiteSpace(WhiteSpace.NoWrap)
-                    .dataAttribute("href", "https://github.com/codeyousef/summon")
-                    .buttonType(ButtonType.Button),
-                variant = ButtonVariant.SECONDARY,
-                disabled = false,
-                dataAttributes = mapOf("cta" to "contact-repo")
-            )
-            Button(
-                onClick = null,
-                label = "Docs (this page)",
-                modifier = Modifier()
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .background(PortfolioTheme.Gradients.GLASS)
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .padding("0", PortfolioTheme.Spacing.lg)
-                    .height(52.px)
-                    .display(Display.InlineFlex)
-                    .alignItems(AlignItems.Center)
-                    .justifyContent(JustifyContent.Center)
-                    .borderRadius(PortfolioTheme.Radii.md)
-                    .lineHeight(1.0)
-                    .whiteSpace(WhiteSpace.NoWrap)
-                    .buttonType(ButtonType.Button)
-                    .dataAttribute("href", "#get-started"),
-                variant = ButtonVariant.SECONDARY,
-                disabled = false,
-                dataAttributes = mapOf("cta" to "contact-docs")
-            )
-        }
-    }
-}
-
-@Composable
-fun PortfolioFooter() {
+    val footerLinks = listOf(
+        LocalizedText("About", "نبذة") to "$homePath#hero",
+        LocalizedText("Projects", "المشاريع") to localizedPage("/projects"),
+        LocalizedText("Services", "الخدمات") to localizedPage("/services"),
+        LocalizedText("Blog", "المدونة") to localizedPage("/blog"),
+        LocalizedText("Contact", "اتصل") to "$homePath#contact"
+    )
     SectionWrap {
         Row(
             modifier = Modifier()
@@ -535,25 +393,28 @@ fun PortfolioFooter() {
                 .flexWrap(FlexWrap.Wrap)
                 .gap(PortfolioTheme.Spacing.sm)
         ) {
-            listOf(
-                "Get Started" to "#get-started",
-                "Features" to "#features",
-                "Project" to "#project",
-                "Contact" to "#contact"
-            ).forEach { (label, href) ->
+            footerLinks.forEach { (label, href) ->
+                val resolvedLabel = label.resolve(locale)
                 AnchorLink(
-                    label = label,
+                    label = resolvedLabel,
                     href = href,
-                    dataHref = href,
-                    dataAttributes = mapOf("footer-link" to label.lowercase()),
                     modifier = Modifier()
+                        .textDecoration("none")
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
                         .borderRadius(PortfolioTheme.Radii.md)
                         .backgroundColor("#ffffff10")
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY),
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("footer-link" to resolvedLabel.lowercase())
                 )
             }
         }
@@ -568,53 +429,11 @@ fun PortfolioFooter() {
                 text = Year.now().value.toString(),
                 modifier = Modifier().id("year")
             )
-            Text(text = "Yousef Baitalmal — Summon")
+            Text(text = "Yousef Baitalmal — Portfolio")
         }
     }
 }
 
-@Composable
-private fun FeatureCard(title: String, description: String) {
-    CardSurface {
-        Text(title, modifier = Modifier().fontWeight(600))
-        Lead(description)
-    }
-}
-
-@Composable
-private fun CardSurface(content: () -> Unit) {
-    Column(
-        modifier = Modifier()
-            .backgroundColor(PortfolioTheme.Gradients.CARD)
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .borderRadius(PortfolioTheme.Radii.md)
-            .boxShadow(PortfolioTheme.Shadows.LOW)
-            .gap(PortfolioTheme.Spacing.sm)
-            .padding(PortfolioTheme.Spacing.md)
-    ) { content() }
-}
-
-@Composable
-private fun H2(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier()
-            .fontSize(cssClamp(22.px, 3.6.vw, 36.px))
-            .fontWeight(700)
-    )
-}
-
-@Composable
-private fun Lead(text: String) {
-    Paragraph(
-        text = text,
-        modifier = Modifier()
-            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-            .lineHeight(1.6)
-    )
-}
 
 @Composable
 private fun PrimaryButton(text: String, href: String, modifier: Modifier = Modifier()) {

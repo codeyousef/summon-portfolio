@@ -6,30 +6,21 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.input.*
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.ButtonLink
-import code.yousef.summon.effects.HttpResponse
-import code.yousef.summon.effects.createHttpClient
-import code.yousef.summon.extensions.percent
+import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.AttributeModifiers.buttonType
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
+import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
-import code.yousef.summon.modifier.LayoutModifiers.minHeight
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
-import code.yousef.summon.runtime.LaunchedEffect
-import code.yousef.summon.runtime.remember
-import code.yousef.summon.runtime.rememberMutableStateOf
-import code.yousef.summon.state.SummonMutableState
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+
+private const val SCHEDULE_CALL_URL = "https://cal.com/yousef/intro"
 
 @Composable
 fun ContactSection(
@@ -74,17 +65,26 @@ fun ContactSection(
                             .fontSize(1.1.rem)
                             .fontWeight(600)
                     )
-                    ButtonLink(
-                        label = ContactCopy.schedule.resolve(locale),
-                        href = "mailto:yousef.baitalmal.dev@email.com",
-                        dataHref = "mailto:yousef.baitalmal.dev@email.com",
-                        dataAttributes = mapOf("cta" to "contact-email"),
+                    Row(
                         modifier = Modifier()
-                            .backgroundColor(PortfolioTheme.Colors.ACCENT)
-                            .color("#ffffff")
-                            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
-                            .borderRadius(PortfolioTheme.Radii.pill)
-                    )
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.sm)
+                            .flexWrap(FlexWrap.Wrap)
+                    ) {
+                        ContactLinkChip(
+                            label = ContactCopy.emailCta.resolve(locale),
+                            href = "mailto:yousef.baitalmal.dev@email.com",
+                            filled = true,
+                            dataAttributes = mapOf("cta" to "contact-email")
+                        )
+                        ContactLinkChip(
+                            label = ContactCopy.scheduleCall.resolve(locale),
+                            href = SCHEDULE_CALL_URL,
+                            filled = false,
+                            openInNewTab = true,
+                            dataAttributes = mapOf("cta" to "contact-call")
+                        )
+                    }
                 }
             }
 
@@ -95,315 +95,96 @@ fun ContactSection(
 
 @Composable
 private fun ContactForm(locale: PortfolioLocale, action: String) {
-    val name = rememberMutableStateOf("")
-    val email = rememberMutableStateOf("")
-    val whatsapp = rememberMutableStateOf("")
-    val requirements = rememberMutableStateOf("")
-    val submitting = rememberMutableStateOf(false)
-    val fieldErrors = rememberMutableStateOf<Map<String, String>>(emptyMap())
-    val successMessage = rememberMutableStateOf<String?>(null)
-    val failureMessage = rememberMutableStateOf<String?>(null)
-    val pendingPayload = rememberMutableStateOf<ContactFormPayload?>(null)
-    val submissionKey = rememberMutableStateOf(0)
-    val httpClient = remember { createHttpClient() }
-
-    LaunchedEffect(submissionKey.value) {
-        val payload = pendingPayload.value ?: return@LaunchedEffect
-        submitting.value = true
-        try {
-            val response = runCatching {
-                httpClient.post(action, "application/json", payload.toMap())
-            }.getOrElse {
-                handleSubmitFailure(failureMessage, locale, it.message)
-                return@LaunchedEffect
-            }
-            if (response.isSuccess) {
-                handleSubmitSuccess(
-                    locale = locale,
-                    successMessage = successMessage,
-                    failureMessage = failureMessage,
-                    fieldErrors = fieldErrors,
-                    name = name,
-                    email = email,
-                    whatsapp = whatsapp,
-                    requirements = requirements
+    val labelStyles =
+        "display:flex;justify-content:space-between;align-items:center;font-size:0.9rem;font-weight:600;color:${PortfolioTheme.Colors.TEXT_PRIMARY};"
+    val optionalBadge = ContactCopy.optional.resolve(locale)
+    val optionalChip =
+        "<span style=\"font-size:0.75rem;color:${PortfolioTheme.Colors.TEXT_SECONDARY};font-weight:500\">$optionalBadge</span>"
+    val inputStyles =
+        "width:100%;padding:14px 18px;border:1px solid ${PortfolioTheme.Colors.BORDER};border-radius:16px;background:${PortfolioTheme.Colors.BACKGROUND_ALT};color:${PortfolioTheme.Colors.TEXT_PRIMARY};font-size:1rem;box-shadow:${PortfolioTheme.Shadows.LOW};"
+    val textareaStyles = "$inputStyles min-height:160px;resize:vertical;"
+    val buttonStyles =
+        "width:100%;padding:16px;border:none;border-radius:16px;background:${PortfolioTheme.Gradients.ACCENT};color:#ffffff;font-weight:700;font-size:1rem;cursor:pointer;box-shadow:${PortfolioTheme.Shadows.MEDIUM};"
+    val formHtml = buildString {
+        append(
+            """
+            <form method="post" action="$action" style="display:flex;flex-direction:column;gap:16px;">
+                <label style="$labelStyles">${ContactCopy.name.resolve(locale)} *</label>
+                <input type="text" name="name" required style="$inputStyles" placeholder="${
+                ContactCopy.name.resolve(
+                    locale
                 )
-            } else {
-                handleHttpError(response, failureMessage, locale)
-            }
-        } finally {
-            submitting.value = false
-            pendingPayload.value = null
-        }
+            }" autocomplete="name" />
+                <label style="$labelStyles">${ContactCopy.email.resolve(locale)} $optionalChip</label>
+                <input type="email" name="email" style="$inputStyles" placeholder="${ContactCopy.email.resolve(locale)}" autocomplete="email" />
+                <label style="$labelStyles">${ContactCopy.whatsapp.resolve(locale)} $optionalChip</label>
+                <input type="text" name="whatsapp" style="$inputStyles" placeholder="${
+                ContactCopy.whatsapp.resolve(
+                    locale
+                )
+            }" autocomplete="tel" />
+                <label style="$labelStyles">${ContactCopy.requirements.resolve(locale)} *</label>
+                <textarea name="requirements" required style="$textareaStyles" placeholder="${
+                ContactCopy.requirements.resolve(
+                    locale
+                )
+            }"></textarea>
+                <button type="submit" style="$buttonStyles">${ContactCopy.submit.resolve(locale)}</button>
+            </form>
+            """.trimIndent()
+        )
     }
-
-    Form(
-        onSubmit = {
-            val payload = ContactFormPayload(
-                name = name.value,
-                email = email.value.ifBlank { null },
-                whatsapp = whatsapp.value,
-                requirements = requirements.value
-            )
-            val validation = payload.validate(locale)
-            if (validation.isNotEmpty()) {
-                fieldErrors.value = validation
-                failureMessage.value = null
-                return@Form
-            }
-            fieldErrors.value = emptyMap()
-            failureMessage.value = null
-            successMessage.value = null
-            pendingPayload.value = payload
-            submissionKey.value = submissionKey.value + 1
-        },
-        modifier = Modifier()
-            .attribute("action", action)
-            .attribute("method", "post")
-    ) {
-        Column(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .flexDirection(FlexDirection.Column)
-                .gap(PortfolioTheme.Spacing.md)
-                .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.BORDER)
-                .borderRadius(PortfolioTheme.Radii.lg)
-                .padding(PortfolioTheme.Spacing.lg)
-        ) {
-            successMessage.value?.let { message ->
-                Text(
-                    text = message,
-                    modifier = Modifier()
-                        .backgroundColor("rgba(61, 213, 152, 0.12)")
-                        .color(PortfolioTheme.Colors.SUCCESS)
-                        .fontWeight(600)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(PortfolioTheme.Radii.sm)
-                )
-            }
-            failureMessage.value?.let { message ->
-                Text(
-                    text = message,
-                    modifier = Modifier()
-                        .backgroundColor("rgba(255, 77, 77, 0.18)")
-                        .color(PortfolioTheme.Colors.DANGER)
-                        .fontWeight(600)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(PortfolioTheme.Radii.sm)
-                )
-            }
-            Text(
-                text = ContactCopy.formTitle.resolve(locale),
-                modifier = Modifier()
-                    .fontSize(1.2.rem)
-                    .fontWeight(600)
-            )
-            InputField(
-                value = name,
-                placeholder = ContactCopy.name.resolve(locale),
-                error = fieldErrors.value["name"],
-                required = true
-            )
-            InputField(
-                value = email,
-                placeholder = ContactCopy.email.resolve(locale),
-                error = fieldErrors.value["email"],
-                required = false
-            )
-            InputField(
-                value = whatsapp,
-                placeholder = ContactCopy.whatsapp.resolve(locale),
-                error = fieldErrors.value["whatsapp"],
-                required = false
-            )
-            TextAreaField(
-                value = requirements,
-                placeholder = ContactCopy.requirements.resolve(locale),
-                error = fieldErrors.value["requirements"],
-                minHeight = 160.px
-            )
-            SubmitButton(locale = locale, submitting = submitting.value)
-        }
-    }
-}
-
-@Composable
-private fun InputField(
-    value: SummonMutableState<String>,
-    placeholder: String,
-    error: String?,
-    required: Boolean
-) {
-    Column(
+    RawHtml(
         modifier = Modifier()
             .display(Display.Flex)
             .flexDirection(FlexDirection.Column)
-            .gap(PortfolioTheme.Spacing.xs)
+            .gap(PortfolioTheme.Spacing.md)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
+            .borderRadius(PortfolioTheme.Radii.lg)
+            .padding(PortfolioTheme.Spacing.lg)
+            .backdropBlur(18.px),
+        sanitize = true
     ) {
-        TextField(
-            value.value,
-            { value.value = it },
-            Modifier()
-                .width(100.percent)
-                .padding(PortfolioTheme.Spacing.xs)
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(if (error != null) PortfolioTheme.Colors.DANGER else PortfolioTheme.Colors.BORDER)
-                .borderRadius(PortfolioTheme.Radii.md),
-            placeholder,
-            "",
-            TextFieldType.Text,
-            false,
-            false,
-            required,
-            emptyList()
-        )
-        error?.let {
-            Text(
-                text = it,
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.DANGER)
-                    .fontSize(0.85.rem)
-            )
-        }
+        append(formHtml)
     }
 }
-
 @Composable
-private fun TextAreaField(
-    value: SummonMutableState<String>,
-    placeholder: String,
-    error: String?,
-    minHeight: String
+private fun ContactLinkChip(
+    label: String,
+    href: String,
+    filled: Boolean,
+    openInNewTab: Boolean = false,
+    dataAttributes: Map<String, String> = emptyMap()
 ) {
-    Column(
-        modifier = Modifier()
-            .display(Display.Flex)
-            .flexDirection(FlexDirection.Column)
-            .gap(PortfolioTheme.Spacing.xs)
-    ) {
-        TextArea(
-            value.value,
-            { value.value = it },
-            Modifier()
-                .width(100.percent)
-                .minHeight(minHeight)
-                .padding(PortfolioTheme.Spacing.xs)
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(if (error != null) PortfolioTheme.Colors.DANGER else PortfolioTheme.Colors.BORDER)
-                .borderRadius(PortfolioTheme.Radii.md),
-            false,
-            false,
-            null,
-            null,
-            placeholder
-        )
-        error?.let {
-            Text(
-                text = it,
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.DANGER)
-                    .fontSize(0.85.rem)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SubmitButton(locale: PortfolioLocale, submitting: Boolean) {
-    val label = if (submitting) ContactCopy.submitting.resolve(locale) else ContactCopy.submit.resolve(locale)
-    Button(
-        onClick = null,
+    AnchorLink(
         label = label,
+        href = href,
         modifier = Modifier()
-            .backgroundColor(PortfolioTheme.Colors.ACCENT)
-            .color("#ffffff")
-            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
+            .display(Display.InlineFlex)
+            .alignItems(AlignItems.Center)
+            .gap(PortfolioTheme.Spacing.xs)
+            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+            .borderWidth(if (filled) 0 else 1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(if (filled) "transparent" else PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.pill)
-            .textAlign(TextAlign.Center)
-            .buttonType(ButtonType.Submit),
-        variant = ButtonVariant.PRIMARY,
-        disabled = submitting,
-        dataAttributes = mapOf("form" to "contact-submit")
+            .background(if (filled) PortfolioTheme.Gradients.ACCENT else PortfolioTheme.Colors.GLASS)
+            .color(if (filled) "#ffffff" else PortfolioTheme.Colors.TEXT_PRIMARY)
+            .fontWeight(600)
+            .whiteSpace(WhiteSpace.NoWrap)
+            .boxShadow(if (filled) PortfolioTheme.Shadows.LOW else "none"),
+        target = if (openInNewTab) "_blank" else null,
+        rel = if (openInNewTab) "noopener noreferrer" else null,
+        title = null,
+        id = null,
+        ariaLabel = null,
+        ariaDescribedBy = null,
+        dataHref = null,
+        dataAttributes = dataAttributes
     )
-}
-
-private data class ContactFormPayload(
-    val name: String,
-    val email: String?,
-    val whatsapp: String,
-    val requirements: String
-) {
-    fun validate(locale: PortfolioLocale): Map<String, String> {
-        val errors = mutableMapOf<String, String>()
-        if (name.isBlank()) errors["name"] = ContactCopy.errorName.resolve(locale)
-        if (requirements.isBlank()) errors["requirements"] = ContactCopy.errorRequirements.resolve(locale)
-        if (email?.isNotBlank() == true && !email.contains("@")) {
-            errors["email"] = ContactCopy.errorEmail.resolve(locale)
-        }
-        return errors
-    }
-
-    fun toMap(): Map<String, String> = buildMap {
-        put("name", name)
-        if (!email.isNullOrBlank()) {
-            put("email", email)
-        }
-        if (whatsapp.isNotBlank()) {
-            put("whatsapp", whatsapp)
-        }
-        put("requirements", requirements)
-    }
-}
-
-private fun handleSubmitSuccess(
-    locale: PortfolioLocale,
-    successMessage: SummonMutableState<String?>,
-    failureMessage: SummonMutableState<String?>,
-    fieldErrors: SummonMutableState<Map<String, String>>,
-    name: SummonMutableState<String>,
-    email: SummonMutableState<String>,
-    whatsapp: SummonMutableState<String>,
-    requirements: SummonMutableState<String>
-) {
-    successMessage.value = ContactCopy.success.resolve(locale)
-    failureMessage.value = null
-    fieldErrors.value = emptyMap()
-    name.value = ""
-    email.value = ""
-    whatsapp.value = ""
-    requirements.value = ""
-}
-
-private fun handleSubmitFailure(
-    failureMessage: SummonMutableState<String?>,
-    locale: PortfolioLocale,
-    reason: String?
-) {
-    failureMessage.value = reason ?: ContactCopy.failure.resolve(locale)
-}
-
-private fun handleHttpError(
-    response: HttpResponse,
-    failureMessage: SummonMutableState<String?>,
-    locale: PortfolioLocale
-) {
-    val body = response.body
-    if (body.isNotBlank()) {
-        runCatching {
-            val json = Json.parseToJsonElement(body).jsonObject
-            val error = json["error"]?.jsonPrimitive?.content
-            error?.let {
-                failureMessage.value = it
-                return
-            }
-        }
-    }
-    failureMessage.value = ContactCopy.failure.resolve(locale)
 }
 
 private object ContactCopy {
@@ -412,12 +193,14 @@ private object ContactCopy {
         en = "Tell me what you’re building. I’ll reply with a focused plan (and timelines) you can immediately act on.",
         ar = "أخبرني بما تعمل عليه وسأعود إليك بخطة واضحة وجدول زمني يمكن البدء به فورًا."
     )
-    val schedule = LocalizedText("Schedule a call", "احجز مكالمة")
+    val emailCta = LocalizedText("Send an email", "أرسل بريدًا")
+    val scheduleCall = LocalizedText("Schedule a call", "احجز مكالمة")
     val formTitle = LocalizedText("Project details", "تفاصيل المشروع")
     val name = LocalizedText("Name", "الاسم")
-    val email = LocalizedText("Email (optional)", "البريد الإلكتروني (اختياري)")
+    val email = LocalizedText("Email", "البريد الإلكتروني")
     val whatsapp = LocalizedText("WhatsApp / Signal", "واتساب / سيجنال")
     val requirements = LocalizedText("What are we building?", "ماذا سنبني؟")
+    val optional = LocalizedText("Optional", "اختياري")
     val submit = LocalizedText("Send request", "أرسل الطلب")
     val submitting = LocalizedText("Sending...", "جاري الإرسال...")
     val success = LocalizedText("Thanks! I’ll reply soon.", "شكرًا! سأتواصل معك قريبًا.")

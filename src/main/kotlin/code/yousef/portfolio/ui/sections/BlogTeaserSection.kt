@@ -91,12 +91,12 @@ fun BlogTeaserSection(
                         )
                         AnchorLink(
                             href = detailHref,
-                            dataHref = detailHref,
                             label = BlogCopy.readMore.resolve(locale),
                             dataAttributes = mapOf("blog-link" to post.slug),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)
-                                .fontWeight(600)
+                                .fontWeight(600),
+                            dataHref = null
                         )
                     }
                 }
@@ -109,12 +109,12 @@ fun BlogTeaserSection(
             ) {
                 AnchorLink(
                     href = blogListHref(locale),
-                    dataHref = blogListHref(locale),
                     label = BlogCopy.viewAll.resolve(locale),
                     dataAttributes = mapOf("blog-link" to "view-all"),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .fontWeight(600)
+                        .fontWeight(600),
+                    dataHref = null
                 )
             }
         }
