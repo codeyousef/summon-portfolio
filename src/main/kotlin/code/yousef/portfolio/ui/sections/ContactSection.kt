@@ -16,9 +16,9 @@ import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
-import code.yousef.summon.modifier.LayoutModifierExtras.gridTemplateColumns
+import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.LayoutModifiers.minHeight
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
@@ -74,9 +74,11 @@ fun ContactSection(
                             .fontWeight(600)
                     )
                     ButtonLink(
-                        ContactCopy.schedule.resolve(locale),
-                        "mailto:yousef.baitalmal.dev@email.com",
-                        Modifier()
+                        label = ContactCopy.schedule.resolve(locale),
+                        href = "mailto:yousef.baitalmal.dev@email.com",
+                        dataHref = "mailto:yousef.baitalmal.dev@email.com",
+                        dataAttributes = mapOf("cta" to "contact-email"),
+                        modifier = Modifier()
                             .backgroundColor(PortfolioTheme.Colors.ACCENT)
                             .color("#ffffff")
                             .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
@@ -198,97 +200,135 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
                     .fontSize(1.2.rem)
                     .fontWeight(600)
             )
-            TextField(
-                value = name.value,
-                onValueChange = { name.value = it },
-                placeholder = ContactCopy.namePlaceholder.resolve(locale),
-                modifier = Modifier()
-                    .width(100.percent)
-                    .attribute("name", "name")
-                    .attribute("required", "required")
+            InputField(
+                value = name,
+                placeholder = ContactCopy.name.resolve(locale),
+                error = fieldErrors.value["name"],
+                required = true
             )
-            fieldErrors.value["name"]?.let { FieldError(it) }
-            TextField(
-                value = email.value,
-                onValueChange = { email.value = it },
-                placeholder = ContactCopy.emailPlaceholder.resolve(locale),
-                type = TextFieldType.Email,
-                modifier = Modifier()
-                    .width(100.percent)
-                    .attribute("name", "email")
+            InputField(
+                value = email,
+                placeholder = ContactCopy.email.resolve(locale),
+                error = fieldErrors.value["email"],
+                required = false
             )
-            fieldErrors.value["email"]?.let { FieldError(it) }
-            TextField(
-                value = whatsapp.value,
-                onValueChange = { whatsapp.value = it },
-                placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
-                modifier = Modifier()
-                    .width(100.percent)
-                    .attribute("name", "whatsapp")
-                    .attribute("required", "required")
+            InputField(
+                value = whatsapp,
+                placeholder = ContactCopy.whatsapp.resolve(locale),
+                error = fieldErrors.value["whatsapp"],
+                required = false
             )
-            fieldErrors.value["whatsapp"]?.let { FieldError(it) }
-            TextArea(
-                value = requirements.value,
-                onValueChange = { requirements.value = it },
-                modifier = Modifier()
-                    .width(100.percent)
-                    .minHeight(140.px)
-                    .alignItems(AlignItems.FlexStart)
-                    .attribute("name", "requirements")
-                    .attribute("required", "required"),
-                placeholder = ContactCopy.requirementsPlaceholder.resolve(locale)
+            TextAreaField(
+                value = requirements,
+                placeholder = ContactCopy.requirements.resolve(locale),
+                error = fieldErrors.value["requirements"],
+                minHeight = 160.px
             )
-            fieldErrors.value["requirements"]?.let { FieldError(it) }
-            Button(
-                onClick = {},
-                label = ContactCopy.submit.resolve(locale),
+            SubmitButton(locale = locale, submitting = submitting.value)
+        }
+    }
+}
+
+@Composable
+private fun InputField(
+    value: SummonMutableState<String>,
+    placeholder: String,
+    error: String?,
+    required: Boolean
+) {
+    Column(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .flexDirection("column")
+            .gap(PortfolioTheme.Spacing.xs)
+    ) {
+        TextField(
+            value.value,
+            { value.value = it },
+            Modifier()
+                .width(100.percent)
+                .padding(PortfolioTheme.Spacing.xs)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(if (error != null) PortfolioTheme.Colors.DANGER else PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.md),
+            placeholder,
+            "",
+            TextFieldType.Text,
+            false,
+            false,
+            required,
+            emptyList()
+        )
+        error?.let {
+            Text(
+                text = it,
                 modifier = Modifier()
-                    .backgroundColor(PortfolioTheme.Colors.ACCENT_ALT)
-                    .color("#050505")
-                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
-                    .borderRadius(PortfolioTheme.Radii.pill)
-                    .textAlign(TextAlign.Center)
-                    .attribute("type", "submit"),
-                variant = ButtonVariant.PRIMARY,
-                submitting.value,
-                "",
-                IconPosition.START
+                    .color(PortfolioTheme.Colors.DANGER)
+                    .fontSize(0.85.rem)
             )
         }
     }
 }
 
 @Composable
-private fun FieldError(message: String) {
-    Text(
-        text = message,
+private fun TextAreaField(
+    value: SummonMutableState<String>,
+    placeholder: String,
+    error: String?,
+    minHeight: String
+) {
+    Column(
         modifier = Modifier()
-            .color(PortfolioTheme.Colors.DANGER)
-            .fontSize(0.85.rem)
-            .fontWeight(600)
-    )
+            .display(Display.Flex)
+            .flexDirection("column")
+            .gap(PortfolioTheme.Spacing.xs)
+    ) {
+        TextArea(
+            value.value,
+            { value.value = it },
+            Modifier()
+                .width(100.percent)
+                .minHeight(minHeight)
+                .padding(PortfolioTheme.Spacing.xs)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(if (error != null) PortfolioTheme.Colors.DANGER else PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.md),
+            false,
+            false,
+            null,
+            null,
+            placeholder
+        )
+        error?.let {
+            Text(
+                text = it,
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.DANGER)
+                    .fontSize(0.85.rem)
+            )
+        }
+    }
 }
 
-private object ContactCopy {
-    val title = LocalizedText("Let's Build.", "دعنا نبني.")
-    val subtitle = LocalizedText(
-        en = "If you're working on revolutionary products, I'd love to talk.",
-        ar = "إذا كنت تعمل على منتجات ثورية، يسعدني أن نتحدث."
+@Composable
+private fun SubmitButton(locale: PortfolioLocale, submitting: Boolean) {
+    val label = if (submitting) ContactCopy.submitting.resolve(locale) else ContactCopy.submit.resolve(locale)
+    Button(
+        onClick = null,
+        label = label,
+        modifier = Modifier()
+            .backgroundColor(PortfolioTheme.Colors.ACCENT)
+            .color("#ffffff")
+            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
+            .borderRadius(PortfolioTheme.Radii.pill)
+            .textAlign(TextAlign.Center)
+            .attribute("type", "submit"),
+        variant = ButtonVariant.PRIMARY,
+        disabled = submitting,
+        dataAttributes = mapOf("form" to "contact-submit")
     )
-    val schedule = LocalizedText("Send an email", "أرسل بريدًا إلكترونيًا")
-    val formTitle = LocalizedText("Tell me about your project", "أخبرني عن مشروعك")
-    val namePlaceholder = LocalizedText("Your name *", "اسمك *")
-    val emailPlaceholder = LocalizedText("Email (optional)", "البريد الإلكتروني (اختياري)")
-    val whatsappPlaceholder = LocalizedText("WhatsApp number *", "رقم الواتساب *")
-    val requirementsPlaceholder = LocalizedText("Project requirements *", "متطلبات المشروع *")
-    val submit = LocalizedText("Send Message", "أرسل الرسالة")
-    val validationName = LocalizedText("Please enter your name.", "يرجى إدخال اسمك.")
-    val validationWhatsapp = LocalizedText("WhatsApp number is required.", "رقم الواتساب مطلوب.")
-    val validationRequirements = LocalizedText("Tell me a bit about your project.", "يرجى توضيح متطلبات مشروعك.")
-    val validationEmail = LocalizedText("Use a valid email address.", "يرجى إدخال بريد إلكتروني صالح.")
-    val success = LocalizedText("Thanks! I’ll reply within 24 hours.", "شكرًا! سأرد خلال 24 ساعة.")
-    val errorGeneric = LocalizedText("Something went wrong. Please try again.", "حدث خطأ ما. يرجى المحاولة مرة أخرى.")
 }
 
 private data class ContactFormPayload(
@@ -297,28 +337,25 @@ private data class ContactFormPayload(
     val whatsapp: String,
     val requirements: String
 ) {
-    fun toMap(): Map<String, String> = buildMap {
-        put("name", name)
-        email?.let { put("email", it) }
-        put("whatsapp", whatsapp)
-        put("requirements", requirements)
-    }
-
     fun validate(locale: PortfolioLocale): Map<String, String> {
         val errors = mutableMapOf<String, String>()
-        if (name.isBlank()) {
-            errors["name"] = ContactCopy.validationName.resolve(locale)
-        }
-        if (!email.isNullOrBlank() && !email.contains("@")) {
-            errors["email"] = ContactCopy.validationEmail.resolve(locale)
-        }
-        if (whatsapp.isBlank()) {
-            errors["whatsapp"] = ContactCopy.validationWhatsapp.resolve(locale)
-        }
-        if (requirements.isBlank()) {
-            errors["requirements"] = ContactCopy.validationRequirements.resolve(locale)
+        if (name.isBlank()) errors["name"] = ContactCopy.errorName.resolve(locale)
+        if (requirements.isBlank()) errors["requirements"] = ContactCopy.errorRequirements.resolve(locale)
+        if (email?.isNotBlank() == true && !email.contains("@")) {
+            errors["email"] = ContactCopy.errorEmail.resolve(locale)
         }
         return errors
+    }
+
+    fun toMap(): Map<String, String> = buildMap {
+        put("name", name)
+        if (!email.isNullOrBlank()) {
+            put("email", email)
+        }
+        if (whatsapp.isNotBlank()) {
+            put("whatsapp", whatsapp)
+        }
+        put("requirements", requirements)
     }
 }
 
@@ -341,29 +378,50 @@ private fun handleSubmitSuccess(
     requirements.value = ""
 }
 
+private fun handleSubmitFailure(
+    failureMessage: SummonMutableState<String?>,
+    locale: PortfolioLocale,
+    reason: String?
+) {
+    failureMessage.value = reason ?: ContactCopy.failure.resolve(locale)
+}
+
 private fun handleHttpError(
     response: HttpResponse,
     failureMessage: SummonMutableState<String?>,
     locale: PortfolioLocale
 ) {
-    val fallback = ContactCopy.errorGeneric.resolve(locale)
-    val message = extractErrorMessage(response.body) ?: fallback
-    failureMessage.value = message
+    val body = response.body
+    if (body.isNotBlank()) {
+        runCatching {
+            val json = Json.parseToJsonElement(body).jsonObject
+            val error = json["error"]?.jsonPrimitive?.content
+            error?.let {
+                failureMessage.value = it
+                return
+            }
+        }
+    }
+    failureMessage.value = ContactCopy.failure.resolve(locale)
 }
 
-private fun handleSubmitFailure(
-    failureMessage: SummonMutableState<String?>,
-    locale: PortfolioLocale,
-    details: String?
-) {
-    failureMessage.value = details ?: ContactCopy.errorGeneric.resolve(locale)
+private object ContactCopy {
+    val title = LocalizedText("Collaborate", "تعاون")
+    val subtitle = LocalizedText(
+        en = "Tell me what you’re building. I’ll reply with a focused plan (and timelines) you can immediately act on.",
+        ar = "أخبرني بما تعمل عليه وسأعود إليك بخطة واضحة وجدول زمني يمكن البدء به فورًا."
+    )
+    val schedule = LocalizedText("Schedule a call", "احجز مكالمة")
+    val formTitle = LocalizedText("Project details", "تفاصيل المشروع")
+    val name = LocalizedText("Name", "الاسم")
+    val email = LocalizedText("Email (optional)", "البريد الإلكتروني (اختياري)")
+    val whatsapp = LocalizedText("WhatsApp / Signal", "واتساب / سيجنال")
+    val requirements = LocalizedText("What are we building?", "ماذا سنبني؟")
+    val submit = LocalizedText("Send request", "أرسل الطلب")
+    val submitting = LocalizedText("Sending...", "جاري الإرسال...")
+    val success = LocalizedText("Thanks! I’ll reply soon.", "شكرًا! سأتواصل معك قريبًا.")
+    val failure = LocalizedText("Something went wrong. Please try again.", "حدث خطأ. حاول مرة أخرى.")
+    val errorName = LocalizedText("Name is required", "الاسم مطلوب")
+    val errorEmail = LocalizedText("Please enter a valid email", "يرجى إدخال بريد صحيح")
+    val errorRequirements = LocalizedText("Share a bit about your project", "شارك تفاصيل حول مشروعك")
 }
-
-private fun extractErrorMessage(body: String?): String? {
-    if (body.isNullOrBlank()) return null
-    return runCatching {
-        CONTACT_JSON.parseToJsonElement(body).jsonObject["error"]?.jsonPrimitive?.content
-    }.getOrNull()
-}
-
-private val CONTACT_JSON = Json { ignoreUnknownKeys = true }

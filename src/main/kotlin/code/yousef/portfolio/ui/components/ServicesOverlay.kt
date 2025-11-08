@@ -11,15 +11,14 @@ import code.yousef.summon.components.feedback.ModalSize
 import code.yousef.summon.components.feedback.ModalVariant
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
-import code.yousef.summon.components.input.IconPosition
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
-import code.yousef.summon.modifier.LayoutModifierExtras.gridTemplateColumns
+import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
 
@@ -67,9 +66,7 @@ fun ServicesOverlay(
                         .fontWeight(600)
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm),
                     variant = ButtonVariant.SECONDARY,
-                    false,
-                    "",
-                    IconPosition.START
+                    disabled = false
                 )
             }
 
@@ -121,9 +118,11 @@ fun ServicesOverlay(
                     .justifyContent(JustifyContent.FlexEnd)
             ) {
                 ButtonLink(
-                    ServicesOverlayCopy.cta.resolve(locale),
-                    contactHref,
-                    Modifier()
+                    label = ServicesOverlayCopy.cta.resolve(locale),
+                    href = contactHref,
+                    dataHref = contactHref,
+                    dataAttributes = mapOf("cta" to "services-overlay"),
+                    modifier = Modifier()
                         .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)

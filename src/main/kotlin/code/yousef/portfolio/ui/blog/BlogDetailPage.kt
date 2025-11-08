@@ -9,7 +9,7 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -97,19 +97,14 @@ fun BlogDetailPage(
                 }
             }
 
-            Link(
-                BlogDetailCopy.back.resolve(locale),
-                Modifier()
+            AnchorLink(
+                href = blogListHref(locale),
+                dataHref = blogListHref(locale),
+                label = BlogDetailCopy.back.resolve(locale),
+                dataAttributes = mapOf("blog-link" to "back"),
+                modifier = Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .fontWeight(600),
-                blogListHref(locale),
-                "_self",
-                "",
-                isExternal = false,
-                isNoFollow = false,
-                ariaLabel = "",
-                ariaDescribedBy = "",
-                content = {}
+                    .fontWeight(600)
             )
         }
     }
@@ -136,19 +131,14 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
-            Link(
-                BlogDetailCopy.back.resolve(locale),
-                Modifier()
+            AnchorLink(
+                href = blogListHref(locale),
+                dataHref = blogListHref(locale),
+                label = BlogDetailCopy.back.resolve(locale),
+                dataAttributes = mapOf("blog-link" to "not-found-back"),
+                modifier = Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .fontWeight(600),
-                blogListHref(locale),
-                "_self",
-                "",
-                isExternal = false,
-                isNoFollow = false,
-                ariaLabel = "",
-                ariaDescribedBy = "",
-                content = {}
+                    .fontWeight(600)
             )
         }
     }

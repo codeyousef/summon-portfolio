@@ -46,6 +46,6 @@ out/
 
 ### Old Portfolio (Next.js) ###
 old-portfolio/*
-/summon-docs/*
+/docs/private/summon-docs/*
 /docs/private/
 /AGENTS.md

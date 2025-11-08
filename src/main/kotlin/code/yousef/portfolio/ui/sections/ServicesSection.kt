@@ -9,14 +9,13 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
-import code.yousef.summon.components.input.IconPosition
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
-import code.yousef.summon.modifier.LayoutModifierExtras.gridTemplateColumns
+import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
 
@@ -73,9 +72,7 @@ fun ServicesSection(
                         .borderRadius(PortfolioTheme.Radii.pill)
                         .fontWeight(600),
                     variant = ButtonVariant.PRIMARY,
-                    false,
-                    "",
-                    IconPosition.START
+                    disabled = false
                 )
             }
         }

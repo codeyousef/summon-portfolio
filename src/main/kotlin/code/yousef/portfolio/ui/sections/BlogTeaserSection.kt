@@ -11,10 +11,10 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
+import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
@@ -89,19 +89,14 @@ fun BlogTeaserSection(
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .lineHeight(1.7)
                         )
-                        Link(
-                            BlogCopy.readMore.resolve(locale),
-                            Modifier()
+                        AnchorLink(
+                            href = detailHref,
+                            dataHref = detailHref,
+                            label = BlogCopy.readMore.resolve(locale),
+                            dataAttributes = mapOf("blog-link" to post.slug),
+                            modifier = Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)
-                                .fontWeight(600),
-                            detailHref,
-                            "_self",
-                            "",
-                            false,
-                            false,
-                            "",
-                            "",
-                            {}
+                                .fontWeight(600)
                         )
                     }
                 }
@@ -112,19 +107,14 @@ fun BlogTeaserSection(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.FlexEnd)
             ) {
-                Link(
-                    BlogCopy.viewAll.resolve(locale),
-                    Modifier()
+                AnchorLink(
+                    href = blogListHref(locale),
+                    dataHref = blogListHref(locale),
+                    label = BlogCopy.viewAll.resolve(locale),
+                    dataAttributes = mapOf("blog-link" to "view-all"),
+                    modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .fontWeight(600),
-                    blogListHref(locale),
-                    "_self",
-                    "",
-                    isExternal = false,
-                    isNoFollow = false,
-                    ariaLabel = "",
-                    ariaDescribedBy = "",
-                    content = {}
+                        .fontWeight(600)
                 )
             }
         }

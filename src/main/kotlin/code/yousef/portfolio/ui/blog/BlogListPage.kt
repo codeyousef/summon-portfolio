@@ -9,10 +9,10 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.Link
+import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifierExtras.flexDirection
+import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import java.time.format.DateTimeFormatter
@@ -91,19 +91,14 @@ fun BlogListPage(
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .lineHeight(1.7)
                         )
-                        Link(
-                            BlogListCopy.readMore.resolve(locale),
-                            Modifier()
+                        AnchorLink(
+                            href = blogDetailHref(locale, post.slug),
+                            dataHref = blogDetailHref(locale, post.slug),
+                            label = BlogListCopy.readMore.resolve(locale),
+                            dataAttributes = mapOf("blog-link" to post.slug),
+                            modifier = Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)
-                                .fontWeight(600),
-                            blogDetailHref(locale, post.slug),
-                            "_self",
-                            "",
-                            isExternal = false,
-                            isNoFollow = false,
-                            ariaLabel = "",
-                            ariaDescribedBy = "",
-                            content = {}
+                                .fontWeight(600)
                         )
                     }
                 }

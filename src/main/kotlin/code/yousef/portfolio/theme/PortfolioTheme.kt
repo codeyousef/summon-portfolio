@@ -4,17 +4,17 @@ import code.yousef.summon.extensions.px
 
 object PortfolioTheme {
     object Colors {
-        const val BACKGROUND = "#050505"
-        const val BACKGROUND_ALT = "#0b0b0f"
-        const val SURFACE = "rgba(12, 12, 18, 0.85)"
-        const val SURFACE_STRONG = "rgba(18, 18, 24, 0.95)"
-        const val BORDER = "rgba(255, 255, 255, 0.08)"
-        const val BORDER_STRONG = "rgba(255, 255, 255, 0.16)"
-        const val TEXT_PRIMARY = "#f8f8ff"
-        const val TEXT_SECONDARY = "rgba(248, 248, 255, 0.72)"
-        const val ACCENT = "#B9314F"
-        const val ACCENT_ALT = "#9F7AEA"
-        const val ACCENT_GLOW = "rgba(191, 99, 255, 0.35)"
+        const val BACKGROUND = "#0a0b0d"
+        const val BACKGROUND_ALT = "#0f0f14"
+        const val SURFACE = "rgba(255, 255, 255, 0.06)"
+        const val SURFACE_STRONG = "rgba(255, 255, 255, 0.12)"
+        const val GLASS = "rgba(255, 255, 255, 0.08)"
+        const val BORDER = "#ffffff18"
+        const val BORDER_STRONG = "#ffffff24"
+        const val TEXT_PRIMARY = "#eaeaf0"
+        const val TEXT_SECONDARY = "#a7a7b3"
+        const val ACCENT = "#b01235"
+        const val ACCENT_ALT = "#ff3b6a"
         const val SUCCESS = "#3dd598"
         const val WARNING = "#fbbf24"
         const val DANGER = "#ff4d4d"
@@ -39,9 +39,9 @@ object PortfolioTheme {
     }
 
     object Shadows {
-        const val LOW = "0 4px 30px rgba(0, 0, 0, 0.35)"
-        const val MEDIUM = "0 20px 50px rgba(5, 5, 10, 0.55)"
-        const val HIGH = "0 30px 120px rgba(12, 8, 20, 0.75)"
+        const val LOW = "0 10px 40px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.35)"
+        const val MEDIUM = "0 20px 60px rgba(0,0,0,.55)"
+        const val HIGH = "0 30px 120px rgba(0,0,0,.65)"
     }
 
     object Motion {
@@ -57,9 +57,10 @@ object PortfolioTheme {
     }
 
     object Gradients {
-        const val HERO = "radial-gradient(circle at 20% 20%, rgba(159, 122, 234, 0.35), transparent 55%), " +
-                "radial-gradient(circle at 80% 0%, rgba(185, 49, 79, 0.45), transparent 45%), " +
-                "linear-gradient(180deg, rgba(5,5,10,0.95) 0%, rgba(5,5,5,0.8) 50%, #050505 100%)"
-        const val ACCENT = "linear-gradient(120deg, #B9314F, #9F7AEA)"
+        const val HERO =
+            "radial-gradient(1200px 900px at 25% 12%, #15161c 0%, ${Colors.BACKGROUND} 55%), ${Colors.BACKGROUND_ALT}"
+        const val ACCENT = "linear-gradient(180deg, ${Colors.ACCENT_ALT}, ${Colors.ACCENT})"
+        const val CARD = "linear-gradient(180deg, #111318, #0f1116)"
+        const val GLASS = "linear-gradient(180deg, #ffffff10, #ffffff06)"
     }
 }
