@@ -108,6 +108,9 @@ fun Route.portfolioRoutes(
     get("/admin") {
         call.respondRedirect("/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
     }
+    get("/admin/") {
+        call.respondRedirect("/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
+    }
     get("/admin/{section}") {
         val section = call.parameters["section"].toAdminSection()
         val content = contentService.load()
@@ -122,6 +125,14 @@ fun Route.portfolioRoutes(
         call.respondSummonPage(page)
     }
     get("/{locale}/admin") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.respondRedirect(locale.adminRedirectPath(AdminSectionPage.PROJECTS))
+        }
+    }
+    get("/{locale}/admin/") {
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -166,7 +177,12 @@ fun Route.portfolioRoutes(
         call.handleBlogDelete(adminContentService, "/admin/${AdminSectionPage.BLOG.pathSegment()}")
     }
     get("/{locale}") {
-        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        val rawLocale = call.parameters["locale"]?.lowercase()
+        if (rawLocale == "admin") {
+            call.respondRedirect("/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
+            return@get
+        }
+        val locale = rawLocale?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
         } else {

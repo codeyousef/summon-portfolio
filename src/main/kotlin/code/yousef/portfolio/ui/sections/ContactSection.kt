@@ -6,7 +6,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.forms.*
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
@@ -95,46 +95,10 @@ fun ContactSection(
 
 @Composable
 private fun ContactForm(locale: PortfolioLocale, action: String) {
-    val labelStyles =
-        "display:flex;justify-content:space-between;align-items:center;font-size:0.9rem;font-weight:600;color:${PortfolioTheme.Colors.TEXT_PRIMARY};"
-    val optionalBadge = ContactCopy.optional.resolve(locale)
-    val optionalChip =
-        "<span style=\"font-size:0.75rem;color:${PortfolioTheme.Colors.TEXT_SECONDARY};font-weight:500\">$optionalBadge</span>"
-    val inputStyles =
-        "width:100%;padding:14px 18px;border:1px solid ${PortfolioTheme.Colors.BORDER};border-radius:16px;background:${PortfolioTheme.Colors.BACKGROUND_ALT};color:${PortfolioTheme.Colors.TEXT_PRIMARY};font-size:1rem;box-shadow:${PortfolioTheme.Shadows.LOW};"
-    val textareaStyles = "$inputStyles min-height:160px;resize:vertical;"
-    val buttonStyles =
-        "width:100%;padding:16px;border:none;border-radius:16px;background:${PortfolioTheme.Gradients.ACCENT};color:#ffffff;font-weight:700;font-size:1rem;cursor:pointer;box-shadow:${PortfolioTheme.Shadows.MEDIUM};"
-    val formHtml = buildString {
-        append(
-            """
-            <form method="post" action="$action" style="display:flex;flex-direction:column;gap:16px;">
-                <label style="$labelStyles">${ContactCopy.name.resolve(locale)} *</label>
-                <input type="text" name="name" required style="$inputStyles" placeholder="${
-                ContactCopy.name.resolve(
-                    locale
-                )
-            }" autocomplete="name" />
-                <label style="$labelStyles">${ContactCopy.email.resolve(locale)} $optionalChip</label>
-                <input type="email" name="email" style="$inputStyles" placeholder="${ContactCopy.email.resolve(locale)}" autocomplete="email" />
-                <label style="$labelStyles">${ContactCopy.whatsapp.resolve(locale)} $optionalChip</label>
-                <input type="text" name="whatsapp" style="$inputStyles" placeholder="${
-                ContactCopy.whatsapp.resolve(
-                    locale
-                )
-            }" autocomplete="tel" />
-                <label style="$labelStyles">${ContactCopy.requirements.resolve(locale)} *</label>
-                <textarea name="requirements" required style="$textareaStyles" placeholder="${
-                ContactCopy.requirements.resolve(
-                    locale
-                )
-            }"></textarea>
-                <button type="submit" style="$buttonStyles">${ContactCopy.submit.resolve(locale)}</button>
-            </form>
-            """.trimIndent()
-        )
-    }
-    RawHtml(
+    val optionalLabel = ContactCopy.optional.resolve(locale)
+    FormStyleSheet()
+    Form(
+        action = action,
         modifier = Modifier()
             .display(Display.Flex)
             .flexDirection(FlexDirection.Column)
@@ -145,10 +109,45 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .backdropBlur(18.px),
-        sanitize = true
+            .backdropBlur(18.px)
     ) {
-        append(formHtml)
+        FormTextField(
+            name = "name",
+            label = ContactCopy.name.resolve(locale),
+            required = true,
+            placeholder = ContactCopy.name.resolve(locale),
+            autoComplete = "name",
+            optionalLabel = optionalLabel
+        )
+        FormTextField(
+            name = "email",
+            label = ContactCopy.email.resolve(locale),
+            type = FormTextFieldType.EMAIL,
+            placeholder = ContactCopy.email.resolve(locale),
+            autoComplete = "email",
+            optionalLabel = optionalLabel
+        )
+        FormTextField(
+            name = "whatsapp",
+            label = ContactCopy.whatsapp.resolve(locale),
+            placeholder = ContactCopy.whatsapp.resolve(locale),
+            autoComplete = "tel",
+            inputMode = "tel",
+            optionalLabel = optionalLabel
+        )
+        FormTextArea(
+            name = "requirements",
+            label = ContactCopy.requirements.resolve(locale),
+            required = true,
+            placeholder = ContactCopy.requirements.resolve(locale),
+            minHeight = "180px",
+            optionalLabel = optionalLabel
+        )
+        FormButton(
+            text = ContactCopy.submit.resolve(locale),
+            tone = FormButtonTone.ACCENT,
+            fullWidth = true
+        )
     }
 }
 @Composable

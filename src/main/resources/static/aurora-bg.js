@@ -114,10 +114,28 @@ window.addEventListener('mousemove', (e) => {
 }, {passive: true});
 document.getElementById('palette')?.addEventListener('click', () => setPalette(paletteIndex + 1));
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') {
-        e.preventDefault();
-        setPalette(paletteIndex + 1);
+    if (e.code !== 'Space') {
+        return;
     }
+
+    const active = document.activeElement;
+    const activeTag = typeof active?.tagName === 'string' ? active.tagName.toLowerCase() : '';
+    const targetTag = typeof e.target?.tagName === 'string' ? e.target.tagName.toLowerCase() : '';
+    const typingContext =
+        activeTag === 'input' ||
+        activeTag === 'textarea' ||
+        targetTag === 'input' ||
+        targetTag === 'textarea' ||
+        active?.isContentEditable === true ||
+        e.target?.isContentEditable === true;
+
+    if (typingContext || window.location.pathname.startsWith('/admin')) {
+        // Allow native spacebar behavior (typing, scrolling, etc.)
+        return;
+    }
+
+    e.preventDefault();
+    setPalette(paletteIndex + 1);
 });
 
 init();

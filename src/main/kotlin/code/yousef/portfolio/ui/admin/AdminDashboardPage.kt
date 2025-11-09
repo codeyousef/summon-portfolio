@@ -10,8 +10,9 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.display.Text
+import code.yousef.summon.components.forms.*
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
@@ -21,9 +22,11 @@ import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.runtime.LocalPlatformRenderer
+import code.yousef.summon.runtime.PlatformRenderer
+import code.yousef.summon.runtime.setPlatformRenderer
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
@@ -63,9 +66,9 @@ fun AdminDashboardPage(
                         title = "Projects (${content.projects.size})",
                         description = "Edit layer metadata, ordering, and featured state."
                     ) {
-                        RawHtml(projectFormHtml(adminBasePath, null))
+                        AdminProjectForm(adminBasePath, null)
                         content.projects.sortedBy { it.order }.forEach { project ->
-                            RawHtml(projectFormHtml(adminBasePath, project))
+                            AdminProjectForm(adminBasePath, project)
                         }
                     }
                 }
@@ -78,9 +81,9 @@ fun AdminDashboardPage(
                         title = "Services (${content.services.size})",
                         description = "Create or edit published service offerings."
                     ) {
-                        RawHtml(serviceFormHtml(adminBasePath, null))
+                        AdminServiceForm(adminBasePath, null)
                         content.services.sortedBy { it.order }.forEach { service ->
-                            RawHtml(serviceFormHtml(adminBasePath, service))
+                            AdminServiceForm(adminBasePath, service)
                         }
                     }
                 }
@@ -93,9 +96,9 @@ fun AdminDashboardPage(
                         title = "Blog Posts (${content.blogPosts.size})",
                         description = "Publish long-form thoughts and release notes."
                     ) {
-                        RawHtml(blogFormHtml(adminBasePath, null))
+                        AdminBlogForm(adminBasePath, null)
                         content.blogPosts.sortedByDescending { it.publishedAt }.forEach { post ->
-                            RawHtml(blogFormHtml(adminBasePath, post))
+                            AdminBlogForm(adminBasePath, post)
                         }
                     }
                 }
@@ -165,7 +168,8 @@ fun AdminDashboardPage(
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 AppHeader(locale = locale, onRequestServices = {})
-                RawHtml(adminFormStyles())
+                FormStyleSheet()
+                AdminFormCss()
                 activeContent()
             }
         }
@@ -176,7 +180,7 @@ fun AdminDashboardPage(
 private fun AdminCard(
     title: String,
     description: String,
-    content: () -> Unit
+    content: @Composable () -> Unit
 ) {
     Column(
         modifier = Modifier()
@@ -280,250 +284,388 @@ private fun AdminSection(id: String, content: @Composable () -> Unit) {
     }
 }
 
-private fun adminFormStyles(): String = """
-    <style>
-      .admin-form {
-        margin-top: 12px;
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 14px;
-        padding: 12px 14px;
-        background: rgba(255,255,255,0.02);
-      }
-      .admin-form summary {
-        cursor: pointer;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-      }
-      .admin-form form {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-top: 12px;
-      }
-      .admin-form label {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-size: 0.85rem;
-      }
-      .admin-form input[type="text"],
-      .admin-form input[type="number"],
-      .admin-form input[type="date"],
-      .admin-form select,
-      .admin-form textarea {
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid rgba(255,255,255,0.1);
-        background: rgba(9,9,12,0.4);
-        color: #f3f3ff;
-        font-family: inherit;
-      }
-      .admin-form textarea {
-        min-height: 80px;
-      }
-      .admin-form button {
-        margin-top: 6px;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 12px;
-        background: linear-gradient(120deg,#b01235,#ff3b6a);
-        color: white;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .admin-form .danger {
-        background: transparent;
-        color: #ff8080;
-        border: 1px solid rgba(255,128,128,0.4);
-      }
-    </style>
-""".trimIndent()
-
-private fun projectFormHtml(basePath: String, project: Project?): String {
-    val action = adminAction(basePath, "projects/upsert")
-    val deleteAction = adminAction(basePath, "projects/delete")
+@Composable
+private fun AdminProjectForm(basePath: String, project: Project?) {
     val isEditing = project != null
     val summary = if (isEditing) {
-        "✏️ Edit ${project!!.title.en.htmlEscape()}"
+        "✏️ Edit ${project!!.summaryLabel("Project")}"
     } else {
         "➕ Create Project"
     }
-    val featuredChecked = if (project?.featured == true) "checked" else ""
-    val technologies = project?.technologies?.joinToString(", ")?.htmlEscape().orEmpty()
-    val categoryOptions = ProjectCategory.entries.joinToString("") { category ->
-        val selected = if (category == project?.category) "selected" else ""
-        """<option value="${category.name}" $selected>${category.name.lowercase().replaceFirstChar { it.uppercase() }}</option>"""
+    val options = ProjectCategory.entries.map { category ->
+        FormSelectOption(
+            value = category.name,
+            label = category.name.lowercase().replaceFirstChar { it.uppercase() }
+        )
     }
-    val deleteHtml = if (isEditing) {
-        deleteFormHtml(deleteAction, project!!.id, "Delete ${project.title.en.htmlEscape()}")
-    } else ""
-    val openAttr = if (isEditing) "" else "open"
-    return """
-        <details class="admin-form" $openAttr>
-          <summary>$summary</summary>
-          <form method="post" action="$action">
-            <input type="hidden" name="id" value="${project?.id.htmlEscape()}">
-            <label>Slug
-              <input type="text" name="slug" value="${project?.slug.htmlEscape()}" required>
-            </label>
-            <label>Layer Label (EN)
-              <input type="text" name="layerLabel_en" value="${project?.layerLabel?.en.htmlEscape()}" required>
-            </label>
-            <label>Layer Label (AR)
-              <input type="text" name="layerLabel_ar" value="${project?.layerLabel?.ar.htmlEscape()}">
-            </label>
-            <label>Layer Name (EN)
-              <input type="text" name="layerName_en" value="${project?.layerName?.en.htmlEscape()}" required>
-            </label>
-            <label>Layer Name (AR)
-              <input type="text" name="layerName_ar" value="${project?.layerName?.ar.htmlEscape()}">
-            </label>
-            <label>Title (EN)
-              <input type="text" name="title_en" value="${project?.title?.en.htmlEscape()}" required>
-            </label>
-            <label>Title (AR)
-              <input type="text" name="title_ar" value="${project?.title?.ar.htmlEscape()}">
-            </label>
-            <label>Description (EN)
-              <textarea name="description_en" required>${project?.description?.en.htmlEscape()}</textarea>
-            </label>
-            <label>Description (AR)
-              <textarea name="description_ar">${project?.description?.ar.htmlEscape()}</textarea>
-            </label>
-            <label>Category
-              <select name="category">
-                $categoryOptions
-              </select>
-            </label>
-            <label>Order
-              <input type="number" name="order" value="${project?.order ?: 0}">
-            </label>
-            <label>Technologies (comma separated)
-              <input type="text" name="technologies" value="$technologies">
-            </label>
-            <label>
-              <span style="display:flex;align-items:center;gap:8px">
-                <input type="checkbox" name="featured" $featuredChecked>
-                <span>Featured on landing page</span>
-              </span>
-            </label>
-            <button type="submit">${if (isEditing) "Save Project" else "Create Project"}</button>
-          </form>
-          $deleteHtml
-        </details>
-    """.trimIndent()
+
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+        Form(
+            action = adminAction(basePath, "projects/upsert"),
+            hiddenFields = project?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
+        ) {
+            FormTextField(
+                name = "slug",
+                label = "Slug",
+                defaultValue = project?.slug.orEmpty(),
+                required = true,
+                helperText = "Used in URLs"
+            )
+            FormTextField(
+                name = "layerLabel_en",
+                label = "Layer Label (EN)",
+                defaultValue = project?.layerLabel?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "layerLabel_ar",
+                label = "Layer Label (AR)",
+                defaultValue = project?.layerLabel?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "layerName_en",
+                label = "Layer Name (EN)",
+                defaultValue = project?.layerName?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "layerName_ar",
+                label = "Layer Name (AR)",
+                defaultValue = project?.layerName?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "title_en",
+                label = "Title (EN)",
+                defaultValue = project?.title?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "title_ar",
+                label = "Title (AR)",
+                defaultValue = project?.title?.ar.orEmpty()
+            )
+            FormTextArea(
+                name = "description_en",
+                label = "Description (EN)",
+                defaultValue = project?.description?.en.orEmpty(),
+                required = true,
+                minHeight = "140px"
+            )
+            FormTextArea(
+                name = "description_ar",
+                label = "Description (AR)",
+                defaultValue = project?.description?.ar.orEmpty(),
+                minHeight = "140px"
+            )
+            FormSelect(
+                name = "category",
+                label = "Category",
+                options = options,
+                selectedValue = project?.category?.name
+            )
+            FormTextField(
+                name = "order",
+                label = "Order",
+                defaultValue = (project?.order ?: 0).toString(),
+                type = FormTextFieldType.NUMBER,
+                helperText = "Lower numbers appear first."
+            )
+            FormTextField(
+                name = "technologies",
+                label = "Technologies (comma separated)",
+                defaultValue = project?.technologies?.joinToString(", ").orEmpty()
+            )
+            FormCheckbox(
+                name = "featured",
+                label = "Featured on landing page",
+                checked = project?.featured == true,
+                description = "Surface this project in the hero slider"
+            )
+            FormButton(
+                text = if (isEditing) "Save Project" else "Create Project",
+                tone = FormButtonTone.ACCENT,
+                fullWidth = false
+            )
+        }
+        project?.let {
+            DeleteEntityForm(
+                basePath = basePath,
+                actionSuffix = "projects/delete",
+                id = it.id,
+                label = "Delete ${it.summaryLabel("Project")}"
+            )
+        }
+    }
 }
 
-private fun serviceFormHtml(basePath: String, service: Service?): String {
-    val action = adminAction(basePath, "services/upsert")
-    val deleteAction = adminAction(basePath, "services/delete")
+@Composable
+private fun AdminServiceForm(basePath: String, service: Service?) {
     val isEditing = service != null
     val summary = if (isEditing) {
-        "✏️ Edit ${service!!.title.en.htmlEscape()}"
+        "✏️ Edit ${service!!.summaryLabel("Service")}"
     } else {
         "➕ Create Service"
     }
-    val featuredChecked = if (service?.featured == true) "checked" else ""
-    val deleteHtml = if (isEditing) {
-        deleteFormHtml(deleteAction, service!!.id, "Delete ${service.title.en.htmlEscape()}")
-    } else ""
-    val openAttr = if (isEditing) "" else "open"
-    return """
-        <details class="admin-form" $openAttr>
-          <summary>$summary</summary>
-          <form method="post" action="$action">
-            <input type="hidden" name="id" value="${service?.id.htmlEscape()}">
-            <label>Title (EN)
-              <input type="text" name="title_en" value="${service?.title?.en.htmlEscape()}" required>
-            </label>
-            <label>Title (AR)
-              <input type="text" name="title_ar" value="${service?.title?.ar.htmlEscape()}">
-            </label>
-            <label>Description (EN)
-              <textarea name="description_en" required>${service?.description?.en.htmlEscape()}</textarea>
-            </label>
-            <label>Description (AR)
-              <textarea name="description_ar">${service?.description?.ar.htmlEscape()}</textarea>
-            </label>
-            <label>Order
-              <input type="number" name="order" value="${service?.order ?: 0}">
-            </label>
-            <label>
-              <span style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="featured" $featuredChecked><span>Featured service</span></span>
-            </label>
-            <button type="submit">${if (isEditing) "Save Service" else "Create Service"}</button>
-          </form>
-          $deleteHtml
-        </details>
-    """.trimIndent()
+
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+        Form(
+            action = adminAction(basePath, "services/upsert"),
+            hiddenFields = service?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
+        ) {
+            FormTextField(
+                name = "title_en",
+                label = "Title (EN)",
+                defaultValue = service?.title?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "title_ar",
+                label = "Title (AR)",
+                defaultValue = service?.title?.ar.orEmpty()
+            )
+            FormTextArea(
+                name = "description_en",
+                label = "Description (EN)",
+                defaultValue = service?.description?.en.orEmpty(),
+                required = true,
+                minHeight = "140px"
+            )
+            FormTextArea(
+                name = "description_ar",
+                label = "Description (AR)",
+                defaultValue = service?.description?.ar.orEmpty(),
+                minHeight = "140px"
+            )
+            FormTextField(
+                name = "order",
+                label = "Order",
+                defaultValue = (service?.order ?: 0).toString(),
+                type = FormTextFieldType.NUMBER
+            )
+            FormCheckbox(
+                name = "featured",
+                label = "Featured service",
+                checked = service?.featured == true
+            )
+            FormButton(
+                text = if (isEditing) "Save Service" else "Create Service",
+                tone = FormButtonTone.ACCENT
+            )
+        }
+        service?.let {
+            DeleteEntityForm(
+                basePath = basePath,
+                actionSuffix = "services/delete",
+                id = it.id,
+                label = "Delete ${it.summaryLabel("Service")}"
+            )
+        }
+    }
 }
 
-private fun blogFormHtml(basePath: String, post: BlogPost?): String {
-    val action = adminAction(basePath, "blog/upsert")
-    val deleteAction = adminAction(basePath, "blog/delete")
+@Composable
+private fun AdminBlogForm(basePath: String, post: BlogPost?) {
     val isEditing = post != null
     val summary = if (isEditing) {
-        "✏️ Edit ${post!!.title.en.htmlEscape()}"
+        "✏️ Edit ${post!!.summaryLabel("Post")}"
     } else {
         "➕ Create Blog Post"
     }
-    val featuredChecked = if (post?.featured == true) "checked" else ""
-    val deleteHtml = if (isEditing) {
-        deleteFormHtml(deleteAction, post!!.id, "Delete ${post.title.en.htmlEscape()}")
-    } else ""
-    val openAttr = if (isEditing) "" else "open"
-    return """
-        <details class="admin-form" $openAttr>
-          <summary>$summary</summary>
-          <form method="post" action="$action">
-            <input type="hidden" name="id" value="${post?.id.htmlEscape()}">
-            <label>Slug
-              <input type="text" name="slug" value="${post?.slug.htmlEscape()}" required>
-            </label>
-            <label>Title (EN)
-              <input type="text" name="title_en" value="${post?.title?.en.htmlEscape()}" required>
-            </label>
-            <label>Title (AR)
-              <input type="text" name="title_ar" value="${post?.title?.ar.htmlEscape()}">
-            </label>
-            <label>Excerpt (EN)
-              <textarea name="excerpt_en" required>${post?.excerpt?.en.htmlEscape()}</textarea>
-            </label>
-            <label>Excerpt (AR)
-              <textarea name="excerpt_ar">${post?.excerpt?.ar.htmlEscape()}</textarea>
-            </label>
-            <label>Content (EN)
-              <textarea name="content_en" required>${post?.content?.en.htmlEscape()}</textarea>
-            </label>
-            <label>Content (AR)
-              <textarea name="content_ar">${post?.content?.ar.htmlEscape()}</textarea>
-            </label>
-            <label>Published Date
-              <input type="date" name="published_at" value="${post?.publishedAt?.toString().htmlEscape()}" required>
-            </label>
-            <label>Author
-              <input type="text" name="author" value="${post?.author.htmlEscape()}" required>
-            </label>
-            <label>Tags (comma separated)
-              <input type="text" name="tags" value="${post?.tags?.joinToString(", ")?.htmlEscape().orEmpty()}">
-            </label>
-            <label>
-              <span style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="featured" $featuredChecked><span>Featured post</span></span>
-            </label>
-            <button type="submit">${if (isEditing) "Save Post" else "Publish Post"}</button>
-          </form>
-          $deleteHtml
-        </details>
-    """.trimIndent()
+
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+        Form(
+            action = adminAction(basePath, "blog/upsert"),
+            hiddenFields = post?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
+        ) {
+            FormTextField(
+                name = "slug",
+                label = "Slug",
+                defaultValue = post?.slug.orEmpty(),
+                required = true,
+                helperText = "Used in /blog/{slug}"
+            )
+            FormTextField(
+                name = "title_en",
+                label = "Title (EN)",
+                defaultValue = post?.title?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "title_ar",
+                label = "Title (AR)",
+                defaultValue = post?.title?.ar.orEmpty()
+            )
+            FormTextArea(
+                name = "excerpt_en",
+                label = "Excerpt (EN)",
+                defaultValue = post?.excerpt?.en.orEmpty(),
+                required = true,
+                minHeight = "120px"
+            )
+            FormTextArea(
+                name = "excerpt_ar",
+                label = "Excerpt (AR)",
+                defaultValue = post?.excerpt?.ar.orEmpty(),
+                minHeight = "120px"
+            )
+            MarkdownEditorField(
+                name = "content_en",
+                label = "Content (EN)",
+                defaultValue = post?.content?.en.orEmpty(),
+                required = true
+            )
+            MarkdownEditorField(
+                name = "content_ar",
+                label = "Content (AR)",
+                defaultValue = post?.content?.ar.orEmpty(),
+                showPreview = false
+            )
+            FormTextField(
+                name = "published_at",
+                label = "Published Date",
+                defaultValue = post?.publishedAt?.toString().orEmpty(),
+                required = true,
+                type = FormTextFieldType.DATE
+            )
+            FormTextField(
+                name = "author",
+                label = "Author",
+                defaultValue = post?.author.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "tags",
+                label = "Tags (comma separated)",
+                defaultValue = post?.tags?.joinToString(", ").orEmpty()
+            )
+            FormCheckbox(
+                name = "featured",
+                label = "Featured post",
+                checked = post?.featured == true
+            )
+            FormButton(
+                text = if (isEditing) "Save Post" else "Publish Post",
+                tone = FormButtonTone.ACCENT
+            )
+        }
+        post?.let {
+            DeleteEntityForm(
+                basePath = basePath,
+                actionSuffix = "blog/delete",
+                id = it.id,
+                label = "Delete ${it.summaryLabel("Post")}"
+            )
+        }
+    }
 }
 
-private fun deleteFormHtml(action: String, id: String, label: String): String =
-    """
-        <form method="post" action="$action">
-          <input type="hidden" name="id" value="${id.htmlEscape()}">
-          <button type="submit" class="danger">$label</button>
-        </form>
-    """.trimIndent()
+@Composable
+private fun DeleteEntityForm(
+    basePath: String,
+    actionSuffix: String,
+    id: String,
+    label: String
+) {
+    Form(
+        action = adminAction(basePath, actionSuffix),
+        hiddenFields = listOf(FormHiddenField("id", id))
+    ) {
+        FormButton(
+            text = label,
+            tone = FormButtonTone.DANGER
+        )
+    }
+}
+
+@Composable
+private fun AdminFormDisclosure(
+    summary: String,
+    defaultOpen: Boolean,
+    content: @Composable () -> Unit
+) {
+    val openAttr = if (defaultOpen) "open" else ""
+    val innerHtml = renderFragmentHtml(content)
+    RawHtml(
+        """
+        <details class="summon-admin-form" $openAttr>
+          <summary>${summary.htmlEscape()}</summary>
+          <div class="summon-admin-form-body">
+            $innerHtml
+          </div>
+        </details>
+        """.trimIndent(),
+        sanitize = false
+    )
+}
+
+@Composable
+private fun AdminFormCss() {
+    RawHtml(
+        """
+        <style>
+          details.summon-admin-form {
+            margin-top: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            background: rgba(12,14,20,0.65);
+            overflow: hidden;
+          }
+          details.summon-admin-form summary {
+            cursor: pointer;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            padding: 16px 20px;
+            list-style: none;
+            outline: none;
+          }
+          details.summon-admin-form summary::-webkit-details-marker {
+            display: none;
+          }
+          details.summon-admin-form[open] summary {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+          }
+          .summon-admin-form-body {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            background: rgba(255,255,255,0.015);
+          }
+        </style>
+        """.trimIndent()
+    )
+}
+
+private fun renderFragmentHtml(content: @Composable () -> Unit): String {
+    val previousRenderer = runCatching { LocalPlatformRenderer.current }.getOrNull()
+    val renderer = PlatformRenderer()
+    val document = try {
+        renderer.renderComposableRoot(content)
+    } finally {
+        previousRenderer?.let { setPlatformRenderer(it) }
+    }
+    val bodyStart = document.indexOf("<body")
+    if (bodyStart == -1) return document
+    val bodyOpenEnd = document.indexOf('>', bodyStart)
+    if (bodyOpenEnd == -1) return document.substring(bodyStart)
+    val bodyCloseStart = document.lastIndexOf("</body>")
+    if (bodyCloseStart == -1 || bodyCloseStart <= bodyOpenEnd) {
+        return document.substring(bodyOpenEnd + 1)
+    }
+    return document.substring(bodyOpenEnd + 1, bodyCloseStart)
+}
+
+private fun Project.summaryLabel(fallback: String): String =
+    title.en.orFallback(slug).orFallback(fallback)
+
+private fun Service.summaryLabel(fallback: String): String =
+    title.en.orFallback(id).orFallback(fallback)
+
+private fun BlogPost.summaryLabel(fallback: String): String =
+    title.en.orFallback(slug).orFallback(fallback)
+
+private fun String?.orFallback(fallback: String): String =
+    if (this.isNullOrBlank()) fallback else this
 
 private fun adminAction(basePath: String, suffix: String): String =
     "$basePath/$suffix"
