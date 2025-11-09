@@ -13,9 +13,10 @@ import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.components.navigation.ButtonLink
+import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.AttributeModifiers.buttonType
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
@@ -117,9 +118,10 @@ fun ServicesOverlay(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.FlexEnd)
             ) {
-                Button(
-                    onClick = null,
-                    label = ServicesOverlayCopy.cta.resolve(locale),
+                val ctaLabel = ServicesOverlayCopy.cta.resolve(locale)
+                ButtonLink(
+                    label = ctaLabel,
+                    href = contactHref,
                     modifier = Modifier()
                         .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
@@ -127,12 +129,16 @@ fun ServicesOverlay(
                         .borderRadius(PortfolioTheme.Radii.pill)
                         .fontWeight(600)
                         .lineHeight(1.0)
-                        .whiteSpace(WhiteSpace.NoWrap)
-                        .buttonType(ButtonType.Button)
-                        .dataAttribute("href", contactHref),
-                    variant = ButtonVariant.PRIMARY,
-                    disabled = false,
-                    dataAttributes = mapOf("cta" to "services-overlay")
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("cta" to "services-overlay"),
+                    navigationMode = LinkNavigationMode.Native
                 )
             }
         }

@@ -91,9 +91,10 @@ fun BlogListPage(
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .lineHeight(1.7)
                         )
+                        val readMoreLabel = BlogListCopy.readMore.resolve(locale)
                         AnchorLink(
                             href = blogDetailHref(locale, post.slug),
-                            label = BlogListCopy.readMore.resolve(locale),
+                            label = readMoreLabel,
                             dataAttributes = mapOf("blog-link" to post.slug),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)

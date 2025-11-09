@@ -89,9 +89,10 @@ fun BlogTeaserSection(
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .lineHeight(1.7)
                         )
+                        val readMoreLabel = BlogCopy.readMore.resolve(locale)
                         AnchorLink(
                             href = detailHref,
-                            label = BlogCopy.readMore.resolve(locale),
+                            label = readMoreLabel,
                             dataAttributes = mapOf("blog-link" to post.slug),
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.ACCENT_ALT)
@@ -107,9 +108,10 @@ fun BlogTeaserSection(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.FlexEnd)
             ) {
+                val viewAllLabel = BlogCopy.viewAll.resolve(locale)
                 AnchorLink(
                     href = blogListHref(locale),
-                    label = BlogCopy.viewAll.resolve(locale),
+                    label = viewAllLabel,
                     dataAttributes = mapOf("blog-link" to "view-all"),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)

@@ -130,15 +130,47 @@ if (year) {
 
 for (const btn of document.querySelectorAll('[data-href]')) {
     btn.addEventListener('click', (e) => {
-        const href = e.currentTarget.getAttribute('data-href');
-        if (!href) return;
-        if (href.startsWith('#')) {
-            document.querySelector(href)?.scrollIntoView({behavior: 'smooth'});
+        const target = e.currentTarget;
+        const rawHref = target.getAttribute('data-href') || target.getAttribute('href');
+        if (!rawHref) return;
+
+        let hashTarget = null;
+        if (rawHref.startsWith('#')) {
+            hashTarget = rawHref;
         } else {
-            window.open(href, '_blank');
+            const hashIndex = rawHref.indexOf('#');
+            if (hashIndex >= 0) {
+                hashTarget = rawHref.slice(hashIndex);
+            }
         }
+
+        if (target.tagName === 'A') {
+            e.preventDefault();
+        }
+
+        if (hashTarget) {
+            const section = document.querySelector(hashTarget);
+            if (section) {
+                section.scrollIntoView({behavior: 'smooth', block: 'start'});
+                return;
+            }
+        }
+
+        window.location.href = rawHref;
     });
 }
+
+const adoptLinkLabels = () => {
+    document.querySelectorAll('a').forEach((link) => {
+        if (link.textContent.trim().length > 0) return;
+        const sibling = link.nextElementSibling;
+        if (!sibling || sibling.tagName !== 'SPAN') return;
+        if (!sibling.textContent.trim().length) return;
+        link.appendChild(sibling);
+    });
+};
+
+adoptLinkLabels();
 
 for (const btn of document.querySelectorAll('[data-copy]')) {
     btn.addEventListener('click', () => {

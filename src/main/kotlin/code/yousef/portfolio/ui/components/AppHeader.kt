@@ -8,9 +8,10 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
-import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
@@ -31,9 +32,9 @@ private data class NavItem(
 
 private val defaultNavItems = listOf(
     NavItem(LocalizedText("About", "حول"), NavTarget.Section("hero")),
-    NavItem(LocalizedText("Projects", "المشاريع"), NavTarget.Page("/projects")),
-    NavItem(LocalizedText("Services", "الخدمات"), NavTarget.Page("/services")),
-    NavItem(LocalizedText("Blog", "المدونة"), NavTarget.Page("/blog")),
+    NavItem(LocalizedText("Projects", "المشاريع"), NavTarget.Section("projects")),
+    NavItem(LocalizedText("Services", "الخدمات"), NavTarget.Section("services")),
+    NavItem(LocalizedText("Blog", "المدونة"), NavTarget.Section("blog")),
     NavItem(LocalizedText("Contact", "اتصل"), NavTarget.Section("contact"))
 )
 
@@ -76,6 +77,10 @@ fun AppHeader(
             navItems.forEach { item ->
                 val href = item.target.href(locale)
                 val label = item.label.resolve(locale)
+                val navigationMode = when (item.target) {
+                    is NavTarget.Section -> LinkNavigationMode.Client
+                    is NavTarget.Page -> LinkNavigationMode.Native
+                }
                 navLink(
                     label = label,
                     href = href,
@@ -89,9 +94,9 @@ fun AppHeader(
                         .borderRadius(PortfolioTheme.Radii.pill)
                         .opacity(0.9F),
                     dataAttributes = mapOf("nav" to label.lowercase()),
-                    useClientNavigation = item.target is NavTarget.Section
-                )
-            }
+                navigationMode = navigationMode
+            )
+        }
         }
 
         Row(
@@ -156,7 +161,7 @@ private fun LocaleToggleButton(locale: PortfolioLocale, current: PortfolioLocale
             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
             .borderRadius(PortfolioTheme.Radii.pill),
         dataAttributes = mapOf("locale" to locale.code),
-        useClientNavigation = false
+        navigationMode = LinkNavigationMode.Native
     )
 }
 
@@ -177,30 +182,20 @@ private fun navLink(
     href: String,
     modifier: Modifier,
     dataAttributes: Map<String, String>,
-    useClientNavigation: Boolean
+    navigationMode: LinkNavigationMode
 ) {
-    if (useClientNavigation) {
-        Box(
-            modifier = modifier
-                .attribute("role", "link")
-                .attribute("tabindex", "0")
-                .dataAttribute("href", href)
-        ) {
-            Text(text = label)
-        }
-    } else {
-        AnchorLink(
-            label = label,
-            href = href,
-            modifier = modifier,
-            target = null,
-            rel = null,
-            title = null,
-            id = null,
-            ariaLabel = null,
-            ariaDescribedBy = null,
-            dataHref = null,
-            dataAttributes = dataAttributes
-        )
-    }
+    AnchorLink(
+        label = label,
+        href = href,
+        modifier = modifier,
+        target = null,
+        rel = null,
+        title = null,
+        id = null,
+        ariaLabel = null,
+        ariaDescribedBy = null,
+        dataHref = null,
+        dataAttributes = dataAttributes,
+        navigationMode = navigationMode
+    )
 }

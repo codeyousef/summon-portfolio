@@ -18,12 +18,13 @@ import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.components.navigation.ButtonLink
+import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.core.style.Color
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.extensions.vw
 import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.AttributeModifiers.buttonType
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
@@ -395,6 +396,11 @@ fun PortfolioFooter(locale: PortfolioLocale) {
         ) {
             footerLinks.forEach { (label, href) ->
                 val resolvedLabel = label.resolve(locale)
+                val navigationMode = if (href.contains("#")) {
+                    LinkNavigationMode.Client
+                } else {
+                    LinkNavigationMode.Native
+                }
                 AnchorLink(
                     label = resolvedLabel,
                     href = href,
@@ -414,7 +420,8 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                     ariaLabel = null,
                     ariaDescribedBy = null,
                     dataHref = null,
-                    dataAttributes = mapOf("footer-link" to resolvedLabel.lowercase())
+                    dataAttributes = mapOf("footer-link" to resolvedLabel.lowercase()),
+                    navigationMode = navigationMode
                 )
             }
         }
@@ -437,9 +444,9 @@ fun PortfolioFooter(locale: PortfolioLocale) {
 
 @Composable
 private fun PrimaryButton(text: String, href: String, modifier: Modifier = Modifier()) {
-    Button(
-        onClick = null,
+    ButtonLink(
         label = text,
+        href = href,
         modifier = modifier
             .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
@@ -456,20 +463,24 @@ private fun PrimaryButton(text: String, href: String, modifier: Modifier = Modif
             .fontWeight(800)
             .letterSpacing(0.3.px)
             .lineHeight(1.0)
-            .whiteSpace(WhiteSpace.NoWrap)
-            .buttonType(ButtonType.Button)
-            .dataAttribute("href", href),
-        variant = ButtonVariant.PRIMARY,
-        disabled = false,
-        dataAttributes = mapOf("cta" to "hero-primary")
+            .whiteSpace(WhiteSpace.NoWrap),
+        target = null,
+        rel = null,
+        title = null,
+        id = null,
+        ariaLabel = null,
+        ariaDescribedBy = null,
+        dataHref = null,
+        dataAttributes = mapOf("cta" to "hero-primary"),
+        navigationMode = LinkNavigationMode.Native
     )
 }
 
 @Composable
 private fun GhostButton(text: String, href: String, modifier: Modifier = Modifier()) {
-    Button(
-        onClick = null,
+    ButtonLink(
         label = text,
+        href = href,
         modifier = modifier
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
@@ -483,12 +494,16 @@ private fun GhostButton(text: String, href: String, modifier: Modifier = Modifie
             .justifyContent(JustifyContent.Center)
             .borderRadius(PortfolioTheme.Radii.md)
             .lineHeight(1.0)
-            .whiteSpace(WhiteSpace.NoWrap)
-            .buttonType(ButtonType.Button)
-            .dataAttribute("href", href),
-        variant = ButtonVariant.SECONDARY,
-        disabled = false,
-        dataAttributes = mapOf("cta" to "hero-secondary")
+            .whiteSpace(WhiteSpace.NoWrap),
+        target = null,
+        rel = null,
+        title = null,
+        id = null,
+        ariaLabel = null,
+        ariaDescribedBy = null,
+        dataHref = null,
+        dataAttributes = mapOf("cta" to "hero-secondary"),
+        navigationMode = LinkNavigationMode.Native
     )
 }
 

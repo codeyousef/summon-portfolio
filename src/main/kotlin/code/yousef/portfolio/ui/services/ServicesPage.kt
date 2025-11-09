@@ -23,7 +23,7 @@ fun ServicesPage(
     locale: PortfolioLocale,
     servicesModalOpen: Boolean = false
 ) {
-    val contactHref = if (locale == PortfolioLocale.EN) "/#contact" else "/${locale.code}#contact"
+    val contactHref = "#contact"
     val servicesModalState = rememberMutableStateOf(servicesModalOpen)
     val openServicesModal = { servicesModalState.value = true }
     val closeServicesModal = { servicesModalState.value = false }

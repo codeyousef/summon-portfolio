@@ -97,9 +97,10 @@ fun BlogDetailPage(
                 }
             }
 
+            val backLabel = BlogDetailCopy.back.resolve(locale)
             AnchorLink(
                 href = blogListHref(locale),
-                label = BlogDetailCopy.back.resolve(locale),
+                label = backLabel,
                 dataAttributes = mapOf("blog-link" to "back"),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
@@ -131,9 +132,10 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
+            val backLabel = BlogDetailCopy.back.resolve(locale)
             AnchorLink(
                 href = blogListHref(locale),
-                label = BlogDetailCopy.back.resolve(locale),
+                label = backLabel,
                 dataAttributes = mapOf("blog-link" to "not-found-back"),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.ACCENT_ALT)
