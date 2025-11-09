@@ -83,7 +83,17 @@ fun FormStyleSheet() {
             display: flex;
             flex-direction: column;
             gap: 28px;
-            padding: 12px 12px 28px;
+            padding: 24px 24px 32px;
+            box-sizing: border-box;
+          }
+          @media (min-width: 900px) {
+            .summon-form-stack {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+            .summon-form-group.full-width {
+              grid-column: 1 / -1;
+            }
           }
           .summon-form-group {
             display: flex;
@@ -156,6 +166,14 @@ fun FormStyleSheet() {
             color: #eaeaf0;
             border: 1px solid rgba(255,255,255,0.12);
           }
+          .summon-form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+          }
+          .summon-form-actions.full-width {
+            justify-content: stretch;
+          }
         </style>
         """.trimIndent()
     )
@@ -215,7 +233,8 @@ fun FormTextField(
     autoComplete: String? = null,
     inputMode: String? = null,
     readonly: Boolean = false,
-    dataAttributes: Map<String, String> = emptyMap()
+    dataAttributes: Map<String, String> = emptyMap(),
+    fullWidth: Boolean = false
 ) {
     val fieldId = rememberFieldId(name)
     FormFieldGroup(
@@ -224,7 +243,8 @@ fun FormTextField(
         required = required,
         description = description,
         optionalLabel = optionalLabel,
-        helperText = helperText
+        helperText = helperText,
+        fullWidth = fullWidth
     ) {
         RawHtml(
             buildString {
@@ -268,7 +288,8 @@ fun FormTextArea(
     description: String? = null,
     helperText: String? = null,
     minHeight: String = "160px",
-    dataAttributes: Map<String, String> = emptyMap()
+    dataAttributes: Map<String, String> = emptyMap(),
+    fullWidth: Boolean = true
 ) {
     val fieldId = rememberFieldId(name)
     FormFieldGroup(
@@ -277,7 +298,8 @@ fun FormTextArea(
         required = required,
         description = description,
         optionalLabel = optionalLabel,
-        helperText = helperText
+        helperText = helperText,
+        fullWidth = fullWidth
     ) {
         RawHtml(
             buildString {
@@ -313,7 +335,8 @@ fun FormSelect(
     required: Boolean = false,
     optionalLabel: String? = "Optional",
     description: String? = null,
-    helperText: String? = null
+    helperText: String? = null,
+    fullWidth: Boolean = false
 ) {
     val fieldId = rememberFieldId(name)
     FormFieldGroup(
@@ -322,7 +345,8 @@ fun FormSelect(
         required = required,
         description = description,
         optionalLabel = optionalLabel,
-        helperText = helperText
+        helperText = helperText,
+        fullWidth = fullWidth
     ) {
         RawHtml(
             buildString {
@@ -361,7 +385,7 @@ fun FormCheckbox(
     val fieldId = rememberFieldId(name)
     Column(
         modifier = Modifier()
-            .addFormClass("summon-form-group")
+            .addFormClass("summon-form-group full-width")
     ) {
         RawHtml(
             buildString {
@@ -405,6 +429,9 @@ fun FormButton(
     }
     RawHtml(
         buildString {
+            val actionsClass =
+                if (fullWidth) "summon-form-group full-width summon-form-actions full-width" else "summon-form-group full-width summon-form-actions"
+            append("<div class=\"$actionsClass\">")
             append("<button type=\"${type.value}\"")
             append(" class=\"summon-form-button $toneClass\"")
             if (fullWidth) {
@@ -416,6 +443,7 @@ fun FormButton(
             append(">")
             append(text.htmlEscape())
             append("</button>")
+            append("</div>")
         }
     )
 }
@@ -438,7 +466,7 @@ fun MarkdownEditorField(
 ) {
     Column(
         modifier = Modifier()
-            .addFormClass("summon-form-group")
+            .addFormClass("summon-form-group full-width")
             .gap("12px")
     ) {
         FormTextArea(
@@ -488,11 +516,17 @@ private fun FormFieldGroup(
     description: String?,
     optionalLabel: String?,
     helperText: String?,
+    fullWidth: Boolean = false,
     content: @Composable () -> Unit
 ) {
     Column(
         modifier = Modifier()
-            .addFormClass("summon-form-group")
+            .addFormClass(
+                buildString {
+                    append("summon-form-group")
+                    if (fullWidth) append(" full-width")
+                }
+            )
     ) {
         Row(
             modifier = Modifier()

@@ -117,7 +117,8 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
             required = true,
             placeholder = ContactCopy.name.resolve(locale),
             autoComplete = "name",
-            optionalLabel = optionalLabel
+            optionalLabel = optionalLabel,
+            fullWidth = true
         )
         FormTextField(
             name = "email",
@@ -125,7 +126,8 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
             type = FormTextFieldType.EMAIL,
             placeholder = ContactCopy.email.resolve(locale),
             autoComplete = "email",
-            optionalLabel = optionalLabel
+            optionalLabel = optionalLabel,
+            fullWidth = true
         )
         FormTextField(
             name = "whatsapp",
@@ -133,7 +135,8 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
             placeholder = ContactCopy.whatsapp.resolve(locale),
             autoComplete = "tel",
             inputMode = "tel",
-            optionalLabel = optionalLabel
+            optionalLabel = optionalLabel,
+            fullWidth = true
         )
         FormTextArea(
             name = "requirements",
@@ -141,7 +144,8 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
             required = true,
             placeholder = ContactCopy.requirements.resolve(locale),
             minHeight = "180px",
-            optionalLabel = optionalLabel
+            optionalLabel = optionalLabel,
+            fullWidth = true
         )
         FormButton(
             text = ContactCopy.submit.resolve(locale),

@@ -361,7 +361,8 @@ private fun AdminProjectForm(basePath: String, project: Project?) {
                 name = "category",
                 label = "Category",
                 options = options,
-                selectedValue = project?.category?.name
+                selectedValue = project?.category?.name,
+                fullWidth = true
             )
             FormTextField(
                 name = "order",
@@ -373,7 +374,8 @@ private fun AdminProjectForm(basePath: String, project: Project?) {
             FormTextField(
                 name = "technologies",
                 label = "Technologies (comma separated)",
-                defaultValue = project?.technologies?.joinToString(", ").orEmpty()
+                defaultValue = project?.technologies?.joinToString(", ").orEmpty(),
+                fullWidth = true
             )
             FormCheckbox(
                 name = "featured",
@@ -536,7 +538,8 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
             FormTextField(
                 name = "tags",
                 label = "Tags (comma separated)",
-                defaultValue = post?.tags?.joinToString(", ").orEmpty()
+                defaultValue = post?.tags?.joinToString(", ").orEmpty(),
+                fullWidth = true
             )
             FormCheckbox(
                 name = "featured",
@@ -603,34 +606,50 @@ private fun AdminFormCss() {
     RawHtml(
         """
         <style>
-          details.summon-admin-form {
-            margin-top: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 20px;
-            background: rgba(12,14,20,0.65);
-            overflow: hidden;
-          }
-          details.summon-admin-form summary {
-            cursor: pointer;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            padding: 16px 20px;
-            list-style: none;
-            outline: none;
-          }
-          details.summon-admin-form summary::-webkit-details-marker {
-            display: none;
-          }
-          details.summon-admin-form[open] summary {
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-          }
-          .summon-admin-form-body {
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 28px;
-            background: rgba(255,255,255,0.015);
-          }
+  details.summon-admin-form {
+    margin-top: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    background: rgba(12,14,20,0.65);
+    backdrop-filter: blur(24px);
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.45);
+  }
+  details.summon-admin-form summary {
+    cursor: pointer;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 18px 28px;
+    list-style: none;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  details.summon-admin-form summary::-webkit-details-marker {
+    display: none;
+  }
+  details.summon-admin-form summary::after {
+    content: "▾";
+    font-size: 0.95rem;
+    transition: transform 160ms ease;
+    color: rgba(255,255,255,0.65);
+  }
+  details.summon-admin-form[open] summary::after {
+    transform: rotate(180deg);
+  }
+  details.summon-admin-form[open] summary {
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .summon-admin-form-body {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    background: linear-gradient(135deg, rgba(19,22,33,0.9), rgba(9,10,14,0.92));
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
         </style>
         """.trimIndent()
     )

@@ -4,12 +4,12 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.percent
@@ -44,6 +44,7 @@ fun AppHeader(
     modifier: Modifier = Modifier(),
     onRequestServices: () -> Unit
 ) {
+    val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
     val containerModifier = modifier
         .width(100.percent)
@@ -105,6 +106,36 @@ fun AppHeader(
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.md)
         ) {
+            if (chrome.isAdminSession) {
+                val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
+                navLink(
+                    label = "Admin",
+                    href = adminHref,
+                    modifier = Modifier()
+                        .textDecoration("none")
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .fontSize(0.85.rem)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER),
+                    dataAttributes = mapOf("nav" to "admin"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+                navLink(
+                    label = "Logout",
+                    href = "/admin/logout",
+                    modifier = Modifier()
+                        .textDecoration("none")
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .fontSize(0.85.rem)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .borderRadius(PortfolioTheme.Radii.pill),
+                    dataAttributes = mapOf("nav" to "logout"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+            }
             Button(
                 onClick = { onRequestServices() },
                 label = LocalizedText("Hire Me", "توظيفي").resolve(locale),

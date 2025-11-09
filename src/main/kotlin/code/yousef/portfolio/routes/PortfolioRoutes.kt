@@ -1,6 +1,9 @@
 package code.yousef.portfolio.routes
 
 import code.yousef.portfolio.admin.AdminContentService
+import code.yousef.portfolio.admin.auth.AdminAuthService
+import code.yousef.portfolio.admin.auth.AdminAuthService.AuthResult
+import code.yousef.portfolio.admin.auth.AdminSession
 import code.yousef.portfolio.api.toDto
 import code.yousef.portfolio.contact.ContactRequest
 import code.yousef.portfolio.contact.ContactService
@@ -13,7 +16,10 @@ import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
+import code.yousef.portfolio.ui.admin.AdminLoginPage
 import code.yousef.portfolio.ui.admin.AdminSectionPage
+import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
 import code.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
@@ -21,6 +27,8 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
+import java.net.URLEncoder
 
 fun Route.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,
@@ -28,7 +36,8 @@ fun Route.portfolioRoutes(
     contactService: ContactService,
     contentService: PortfolioContentService,
     adminRenderer: AdminRenderer,
-    adminContentService: AdminContentService
+    adminContentService: AdminContentService,
+    adminAuthService: AdminAuthService
 ) {
     get("/") {
         val page = portfolioRenderer.landingPage(
@@ -36,6 +45,89 @@ fun Route.portfolioRoutes(
             servicesModalOpen = call.shouldOpenServicesModal()
         )
         call.respondSummonPage(page)
+    }
+    get("/admin/login") {
+        val next = call.request.queryParameters["next"].sanitizeNextPath()
+        val session = call.sessions.get<AdminSession>()
+        if (session != null && !session.mustChangePassword) {
+            call.respondRedirect(next ?: "/admin")
+            return@get
+        }
+        call.respondSummonPage(adminLoginPage(errorMessage = null, nextPath = next))
+    }
+    post("/admin/login") {
+        val params = call.receiveParameters()
+        val username = params["username"].orEmpty().trim()
+        val password = params["password"].orEmpty()
+        val next = params["next"].sanitizeNextPath()
+        when (val result = adminAuthService.authenticate(username, password)) {
+            is AuthResult.Invalid -> {
+                call.respondSummonPage(
+                    adminLoginPage(errorMessage = "Invalid credentials.", nextPath = next),
+                    HttpStatusCode.Unauthorized
+                )
+            }
+
+            is AuthResult.Success -> {
+                call.sessions.set(AdminSession(username, result.mustChangePassword))
+                if (result.mustChangePassword) {
+                    call.respondRedirect("/admin/change-password")
+                } else {
+                    call.respondRedirect(next ?: "/admin")
+                }
+            }
+        }
+    }
+    get("/admin/change-password") {
+        val session = call.sessions.get<AdminSession>()
+        if (session == null) {
+            call.redirectToLogin()
+            return@get
+        }
+        call.respondSummonPage(
+            adminChangePasswordPage(
+                currentUsername = adminAuthService.currentUsername(),
+                errorMessage = null
+            )
+        )
+    }
+    post("/admin/change-password") {
+        val session = call.sessions.get<AdminSession>()
+        if (session == null) {
+            call.redirectToLogin()
+            return@post
+        }
+        val params = call.receiveParameters()
+        val username = params["username"].orEmpty().trim()
+        val password = params["password"].orEmpty()
+        val confirm = params["confirm"].orEmpty()
+        val error = when {
+            username.isBlank() -> "Username cannot be blank."
+            password.length < 8 -> "Password must be at least 8 characters."
+            password != confirm -> "Passwords do not match."
+            else -> null
+        }
+        if (error != null) {
+            call.respondSummonPage(
+                adminChangePasswordPage(
+                    currentUsername = username.ifBlank { adminAuthService.currentUsername() },
+                    errorMessage = error
+                ),
+                HttpStatusCode.BadRequest
+            )
+            return@post
+        }
+        adminAuthService.updateCredentials(username, password)
+        call.sessions.set(AdminSession(username, mustChangePassword = false))
+        call.respondRedirect("/admin")
+    }
+    post("/admin/logout") {
+        call.sessions.clear<AdminSession>()
+        call.respondRedirect("/admin/login")
+    }
+    get("/admin/logout") {
+        call.sessions.clear<AdminSession>()
+        call.respondRedirect("/admin/login")
     }
     get("/projects") {
         val page = portfolioRenderer.projectsPage(
@@ -106,12 +198,15 @@ fun Route.portfolioRoutes(
         }
     }
     get("/admin") {
+        call.requireAdminSession() ?: return@get
         call.respondRedirect("/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
     }
     get("/admin/") {
+        call.requireAdminSession() ?: return@get
         call.respondRedirect("/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
     }
     get("/admin/{section}") {
+        call.requireAdminSession() ?: return@get
         val section = call.parameters["section"].toAdminSection()
         val content = contentService.load()
         val page = adminRenderer.dashboard(
@@ -125,6 +220,7 @@ fun Route.portfolioRoutes(
         call.respondSummonPage(page)
     }
     get("/{locale}/admin") {
+        call.requireAdminSession() ?: return@get
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -133,6 +229,7 @@ fun Route.portfolioRoutes(
         }
     }
     get("/{locale}/admin/") {
+        call.requireAdminSession() ?: return@get
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -141,6 +238,7 @@ fun Route.portfolioRoutes(
         }
     }
     get("/{locale}/admin/{section}") {
+        call.requireAdminSession() ?: return@get
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         val section = call.parameters["section"].toAdminSection()
         if (locale == null) {
@@ -159,21 +257,27 @@ fun Route.portfolioRoutes(
         }
     }
     post("/admin/projects/upsert") {
+        call.requireAdminSession() ?: return@post
         call.handleProjectUpsert(adminContentService, "/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
     }
     post("/admin/projects/delete") {
+        call.requireAdminSession() ?: return@post
         call.handleProjectDelete(adminContentService, "/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
     }
     post("/admin/services/upsert") {
+        call.requireAdminSession() ?: return@post
         call.handleServiceUpsert(adminContentService, "/admin/${AdminSectionPage.SERVICES.pathSegment()}")
     }
     post("/admin/services/delete") {
+        call.requireAdminSession() ?: return@post
         call.handleServiceDelete(adminContentService, "/admin/${AdminSectionPage.SERVICES.pathSegment()}")
     }
     post("/admin/blog/upsert") {
+        call.requireAdminSession() ?: return@post
         call.handleBlogUpsert(adminContentService, "/admin/${AdminSectionPage.BLOG.pathSegment()}")
     }
     post("/admin/blog/delete") {
+        call.requireAdminSession() ?: return@post
         call.handleBlogDelete(adminContentService, "/admin/${AdminSectionPage.BLOG.pathSegment()}")
     }
     get("/{locale}") {
@@ -191,6 +295,7 @@ fun Route.portfolioRoutes(
         }
     }
     post("/{locale}/admin/projects/upsert") {
+        call.requireAdminSession() ?: return@post
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -202,6 +307,7 @@ fun Route.portfolioRoutes(
         }
     }
     post("/{locale}/admin/projects/delete") {
+        call.requireAdminSession() ?: return@post
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -213,6 +319,7 @@ fun Route.portfolioRoutes(
         }
     }
     post("/{locale}/admin/services/upsert") {
+        call.requireAdminSession() ?: return@post
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -224,6 +331,7 @@ fun Route.portfolioRoutes(
         }
     }
     post("/{locale}/admin/services/delete") {
+        call.requireAdminSession() ?: return@post
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -235,6 +343,7 @@ fun Route.portfolioRoutes(
         }
     }
     post("/{locale}/admin/blog/upsert") {
+        call.requireAdminSession() ?: return@post
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -246,6 +355,7 @@ fun Route.portfolioRoutes(
         }
     }
     post("/{locale}/admin/blog/delete") {
+        call.requireAdminSession() ?: return@post
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
@@ -255,6 +365,10 @@ fun Route.portfolioRoutes(
                 locale.adminRedirectPath(AdminSectionPage.BLOG)
             )
         }
+    }
+    get("/{locale}/admin/logout") {
+        call.sessions.clear<AdminSession>()
+        call.respondRedirect("/admin/login")
     }
     get("/{locale}/blog") {
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
@@ -354,6 +468,49 @@ private fun PortfolioLocale.adminRedirectPath(section: AdminSectionPage? = null)
     return section?.let { "$base/${it.pathSegment()}" } ?: base
 }
 
+private suspend fun ApplicationCall.requireAdminSession(): AdminSession? {
+    val session = sessions.get<AdminSession>()
+    if (session == null) {
+        redirectToLogin()
+        return null
+    }
+    if (session.mustChangePassword && !request.path().startsWith("/admin/change-password")) {
+        respondRedirect("/admin/change-password")
+        return null
+    }
+    return session
+}
+
+private suspend fun ApplicationCall.redirectToLogin() {
+    val encoded = URLEncoder.encode(request.uri, Charsets.UTF_8)
+    respondRedirect("/admin/login?next=$encoded")
+}
+
+private fun String?.sanitizeNextPath(): String? {
+    if (this.isNullOrBlank()) return null
+    if (!startsWith("/")) return null
+    if (startsWith("//")) return null
+    return this
+}
+
+private fun adminLoginPage(errorMessage: String?, nextPath: String?): SummonPage =
+    SummonPage(
+        head = { head ->
+            head.title("Admin Login · Summon Portfolio")
+            head.meta("robots", "noindex", null, null, null)
+        },
+        content = { AdminLoginPage(errorMessage = errorMessage, nextPath = nextPath) }
+    )
+
+private fun adminChangePasswordPage(currentUsername: String, errorMessage: String?): SummonPage =
+    SummonPage(
+        head = { head ->
+            head.title("Update Admin Credentials · Summon Portfolio")
+            head.meta("robots", "noindex", null, null, null)
+        },
+        content = { AdminChangePasswordPage(currentUsername = currentUsername, errorMessage = errorMessage) }
+    )
+
 private suspend fun ApplicationCall.handleProjectUpsert(
     adminContentService: AdminContentService,
     redirectTarget: String
@@ -442,6 +599,11 @@ private suspend fun ApplicationCall.respondSummonPage(page: SummonPage, status: 
     respondSummonHydrated(status) {
         val renderer = getPlatformRenderer()
         renderer.renderHeadElements(page.head)
+        val session = sessions.get<AdminSession>()
+        val chrome =
+            session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
+        val provider = LocalPageChrome.provides(chrome)
+        provider.current
         page.content()
     }
 }

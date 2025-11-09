@@ -1,6 +1,7 @@
 package code.yousef
 
 import code.yousef.portfolio.admin.AdminContentService
+import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.store.FileContentStore
@@ -14,6 +15,7 @@ import io.ktor.server.application.*
 import io.ktor.server.http.content.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
 
@@ -22,6 +24,9 @@ fun Application.configureRouting() {
     val contentStore = FileContentStore.fromEnvironment()
     val contentService = PortfolioContentService.default(contentStore)
     val adminContentService = AdminContentService(contentStore)
+    val adminAuthService = AdminAuthService(
+        credentialsPath = Paths.get("storage/admin-credentials.json")
+    )
     val portfolioRenderer = PortfolioRenderer(contentService = contentService)
     val blogRenderer = BlogRenderer(contentService = contentService)
     val adminRenderer = AdminRenderer()
@@ -42,7 +47,8 @@ fun Application.configureRouting() {
                 contactService = contactService,
                 contentService = contentService,
                 adminRenderer = adminRenderer,
-                adminContentService = adminContentService
+                adminContentService = adminContentService,
+                adminAuthService = adminAuthService
             )
         }
         get("/health") {

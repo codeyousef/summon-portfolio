@@ -43,6 +43,7 @@ out/
 *.swo
 /.ktlint-cache/
 /tmp/
+storage/admin-credentials.json
 
 ### Old Portfolio (Next.js) ###
 old-portfolio/*
