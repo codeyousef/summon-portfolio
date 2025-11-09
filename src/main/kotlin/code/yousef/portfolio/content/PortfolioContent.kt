@@ -4,7 +4,9 @@ import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.HeroContent
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.Service
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class PortfolioContent(
     val hero: HeroContent,
     val projects: List<Project>,

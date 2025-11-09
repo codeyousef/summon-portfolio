@@ -2,6 +2,10 @@ package code.yousef.portfolio.content
 
 import code.yousef.portfolio.content.repo.*
 import code.yousef.portfolio.content.seed.PortfolioContentSeed
+import code.yousef.portfolio.content.store.FileContentStore
+import code.yousef.portfolio.content.store.StoreBlogRepository
+import code.yousef.portfolio.content.store.StoreProjectRepository
+import code.yousef.portfolio.content.store.StoreServiceRepository
 
 class PortfolioContentService(
     private val heroProvider: () -> HeroProviderResult,
@@ -21,12 +25,12 @@ class PortfolioContentService(
         )
 
     companion object {
-        fun default(): PortfolioContentService =
+        fun default(store: FileContentStore = FileContentStore.fromEnvironment()): PortfolioContentService =
             PortfolioContentService(
-                heroProvider = { HeroProviderResult(PortfolioContentSeed.hero) },
-                projectRepository = StaticProjectRepository(),
-                serviceRepository = StaticServiceRepository(),
-                blogRepository = StaticBlogRepository()
+                heroProvider = { HeroProviderResult(store.snapshot().hero) },
+                projectRepository = StoreProjectRepository(store),
+                serviceRepository = StoreServiceRepository(store),
+                blogRepository = StoreBlogRepository(store)
             )
     }
 }

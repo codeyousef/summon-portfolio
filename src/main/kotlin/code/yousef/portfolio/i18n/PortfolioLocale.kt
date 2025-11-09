@@ -1,5 +1,7 @@
 package code.yousef.portfolio.i18n
 
+import kotlinx.serialization.Serializable
+
 enum class PortfolioLocale(val code: String, val direction: String) {
     EN("en", "ltr"),
     AR("ar", "rtl");
@@ -16,6 +18,7 @@ enum class PortfolioLocale(val code: String, val direction: String) {
 fun PortfolioLocale.pathPrefix(): String =
     if (this == PortfolioLocale.EN) "" else "/${this.code}"
 
+@Serializable
 data class LocalizedText(
     val en: String,
     val ar: String? = null

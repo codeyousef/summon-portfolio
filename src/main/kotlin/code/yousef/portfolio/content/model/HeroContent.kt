@@ -1,7 +1,9 @@
 package code.yousef.portfolio.content.model
 
 import code.yousef.portfolio.i18n.LocalizedText
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class HeroContent(
     val eyebrow: LocalizedText,
     val titlePrimary: LocalizedText,
@@ -12,6 +14,7 @@ data class HeroContent(
     val metrics: List<HeroMetric>
 )
 
+@Serializable
 data class HeroMetric(
     val value: String,
     val label: LocalizedText,

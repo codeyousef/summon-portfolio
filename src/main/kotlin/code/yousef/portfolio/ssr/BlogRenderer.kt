@@ -1,8 +1,7 @@
 package code.yousef.portfolio.ssr
 
+import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.model.BlogPost
-import code.yousef.portfolio.content.repo.BlogRepository
-import code.yousef.portfolio.content.repo.StaticBlogRepository
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.blog.BlogDetailPage
 import code.yousef.portfolio.ui.blog.BlogListPage
@@ -11,10 +10,10 @@ import code.yousef.summon.seo.HeadScope
 import io.ktor.http.*
 
 class BlogRenderer(
-    private val repository: BlogRepository = StaticBlogRepository()
+    private val contentService: PortfolioContentService = PortfolioContentService.default()
 ) {
     fun renderList(locale: PortfolioLocale): SummonPage {
-        val posts = repository.list()
+        val posts = contentService.load().blogPosts
         return SummonPage(
             head = listHead(locale),
             content = { BlogListPage(posts = posts, locale = locale) }
@@ -22,7 +21,7 @@ class BlogRenderer(
     }
 
     fun renderDetail(locale: PortfolioLocale, slug: String): RenderResult {
-        val post = repository.findBySlug(slug)
+        val post = contentService.load().blogPosts.firstOrNull { it.slug.equals(slug, ignoreCase = true) }
         val page = SummonPage(
             head = detailHead(locale, post, slug),
             content = {

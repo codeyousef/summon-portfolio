@@ -1,15 +1,19 @@
 package code.yousef.portfolio.routes
 
+import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.api.toDto
 import code.yousef.portfolio.contact.ContactRequest
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.content.PortfolioContentService
-import code.yousef.portfolio.content.repo.BlogRepository
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.routes.forms.toBlogPost
+import code.yousef.portfolio.routes.forms.toProject
+import code.yousef.portfolio.routes.forms.toService
 import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ui.admin.AdminSectionPage
 import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
 import code.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
@@ -23,8 +27,8 @@ fun Route.portfolioRoutes(
     blogRenderer: BlogRenderer,
     contactService: ContactService,
     contentService: PortfolioContentService,
-    blogRepository: BlogRepository,
-    adminRenderer: AdminRenderer
+    adminRenderer: AdminRenderer,
+    adminContentService: AdminContentService
 ) {
     get("/") {
         val page = portfolioRenderer.landingPage(
@@ -69,13 +73,13 @@ fun Route.portfolioRoutes(
         }
         get("/blog") {
             val locale = call.apiLocale()
-            val posts = blogRepository.list().map { it.toDto(locale) }
+            val posts = contentService.load().blogPosts.map { it.toDto(locale) }
             call.respond(posts)
         }
         get("/blog/{slug}") {
             val locale = call.apiLocale()
             val slug = call.parameters["slug"].orEmpty()
-            val post = blogRepository.findBySlug(slug)
+            val post = contentService.load().blogPosts.firstOrNull { it.slug.equals(slug, ignoreCase = true) }
             if (post == null) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "Not found"))
             } else {
@@ -102,12 +106,18 @@ fun Route.portfolioRoutes(
         }
     }
     get("/admin") {
+        call.respondRedirect("/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
+    }
+    get("/admin/{section}") {
+        val section = call.parameters["section"].toAdminSection()
         val content = contentService.load()
         val page = adminRenderer.dashboard(
             locale = PortfolioLocale.EN,
             projects = content.projects,
             services = content.services,
-            contacts = contactService.list()
+            blogPosts = content.blogPosts,
+            contacts = contactService.list(),
+            section = section
         )
         call.respondSummonPage(page)
     }
@@ -116,15 +126,44 @@ fun Route.portfolioRoutes(
         if (locale == null) {
             call.respond(HttpStatusCode.NotFound)
         } else {
+            call.respondRedirect(locale.adminRedirectPath(AdminSectionPage.PROJECTS))
+        }
+    }
+    get("/{locale}/admin/{section}") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        val section = call.parameters["section"].toAdminSection()
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
             val content = contentService.load()
             val page = adminRenderer.dashboard(
                 locale = locale,
                 projects = content.projects,
                 services = content.services,
-                contacts = contactService.list()
+                blogPosts = content.blogPosts,
+                contacts = contactService.list(),
+                section = section
             )
             call.respondSummonPage(page)
         }
+    }
+    post("/admin/projects/upsert") {
+        call.handleProjectUpsert(adminContentService, "/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
+    }
+    post("/admin/projects/delete") {
+        call.handleProjectDelete(adminContentService, "/admin/${AdminSectionPage.PROJECTS.pathSegment()}")
+    }
+    post("/admin/services/upsert") {
+        call.handleServiceUpsert(adminContentService, "/admin/${AdminSectionPage.SERVICES.pathSegment()}")
+    }
+    post("/admin/services/delete") {
+        call.handleServiceDelete(adminContentService, "/admin/${AdminSectionPage.SERVICES.pathSegment()}")
+    }
+    post("/admin/blog/upsert") {
+        call.handleBlogUpsert(adminContentService, "/admin/${AdminSectionPage.BLOG.pathSegment()}")
+    }
+    post("/admin/blog/delete") {
+        call.handleBlogDelete(adminContentService, "/admin/${AdminSectionPage.BLOG.pathSegment()}")
     }
     get("/{locale}") {
         val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
@@ -133,6 +172,72 @@ fun Route.portfolioRoutes(
         } else {
             val page = portfolioRenderer.landingPage(locale, servicesModalOpen = call.shouldOpenServicesModal())
             call.respondSummonPage(page)
+        }
+    }
+    post("/{locale}/admin/projects/upsert") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleProjectUpsert(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.PROJECTS)
+            )
+        }
+    }
+    post("/{locale}/admin/projects/delete") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleProjectDelete(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.PROJECTS)
+            )
+        }
+    }
+    post("/{locale}/admin/services/upsert") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleServiceUpsert(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.SERVICES)
+            )
+        }
+    }
+    post("/{locale}/admin/services/delete") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleServiceDelete(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.SERVICES)
+            )
+        }
+    }
+    post("/{locale}/admin/blog/upsert") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleBlogUpsert(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.BLOG)
+            )
+        }
+    }
+    post("/{locale}/admin/blog/delete") {
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleBlogDelete(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.BLOG)
+            )
         }
     }
     get("/{locale}/blog") {
@@ -218,7 +323,104 @@ private fun ApplicationCall.shouldOpenServicesModal(): Boolean =
     request.queryParameters["modal"]?.equals("services", ignoreCase = true) == true
 
 private fun ApplicationCall.apiLocale(): PortfolioLocale =
-    request.queryParameters["locale"]?.let { PortfolioLocale.exact(it) } ?: PortfolioLocale.EN
+    request.queryParameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) } ?: PortfolioLocale.EN
+
+private fun String?.toAdminSection(): AdminSectionPage =
+    when (this?.lowercase()) {
+        "services" -> AdminSectionPage.SERVICES
+        "blog" -> AdminSectionPage.BLOG
+        "contacts" -> AdminSectionPage.CONTACTS
+        else -> AdminSectionPage.PROJECTS
+    }
+
+private fun PortfolioLocale.adminRedirectPath(section: AdminSectionPage? = null): String {
+    val base = if (this == PortfolioLocale.EN) "/admin" else "/${this.code}/admin"
+    return section?.let { "$base/${it.pathSegment()}" } ?: base
+}
+
+private suspend fun ApplicationCall.handleProjectUpsert(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val project = params.toProject()
+    if (project == null) {
+        respondRedirect("$redirectTarget?error=project")
+    } else {
+        adminContentService.saveProject(project)
+        respondRedirect("$redirectTarget?success=project")
+    }
+}
+
+private suspend fun ApplicationCall.handleProjectDelete(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val id = params["id"].orEmpty()
+    if (id.isBlank()) {
+        respondRedirect("$redirectTarget?error=project-delete")
+    } else {
+        adminContentService.deleteProject(id)
+        respondRedirect("$redirectTarget?success=project-delete")
+    }
+}
+
+private suspend fun ApplicationCall.handleServiceUpsert(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val service = params.toService()
+    if (service == null) {
+        respondRedirect("$redirectTarget?error=service")
+    } else {
+        adminContentService.saveService(service)
+        respondRedirect("$redirectTarget?success=service")
+    }
+}
+
+private suspend fun ApplicationCall.handleServiceDelete(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val id = params["id"].orEmpty()
+    if (id.isBlank()) {
+        respondRedirect("$redirectTarget?error=service-delete")
+    } else {
+        adminContentService.deleteService(id)
+        respondRedirect("$redirectTarget?success=service-delete")
+    }
+}
+
+private suspend fun ApplicationCall.handleBlogUpsert(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val post = params.toBlogPost()
+    if (post == null) {
+        respondRedirect("$redirectTarget?error=blog")
+    } else {
+        adminContentService.saveBlogPost(post)
+        respondRedirect("$redirectTarget?success=blog")
+    }
+}
+
+private suspend fun ApplicationCall.handleBlogDelete(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val id = params["id"].orEmpty()
+    if (id.isBlank()) {
+        respondRedirect("$redirectTarget?error=blog-delete")
+    } else {
+        adminContentService.deleteBlogPost(id)
+        respondRedirect("$redirectTarget?success=blog-delete")
+    }
+}
 
 private suspend fun ApplicationCall.respondSummonPage(page: SummonPage, status: HttpStatusCode = HttpStatusCode.OK) {
     respondSummonHydrated(status) {

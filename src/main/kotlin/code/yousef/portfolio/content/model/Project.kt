@@ -1,6 +1,7 @@
 package code.yousef.portfolio.content.model
 
 import code.yousef.portfolio.i18n.LocalizedText
+import kotlinx.serialization.Serializable
 
 enum class ProjectCategory(val label: LocalizedText) {
     WEB(LocalizedText("Web", "الويب")),
@@ -8,6 +9,7 @@ enum class ProjectCategory(val label: LocalizedText) {
     GAME(LocalizedText("Game Dev", "تطوير الألعاب"));
 }
 
+@Serializable
 data class Project(
     val id: String,
     val slug: String,

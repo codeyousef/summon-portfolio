@@ -1,9 +1,9 @@
 package code.yousef
 
+import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.content.PortfolioContentService
-import code.yousef.portfolio.content.repo.BlogRepository
-import code.yousef.portfolio.content.repo.StaticBlogRepository
+import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.routes.portfolioRoutes
 import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
@@ -19,10 +19,11 @@ import java.time.Instant
 
 fun Application.configureRouting() {
     val bootInstant = Instant.now()
-    val contentService = PortfolioContentService.default()
-    val blogRepository: BlogRepository = StaticBlogRepository()
+    val contentStore = FileContentStore.fromEnvironment()
+    val contentService = PortfolioContentService.default(contentStore)
+    val adminContentService = AdminContentService(contentStore)
     val portfolioRenderer = PortfolioRenderer(contentService = contentService)
-    val blogRenderer = BlogRenderer(repository = blogRepository)
+    val blogRenderer = BlogRenderer(contentService = contentService)
     val adminRenderer = AdminRenderer()
     val contactService = ContactService()
     val hydrationBundle = environment.classLoader.getResource("static/summon-hydration.js")?.readBytes()
@@ -40,8 +41,8 @@ fun Application.configureRouting() {
                 blogRenderer = blogRenderer,
                 contactService = contactService,
                 contentService = contentService,
-                blogRepository = blogRepository,
-                adminRenderer = adminRenderer
+                adminRenderer = adminRenderer,
+                adminContentService = adminContentService
             )
         }
         get("/health") {
@@ -49,20 +50,20 @@ fun Application.configureRouting() {
             call.respond(mapOf("status" to "ok", "uptimeSeconds" to uptime))
         }
         get("/sitemap.xml") {
-            val sitemap = generateSitemapXml(blogRepository)
+            val sitemap = generateSitemapXml(contentService)
             call.respondText(sitemap, ContentType.Application.Xml)
         }
     }
 }
 
-private fun generateSitemapXml(blogRepository: BlogRepository): String {
+private fun generateSitemapXml(contentService: PortfolioContentService): String {
     val urls = mutableSetOf(
         "$SITE_URL/",
         "$SITE_URL/blog",
         "$SITE_URL/ar",
         "$SITE_URL/ar/blog"
     )
-    blogRepository.list().forEach { post ->
+    contentService.load().blogPosts.forEach { post ->
         urls += "https://portfolio.summon.local/blog/${post.slug}"
         urls += "https://portfolio.summon.local/ar/blog/${post.slug}"
     }
