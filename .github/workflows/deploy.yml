@@ -4,17 +4,19 @@ on:
   push:
     branches: [ dev, uat, main ]
 
+# Non-secret constants (edit if you ever rename stuff)
 env:
-  SERVICE_BASE: portfolio                        # dev => portfolio-dev, uat => portfolio-uat, main => portfolio
-  CONTAINER_REPO: portfolio-registry             # your Artifact Registry repo name
+  SERVICE_BASE: portfolio                 # => main: portfolio, dev: portfolio-dev, uat: portfolio-uat
+  CONTAINER_REPO: portfolio-registry      # Artifact Registry repo
+  GCP_PROJECT_ID: portfolio-476219        # <-- your project ID (not name)
+  GCP_REGION: us-central1                 # region
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}   # set to portfolio-476219
-      GCP_REGION: ${{ secrets.GCP_REGION }}       # set to us-central1
-      SERVICE_NAME: ${{ github.ref_name == 'main' && env.SERVICE_BASE || format('{0}-{1}', env.SERVICE_BASE, github.ref_name) }}
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout
@@ -30,27 +32,48 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker "${{ env.GCP_REGION }}-docker.pkg.dev" --quiet
+      # Compute the service name without using expressions in env
+      - name: Compute service name
+        id: svc
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "name=${SERVICE_BASE}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${SERVICE_BASE}-${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Build & Push image with Cloud Build
-        id: cloud-build
+      # Robust Docker auth to Artifact Registry (no configure-docker args)
+      - name: Docker auth for Artifact Registry
+        shell: bash
+        run: |
+          HOST="${GCP_REGION}-docker.pkg.dev"
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "https://${HOST}"
+
+      # Build and push image with Docker (no Cloud Build, no GCS bucket)
+      - name: Build & Push
+        id: bp
+        shell: bash
         run: |
           set -euo pipefail
-          IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${{ env.CONTAINER_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
-          echo "IMAGE=${IMAGE}" >> "$GITHUB_OUTPUT"
-          gcloud builds submit --tag "${IMAGE}" --project "${GCP_PROJECT_ID}"
+          IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${{ steps.svc.outputs.name }}:${GITHUB_SHA}"
+          echo "IMAGE=${IMAGE}"
+          docker build -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Cloud Run
+        shell: bash
         run: |
-          gcloud run deploy "${{ env.SERVICE_NAME }}" \
-            --image "${{ steps.cloud-build.outputs.IMAGE }}" \
-            --region "${{ env.GCP_REGION }}" \
+          gcloud run deploy "${{ steps.svc.outputs.name }}" \
+            --image "${{ steps.bp.outputs.image }}" \
+            --region "${GCP_REGION}" \
             --allow-unauthenticated \
             --port 8080
 
       - name: Show Service URL
+        shell: bash
         run: |
-          gcloud run services describe "${{ env.SERVICE_NAME }}" \
-            --region "${{ env.GCP_REGION }}" \
+          gcloud run services describe "${{ steps.svc.outputs.name }}" \
+            --region "${GCP_REGION}" \
             --format='value(status.url)'
