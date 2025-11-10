@@ -19,6 +19,7 @@ import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.seo.HeadScope
 import kotlinx.serialization.json.Json
+import java.net.URI
 
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
@@ -35,7 +36,7 @@ class DocsRouter(
         neighbors: NeighborLinks
     ): SummonPage {
         val seo = seoExtractor.build(requestPath, meta)
-        val navBase = portfolioOrigin.ifBlank { origin }
+        val navBase = resolveNavBase(origin)
         return SummonPage(
             head = headBlock(seo.title, seo.description, seo.canonicalUrl),
             content = {
@@ -56,7 +57,7 @@ class DocsRouter(
     fun notFound(requestPath: String, sidebar: DocsNavTree, origin: String): SummonPage {
         val canonical = seoExtractor.canonical(requestPath)
         val navJson = json.encodeToString(sidebar).replace("</", "<\\/")
-        val navBase = portfolioOrigin.ifBlank { origin }
+        val navBase = resolveNavBase(origin)
         return SummonPage(
             head = headBlock("Not found", "This page could not be located.", canonical),
             content = {
@@ -79,6 +80,27 @@ class DocsRouter(
         head.meta("twitter:description", description, null, null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+    }
+
+    private fun resolveNavBase(origin: String): String {
+        val uri = runCatching { URI(origin) }.getOrNull()
+        val host = uri?.host
+        val isLocalHost = host != null && (host == "localhost" || host.endsWith(".localhost"))
+        if (!isLocalHost && portfolioOrigin.isNotBlank()) {
+            return portfolioOrigin
+        }
+        if (uri == null || host == null) {
+            return if (portfolioOrigin.isNotBlank()) portfolioOrigin else origin
+        }
+        val normalizedHost = when {
+            host.startsWith("summon.") -> host.removePrefix("summon.")
+            host.startsWith("docs.") -> host.removePrefix("docs.")
+            else -> host
+        }
+        val scheme = uri.scheme ?: "http"
+        val defaultPort = if (scheme == "https") 443 else 80
+        val portPart = if (uri.port == -1 || uri.port == defaultPort) "" else ":${uri.port}"
+        return "$scheme://$normalizedHost$portPart"
     }
 }
 
@@ -145,7 +167,7 @@ private fun DocsNotFoundContent(navJson: String) {
 
 @Composable
 private fun DocsPageFrame(navBaseUrl: String, content: @Composable () -> Unit) {
-    PageScaffold(locale = PortfolioLocale.EN) {
+    PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         SectionWrap {
             AppHeader(
                 locale = PortfolioLocale.EN,

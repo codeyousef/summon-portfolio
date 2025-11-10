@@ -84,6 +84,19 @@ fun DocsShell(
             .prose-docs li {
               color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
             }
+            @media (max-width: 1024px) {
+              .docs-sidebar,
+              .docs-toc {
+                position: relative !important;
+                top: auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                flex-basis: 100% !important;
+              }
+              .docs-toc {
+                margin-top: ${PortfolioTheme.Spacing.md};
+              }
+            }
             </style>
             """.trimIndent()
         )
@@ -104,6 +117,7 @@ fun DocsShell(
                 .gap(PortfolioTheme.Spacing.lg)
                 .alignItems(AlignItems.FlexStart)
                 .flexWrap(FlexWrap.Wrap)
+                .width("100%")
         ) {
             DocsSidebar(tree = sidebar, currentPath = requestPath)
             Column(
@@ -136,7 +150,7 @@ private fun NeighborRow(neighbors: NeighborLinks) {
                 modifier = Modifier()
                     .textDecoration("none")
                     .fontWeight(600),
-                navigationMode = LinkNavigationMode.Client,
+                navigationMode = LinkNavigationMode.Native,
                 target = null,
                 rel = null,
                 title = null,
@@ -154,7 +168,7 @@ private fun NeighborRow(neighbors: NeighborLinks) {
                 modifier = Modifier()
                     .textDecoration("none")
                     .fontWeight(600),
-                navigationMode = LinkNavigationMode.Client,
+                navigationMode = LinkNavigationMode.Native,
                 target = null,
                 rel = null,
                 title = null,

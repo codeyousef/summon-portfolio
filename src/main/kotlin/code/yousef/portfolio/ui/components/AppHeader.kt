@@ -161,7 +161,8 @@ fun AppHeader(
                     .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .fontWeight(600)
-                    .textDecoration("none"),
+                    .textDecoration("none")
+                    .whiteSpace(WhiteSpace.NoWrap),
                 target = null,
                 rel = null,
                 title = null,
@@ -235,7 +236,8 @@ private fun LocaleToggleButton(
             .fontSize(0.75.rem)
             .fontWeight(600)
             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .borderRadius(PortfolioTheme.Radii.pill),
+            .borderRadius(PortfolioTheme.Radii.pill)
+            .whiteSpace(WhiteSpace.NoWrap),
         dataAttributes = mapOf("locale" to locale.code),
         navigationMode = LinkNavigationMode.Native
     )
@@ -299,7 +301,6 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
             append("""<a class="native-header__link" href="$href">${item.label.resolve(locale)}</a>""")
         }
     }
-    val projectsHref = NavTarget.Section("projects").absoluteHref(locale, localeBase)
     val hireHref = NavTarget.Section("contact").absoluteHref(locale, localeBase)
     val hireLabel = LocalizedText("Hire Me", "توظيفي").resolve(locale)
     val enHref = root
@@ -342,18 +343,31 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
           }
           .native-header__dropdown {
             position: relative;
+            padding-bottom: ${PortfolioTheme.Spacing.md};
           }
           .native-header__dropdown:hover .native-header__menu,
           .native-header__dropdown:focus-within .native-header__menu {
             display: flex;
           }
           .native-header__dropdown-button {
-            text-decoration: none;
+            background: transparent;
+            border: none;
             color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
             font-size: 0.85rem;
             letter-spacing: 0.08rem;
             padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
             border-radius: ${PortfolioTheme.Radii.pill};
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+          }
+          .native-header__dropdown-button:focus-visible {
+            outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
+          }
+          .native-header__dropdown-caret {
+            font-size: 0.75rem;
+            opacity: 0.7;
           }
           .native-header__menu {
             position: absolute;
@@ -423,7 +437,10 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
           <nav class="native-header__links">
             $navHtml
             <div class="native-header__dropdown">
-              <a class="native-header__dropdown-button" href="$projectsHref">$projectsLabelValue ▾</a>
+              <button class="native-header__dropdown-button" type="button" aria-haspopup="true">
+                <span>$projectsLabelValue</span>
+                <span class="native-header__dropdown-caret" aria-hidden="true">▾</span>
+              </button>
               <div class="native-header__menu">
                 <a href="https://summon.yousef.codes/" target="_blank" rel="noopener">$summonText</a>
               </div>
@@ -446,13 +463,13 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
 private fun ProjectsDropdown(locale: PortfolioLocale) {
     val label = projectsLabel.resolve(locale)
     val summonText = summonLabel.resolve(locale)
-    val buttonHref = NavTarget.Section("projects").href(locale)
     RawHtml(
         """
         <div class="nav-dropdown">
-          <a class="nav-dropdown__button" href="$buttonHref">
-            $label ▾
-          </a>
+          <button class="nav-dropdown__button" type="button" aria-haspopup="true">
+            <span>$label</span>
+            <span class="nav-dropdown__caret" aria-hidden="true">▾</span>
+          </button>
           <div class="nav-dropdown__menu">
             <a href="https://summon.yousef.codes/" target="_blank" rel="noopener">$summonText</a>
           </div>
@@ -471,22 +488,34 @@ private fun NavDropdownStyles() {
           display: inline-flex;
           flex-direction: column;
           align-items: flex-start;
-          padding-bottom: 20px;
+          padding-bottom: 32px;
         }
         .nav-dropdown__button {
+          background: transparent;
+          border: none;
+          cursor: pointer;
           text-decoration: none;
           color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
           font-size: 0.85rem;
           letter-spacing: 0.08rem;
           padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
           border-radius: ${PortfolioTheme.Radii.pill};
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          text-transform: none;
         }
-        .nav-dropdown__button:focus {
+        .nav-dropdown__button:focus-visible {
           outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
+        }
+        .nav-dropdown__caret {
+          font-size: 0.75rem;
+          opacity: 0.7;
         }
         .nav-dropdown__menu {
           position: absolute;
-          top: calc(100% + 2px);
+          top: 100%;
+          margin-top: 6px;
           left: 0;
           display: none;
           flex-direction: column;

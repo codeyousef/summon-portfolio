@@ -62,7 +62,7 @@ class MarkdownRenderer(
 
         val renderer = HtmlRenderer.builder()
             .attributeProviderFactory {
-                AttributeProvider { node, tagName, attributes ->
+                AttributeProvider { node, _, attributes ->
                     if (node is Heading) {
                         slugMap[node]?.let { attributes["id"] = it }
                     }

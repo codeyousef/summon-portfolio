@@ -16,6 +16,7 @@ import code.yousef.summon.modifier.StylingModifiers.fontWeight
 fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
     Column(
         modifier = Modifier()
+            .attribute("class", "docs-sidebar")
             .display(Display.Flex)
             .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.sm)
@@ -33,6 +34,7 @@ fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
             .style("overflow-y", "auto")
     ) {
         tree.sections.forEach { section ->
+            val nodes = if (section.children.isEmpty()) listOf(section) else section.children
             Column(
                 modifier = Modifier()
                     .gap(PortfolioTheme.Spacing.xs)
@@ -40,21 +42,25 @@ fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
                 Text(
                     text = section.title,
                     modifier = Modifier()
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .fontWeight(600)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 )
-                section.children.forEach { node ->
+                nodes.forEach { node ->
                     val active = normalize(currentPath) == normalize(node.path)
                     AnchorLink(
                         label = node.title,
                         href = node.path,
                         modifier = Modifier()
+                            .display(Display.Block)
                             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                            .color(
-                                if (active) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.TEXT_PRIMARY
+                            .borderRadius(PortfolioTheme.Radii.md)
+                            .textDecoration("none")
+                            .backgroundColor(
+                                if (active) PortfolioTheme.Colors.SURFACE_STRONG else "transparent"
                             )
-                            .textDecoration("none"),
-                        navigationMode = LinkNavigationMode.Native,
+                            .color(
+                                if (active) PortfolioTheme.Colors.ACCENT_ALT else PortfolioTheme.Colors.TEXT_PRIMARY
+                            ),
                         target = null,
                         rel = null,
                         title = null,
@@ -62,7 +68,8 @@ fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
                         ariaLabel = null,
                         ariaDescribedBy = null,
                         dataHref = null,
-                        dataAttributes = mapOf("nav" to node.title.lowercase())
+                        dataAttributes = mapOf("docs-nav" to node.title.lowercase()),
+                        navigationMode = LinkNavigationMode.Native
                     )
                 }
             }

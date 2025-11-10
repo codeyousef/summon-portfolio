@@ -31,7 +31,9 @@ fun ContactSection(
                 .display(Display.Flex)
                 .flexDirection(FlexDirection.Row)
                 .flexWrap(FlexWrap.Wrap)
+                .alignItems(AlignItems.Stretch)
                 .gap(PortfolioTheme.Spacing.xl)
+                .width(100.percent)
         ) {
             Column(
                 modifier = Modifier()
@@ -59,9 +61,9 @@ fun ContactSection(
                 locale = locale,
                 action = actionPath,
                 modifier = Modifier()
-                    .flex(grow = 2, shrink = 1, basis = "520px")
+                    .flex(grow = 2, shrink = 1, basis = "640px")
                     .width(100.percent)
-                    .maxWidth(780.px)
+                    .maxWidth(100.percent)
             )
         }
     }
@@ -80,6 +82,7 @@ private fun ContactForm(
         modifier = modifier
             .display(Display.Flex)
             .flexDirection(FlexDirection.Column)
+            .width(100.percent)
             .gap(PortfolioTheme.Spacing.md)
             .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
             .borderWidth(1)

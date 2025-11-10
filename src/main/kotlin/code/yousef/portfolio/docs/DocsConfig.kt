@@ -1,5 +1,6 @@
 package code.yousef.portfolio.docs
 
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -44,7 +45,10 @@ data class DocsConfig(
                 "local" -> DocsSource.LOCAL
                 else -> DocsSource.REMOTE
             }
-            val localRoot = env["DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: Paths.get("docs")
+            val localRoot = env["DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: run {
+                val summonDocs = Paths.get("docs/private/summon-docs")
+                if (Files.exists(summonDocs)) summonDocs else Paths.get("docs")
+            }
             val docsOrigin = env["PUBLIC_ORIGIN_DOCS"] ?: "https://summon.yousef.codes"
             val portfolioOrigin = env["PUBLIC_ORIGIN_PORTFOLIO"] ?: "https://www.yousef.codes"
             return DocsConfig(

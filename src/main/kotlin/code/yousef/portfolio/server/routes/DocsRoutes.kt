@@ -21,25 +21,19 @@ fun Route.docsRoutes(
     linkRewriter: LinkRewriter,
     docsRouter: DocsRouter,
     webhookHandler: WebhookHandler,
-    config: DocsConfig
+    config: DocsConfig,
+    docsCatalog: DocsCatalog
 ) {
     suspend fun ApplicationCall.renderDocsPage() {
         val requestPath = request.path().ifBlank { "/" }
         val (branch, pathPart) = extractBranch(requestPath, config)
-        val normalizedPath = if (requestPath.endsWith("/") && pathPart.isNotEmpty()) "$pathPart/" else pathPart
-        val repoCandidates = resolveRepoCandidates(normalizedPath)
-        var fetchedDocument: FetchedDoc? = null
-        var repoPathUsed: String? = null
-        for (candidate in repoCandidates) {
-            val fullPath = "${config.normalizedDocsRoot}/$candidate"
-            try {
-                val doc = docsService.fetchDocument(fullPath, branch)
-                fetchedDocument = doc
-                repoPathUsed = fullPath
-                break
-            } catch (_: DocsService.DocumentNotFound) {
-                continue
-            }
+        val slug = normalizeSlug(pathPart)
+        var navTree = docsCatalog.navTree()
+        var entry = docsCatalog.find(slug)
+        if (entry == null) {
+            docsCatalog.reload()
+            navTree = docsCatalog.navTree()
+            entry = docsCatalog.find(slug)
         }
 
         val origin = run {
@@ -50,26 +44,32 @@ fun Route.docsRoutes(
             "${conn.scheme}://${conn.serverHost}$portPart"
         }
 
-        if (fetchedDocument == null || repoPathUsed == null) {
-            val nav = docsService.currentNavTree()
-            val page = docsRouter.notFound(requestPath, nav, origin)
+        if (entry == null) {
+            val page = docsRouter.notFound(requestPath, navTree, origin)
             respondDocsPage(page, HttpStatusCode.NotFound)
             return
         }
 
-        val rendered = markdownRenderer.render(fetchedDocument.body, requestPath)
+        val canonicalPath = canonicalPathForSlug(entry.slug)
+        val fetchedDocument = try {
+            docsService.fetchDocument(entry.repoPath, branch)
+        } catch (_: DocsService.DocumentNotFound) {
+            val page = docsRouter.notFound(requestPath, navTree, origin)
+            respondDocsPage(page, HttpStatusCode.NotFound)
+            return
+        }
+
+        val rendered = markdownRenderer.render(fetchedDocument.body, canonicalPath)
         val rewrittenHtml = linkRewriter.rewriteHtml(
             html = rendered.html,
-            requestPath = requestPath,
-            repoPath = repoPathUsed,
+            requestPath = canonicalPath,
+            repoPath = entry.repoPath,
             docsRoot = config.normalizedDocsRoot,
             branch = branch
         )
-        docsService.recordNavEntry(requestPath, rendered.meta)
-        val navTree = docsService.currentNavTree()
-        val neighbors = docsService.neighborLinks(requestPath)
+        val neighbors = docsCatalog.neighbors(entry.slug)
         val page = docsRouter.render(
-            requestPath = requestPath,
+            requestPath = canonicalPath,
             origin = origin,
             html = rewrittenHtml,
             meta = rendered.meta,
@@ -123,19 +123,6 @@ fun Route.docsRoutes(
     }
 }
 
-private fun resolveRepoCandidates(path: String): List<String> {
-    val normalized = path.trim('/').ifBlank { "" }
-    if (normalized.isBlank()) return listOf("README.md")
-    val endsWithSlash = path.endsWith("/")
-    if (normalized.endsWith(".md")) return listOf(normalized)
-    val candidates = mutableListOf<String>()
-    if (!endsWithSlash) {
-        candidates += "$normalized.md"
-    }
-    candidates += "$normalized/index.md"
-    return candidates
-}
-
 private fun extractBranch(path: String, config: DocsConfig): Pair<String, String> {
     val segments = path.trim().trim('/').split('/').filter { it.isNotBlank() }
     if (segments.size >= 2 && segments.first().equals("v", ignoreCase = true)) {
@@ -158,3 +145,27 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondDocsPage(
 }
 
 private fun kotlinx.datetime.TimeZone.toJavaZoneId(): ZoneId = ZoneId.of(id)
+
+private fun canonicalPathForSlug(slug: String): String =
+    if (slug == DocsCatalog.SLUG_ROOT) "/" else "/$slug"
+
+private fun normalizeSlug(pathPart: String): String {
+    var slug = pathPart.trim().trim('/')
+    if (slug.isBlank()) return DocsCatalog.SLUG_ROOT
+
+    slug = removeSuffixIgnoreCase(slug, ".md")
+    slug = removeSuffixIgnoreCase(slug, "/readme")
+    slug = removeSuffixIgnoreCase(slug, "/summon-readme")
+    slug = removeSuffixIgnoreCase(slug, "/index")
+
+    slug = slug.trim('/')
+    return slug.lowercase().ifBlank { DocsCatalog.SLUG_ROOT }
+}
+
+private fun removeSuffixIgnoreCase(value: String, suffix: String): String {
+    return if (value.endsWith(suffix, ignoreCase = true)) {
+        value.substring(0, value.length - suffix.length)
+    } else {
+        value
+    }
+}

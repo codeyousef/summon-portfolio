@@ -12,6 +12,7 @@ class WebhookHandler(
     private val docsService: DocsService,
     private val cache: DocsCache,
     private val config: DocsConfig,
+    private val docsCatalog: DocsCatalog,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     private val logger = LoggerFactory.getLogger(WebhookHandler::class.java)
@@ -23,6 +24,7 @@ class WebhookHandler(
             val prefix = "${config.defaultBranch}:${config.normalizedDocsRoot}/"
             cache.invalidatePrefix(prefix)
             docsService.invalidateNavTree()
+            docsCatalog.reload()
             logger.info("Docs cache invalidated due to webhook for ${event.ref}")
         }
         call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))

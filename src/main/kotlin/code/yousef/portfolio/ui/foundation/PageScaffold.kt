@@ -17,6 +17,7 @@ import code.yousef.summon.modifier.LayoutModifiers.minHeight
 fun PageScaffold(
     locale: PortfolioLocale,
     modifier: Modifier = Modifier(),
+    enableAuroraEffects: Boolean = true,
     content: () -> Unit
 ) {
     val scaffoldModifier = modifier
@@ -64,8 +65,10 @@ fun PageScaffold(
         .attribute("dir", locale.direction)
 
     Box(modifier = scaffoldModifier) {
-        WebGlCanvas()
-        GrainLayer()
+        if (enableAuroraEffects) {
+            WebGlCanvas()
+            GrainLayer()
+        }
         Column(
             modifier = Modifier()
                 .position(Position.Relative)
@@ -75,7 +78,9 @@ fun PageScaffold(
         ) {
             content()
         }
-        WebGlScript()
+        if (enableAuroraEffects) {
+            WebGlScript()
+        }
     }
 }
 

@@ -201,14 +201,3 @@ for (const btn of document.querySelectorAll('[data-copy]')) {
         });
     });
 }
-
-document.getElementById('copyEmail')?.addEventListener('click', () => {
-    const email = 'yousef@example.com';
-    navigator.clipboard.writeText(email).then(() => {
-        const b = document.getElementById('copyEmail');
-        if (b) {
-            b.textContent = 'Email copied';
-            setTimeout(() => (b.textContent = 'Copy Email'), 1200);
-        }
-    });
-});

@@ -39,11 +39,12 @@ fun Application.configureRouting() {
     val docsConfig = DocsConfig.fromEnv()
     val docsCache = DocsCache(docsConfig.cacheTtlSeconds)
     val docsService = DocsService(docsConfig, docsCache)
+    val docsCatalog = DocsCatalog(docsConfig)
     val markdownRenderer = MarkdownRenderer()
     val linkRewriter = LinkRewriter()
     val seoExtractor = SeoExtractor(docsConfig)
     val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
-    val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig)
+    val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
     val docsHosts = (System.getenv("DOCS_HOSTS") ?: "summon.yousef.codes,summon.localhost,docs.localhost")
         .split(",")
         .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
@@ -78,7 +79,8 @@ fun Application.configureRouting() {
                         linkRewriter = linkRewriter,
                         docsRouter = docsRouter,
                         webhookHandler = webhookHandler,
-                        config = docsConfig
+                        config = docsConfig,
+                        docsCatalog = docsCatalog
                     )
                 }
                 if (port != null) {
