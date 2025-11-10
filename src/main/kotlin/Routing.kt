@@ -105,6 +105,9 @@ fun Application.configureRouting() {
                 adminAuthService = adminAuthService
             )
         }
+        get("/healthz") {
+            call.respondText("ok")
+        }
         get("/health") {
             call.respondHealth(bootInstant)
         }

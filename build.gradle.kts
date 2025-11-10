@@ -2,16 +2,18 @@ val kotlin_version: String by project
 val logback_version: String by project
 
 plugins {
+    application
     kotlin("jvm") version "2.2.20"
     kotlin("plugin.serialization") version "2.2.20"
     id("io.ktor.plugin") version "3.3.1"
+    id("com.gradleup.shadow") version "9.1.0"
 }
 
 group = "code.yousef"
 version = "0.0.2"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass.set("io.ktor.server.netty.EngineMain")
 }
 
 dependencies {
@@ -45,6 +47,18 @@ dependencies {
     implementation("io.github.codeyousef:summon-jvm:0.4.6.0")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
+    // Cloud Firestore (ready for future integrations)
+    implementation(platform("com.google.cloud:libraries-bom:26.51.0"))
+    implementation("com.google.cloud:google-cloud-firestore")
+
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+}
+
+tasks {
+    shadowJar {
+        archiveClassifier.set("")
+        mergeServiceFiles()
+        isZip64 = true
+    }
 }
