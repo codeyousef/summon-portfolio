@@ -1,0 +1,8 @@
+steps:
+  # Build the container image and tag it to the provided substitution
+  - name: gcr.io/cloud-builders/docker
+    args: [ "build", "-t", "$_IMAGE_URI", "." ]
+
+images:
+  # Publish the same tag after build
+  - "$_IMAGE_URI"
