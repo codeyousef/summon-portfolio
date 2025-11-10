@@ -1,32 +1,57 @@
 name: Build & Deploy (Cloud Run)
+
 on:
   push:
     branches: [dev, uat, main]
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
-    permissions: { contents: read }
+    permissions:
+      contents: read
+      id-token: write   # required if you later switch to Workload Identity Federation
+
     env:
+      # must be the *project ID*, e.g. "portfolio-476219"
       GCP_PROJECT:   ${{ secrets.GCP_PROJECT }}
       GCP_REGION:    ${{ secrets.GCP_REGION }}
       ARTIFACT_REPO: ${{ secrets.ARTIFACT_REPO || 'portfolio-registry' }}
       IMAGE_NAME:    portfolio
       SERVICE_NAME:  ${{ github.ref_name == 'main' && 'portfolio-prod' || github.ref_name == 'uat' && 'portfolio-uat' || 'portfolio-dev' }}
+
     steps:
       - uses: actions/checkout@v4
-      - uses: google-github-actions/setup-gcloud@v2
+
+      # 1) Auth with your SA key (this is what was missing)
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # 2) Install gcloud & set project (no creds here)
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
-      - run: gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com
+
+      # 3) Enable APIs (idempotent)
+      - name: Enable APIs
+        run: |
+          gcloud services enable \
+            run.googleapis.com \
+            artifactregistry.googleapis.com \
+            cloudbuild.googleapis.com
+
+      # 4) Build & push the image via Cloud Build (uses your Dockerfile)
       - name: Build & Push (Cloud Build)
         run: |
           TAG="$(date +%Y%m%d-%H%M)-${{ github.sha }}"
           IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${ARTIFACT_REPO}/${IMAGE_NAME}:${TAG}"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
           gcloud builds submit . --tag "$IMAGE_URI"
-      - name: Deploy
+
+      # 5) Deploy to the service that matches the branch
+      - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "${SERVICE_NAME}" \
             --image "$IMAGE_URI" \
