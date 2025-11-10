@@ -22,7 +22,7 @@ fun PortfolioLandingPage(
     val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale, onRequestServices = openServicesModal)
+        AppHeader(locale = locale)
         HeroSection(hero = content.hero, locale = locale, onRequestServices = openServicesModal)
         ProjectsSection(
             projects = content.projects,

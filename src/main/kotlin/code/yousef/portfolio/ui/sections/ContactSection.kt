@@ -9,18 +9,15 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.forms.*
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
-
-private const val SCHEDULE_CALL_URL = "https://cal.com/yousef/intro"
 
 @Composable
 fun ContactSection(
@@ -31,12 +28,15 @@ fun ContactSection(
     ContentSection(modifier = modifier) {
         Row(
             modifier = Modifier()
-                .display(Display.Grid)
-                .gridTemplateColumns("repeat(auto-fit, minmax(320px, 1fr))")
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Row)
+                .flexWrap(FlexWrap.Wrap)
                 .gap(PortfolioTheme.Spacing.xl)
         ) {
             Column(
                 modifier = Modifier()
+                    .flex(grow = 1, shrink = 1, basis = "320px")
+                    .maxWidth(420.px)
                     .display(Display.Flex)
                     .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
@@ -53,53 +53,31 @@ fun ContactSection(
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .lineHeight(1.8)
                 )
-                Column(
-                    modifier = Modifier()
-                        .display(Display.Flex)
-                        .flexDirection(FlexDirection.Column)
-                        .gap(PortfolioTheme.Spacing.sm)
-                ) {
-                    Text(
-                        text = "yousef.baitalmal.dev@email.com",
-                        modifier = Modifier()
-                            .fontSize(1.1.rem)
-                            .fontWeight(600)
-                    )
-                    Row(
-                        modifier = Modifier()
-                            .display(Display.Flex)
-                            .gap(PortfolioTheme.Spacing.sm)
-                            .flexWrap(FlexWrap.Wrap)
-                    ) {
-                        ContactLinkChip(
-                            label = ContactCopy.emailCta.resolve(locale),
-                            href = "mailto:yousef.baitalmal.dev@email.com",
-                            filled = true,
-                            dataAttributes = mapOf("cta" to "contact-email")
-                        )
-                        ContactLinkChip(
-                            label = ContactCopy.scheduleCall.resolve(locale),
-                            href = SCHEDULE_CALL_URL,
-                            filled = false,
-                            openInNewTab = true,
-                            dataAttributes = mapOf("cta" to "contact-call")
-                        )
-                    }
-                }
             }
 
-            ContactForm(locale = locale, action = actionPath)
+            ContactForm(
+                locale = locale,
+                action = actionPath,
+                modifier = Modifier()
+                    .flex(grow = 2, shrink = 1, basis = "520px")
+                    .width(100.percent)
+                    .maxWidth(780.px)
+            )
         }
     }
 }
 
 @Composable
-private fun ContactForm(locale: PortfolioLocale, action: String) {
+private fun ContactForm(
+    locale: PortfolioLocale,
+    action: String,
+    modifier: Modifier = Modifier()
+) {
     val optionalLabel = ContactCopy.optional.resolve(locale)
     FormStyleSheet()
     Form(
         action = action,
-        modifier = Modifier()
+        modifier = modifier
             .display(Display.Flex)
             .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.md)
@@ -154,41 +132,6 @@ private fun ContactForm(locale: PortfolioLocale, action: String) {
         )
     }
 }
-@Composable
-private fun ContactLinkChip(
-    label: String,
-    href: String,
-    filled: Boolean,
-    openInNewTab: Boolean = false,
-    dataAttributes: Map<String, String> = emptyMap()
-) {
-    AnchorLink(
-        label = label,
-        href = href,
-        modifier = Modifier()
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .gap(PortfolioTheme.Spacing.xs)
-            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-            .borderWidth(if (filled) 0 else 1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(if (filled) "transparent" else PortfolioTheme.Colors.BORDER)
-            .borderRadius(PortfolioTheme.Radii.pill)
-            .background(if (filled) PortfolioTheme.Gradients.ACCENT else PortfolioTheme.Colors.GLASS)
-            .color(if (filled) "#ffffff" else PortfolioTheme.Colors.TEXT_PRIMARY)
-            .fontWeight(600)
-            .whiteSpace(WhiteSpace.NoWrap)
-            .boxShadow(if (filled) PortfolioTheme.Shadows.LOW else "none"),
-        target = if (openInNewTab) "_blank" else null,
-        rel = if (openInNewTab) "noopener noreferrer" else null,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = dataAttributes
-    )
-}
 
 private object ContactCopy {
     val title = LocalizedText("Collaborate", "تعاون")
@@ -196,8 +139,6 @@ private object ContactCopy {
         en = "Tell me what you’re building. I’ll reply with a focused plan (and timelines) you can immediately act on.",
         ar = "أخبرني بما تعمل عليه وسأعود إليك بخطة واضحة وجدول زمني يمكن البدء به فورًا."
     )
-    val emailCta = LocalizedText("Send an email", "أرسل بريدًا")
-    val scheduleCall = LocalizedText("Schedule a call", "احجز مكالمة")
     val formTitle = LocalizedText("Project details", "تفاصيل المشروع")
     val name = LocalizedText("Name", "الاسم")
     val email = LocalizedText("Email", "البريد الإلكتروني")

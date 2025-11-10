@@ -167,7 +167,7 @@ fun AdminDashboardPage(
                     .flex(grow = 1, shrink = 1, basis = "auto")
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
-                AppHeader(locale = locale, onRequestServices = {})
+                AppHeader(locale = locale)
                 FormStyleSheet()
                 AdminFormCss()
                 activeContent()

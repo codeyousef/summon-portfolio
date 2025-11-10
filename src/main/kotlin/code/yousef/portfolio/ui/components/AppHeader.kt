@@ -7,10 +7,9 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.input.Button
-import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
@@ -41,8 +40,7 @@ private val defaultNavItems = listOf(
 @Composable
 fun AppHeader(
     locale: PortfolioLocale,
-    modifier: Modifier = Modifier(),
-    onRequestServices: () -> Unit
+    modifier: Modifier = Modifier()
 ) {
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
@@ -136,17 +134,29 @@ fun AppHeader(
                     navigationMode = LinkNavigationMode.Native
                 )
             }
-            Button(
-                onClick = { onRequestServices() },
+            val hireHref = NavTarget.Section("contact").href(locale)
+            ButtonLink(
                 label = LocalizedText("Hire Me", "توظيفي").resolve(locale),
+                href = hireHref,
                 modifier = Modifier()
+                    .display(Display.InlineFlex)
+                    .alignItems(AlignItems.Center)
+                    .justifyContent(JustifyContent.Center)
                     .backgroundColor(PortfolioTheme.Colors.ACCENT)
                     .color("#ffffff")
                     .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
                     .borderRadius(PortfolioTheme.Radii.pill)
-                    .fontWeight(600),
-                variant = ButtonVariant.PRIMARY,
-                disabled = false
+                    .fontWeight(600)
+                    .textDecoration("none"),
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = mapOf("nav" to "hire"),
+                navigationMode = LinkNavigationMode.Client
             )
             LocaleToggle(current = locale)
         }

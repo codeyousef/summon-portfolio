@@ -29,7 +29,7 @@ fun ProjectsPage(
     val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale, onRequestServices = openServicesModal)
+        AppHeader(locale = locale)
         SectionWrap {
             Text(
                 text = "Featured Projects",
