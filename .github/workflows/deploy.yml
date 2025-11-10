@@ -14,7 +14,7 @@ jobs:
     env:
       # must be the *project ID*, e.g. "portfolio-476219"
       GCP_PROJECT:   ${{ secrets.GCP_PROJECT }}
-      GCP_REGION:    ${{ secrets.GCP_REGION }}
+      GCP_REGION: ${{ secrets.GCP_REGION }}
       ARTIFACT_REPO: ${{ secrets.ARTIFACT_REPO || 'portfolio-registry' }}
       IMAGE_NAME:    portfolio
       SERVICE_NAME:  ${{ github.ref_name == 'main' && 'portfolio-prod' || github.ref_name == 'uat' && 'portfolio-uat' || 'portfolio-dev' }}
@@ -33,14 +33,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT }}
-
-      # 3) Enable APIs (idempotent)
-      - name: Enable APIs
-        run: |
-          gcloud services enable \
-            run.googleapis.com \
-            artifactregistry.googleapis.com \
-            cloudbuild.googleapis.com
 
       # 4) Build & push the image via Cloud Build (uses your Dockerfile)
       - name: Build & Push (Cloud Build)
