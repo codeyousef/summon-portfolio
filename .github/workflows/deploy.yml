@@ -12,46 +12,60 @@ jobs:
       id-token: write
 
     env:
-      # MUST be project **ID** (e.g., portfolio-476219)
-      GCP_PROJECT:   ${{ secrets.GCP_PROJECT }}
-      GCP_REGION: ${{ secrets.GCP_REGION }}
-      ARTIFACT_REPO: ${{ secrets.ARTIFACT_REPO }}
+      GCP_PROJECT: ${{ secrets.GCP_PROJECT }}          # e.g., portfolio-476219
+      GCP_REGION: ${{ secrets.GCP_REGION }}           # e.g., us-central1
+      ARTIFACT_REPO: ${{ secrets.ARTIFACT_REPO }}        # e.g., portfolio-registry
       IMAGE_NAME:    portfolio
       SERVICE_NAME:  ${{ github.ref_name == 'main' && 'portfolio-prod' || github.ref_name == 'uat' && 'portfolio-uat' || 'portfolio-dev' }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # Auth with your SA key
+      # Auth with SA key
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # Install gcloud and set project
+      # Install gcloud
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT }}
 
-      # Build & push via Cloud Build. Compose IMAGE_URI inline (no $GITHUB_ENV).
+      # Hard fail if any required env is empty (so we don't get a cryptic --tag error)
+      - name: Sanity check environment
+        run: |
+          set -euo pipefail
+          : "${GCP_PROJECT:?GCP_PROJECT secret is missing or empty}"
+          : "${GCP_REGION:?GCP_REGION secret is missing or empty}"
+          : "${ARTIFACT_REPO:?ARTIFACT_REPO secret is missing or empty}"
+          echo "Env OK: project=$GCP_PROJECT region=$GCP_REGION repo=$ARTIFACT_REPO service=${SERVICE_NAME}"
+
+      # Build & push image (multi-stage Dockerfile builds the JAR inside CI)
       - name: Build & Push (Cloud Build)
         run: |
           set -euo pipefail
-          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ github.run_number }}"
+          REGION="${GCP_REGION:-us-central1}"
+          REPO="${ARTIFACT_REPO:-portfolio-registry}"
+          TAG="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
+          IMAGE_URI="${REGION}-docker.pkg.dev/${GCP_PROJECT}/${REPO}/${IMAGE_NAME}:${TAG}"
           echo "IMAGE_URI=$IMAGE_URI"
           gcloud builds submit . --tag "$IMAGE_URI"
 
-      # Deploy to the correct service for this branch. Recompute IMAGE_URI inline.
+      # Deploy to service mapped by branch
       - name: Deploy to Cloud Run
         run: |
           set -euo pipefail
-          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ github.run_number }}"
+          REGION="${GCP_REGION:-us-central1}"
+          REPO="${ARTIFACT_REPO:-portfolio-registry}"
+          TAG="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
+          IMAGE_URI="${REGION}-docker.pkg.dev/${GCP_PROJECT}/${REPO}/${IMAGE_NAME}:${TAG}"
           gcloud run deploy "${SERVICE_NAME}" \
             --image "$IMAGE_URI" \
-            --region "${{ env.GCP_REGION }}" \
+            --region "$REGION" \
             --allow-unauthenticated \
             --cpu=1 --memory=512Mi \
             --min-instances=0 --max-instances=3 \
             --concurrency=80 \
-            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT }}"
+            --set-env-vars="GOOGLE_CLOUD_PROJECT=${GCP_PROJECT}"
