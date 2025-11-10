@@ -1,28 +1,26 @@
-name: Build & Deploy (Cloud Run)
+name: Deploy to Cloud Run (dev/uat/prod)
 
 on:
   push:
-    branches: [dev, uat, main]
+    branches: [ dev, uat, main ]
+
+env:
+  SERVICE_BASE: portfolio                        # dev => portfolio-dev, uat => portfolio-uat, main => portfolio
+  CONTAINER_REPO: portfolio-registry             # your Artifact Registry repo name
 
 jobs:
-  build-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
     env:
-      # Secrets you must set in GitHub:
-      # GCP_PROJECT=portfolio-476219
-      # GCP_REGION=us-central1
-      # ARTIFACT_REPO=portfolio-registry
-      IMAGE_NAME: portfolio
-      SERVICE_NAME: ${{ github.ref_name == 'main' && 'portfolio-prod' || github.ref_name == 'uat' && 'portfolio-uat' || 'portfolio-dev' }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}   # set to portfolio-476219
+      GCP_REGION: ${{ secrets.GCP_REGION }}       # set to us-central1
+      SERVICE_NAME: ${{ github.ref_name == 'main' && env.SERVICE_BASE || format('{0}-{1}', env.SERVICE_BASE, github.ref_name) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Auth to Google Cloud
+      - name: Auth to Google Cloud (service-account JSON)
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -30,31 +28,29 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
 
-      # ✅ Fix: configure Docker without passing a registry (works on all runners)
-      - name: Docker auth for Artifact Registry
-        run: gcloud auth configure-docker --quiet
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${{ env.GCP_REGION }}-docker.pkg.dev" --quiet
 
-      - name: Build & Push (Docker)
+      - name: Build & Push image with Cloud Build
+        id: cloud-build
         run: |
           set -euo pipefail
-          TAG="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
-          IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${TAG}"
-          echo "IMAGE_URI=$IMAGE_URI"
-          docker build -t "$IMAGE_URI" .
-          docker push "$IMAGE_URI"
+          IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${{ env.CONTAINER_REPO }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA}"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_OUTPUT"
+          gcloud builds submit --tag "${IMAGE}" --project "${GCP_PROJECT_ID}"
 
       - name: Deploy to Cloud Run
         run: |
-          set -euo pipefail
-          TAG="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
-          IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${TAG}"
           gcloud run deploy "${{ env.SERVICE_NAME }}" \
-            --image "$IMAGE_URI" \
-            --region "${{ secrets.GCP_REGION }}" \
+            --image "${{ steps.cloud-build.outputs.IMAGE }}" \
+            --region "${{ env.GCP_REGION }}" \
             --allow-unauthenticated \
-            --cpu=1 --memory=512Mi \
-            --min-instances=0 --max-instances=3 \
-            --concurrency=80 \
-            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT }}"
+            --port 8080
+
+      - name: Show Service URL
+        run: |
+          gcloud run services describe "${{ env.SERVICE_NAME }}" \
+            --region "${{ env.GCP_REGION }}" \
+            --format='value(status.url)'
