@@ -12,17 +12,17 @@ jobs:
       id-token: write
 
     env:
-      # Set these via GitHub Secrets:
-      # GCP_PROJECT = portfolio-476219
-      # GCP_REGION = us-central1
-      # ARTIFACT_REPO = portfolio-registry
+      # Set these in GitHub Secrets:
+      # GCP_PROJECT=portfolio-476219
+      # GCP_REGION=us-central1
+      # ARTIFACT_REPO=portfolio-registry
       IMAGE_NAME: portfolio
       SERVICE_NAME: ${{ github.ref_name == 'main' && 'portfolio-prod' || github.ref_name == 'uat' && 'portfolio-uat' || 'portfolio-dev' }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # Authenticate to Google Cloud with your service account key secret
+      # Auth to Google Cloud with your SA key
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -34,37 +34,13 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
 
-      # Fail early if any required env is missing
-      - name: Sanity check env
+      # Authenticate Docker to Artifact Registry (avoids Cloud Build entirely)
+      - name: Docker auth for Artifact Registry
         run: |
-          set -euo pipefail
-          : "${{ secrets.GCP_PROJECT }}?Missing GCP_PROJECT"
-          : "${{ secrets.GCP_REGION }}?Missing GCP_REGION"
-          : "${{ secrets.ARTIFACT_REPO }}?Missing ARTIFACT_REPO"
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
-      # Build & push the image via Cloud Build (uses cloudbuild.yaml)
-      - name: Build & Push (Cloud Build via config)
+      # Build and push the image with Docker (no Cloud Build, no GCS bucket)
+      - name: Build & Push (Docker)
         run: |
           set -euo pipefail
-          TAG="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
-          IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${TAG}"
-          echo "IMAGE_URI=$IMAGE_URI"
-          gcloud builds submit . --config=cloudbuild.yaml --substitutions=_IMAGE_URI="$IMAGE_URI"
-
-        # Deploy to the Cloud Run service that matches the branch
-        # dev -> portfolio-dev
-        # uat -> portfolio-uat
-        # main -> portfolio-prod
-      - name: Deploy to Cloud Run
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
-          IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${TAG}"
-          gcloud run deploy "${{ env.SERVICE_NAME }}" \
-            --image "$IMAGE_URI" \
-            --region "${{ secrets.GCP_REGION }}" \
-            --allow-unauthenticated \
-            --cpu=1 --memory=512Mi \
-            --min-instances=0 --max-instances=3 \
-            --concurrency=80 \
-            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT }}"
+          TAG="${GITHUB_SHA}_
