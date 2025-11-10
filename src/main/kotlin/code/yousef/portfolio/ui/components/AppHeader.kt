@@ -46,15 +46,17 @@ fun AppHeader(
     locale: PortfolioLocale,
     modifier: Modifier = Modifier(),
     forceNativeLinks: Boolean = false,
-    nativeBaseUrl: String? = null
+    nativeBaseUrl: String? = null,
+    docsBaseUrl: String? = null
 ) {
     if (forceNativeLinks) {
-        NativeAppHeader(locale = locale, baseUrl = nativeBaseUrl)
+        NativeAppHeader(locale = locale, baseUrl = nativeBaseUrl, docsBaseUrl = docsBaseUrl)
         return
     }
 
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
+    val docsHref = resolveDocsHref(docsBaseUrl)
     val containerModifier = modifier
         .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
@@ -104,7 +106,7 @@ fun AppHeader(
                     navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
                 )
             }
-            ProjectsDropdown(locale = locale)
+            ProjectsDropdown(locale = locale, docsHref = docsHref)
         }
 
         Row(
@@ -292,7 +294,7 @@ private fun navLink(
 }
 
 @Composable
-private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
+private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseUrl: String?) {
     val root = baseUrl?.trimEnd('/') ?: SITE_URL.trimEnd('/')
     val localeBase = if (locale == PortfolioLocale.EN) root else "$root/${locale.code}"
     val navHtml = buildString {
@@ -301,6 +303,7 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
             append("""<a class="native-header__link" href="$href">${item.label.resolve(locale)}</a>""")
         }
     }
+    val docsHref = resolveDocsHref(docsBaseUrl)
     val hireHref = NavTarget.Section("contact").absoluteHref(locale, localeBase)
     val hireLabel = LocalizedText("Hire Me", "توظيفي").resolve(locale)
     val enHref = root
@@ -442,7 +445,7 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
                 <span class="native-header__dropdown-caret" aria-hidden="true">▾</span>
               </button>
               <div class="native-header__menu">
-                <a href="https://summon.yousef.codes/" target="_blank" rel="noopener">$summonText</a>
+                <a href="$docsHref">$summonText</a>
               </div>
             </div>
           </nav>
@@ -460,7 +463,7 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
 }
 
 @Composable
-private fun ProjectsDropdown(locale: PortfolioLocale) {
+private fun ProjectsDropdown(locale: PortfolioLocale, docsHref: String) {
     val label = projectsLabel.resolve(locale)
     val summonText = summonLabel.resolve(locale)
     RawHtml(
@@ -471,7 +474,7 @@ private fun ProjectsDropdown(locale: PortfolioLocale) {
             <span class="nav-dropdown__caret" aria-hidden="true">▾</span>
           </button>
           <div class="nav-dropdown__menu">
-            <a href="https://summon.yousef.codes/" target="_blank" rel="noopener">$summonText</a>
+            <a href="$docsHref">$summonText</a>
           </div>
         </div>
         """.trimIndent()
@@ -547,4 +550,13 @@ private fun NavDropdownStyles() {
         </style>
         """.trimIndent()
     )
+}
+
+private val docsBaseEnv: String? = System.getenv("DOCS_BASE_URL")?.takeIf { it.isNotBlank() }
+
+private fun resolveDocsHref(overrideValue: String?): String {
+    val candidate = overrideValue?.takeIf { it.isNotBlank() }
+        ?: docsBaseEnv
+        ?: "/summon"
+    return candidate.trimEnd('/').ifBlank { "/summon" }
 }

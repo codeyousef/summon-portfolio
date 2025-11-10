@@ -16,6 +16,7 @@ import code.yousef.portfolio.ssr.SITE_URL
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
@@ -60,6 +61,18 @@ fun Application.configureRouting() {
             }
         }
 
+        docsRoutes(
+            docsService = docsService,
+            markdownRenderer = markdownRenderer,
+            linkRewriter = linkRewriter,
+            docsRouter = docsRouter,
+            webhookHandler = webhookHandler,
+            config = docsConfig,
+            docsCatalog = docsCatalog,
+            registerPageRoutes = false,
+            registerInfrastructure = true
+        )
+
         docsHosts
             .flatMap { rawHost ->
                 val parts = rawHost.split(":", limit = 2)
@@ -69,7 +82,7 @@ fun Application.configureRouting() {
                 else listOf(host to null, host to configuredPort)
             }
             .forEach { (hostName, port) ->
-                fun Route.mountDocsRoutes() {
+                fun Route.mountDocsRoutes(pathResolver: (ApplicationCall) -> String = { call -> call.request.path() }) {
                     get("/health") {
                         call.respondHealth(bootInstant)
                     }
@@ -80,7 +93,9 @@ fun Application.configureRouting() {
                         docsRouter = docsRouter,
                         webhookHandler = webhookHandler,
                         config = docsConfig,
-                        docsCatalog = docsCatalog
+                        docsCatalog = docsCatalog,
+                        pathResolver = pathResolver,
+                        registerInfrastructure = false
                     )
                 }
                 if (port != null) {
@@ -93,6 +108,24 @@ fun Application.configureRouting() {
                     }
                 }
             }
+
+        route("/summon") {
+            docsRoutes(
+                docsService = docsService,
+                markdownRenderer = markdownRenderer,
+                linkRewriter = linkRewriter,
+                docsRouter = docsRouter,
+                webhookHandler = webhookHandler,
+                config = docsConfig,
+                docsCatalog = docsCatalog,
+                pathResolver = { call ->
+                    val raw = call.request.path()
+                    val stripped = raw.removePrefix("/summon")
+                    stripped.ifBlank { "/" }
+                },
+                registerInfrastructure = false
+            )
+        }
 
         route("/") {
             portfolioRoutes(

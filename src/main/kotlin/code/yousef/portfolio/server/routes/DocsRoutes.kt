@@ -22,10 +22,13 @@ fun Route.docsRoutes(
     docsRouter: DocsRouter,
     webhookHandler: WebhookHandler,
     config: DocsConfig,
-    docsCatalog: DocsCatalog
+    docsCatalog: DocsCatalog,
+    pathResolver: (ApplicationCall) -> String = { it.request.path() },
+    registerPageRoutes: Boolean = true,
+    registerInfrastructure: Boolean = true
 ) {
     suspend fun ApplicationCall.renderDocsPage() {
-        val requestPath = request.path().ifBlank { "/" }
+        val requestPath = pathResolver(this).ifBlank { "/" }
         val (branch, pathPart) = extractBranch(requestPath, config)
         val slug = normalizeSlug(pathPart)
         var navTree = docsCatalog.navTree()
@@ -89,37 +92,41 @@ fun Route.docsRoutes(
         respondDocsPage(page)
     }
 
-    get("/__asset/{assetPath...}") {
-        val pathSegments = call.parameters.getAll("assetPath") ?: emptyList()
-        val branch = call.request.queryParameters["ref"] ?: config.defaultBranch
-        val assetPath = pathSegments.joinToString("/").trim('/')
-        if (assetPath.isBlank()) {
-            call.respond(HttpStatusCode.BadRequest, "Missing asset path")
-            return@get
+    if (registerInfrastructure) {
+        get("/__asset/{assetPath...}") {
+            val pathSegments = call.parameters.getAll("assetPath") ?: emptyList()
+            val branch = call.request.queryParameters["ref"] ?: config.defaultBranch
+            val assetPath = pathSegments.joinToString("/").trim('/')
+            if (assetPath.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, "Missing asset path")
+                return@get
+            }
+            val repoPath = "${config.normalizedDocsRoot}/$assetPath"
+            runCatching { docsService.fetchAsset(repoPath, branch) }
+                .onSuccess { asset ->
+                    val contentType = asset.contentType?.let(ContentType::parse) ?: ContentType.Application.OctetStream
+                    call.response.headers.append(HttpHeaders.CacheControl, "public, max-age=86400", false)
+                    asset.etag?.let { call.response.headers.append(HttpHeaders.ETag, it, false) }
+                    call.respondBytes(asset.bytes, contentType)
+                }
+                .onFailure {
+                    call.respond(HttpStatusCode.NotFound, "Asset not found")
+                }
         }
-        val repoPath = "${config.normalizedDocsRoot}/$assetPath"
-        runCatching { docsService.fetchAsset(repoPath, branch) }
-            .onSuccess { asset ->
-                val contentType = asset.contentType?.let(ContentType::parse) ?: ContentType.Application.OctetStream
-                call.response.headers.append(HttpHeaders.CacheControl, "public, max-age=86400", false)
-                asset.etag?.let { call.response.headers.append(HttpHeaders.ETag, it, false) }
-                call.respondBytes(asset.bytes, contentType)
-            }
-            .onFailure {
-                call.respond(HttpStatusCode.NotFound, "Asset not found")
-            }
+
+        post("/__hooks/github") {
+            webhookHandler.handle(call)
+        }
     }
 
-    post("/__hooks/github") {
-        webhookHandler.handle(call)
-    }
+    if (registerPageRoutes) {
+        get("/") {
+            call.renderDocsPage()
+        }
 
-    get("/") {
-        call.renderDocsPage()
-    }
-
-    get("{...}") {
-        call.renderDocsPage()
+        get("{...}") {
+            call.renderDocsPage()
+        }
     }
 }
 

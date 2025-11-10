@@ -40,7 +40,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock(seo.title, seo.description, seo.canonicalUrl),
             content = {
-                DocsPageFrame(navBase) {
+                DocsPageFrame(navBase, origin) {
                     DocsShell(
                         requestPath = requestPath,
                         html = html,
@@ -61,7 +61,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock("Not found", "This page could not be located.", canonical),
             content = {
-                DocsPageFrame(navBase) {
+                DocsPageFrame(navBase, origin) {
                     DocsNotFoundContent(navJson)
                 }
             }
@@ -166,13 +166,14 @@ private fun DocsNotFoundContent(navJson: String) {
 }
 
 @Composable
-private fun DocsPageFrame(navBaseUrl: String, content: @Composable () -> Unit) {
+private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Composable () -> Unit) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         SectionWrap {
             AppHeader(
                 locale = PortfolioLocale.EN,
                 forceNativeLinks = true,
-                nativeBaseUrl = navBaseUrl
+                nativeBaseUrl = navBaseUrl,
+                docsBaseUrl = docsBaseUrl
             )
         }
         SectionWrap {
