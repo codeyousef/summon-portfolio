@@ -5,7 +5,10 @@ import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.store.FileContentStore
+import code.yousef.portfolio.docs.*
+import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.routes.portfolioRoutes
+import code.yousef.portfolio.server.routes.docsRoutes
 import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
@@ -15,6 +18,7 @@ import io.ktor.server.application.*
 import io.ktor.server.http.content.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.Serializable
 import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
@@ -32,6 +36,20 @@ fun Application.configureRouting() {
     val adminRenderer = AdminRenderer()
     val contactService = ContactService()
     val hydrationBundle = environment.classLoader.getResource("static/summon-hydration.js")?.readBytes()
+    val docsConfig = DocsConfig.fromEnv()
+    val docsCache = DocsCache(docsConfig.cacheTtlSeconds)
+    val docsService = DocsService(docsConfig, docsCache)
+    val markdownRenderer = MarkdownRenderer()
+    val linkRewriter = LinkRewriter()
+    val seoExtractor = SeoExtractor(docsConfig)
+    val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
+    val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig)
+    val docsHosts = (System.getenv("DOCS_HOSTS") ?: "summon.yousef.codes,summon.localhost,docs.localhost")
+        .split(",")
+        .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
+    val configuredPort = environment.config.propertyOrNull("ktor.deployment.port")?.getString()?.toIntOrNull()
+        ?: System.getenv("PORT")?.toIntOrNull()
+        ?: 8080
 
     routing {
         staticResources("/static", "static")
@@ -40,6 +58,40 @@ fun Application.configureRouting() {
                 call.respondBytes(bundle, ContentType.Application.JavaScript)
             }
         }
+
+        docsHosts
+            .flatMap { rawHost ->
+                val parts = rawHost.split(":", limit = 2)
+                val host = parts[0]
+                val port = parts.getOrNull(1)?.toIntOrNull()
+                if (port != null) listOf(host to port)
+                else listOf(host to null, host to configuredPort)
+            }
+            .forEach { (hostName, port) ->
+                fun Route.mountDocsRoutes() {
+                    get("/health") {
+                        call.respondHealth(bootInstant)
+                    }
+                    docsRoutes(
+                        docsService = docsService,
+                        markdownRenderer = markdownRenderer,
+                        linkRewriter = linkRewriter,
+                        docsRouter = docsRouter,
+                        webhookHandler = webhookHandler,
+                        config = docsConfig
+                    )
+                }
+                if (port != null) {
+                    host(hostName, port) {
+                        mountDocsRoutes()
+                    }
+                } else {
+                    host(hostName) {
+                        mountDocsRoutes()
+                    }
+                }
+            }
+
         route("/") {
             portfolioRoutes(
                 portfolioRenderer = portfolioRenderer,
@@ -52,8 +104,7 @@ fun Application.configureRouting() {
             )
         }
         get("/health") {
-            val uptime = Duration.between(bootInstant, Instant.now()).seconds
-            call.respond(mapOf("status" to "ok", "uptimeSeconds" to uptime))
+            call.respondHealth(bootInstant)
         }
         get("/sitemap.xml") {
             val sitemap = generateSitemapXml(contentService)
@@ -83,4 +134,12 @@ private fun generateSitemapXml(contentService: PortfolioContentService): String 
         }
         appendLine("</urlset>")
     }
+}
+
+@Serializable
+private data class HealthStatus(val status: String, val uptimeSeconds: Long)
+
+private suspend fun ApplicationCall.respondHealth(bootInstant: Instant) {
+    val uptime = Duration.between(bootInstant, Instant.now()).seconds
+    respond(HealthStatus(status = "ok", uptimeSeconds = uptime))
 }

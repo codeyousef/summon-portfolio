@@ -17,13 +17,34 @@ application {
 dependencies {
     implementation("io.ktor:ktor-server-core-jvm")
     implementation("io.ktor:ktor-server-netty")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
-    implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-config-yaml")
     implementation("io.ktor:ktor-server-content-negotiation")
     implementation("io.ktor:ktor-serialization-kotlinx-json")
     implementation("io.ktor:ktor-server-sessions")
+    implementation("io.ktor:ktor-server-default-headers")
+    implementation("io.ktor:ktor-server-call-logging")
+    implementation("io.ktor:ktor-server-compression")
+    implementation("io.ktor:ktor-server-caching-headers")
+    implementation("io.ktor:ktor-server-auto-head-response")
+    implementation("io.ktor:ktor-server-status-pages")
+    implementation("io.ktor:ktor-server-host-common")
+
+    implementation("io.ktor:ktor-client-core")
+    implementation("io.ktor:ktor-client-cio")
+    implementation("io.ktor:ktor-client-content-negotiation")
+    implementation("io.ktor:ktor-client-encoding")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+    implementation("org.commonmark:commonmark:0.22.0")
+    implementation("org.commonmark:commonmark-ext-yaml-front-matter:0.22.0")
+    implementation("org.commonmark:commonmark-ext-autolink:0.22.0")
+    implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1")
+    implementation("org.jsoup:jsoup:1.18.1")
+
     implementation("io.github.codeyousef:summon-jvm:0.4.6.0")
+    implementation("ch.qos.logback:logback-classic:$logback_version")
+
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }
