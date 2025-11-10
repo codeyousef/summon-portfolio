@@ -9,47 +9,49 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # required if you later switch to Workload Identity Federation
+      id-token: write
 
     env:
-      # must be the *project ID*, e.g. "portfolio-476219"
+      # MUST be project **ID** (e.g., portfolio-476219)
       GCP_PROJECT:   ${{ secrets.GCP_PROJECT }}
       GCP_REGION: ${{ secrets.GCP_REGION }}
-      ARTIFACT_REPO: ${{ secrets.ARTIFACT_REPO || 'portfolio-registry' }}
+      ARTIFACT_REPO: ${{ secrets.ARTIFACT_REPO }}
       IMAGE_NAME:    portfolio
       SERVICE_NAME:  ${{ github.ref_name == 'main' && 'portfolio-prod' || github.ref_name == 'uat' && 'portfolio-uat' || 'portfolio-dev' }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # 1) Auth with your SA key (this is what was missing)
+      # Auth with your SA key
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # 2) Install gcloud & set project (no creds here)
+      # Install gcloud and set project
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT }}
 
-      # 4) Build & push the image via Cloud Build (uses your Dockerfile)
+      # Build & push via Cloud Build. Compose IMAGE_URI inline (no $GITHUB_ENV).
       - name: Build & Push (Cloud Build)
         run: |
-          TAG="$(date +%Y%m%d-%H%M)-${{ github.sha }}"
-          IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${ARTIFACT_REPO}/${IMAGE_NAME}:${TAG}"
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          set -euo pipefail
+          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ github.run_number }}"
+          echo "IMAGE_URI=$IMAGE_URI"
           gcloud builds submit . --tag "$IMAGE_URI"
 
-      # 5) Deploy to the service that matches the branch
+      # Deploy to the correct service for this branch. Recompute IMAGE_URI inline.
       - name: Deploy to Cloud Run
         run: |
+          set -euo pipefail
+          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ github.run_number }}"
           gcloud run deploy "${SERVICE_NAME}" \
             --image "$IMAGE_URI" \
-            --region "${GCP_REGION}" \
+            --region "${{ env.GCP_REGION }}" \
             --allow-unauthenticated \
             --cpu=1 --memory=512Mi \
             --min-instances=0 --max-instances=3 \
             --concurrency=80 \
-            --set-env-vars="GOOGLE_CLOUD_PROJECT=${GCP_PROJECT}"
+            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT }}"
