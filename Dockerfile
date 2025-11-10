@@ -1,22 +1,23 @@
-# Multi-stage: build the fat JAR inside the container (CI-friendly)
+# Build stage: JDK only; run the project's Gradle Wrapper
+FROM eclipse-temurin:17-jdk AS build
+WORKDIR /workspace
 
-FROM gradle:8.10.2-jdk17 AS build
-WORKDIR /home/gradle/src
+# Copy wrapper first for better caching, then the rest
+COPY gradlew /workspace/gradlew
+COPY gradle /workspace/gradle
+RUN chmod +x /workspace/gradlew
 
-# Copy everything and build a shadow/fat JAR
-COPY . .
-# If you don't use the Shadow plugin, replace with your build command that produces a runnable jar in build/libs/
-RUN gradle -x test shadowJar --no-daemon
+# (Optional) show wrapper version for debugging
+RUN /workspace/gradlew --version || true
 
-# Runtime image
+# Now copy everything else and build the fat JAR
+COPY . /workspace
+RUN /workspace/gradlew -x test shadowJar --no-daemon
+
+# Runtime stage
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-
-# Copy the built jar from the builder stage
-COPY --from=build /home/gradle/src/build/libs/*.jar /app/app.jar
-
-# Cloud Run expects the app to bind to 0.0.0.0:$PORT
+COPY --from=build /workspace/build/libs/*.jar /app/app.jar
 ENV PORT=8080
 EXPOSE 8080
-
 CMD ["java","-jar","/app/app.jar"]
