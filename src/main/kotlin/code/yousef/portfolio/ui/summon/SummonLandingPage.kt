@@ -21,6 +21,7 @@ import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import java.net.URI
 
 @Composable
 fun SummonLandingPage(
@@ -260,6 +261,8 @@ fun PricingCard(plan: Plan) {
 
 @Composable
 private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
+    val docsLabel = humanReadableLabel(docsUrl, "/docs")
+    val apiLabel = humanReadableLabel(apiReferenceUrl, "/api-reference")
     SectionWrap {
         Column(
             modifier = Modifier()
@@ -275,7 +278,7 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                     .fontSize(1.4.rem)
             )
             Paragraph(
-                text = "Docs live at summon.site/docs and the API reference is always up to date at /api-reference.",
+                text = "Docs live at $docsLabel and the API reference is always up to date at $apiLabel.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
@@ -286,7 +289,7 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                     .flexWrap(FlexWrap.Wrap)
             ) {
                 ButtonLink(
-                    label = "summon.site/docs",
+                    label = docsLabel,
                     href = docsUrl,
                     modifier = Modifier()
                         .borderWidth(1)
@@ -305,7 +308,7 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                     dataHref = null
                 )
                 ButtonLink(
-                    label = "summon.site/api-reference",
+                    label = apiLabel,
                     href = apiReferenceUrl,
                     modifier = Modifier()
                         .borderWidth(1)
@@ -325,5 +328,17 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                 )
             }
         }
+    }
+}
+
+private fun humanReadableLabel(url: String, fallbackPath: String): String {
+    return runCatching {
+        val uri = URI(url)
+        val host = uri.host ?: return@runCatching url
+        val path = uri.path?.trim('/')
+        if (path.isNullOrBlank()) host else "$host/$path"
+    }.getOrElse {
+        val sanitized = url.removePrefix("https://").removePrefix("http://")
+        if (sanitized.contains('/')) sanitized else "$sanitized$fallbackPath"
     }
 }
