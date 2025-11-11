@@ -112,13 +112,6 @@ private fun ContactForm(
             .flexDirection(FlexDirection.Column)
             .width(100.percent)
             .gap(PortfolioTheme.Spacing.md)
-            .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .borderRadius(PortfolioTheme.Radii.lg)
-            .padding(PortfolioTheme.Spacing.lg)
-            .backdropBlur(18.px)
             .minWidth("0px")
     ) {
         FormTextField(
