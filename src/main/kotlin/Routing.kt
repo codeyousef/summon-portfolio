@@ -22,6 +22,12 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
@@ -144,11 +150,11 @@ fun Application.configureRouting(
         get("/healthz") {
             val uptime = Duration.between(bootInstant, Instant.now()).seconds
             call.respond(
-                mapOf(
-                    "ok" to true,
-                    "projectId" to appConfig.projectId,
-                    "emulator" to (appConfig.emulatorHost != null),
-                    "uptimeSeconds" to uptime
+                HealthzResponse(
+                    ok = true,
+                    projectId = appConfig.projectId,
+                    emulator = appConfig.emulatorHost != null,
+                    uptimeSeconds = uptime
                 )
             )
         }
@@ -159,13 +165,12 @@ fun Application.configureRouting(
             val now = System.currentTimeMillis()
             portfolioMetaService.touchHello(now)
             val data = portfolioMetaService.fetchHello()
-            call.respond(
-                mapOf(
-                    "ok" to true,
-                    "exists" to (data != null),
-                    "data" to (data ?: emptyMap<String, Any>())
-                )
+            val payload = DbTestResponse(
+                ok = true,
+                exists = data != null,
+                data = data?.let(::toJsonElement) ?: JsonNull
             )
+            call.respond(payload)
         }
         get("/sitemap.xml") {
             val sitemap = generateSitemapXml(contentService)
@@ -200,7 +205,40 @@ private fun generateSitemapXml(contentService: PortfolioContentService): String 
 @Serializable
 private data class HealthStatus(val status: String, val uptimeSeconds: Long)
 
+@Serializable
+private data class HealthzResponse(
+    val ok: Boolean,
+    val projectId: String,
+    val emulator: Boolean,
+    val uptimeSeconds: Long
+)
+
+@Serializable
+private data class DbTestResponse(
+    val ok: Boolean,
+    val exists: Boolean,
+    val data: JsonElement
+)
+
 private suspend fun ApplicationCall.respondHealth(bootInstant: Instant) {
     val uptime = Duration.between(bootInstant, Instant.now()).seconds
     respond(HealthStatus(status = "ok", uptimeSeconds = uptime))
+}
+
+private fun toJsonElement(value: Any?): JsonElement = when (value) {
+    null -> JsonNull
+    is String -> JsonPrimitive(value)
+    is Number -> JsonPrimitive(value)
+    is Boolean -> JsonPrimitive(value)
+    is Map<*, *> -> buildJsonObject {
+        value.forEach { (key, inner) ->
+            if (key is String) {
+                put(key, toJsonElement(inner))
+            }
+        }
+    }
+    is Iterable<*> -> buildJsonArray {
+        value.forEach { add(toJsonElement(it)) }
+    }
+    else -> JsonPrimitive(value.toString())
 }
