@@ -51,7 +51,8 @@ fun Application.configureRouting(
     val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
     val summonLandingRenderer = SummonLandingRenderer()
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
-    val summonLandingHosts = (System.getenv("SUMMON_LANDING_HOSTS") ?: "summon.yousef.codes")
+    val summonLandingHosts =
+        (System.getenv("SUMMON_LANDING_HOSTS") ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.uat.yousef.codes")
         .split(",")
         .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
     val docsHosts = (System.getenv("DOCS_HOSTS")
@@ -65,15 +66,6 @@ fun Application.configureRouting(
         hydrationBundle?.let { bundle ->
             get("/summon-hydration.js") {
                 call.respondBytes(bundle, ContentType.Application.JavaScript)
-            }
-        }
-
-        summonLandingHosts.forEach { hostName ->
-            host(hostName) {
-                get("/") {
-                    val page = summonLandingRenderer.landingPage()
-                    call.respondSummonPage(page)
-                }
             }
         }
 
@@ -94,36 +86,53 @@ fun Application.configureRouting(
                 val parts = rawHost.split(":", limit = 2)
                 val host = parts[0]
                 val port = parts.getOrNull(1)?.toIntOrNull()
-                if (port != null) listOf(host to port)
-                else listOf(host to null, host to configuredPort)
+                if (port != null) listOf(host to port) else listOf(host to null, host to configuredPort)
             }
             .forEach { (hostName, port) ->
-                fun Route.mountDocsRoutes(pathResolver: (ApplicationCall) -> String = { call -> call.request.path() }) {
+                val mountDocsForHost: Route.() -> Unit = {
+                    get("/") {
+                        val page = summonLandingRenderer.landingPage()
+                        call.respondSummonPage(page)
+                    }
                     get("/health") {
                         call.respondHealth(bootInstant)
                     }
                     get("/healthz") {
                         call.respondHealthz(appConfig, bootInstant)
                     }
-                    docsRoutes(
-                        docsService = docsService,
-                        markdownRenderer = markdownRenderer,
-                        linkRewriter = linkRewriter,
-                        docsRouter = docsRouter,
-                        webhookHandler = webhookHandler,
-                        config = docsConfig,
-                        docsCatalog = docsCatalog,
-                        pathResolver = pathResolver,
-                        registerInfrastructure = false
-                    )
+                    route("/docs") {
+                        docsRoutes(
+                            docsService = docsService,
+                            markdownRenderer = markdownRenderer,
+                            linkRewriter = linkRewriter,
+                            docsRouter = docsRouter,
+                            webhookHandler = webhookHandler,
+                            config = docsConfig,
+                            docsCatalog = docsCatalog,
+                            pathResolver = { call ->
+                                val raw = call.request.path().removePrefix("/docs").ifBlank { "/" }
+                                if (raw.startsWith("/")) raw else "/$raw"
+                            },
+                            registerInfrastructure = false
+                        )
+                    }
+                    get("/api-reference") {
+                        call.respondRedirect("/docs/api-reference")
+                    }
+                    get("/api-reference/{remaining...}") {
+                        val remainder = call.parameters.getAll("remaining")?.joinToString("/") ?: ""
+                        val target =
+                            if (remainder.isBlank()) "/docs/api-reference" else "/docs/api-reference/$remainder"
+                        call.respondRedirect(target)
+                    }
                 }
                 if (port != null) {
                     host(hostName, port) {
-                        mountDocsRoutes()
+                        mountDocsForHost()
                     }
                 } else {
                     host(hostName) {
-                        mountDocsRoutes()
+                        mountDocsForHost()
                     }
                 }
             }
