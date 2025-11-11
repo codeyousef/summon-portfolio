@@ -51,7 +51,7 @@ fun Application.configureRouting(
     val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
     val summonLandingRenderer = SummonLandingRenderer()
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
-    val summonLandingHosts = (System.getenv("SUMMON_LANDING_HOSTS") ?: "yousef.codes,dev.yousef.codes,uat.yousef.codes")
+    val summonLandingHosts = (System.getenv("SUMMON_LANDING_HOSTS") ?: "summon.yousef.codes")
         .split(",")
         .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
     val docsHosts = (System.getenv("DOCS_HOSTS")
