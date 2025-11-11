@@ -453,7 +453,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
             )
             RawHtml(
                 """
-                <img src="/static/logo-footer.png" alt="Summon" width="64" height="24" style="display:inline-block;vertical-align:middle;border-radius:999px;margin:0 0.25rem;" />
+                <img src="/static/logo.png" alt="Summon" width="24" height="24" style="display:inline-block;vertical-align:middle;margin:0 0.25rem;" />
                 """.trimIndent()
             )
             Text(

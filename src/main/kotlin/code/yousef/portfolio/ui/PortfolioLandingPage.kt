@@ -413,6 +413,10 @@ private fun PrimaryCtaButton(text: String, href: String, modifier: Modifier = Mo
             .background(PortfolioTheme.Gradients.ACCENT)
             .color("#ffffff")
             .textDecoration("none")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.ACCENT_ALT)
+            .boxShadow("0 18px 40px rgba(255,70,104,0.45)")
             .fontWeight(800)
             .letterSpacing("-0.01em"),
         target = null,
@@ -442,7 +446,7 @@ private fun SecondaryCtaButton(
         modifier = modifier
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
+            .borderColor(PortfolioTheme.Colors.TEXT_SECONDARY)
             .borderRadius(PortfolioTheme.Radii.lg)
             .height(56.px)
             .display(Display.InlineFlex)
@@ -450,8 +454,9 @@ private fun SecondaryCtaButton(
             .justifyContent(JustifyContent.Center)
             .padding("0", PortfolioTheme.Spacing.lg)
             .textDecoration("none")
-            .backgroundColor("transparent")
-            .color(PortfolioTheme.Colors.TEXT_SECONDARY),
+            .backgroundColor("rgba(255,255,255,0.03)")
+            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            .boxShadow("0 10px 30px rgba(0,0,0,0.25)"),
         target = targetAttr,
         rel = relAttr,
         title = null,
