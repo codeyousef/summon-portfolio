@@ -140,43 +140,47 @@ window.addEventListener('keydown', (e) => {
 
 init();
 
-/* ================== Page interactions ================== */
-const year = document.getElementById('year');
-if (year) {
-    year.textContent = new Date().getFullYear();
-}
+/* ================== Shared page interactions ================== */
+const setCurrentYear = () => {
+    const year = document.getElementById('year');
+    if (year) {
+        year.textContent = new Date().getFullYear().toString();
+    }
+};
 
-for (const btn of document.querySelectorAll('[data-href]')) {
-    btn.addEventListener('click', (e) => {
-        const target = e.currentTarget;
-        const rawHref = target.getAttribute('data-href') || target.getAttribute('href');
-        if (!rawHref) return;
+const wireDataHrefLinks = () => {
+    document.querySelectorAll('[data-href]').forEach((element) => {
+        element.addEventListener('click', (event) => {
+            const target = event.currentTarget;
+            const rawHref = target.getAttribute('data-href') || target.getAttribute('href');
+            if (!rawHref) return;
 
-        let hashTarget = null;
-        if (rawHref.startsWith('#')) {
-            hashTarget = rawHref;
-        } else {
-            const hashIndex = rawHref.indexOf('#');
-            if (hashIndex >= 0) {
-                hashTarget = rawHref.slice(hashIndex);
+            let hashTarget = null;
+            if (rawHref.startsWith('#')) {
+                hashTarget = rawHref;
+            } else {
+                const hashIndex = rawHref.indexOf('#');
+                if (hashIndex >= 0) {
+                    hashTarget = rawHref.slice(hashIndex);
+                }
             }
-        }
 
-        if (target.tagName === 'A') {
-            e.preventDefault();
-        }
-
-        if (hashTarget) {
-            const section = document.querySelector(hashTarget);
-            if (section) {
-                section.scrollIntoView({behavior: 'smooth', block: 'start'});
-                return;
+            if (target.tagName === 'A') {
+                event.preventDefault();
             }
-        }
 
-        window.location.href = rawHref;
+            if (hashTarget) {
+                const section = document.querySelector(hashTarget);
+                if (section) {
+                    section.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    return;
+                }
+            }
+
+            window.location.href = rawHref;
+        });
     });
-}
+};
 
 const adoptLinkLabels = () => {
     document.querySelectorAll('a').forEach((link) => {
@@ -188,16 +192,29 @@ const adoptLinkLabels = () => {
     });
 };
 
-adoptLinkLabels();
-
-for (const btn of document.querySelectorAll('[data-copy]')) {
-    btn.addEventListener('click', () => {
-        const pre = btn.parentElement;
-        const text = pre?.innerText?.trim();
-        if (!text) return;
-        navigator.clipboard.writeText(text).then(() => {
-            btn.textContent = 'Copied';
-            setTimeout(() => (btn.textContent = 'Copy'), 1200);
+const wireCopyButtons = () => {
+    document.querySelectorAll('[data-copy]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const pre = button.parentElement;
+            const text = pre?.innerText?.trim();
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                button.textContent = 'Copied';
+                setTimeout(() => (button.textContent = 'Copy'), 1200);
+            });
         });
     });
+};
+
+const initPageInteractions = () => {
+    setCurrentYear();
+    wireDataHrefLinks();
+    adoptLinkLabels();
+    wireCopyButtons();
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPageInteractions, {once: true});
+} else {
+    initPageInteractions();
 }

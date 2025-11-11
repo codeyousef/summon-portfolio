@@ -1,13 +1,14 @@
 package code.yousef.portfolio.docs.summon.components
 
 import code.yousef.portfolio.docs.TocEntry
+import code.yousef.portfolio.docs.summon.dataAttributes
+import code.yousef.portfolio.docs.summon.htmlEscape
+import code.yousef.portfolio.docs.summon.safeFragmentHref
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.LinkNavigationMode
-import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
@@ -40,28 +41,21 @@ fun Toc(entries: List<TocEntry>) {
                 .fontWeight(600)
         )
         entries.forEach { entry ->
-            AnchorLink(
-                label = entry.text,
-                href = "#${entry.anchor}",
-                modifier = Modifier()
-                    .display(Display.Block)
-                    .padding(PortfolioTheme.Spacing.xs)
-                    .paddingLeft(
-                        if (entry.level == 3) PortfolioTheme.Spacing.md else PortfolioTheme.Spacing.sm
-                    )
-                    .textDecoration("none")
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .fontSize(0.95.rem),
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("toc-entry" to entry.anchor),
-                navigationMode = LinkNavigationMode.Client
-            )
+            DocsTocLink(entry)
         }
     }
+}
+
+@Composable
+private fun DocsTocLink(entry: TocEntry) {
+    val paddingLeft = if (entry.level == 3) PortfolioTheme.Spacing.md else PortfolioTheme.Spacing.sm
+    val html = """
+        <a class="docs-toc__link"
+           href="${safeFragmentHref(entry.anchor)}"
+           style="padding-left: $paddingLeft"
+           ${dataAttributes(mapOf("toc-entry" to entry.anchor))}>
+           ${htmlEscape(entry.text)}
+        </a>
+    """.trimIndent()
+    RawHtml(html)
 }

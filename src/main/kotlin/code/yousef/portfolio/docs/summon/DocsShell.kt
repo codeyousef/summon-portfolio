@@ -13,8 +13,6 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -84,6 +82,40 @@ fun DocsShell(
             .prose-docs li {
               color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
             }
+            .docs-sidebar__link {
+              display: block;
+              padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
+              border-radius: ${PortfolioTheme.Radii.md};
+              text-decoration: none;
+              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+              transition: background ${PortfolioTheme.Motion.DEFAULT}, color ${PortfolioTheme.Motion.DEFAULT};
+            }
+            .docs-sidebar__link:hover {
+              background-color: ${PortfolioTheme.Colors.SURFACE_STRONG};
+              color: ${PortfolioTheme.Colors.ACCENT_ALT};
+            }
+            .docs-sidebar__link--active {
+              background-color: ${PortfolioTheme.Colors.SURFACE_STRONG};
+              color: ${PortfolioTheme.Colors.ACCENT_ALT};
+            }
+            .docs-toc__link {
+              display: block;
+              padding: ${PortfolioTheme.Spacing.xs};
+              text-decoration: none;
+              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+              font-size: 0.95rem;
+            }
+            .docs-toc__link:hover {
+              color: ${PortfolioTheme.Colors.ACCENT_ALT};
+            }
+            .docs-neighbor__link {
+              text-decoration: none;
+              font-weight: 600;
+              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+            }
+            .docs-neighbor__link:hover {
+              color: ${PortfolioTheme.Colors.ACCENT_ALT};
+            }
             @media (max-width: 1024px) {
               .docs-sidebar,
               .docs-toc {
@@ -144,40 +176,20 @@ private fun NeighborRow(neighbors: NeighborLinks) {
             .gap(PortfolioTheme.Spacing.md)
     ) {
         neighbors.previous?.let { link ->
-            AnchorLink(
-                label = "← ${link.title}",
-                href = link.path,
-                modifier = Modifier()
-                    .textDecoration("none")
-                    .fontWeight(600),
-                navigationMode = LinkNavigationMode.Native,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("neighbor" to "prev")
-            )
+            DocsNeighborLink(label = "← ${link.title}", href = link.path, slot = "prev")
         }
         neighbors.next?.let { link ->
-            AnchorLink(
-                label = "${link.title} →",
-                href = link.path,
-                modifier = Modifier()
-                    .textDecoration("none")
-                    .fontWeight(600),
-                navigationMode = LinkNavigationMode.Native,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("neighbor" to "next")
-            )
+            DocsNeighborLink(label = "${link.title} →", href = link.path, slot = "next")
         }
     }
+}
+
+@Composable
+private fun DocsNeighborLink(label: String, href: String, slot: String) {
+    val html = """
+        <a class="docs-neighbor__link" href="${safeHref(href)}"${dataAttributes(mapOf("neighbor" to slot))}>
+          ${htmlEscape(label)}
+        </a>
+    """.trimIndent()
+    RawHtml(html)
 }
