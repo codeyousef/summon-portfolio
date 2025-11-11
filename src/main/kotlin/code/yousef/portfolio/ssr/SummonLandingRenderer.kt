@@ -4,9 +4,9 @@ import code.yousef.portfolio.ui.summon.SummonLandingPage
 import code.yousef.summon.seo.HeadScope
 
 class SummonLandingRenderer(
-    private val docsUrl: String = System.getenv("SUMMON_DOCS_URL") ?: "https://summon.site/docs",
+    private val docsUrl: String = System.getenv("SUMMON_DOCS_URL") ?: "https://summon.yousef.codes/docs",
     private val apiReferenceUrl: String = System.getenv("SUMMON_API_REFERENCE_URL")
-        ?: "https://summon.site/api-reference",
+        ?: "https://summon.yousef.codes/api-reference",
     private val marketingUrl: String = System.getenv("SUMMON_MARKETING_URL") ?: SUMMON_MARKETING_URL
 ) {
 
