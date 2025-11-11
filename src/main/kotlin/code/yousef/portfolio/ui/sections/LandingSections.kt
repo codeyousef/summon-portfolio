@@ -20,6 +20,7 @@ import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.core.style.Color
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
@@ -32,6 +33,8 @@ import code.yousef.summon.modifier.StylingModifiers.color
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.time.Year
+
+private const val SUMMON_DOCS_URL = "https://summon.yousef.codes"
 
 @Composable
 fun HeroSection(
@@ -437,6 +440,24 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 modifier = Modifier().id("year")
             )
             Text(text = "Yousef Baitalmal — Portfolio")
+        }
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.xs)
+        ) {
+            Text(
+                text = "Built with",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
+            RawHtml(
+                """
+                <a href="$SUMMON_DOCS_URL" target="_blank" rel="noopener" aria-label="Summon Framework" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.25rem;">
+                  <img src="/static/logo-footer.png" alt="Summon logo" width="64" height="24" style="display:block;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,0.35);" />
+                </a>
+                """.trimIndent()
+            )
         }
     }
 }
