@@ -5,11 +5,16 @@ import code.yousef.portfolio.content.model.ProjectCategory
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.SUMMON_MARKETING_URL
 import code.yousef.portfolio.ui.foundation.ContentSection
+import code.yousef.portfolio.ui.resolveSummonInline
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -104,8 +109,12 @@ private fun CategoryLegend(locale: PortfolioLocale) {
     }
 }
 
+private const val SUMMON_PROJECT_SLUG = "summon-framework"
+
 @Composable
 private fun ProjectCard(project: Project, locale: PortfolioLocale) {
+    val projectTitle = project.title.resolve(locale)
+    val description = project.description.resolveSummonInline(locale)
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -152,18 +161,49 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             )
         }
 
-        Text(
-            text = project.title.resolve(locale),
-            modifier = Modifier()
-                .fontSize(2.rem)
-                .fontWeight(700)
-        )
-        Text(
-            text = project.description.resolve(locale),
-            modifier = Modifier()
-                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .lineHeight(1.7)
-        )
+        if (project.slug == SUMMON_PROJECT_SLUG) {
+            AnchorLink(
+                label = projectTitle,
+                href = SUMMON_MARKETING_URL,
+                modifier = Modifier()
+                    .fontSize(2.rem)
+                    .fontWeight(700)
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    .textDecoration("none"),
+                navigationMode = LinkNavigationMode.Native,
+                dataAttributes = mapOf("project-link" to "summon"),
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null
+            )
+        } else {
+            Text(
+                text = projectTitle,
+                modifier = Modifier()
+                    .fontSize(2.rem)
+                    .fontWeight(700)
+            )
+        }
+        if (description.hasSummonLink) {
+            RawHtml(
+                """
+                <p style="color:${PortfolioTheme.Colors.TEXT_SECONDARY};line-height:1.7;">
+                  ${description.value}
+                </p>
+                """.trimIndent()
+            )
+        } else {
+            Text(
+                text = description.value,
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .lineHeight(1.7)
+            )
+        }
 
         if (project.technologies.isNotEmpty()) {
             Row(

@@ -8,6 +8,7 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.SUMMON_MARKETING_URL
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
@@ -33,8 +34,6 @@ import code.yousef.summon.modifier.StylingModifiers.color
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.time.Year
-
-private const val SUMMON_DOCS_URL = "https://summon.yousef.codes"
 
 @Composable
 fun HeroSection(
@@ -445,7 +444,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
             modifier = Modifier()
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.xs)
+                .gap(PortfolioTheme.Spacing.xxs)
         ) {
             Text(
                 text = "Built with",
@@ -458,7 +457,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
             )
             AnchorLink(
                 label = "Summon",
-                href = SUMMON_DOCS_URL,
+                href = SUMMON_MARKETING_URL,
                 modifier = Modifier()
                     .textDecoration("underline")
                     .color(PortfolioTheme.Colors.ACCENT_ALT),

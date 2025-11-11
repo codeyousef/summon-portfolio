@@ -29,7 +29,6 @@ import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
 
-private const val SUMMON_URL = "https://summon.yousef.codes"
 
 private object LandingCopy {
     val heroTitle = LocalizedText(
@@ -76,12 +75,6 @@ private object LandingCopy {
     val heroPrimaryCta = LocalizedText("Start your project", "ابدأ مشروعك")
     val heroSecondaryCta = LocalizedText("Explore Summon", "استكشف سُمّون")
 }
-
-private fun summonAnchor(locale: PortfolioLocale, label: LocalizedText = LocalizedText("Summon", "سُمّون")): String =
-    "<a href=\"$SUMMON_URL\" class=\"summon-inline-link\" data-cta=\"summon-link\">${label.resolve(locale)}</a>"
-
-private fun LocalizedText.resolveWithSummon(locale: PortfolioLocale): String =
-    this.resolve(locale).replace("%SUMMON%", summonAnchor(locale))
 
 @Composable
 fun PortfolioLandingPage(
@@ -141,7 +134,7 @@ private fun HeroBand(locale: PortfolioLocale) {
             RawHtml(
                 """
                 <p style="color:rgba(255,255,255,0.88);font-size:1.25rem;line-height:1.6;font-weight:500;">
-                  ${LandingCopy.heroBody.resolveWithSummon(locale)}
+                  ${LandingCopy.heroBody.resolveWithSummonLink(locale)}
                 </p>
                 """.trimIndent()
             )
@@ -160,7 +153,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                 )
                 SecondaryCtaButton(
                     text = LandingCopy.heroSecondaryCta.resolve(locale),
-                    href = SUMMON_URL,
+                    href = SUMMON_MARKETING_URL,
                     modifier = Modifier()
                         .minWidth("220px")
                         .whiteSpace(WhiteSpace.NoWrap)
@@ -169,7 +162,7 @@ private fun HeroBand(locale: PortfolioLocale) {
             RawHtml(
                 """
                 <p style="color:rgba(255,255,255,0.78);font-weight:500;">
-                  ${LandingCopy.heroTrust.resolveWithSummon(locale)}
+                  ${LandingCopy.heroTrust.resolveWithSummonLink(locale)}
                 </p>
                 """.trimIndent()
             )
@@ -298,7 +291,7 @@ private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String)
                 RawHtml(
                     """
                     <p style=\"color:#1c0d11;font-weight:600;\">
-                      ${LandingCopy.featuredBody.resolveWithSummon(locale)}
+                      ${LandingCopy.featuredBody.resolveWithSummonLink(locale)}
                     </p>
                     """.trimIndent()
                 )
@@ -310,7 +303,7 @@ private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String)
                 ) {
                     PrimaryCtaButton(
                         text = LocalizedText("Explore", "استكشف").resolve(locale) + " $projectName",
-                        href = SUMMON_URL
+                        href = SUMMON_MARKETING_URL
                     )
                 }
             }
@@ -362,7 +355,7 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                     RawHtml(
                         """
                         <p style=\"color:${PortfolioTheme.Colors.TEXT_PRIMARY};font-weight:600;\">
-                          ${study.highlight.resolveWithSummon(locale)}
+                          ${study.highlight.resolveWithSummonLink(locale)}
                         </p>
                         """.trimIndent()
                     )
@@ -488,7 +481,7 @@ private fun TestimonialSection(locale: PortfolioLocale) {
                         """.trimIndent()
                     )
                     Paragraph(
-                        text = testimonial.quote.resolveWithSummon(locale),
+                        text = testimonial.quote.resolveWithSummonLink(locale),
                         modifier = Modifier()
                             .fontSize(1.1.rem)
                             .lineHeight(1.5)

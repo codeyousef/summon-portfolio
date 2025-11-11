@@ -100,6 +100,10 @@ fun DocsShell(
               background-color: ${PortfolioTheme.Colors.SURFACE_STRONG};
               color: ${PortfolioTheme.Colors.ACCENT_ALT};
             }
+            .docs-sidebar,
+            .docs-toc {
+              z-index: 2;
+            }
             .docs-toc__link {
               display: block;
               padding: ${PortfolioTheme.Spacing.xs};
@@ -117,6 +121,9 @@ fun DocsShell(
             }
             .docs-neighbor__link:hover {
               color: ${PortfolioTheme.Colors.ACCENT_ALT};
+            }
+            .prose-docs [id] {
+              scroll-margin-top: 140px;
             }
             @media (max-width: 1024px) {
               .docs-sidebar,

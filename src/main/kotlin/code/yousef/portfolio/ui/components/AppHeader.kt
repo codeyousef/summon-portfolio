@@ -9,6 +9,7 @@ import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.components.navigation.ButtonLink
@@ -79,70 +80,95 @@ fun AppHeader(
         .zIndex(20)
         .boxShadow("0 25px 80px rgba(0,0,0,0.35)")
 
-    Row(modifier = containerModifier) {
+    Row(
+        modifier = containerModifier.attribute("class", "app-header")
+    ) {
         NavDropdownStyles()
         RawHtml(
             """
             <input type="checkbox" id="$toggleId" class="app-header__toggle-input" aria-label="Toggle navigation" />
-            <label for="$toggleId" class="app-header__toggle" role="button" aria-controls="app-header-nav app-header-actions">
-              <span></span>
-              <span></span>
-              <span></span>
-            </label>
             """.trimIndent()
         )
-        Text(
-            text = "YOUSEF BAITALMAL",
-            modifier = Modifier()
-                .fontSize(0.9.rem)
-                .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
-                .fontWeight(700)
-                .flex(grow = 0, shrink = 1, basis = "180px")
-        )
-
-        Row(
+        Box(
             modifier = Modifier()
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.md)
-                .flex(grow = 1, shrink = 1, basis = "360px")
-                .flexWrap(FlexWrap.Wrap)
-                .attribute("class", "app-header__nav")
-                .attribute("id", "app-header-nav")
+                .flex(grow = 1, shrink = 1, basis = "220px")
+                .attribute("class", "app-header__brand")
         ) {
-            navItems.forEach { item ->
-                val href =
-                    if (forceNativeLinks) item.target.absoluteHref(locale, nativeBaseUrl) else item.target.href(locale)
-                val label = item.label.resolve(locale)
-                navLink(
-                    label = label,
-                    href = href,
-                    modifier = Modifier()
-                        .textDecoration("none")
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .fontSize(0.85.rem)
-                        .letterSpacing(0.08.rem)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(PortfolioTheme.Radii.pill)
-                        .opacity(0.9F),
-                    dataAttributes = mapOf("nav" to label.lowercase()),
-                    navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
-                )
-            }
-            ProjectsDropdown(locale = locale, docsHref = docsHref)
+            RawHtml(
+                """
+                <label for="$toggleId" class="app-header__toggle" role="button" tabindex="0" aria-controls="app-header-nav app-header-actions">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </label>
+                """.trimIndent()
+            )
+            Text(
+                text = "YOUSEF BAITALMAL",
+                modifier = Modifier()
+                    .fontSize(0.9.rem)
+                    .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
+                    .fontWeight(700)
+            )
         }
 
-        Row(
+        Box(
             modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.md)
-                .flex(grow = 1, shrink = 0, basis = "220px")
-                .justifyContent(JustifyContent.FlexEnd)
-                .flexWrap(FlexWrap.Wrap)
-                .attribute("class", "app-header__actions")
-                .attribute("id", "app-header-actions")
+                .flex(grow = 1, shrink = 1, basis = "360px")
+                .attribute("class", "app-header__nav-wrapper")
         ) {
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .flex(grow = 1, shrink = 1, basis = "360px")
+                    .flexWrap(FlexWrap.Wrap)
+                    .attribute("class", "app-header__nav")
+                    .attribute("id", "app-header-nav")
+            ) {
+                navItems.forEach { item ->
+                    val href =
+                        if (forceNativeLinks) item.target.absoluteHref(locale, nativeBaseUrl) else item.target.href(locale)
+                    val label = item.label.resolve(locale)
+                    navLink(
+                        label = label,
+                        href = href,
+                        modifier = Modifier()
+                            .textDecoration("none")
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            .fontSize(0.85.rem)
+                            .letterSpacing(0.08.rem)
+                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                            .borderRadius(PortfolioTheme.Radii.pill)
+                            .opacity(0.9F),
+                        dataAttributes = mapOf("nav" to label.lowercase()),
+                        navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
+                    )
+                }
+                ProjectsDropdown(locale = locale, docsHref = docsHref)
+            }
+        }
+
+        Box(
+            modifier = Modifier()
+                .flex(grow = 0, shrink = 1, basis = "240px")
+                .attribute("class", "app-header__actions-wrapper")
+        ) {
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .flex(grow = 1, shrink = 0, basis = "220px")
+                    .justifyContent(JustifyContent.FlexEnd)
+                    .flexWrap(FlexWrap.Wrap)
+                    .attribute("class", "app-header__actions")
+                    .attribute("id", "app-header-actions")
+            ) {
             if (chrome.isAdminSession) {
                 val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
                 navLink(
@@ -204,6 +230,7 @@ fun AppHeader(
                 navigationMode = hireNavigation
             )
             LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
+        }
         }
     }
 }
@@ -542,6 +569,7 @@ private fun NavDropdownStyles() {
           flex-direction: column;
           align-items: flex-start;
           padding-bottom: 0;
+          align-self: center;
         }
         .nav-dropdown::after {
           content: "";
@@ -605,15 +633,22 @@ private fun NavDropdownStyles() {
           background: ${PortfolioTheme.Colors.SURFACE};
           color: ${PortfolioTheme.Colors.ACCENT_ALT};
         }
+        .app-header__brand {
+          display: flex;
+          align-items: center;
+          gap: ${PortfolioTheme.Spacing.sm};
+          min-width: 0;
+        }
         .app-header__toggle-input {
-          display: none;
+          position: absolute;
+          opacity: 0;
+          pointer-events: none;
+          width: 1px;
+          height: 1px;
         }
         .app-header__toggle {
-          position: absolute;
-          right: ${PortfolioTheme.Spacing.md};
-          top: ${PortfolioTheme.Spacing.md};
-          width: 40px;
-          height: 32px;
+          width: 44px;
+          height: 38px;
           border-radius: ${PortfolioTheme.Radii.md};
           border: 1px solid ${PortfolioTheme.Colors.BORDER};
           background: ${PortfolioTheme.Colors.SURFACE};
@@ -621,10 +656,12 @@ private fun NavDropdownStyles() {
           flex-direction: column;
           justify-content: center;
           gap: 6px;
-          padding: 8px;
+          padding: 10px;
           cursor: pointer;
-          z-index: 30;
           transition: background ${PortfolioTheme.Motion.DEFAULT};
+        }
+        .app-header__toggle:focus-visible {
+          outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
         }
         .app-header__toggle span {
           display: block;
@@ -633,27 +670,34 @@ private fun NavDropdownStyles() {
           background: ${PortfolioTheme.Colors.TEXT_PRIMARY};
           transition: transform ${PortfolioTheme.Motion.DEFAULT};
         }
-        .app-header__toggle-input:checked + .app-header__toggle span:nth-child(1) {
+        .app-header__toggle-input:checked ~ .app-header__brand .app-header__toggle span:nth-child(1) {
           transform: translateY(8px) rotate(45deg);
         }
-        .app-header__toggle-input:checked + .app-header__toggle span:nth-child(2) {
+        .app-header__toggle-input:checked ~ .app-header__brand .app-header__toggle span:nth-child(2) {
           opacity: 0;
         }
-        .app-header__toggle-input:checked + .app-header__toggle span:nth-child(3) {
+        .app-header__toggle-input:checked ~ .app-header__brand .app-header__toggle span:nth-child(3) {
           transform: translateY(-8px) rotate(-45deg);
         }
         @media (min-width: 960px) {
-          .app-header__toggle {
+          .app-header__brand {
+            flex: 0 1 auto;
+          }
+          .app-header__brand .app-header__toggle {
             display: none;
           }
-          .app-header__nav,
-          .app-header__actions {
+          .app-header__nav-wrapper,
+          .app-header__actions-wrapper {
             display: flex !important;
           }
         }
         @media (max-width: 959px) {
-          .app-header__nav,
-          .app-header__actions {
+          .app-header__brand {
+            width: 100%;
+            justify-content: flex-start;
+          }
+          .app-header__nav-wrapper,
+          .app-header__actions-wrapper {
             display: none !important;
             width: 100%;
             flex-direction: column;
@@ -665,8 +709,8 @@ private fun NavDropdownStyles() {
             overflow: hidden;
             transition: max-height ${PortfolioTheme.Motion.DEFAULT}, opacity ${PortfolioTheme.Motion.DEFAULT}, transform ${PortfolioTheme.Motion.DEFAULT};
           }
-          .app-header__toggle-input:checked ~ .app-header__nav,
-          .app-header__toggle-input:checked ~ .app-header__actions {
+          .app-header__toggle-input:checked ~ .app-header__nav-wrapper,
+          .app-header__toggle-input:checked ~ .app-header__actions-wrapper {
             display: flex !important;
             max-height: 600px;
             opacity: 1;

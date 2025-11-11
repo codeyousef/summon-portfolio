@@ -23,6 +23,7 @@ object PortfolioTheme {
     }
 
     object Spacing {
+        val xxs = 2.px
         val xs = 4.px
         val sm = 8.px
         val md = 16.px
