@@ -5,6 +5,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.summon.annotation.Composable
+import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.forms.*
 import code.yousef.summon.components.layout.Column
@@ -26,6 +27,12 @@ fun ContactSection(
 ) {
     val actionPath = if (locale == PortfolioLocale.EN) "/api/contact" else "/${locale.code}/api/contact"
     ContentSection(modifier = modifier) {
+        Paragraph(
+            text = ContactCopy.lead.resolve(locale),
+            modifier = Modifier()
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                .lineHeight(1.6)
+        )
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -37,8 +44,10 @@ fun ContactSection(
         ) {
             Column(
                 modifier = Modifier()
-                    .flex(grow = 1, shrink = 1, basis = "320px")
+                    .flex(grow = 1, shrink = 1, basis = "280px")
+                    .width(100.percent)
                     .maxWidth(420.px)
+                    .minWidth("0px")
                     .display(Display.Flex)
                     .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
@@ -61,9 +70,10 @@ fun ContactSection(
                 locale = locale,
                 action = actionPath,
                 modifier = Modifier()
-                    .flex(grow = 2, shrink = 1, basis = "640px")
+                    .flex(grow = 1, shrink = 1, basis = "360px")
                     .width(100.percent)
                     .maxWidth(100.percent)
+                    .minWidth("0px")
             )
         }
     }
@@ -91,6 +101,7 @@ private fun ContactForm(
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
             .backdropBlur(18.px)
+            .minWidth("0px")
     ) {
         FormTextField(
             name = "name",
@@ -108,15 +119,7 @@ private fun ContactForm(
             placeholder = ContactCopy.email.resolve(locale),
             autoComplete = "email",
             optionalLabel = optionalLabel,
-            fullWidth = true
-        )
-        FormTextField(
-            name = "whatsapp",
-            label = ContactCopy.whatsapp.resolve(locale),
-            placeholder = ContactCopy.whatsapp.resolve(locale),
-            autoComplete = "tel",
-            inputMode = "tel",
-            optionalLabel = optionalLabel,
+            required = false,
             fullWidth = true
         )
         FormTextArea(
@@ -142,10 +145,13 @@ private object ContactCopy {
         en = "Tell me what you’re building. I’ll reply with a focused plan (and timelines) you can immediately act on.",
         ar = "أخبرني بما تعمل عليه وسأعود إليك بخطة واضحة وجدول زمني يمكن البدء به فورًا."
     )
+    val lead = LocalizedText(
+        en = "Average response time: under 24h. Share a sentence or two about your project and I’ll follow up with a plan.",
+        ar = "متوسط وقت الرد أقل من 24 ساعة. شارك سطرًا أو سطرين عن مشروعك وسأتواصل معك بخطة واضحة."
+    )
     val formTitle = LocalizedText("Project details", "تفاصيل المشروع")
     val name = LocalizedText("Name", "الاسم")
     val email = LocalizedText("Email", "البريد الإلكتروني")
-    val whatsapp = LocalizedText("WhatsApp / Signal", "واتساب / سيجنال")
     val requirements = LocalizedText("What are we building?", "ماذا سنبني؟")
     val optional = LocalizedText("Optional", "اختياري")
     val submit = LocalizedText("Send request", "أرسل الطلب")

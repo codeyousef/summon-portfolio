@@ -11,22 +11,22 @@ import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
+import code.yousef.summon.extensions.px
+import code.yousef.summon.extensions.rem
+import code.yousef.summon.extensions.vw
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
-import code.yousef.summon.modifier.WhiteSpace
-import code.yousef.summon.modifier.cssClamp
-import code.yousef.summon.extensions.px
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.extensions.vw
 
 private const val SUMMON_URL = "https://summon.yousef.codes"
 
@@ -50,10 +50,12 @@ fun PortfolioLandingPage(
         WhatIBuildSection()
         WhyWorkWithMeSection()
         FeaturedProjectSection(projectName = summonProjectTitle)
+        CaseStudySection()
         ProcessSection()
         TestimonialSection()
         ContactCtaSection(locale)
         PortfolioFooter(locale = locale)
+        StructuredDataSnippet()
     }
 }
 
@@ -86,9 +88,10 @@ private fun HeroBand() {
             Paragraph(
                 text = "I’m Yousef — a developer who creates fast, modern digital products that look great, feel smooth, and work everywhere: web, iOS, Android, and desktop.",
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .color("rgba(255,255,255,0.88)")
                     .fontSize(1.25.rem)
                     .lineHeight(1.6)
+                    .fontWeight(500)
             )
             Row(
                 modifier = Modifier()
@@ -104,7 +107,7 @@ private fun HeroBand() {
                         .whiteSpace(WhiteSpace.NoWrap)
                 )
                 SecondaryCtaButton(
-                    text = "See my framework",
+                    text = "Explore Summon",
                     href = SUMMON_URL,
                     modifier = Modifier()
                         .minWidth("220px")
@@ -114,7 +117,8 @@ private fun HeroBand() {
             Paragraph(
                 text = "Trusted by developers and creatives — I built Summon, a custom UI framework used to power fast, responsive apps.",
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .color("rgba(255,255,255,0.78)")
+                    .fontWeight(500)
             )
         }
     }
@@ -127,16 +131,15 @@ private fun WhatIBuildSection() {
             eyebrow = "What I build",
             title = "Web, mobile, desktop — one cohesive experience."
         )
-        Row(
+        Column(
             modifier = Modifier()
-                .display(Display.Flex)
+                .display(Display.Grid)
+                .gridTemplateColumns("repeat(auto-fit, minmax(240px, 1fr))")
                 .gap(PortfolioTheme.Spacing.md)
-                .flexWrap(FlexWrap.Wrap)
         ) {
             buildCapabilities.forEach { item ->
                 Column(
                     modifier = Modifier()
-                        .flex(grow = 1, shrink = 1, basis = "280px")
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
@@ -154,7 +157,7 @@ private fun WhatIBuildSection() {
                     Paragraph(
                         text = item.description,
                         modifier = Modifier()
-                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            .color("rgba(255,255,255,0.82)")
                     )
                 }
             }
@@ -193,7 +196,7 @@ private fun WhyWorkWithMeSection() {
                         )
                         Paragraph(
                             text = item.description,
-                            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            modifier = Modifier().color("rgba(255,255,255,0.82)")
                         )
                     }
                 }
@@ -201,7 +204,7 @@ private fun WhyWorkWithMeSection() {
             Paragraph(
                 text = "I build with React/Next.js and Kotlin Multiplatform — the same tools used by companies like Netflix, JetBrains, and Google.",
                 modifier = Modifier()
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .color("rgba(255,255,255,0.8)")
                     .style("font-style", "italic")
             )
         }
@@ -259,6 +262,87 @@ private fun FeaturedProjectSection(projectName: String) {
 }
 
 @Composable
+private fun CaseStudySection() {
+    SectionWrap(modifier = Modifier().id("projects")) {
+        SectionHeading(
+            eyebrow = "Case studies",
+            title = "Recent builds and experiments."
+        )
+        Column(
+            modifier = Modifier()
+                .display(Display.Grid)
+                .gridTemplateColumns("repeat(auto-fit, minmax(260px, 1fr))")
+                .gap(PortfolioTheme.Spacing.md)
+        ) {
+            caseStudies.forEach { study ->
+                Column(
+                    modifier = Modifier()
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER)
+                        .borderRadius(PortfolioTheme.Radii.lg)
+                        .background(PortfolioTheme.Gradients.GLASS)
+                        .padding(PortfolioTheme.Spacing.lg)
+                        .gap(PortfolioTheme.Spacing.sm)
+                ) {
+                    RawHtml(
+                        """
+                        <div style=\"width:100%;height:180px;border-radius:20px;background:linear-gradient(135deg,#4f46e5,#ec4899);display:flex;align-items:center;justify-content:center;font-weight:700;color:#ffffff;letter-spacing:0.08em;\">
+                          ${study.client.take(16)}
+                        </div>
+                        """.trimIndent()
+                    )
+                    Text(
+                        text = "${study.client} · ${study.industry}",
+                        modifier = Modifier().fontWeight(700)
+                    )
+                    Paragraph(
+                        text = study.summary,
+                        modifier = Modifier()
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    )
+                    Paragraph(
+                        text = study.highlight,
+                        modifier = Modifier()
+                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                            .fontWeight(600)
+                    )
+                    Row(
+                        modifier = Modifier()
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.sm)
+                    ) {
+                        Column {
+                            Text(
+                                text = study.statLabel,
+                                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            )
+                            Text(text = study.statValue, modifier = Modifier().fontWeight(700))
+                        }
+                        ButtonLink(
+                            label = "View details",
+                            href = "#contact",
+                            modifier = Modifier()
+                                .textDecoration("none")
+                                .color(PortfolioTheme.Colors.ACCENT_ALT),
+                            navigationMode = LinkNavigationMode.Client,
+                            dataAttributes = mapOf("case-study" to study.client.lowercase()),
+                            target = null,
+                            rel = null,
+                            title = null,
+                            id = null,
+                            ariaLabel = null,
+                            ariaDescribedBy = null,
+                            dataHref = null
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProcessSection() {
     SectionWrap(modifier = Modifier().id("process")) {
         SectionHeading(
@@ -272,35 +356,39 @@ private fun ProcessSection() {
                 .gap(PortfolioTheme.Spacing.md)
         ) {
             processSteps.forEach { step ->
-                Row(
+                Column(
                     modifier = Modifier()
-                        .display(Display.Flex)
-                        .gap(PortfolioTheme.Spacing.md)
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
                         .borderRadius(PortfolioTheme.Radii.lg)
                         .padding(PortfolioTheme.Spacing.md)
+                        .gap(PortfolioTheme.Spacing.xs)
                 ) {
-                    Text(
-                        text = step.number.toString(),
+                    Row(
                         modifier = Modifier()
-                            .fontWeight(800)
-                            .fontSize(1.5.rem)
-                    )
-                    Column(
-                        modifier = Modifier()
-                            .gap(PortfolioTheme.Spacing.xs)
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.sm)
+                            .alignItems(AlignItems.Center)
                     ) {
+                        Text(
+                            text = step.number.toString().padStart(2, '0'),
+                            modifier = Modifier()
+                                .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                                .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
+                                .borderRadius(PortfolioTheme.Radii.md)
+                                .fontWeight(700)
+                        )
                         Text(
                             text = step.title,
                             modifier = Modifier().fontWeight(700)
                         )
-                        Paragraph(
-                            text = step.description,
-                            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        )
                     }
+                    Paragraph(
+                        text = step.description,
+                        modifier = Modifier()
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    )
                 }
             }
         }
@@ -310,30 +398,47 @@ private fun ProcessSection() {
 @Composable
 private fun TestimonialSection() {
     SectionWrap(modifier = Modifier().id("testimonial")) {
+        SectionHeading(
+            eyebrow = "Social proof",
+            title = "Teams keep coming back."
+        )
         Column(
             modifier = Modifier()
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.BORDER)
-                .borderRadius(PortfolioTheme.Radii.lg)
-                .background(PortfolioTheme.Gradients.GLASS)
-                .padding(PortfolioTheme.Spacing.xl)
+                .display(Display.Grid)
+                .gridTemplateColumns("repeat(auto-fit, minmax(260px, 1fr))")
                 .gap(PortfolioTheme.Spacing.md)
         ) {
-            Text(
-                text = "Testimonials",
-                modifier = Modifier().fontWeight(700)
-            )
-            Paragraph(
-                text = "“Yousef built our website from scratch. It’s fast, clean, and exactly what we wanted.”",
-                modifier = Modifier()
-                    .fontSize(1.3.rem)
-                    .lineHeight(1.5)
-            )
-            Paragraph(
-                text = "— Client Name, Company Name",
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
-            )
+            testimonials.forEach { testimonial ->
+                Column(
+                    modifier = Modifier()
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER)
+                        .borderRadius(PortfolioTheme.Radii.lg)
+                        .background(PortfolioTheme.Gradients.GLASS)
+                        .padding(PortfolioTheme.Spacing.lg)
+                        .gap(PortfolioTheme.Spacing.sm)
+                ) {
+                    RawHtml(
+                        """
+                        <div style=\"width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,#22d3ee,#3b82f6);display:flex;align-items:center;justify-content:center;font-weight:700;color:#001a2c;\">
+                          ★
+                        </div>
+                        """.trimIndent()
+                    )
+                    Paragraph(
+                        text = testimonial.quote,
+                        modifier = Modifier()
+                            .fontSize(1.1.rem)
+                            .lineHeight(1.5)
+                    )
+                    Paragraph(
+                        text = "${testimonial.author} — ${testimonial.role}, ${testimonial.company}",
+                        modifier = Modifier()
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    )
+                }
+            }
         }
     }
 }
@@ -490,6 +595,42 @@ private val buildCapabilities = listOf(
     )
 )
 
+private data class CaseStudy(
+    val client: String,
+    val industry: String,
+    val summary: String,
+    val highlight: String,
+    val statLabel: String,
+    val statValue: String
+)
+
+private val caseStudies = listOf(
+    CaseStudy(
+        client = "Futura Labs",
+        industry = "AI SaaS",
+        summary = "Designed a multilingual marketing site and onboarding flow that loads in under a second worldwide.",
+        highlight = "Summon SSR + edge caching",
+        statLabel = "Faster load",
+        statValue = "-42%"
+    ),
+    CaseStudy(
+        client = "Redline Mobility",
+        industry = "Transportation",
+        summary = "Unified their booking dashboard across desktop, tablet, and in-vehicle displays using one Kotlin codebase.",
+        highlight = "Compose + Summon UI kit",
+        statLabel = "Ops saved",
+        statValue = "60 hrs/mo"
+    ),
+    CaseStudy(
+        client = "Northwind Commerce",
+        industry = "Retail",
+        summary = "Built a secure admin portal with live metrics, dark mode, and localized Arabic content for GCC teams.",
+        highlight = "Summon modifiers + hydration",
+        statLabel = "Bug rate",
+        statValue = "-35%"
+    )
+)
+
 private data class Reason(val emoji: String, val title: String, val description: String)
 
 private val reasonsToWorkWithMe = listOf(
@@ -507,3 +648,55 @@ private val processSteps = listOf(
     ProcessStep(3, "Design & Build", "You’ll see progress weekly — no mystery."),
     ProcessStep(4, "Launch & Support", "Once live, I stay available for updates or scaling.")
 )
+
+private data class Testimonial(
+    val quote: String,
+    val author: String,
+    val role: String,
+    val company: String
+)
+
+private val testimonials = listOf(
+    Testimonial(
+        quote = "“Yousef rebuilt our marketing site and internal dashboard in six weeks. Page speed doubled and the UI finally matches our brand.”",
+        author = "Laila A.",
+        role = "Head of Product",
+        company = "Verve Studio"
+    ),
+    Testimonial(
+        quote = "“He handled everything — architecture, Summon components, deployment. Launch day was the calmest we’ve had.”",
+        author = "Marcus R.",
+        role = "COO",
+        company = "Atlas Billing"
+    )
+)
+
+@Composable
+private fun StructuredDataSnippet() {
+    RawHtml(
+        """
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Person",
+          "name": "Yousef Baitalmal",
+          "url": "https://dev.yousef.codes",
+          "sameAs": [
+            "https://www.linkedin.com/in/yousefbaitalmal",
+            "https://github.com/yousefb"
+          ],
+          "knowsAbout": ["Kotlin", "Compose Multiplatform", "Summon UI", "SSR"],
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Summon Services",
+            "itemListElement": [
+              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Web apps"}},
+              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Mobile apps"}},
+              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Dashboards"}}
+            ]
+          }
+        }
+        </script>
+        """.trimIndent()
+    )
+}

@@ -10,25 +10,17 @@ import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.routes.portfolioRoutes
+import code.yousef.portfolio.routes.respondSummonPage
 import code.yousef.portfolio.server.routes.docsRoutes
-import code.yousef.portfolio.ssr.AdminRenderer
-import code.yousef.portfolio.ssr.BlogRenderer
-import code.yousef.portfolio.ssr.PortfolioRenderer
-import code.yousef.portfolio.ssr.SITE_URL
+import code.yousef.portfolio.ssr.*
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.*
 import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
@@ -57,8 +49,13 @@ fun Application.configureRouting(
     val linkRewriter = LinkRewriter()
     val seoExtractor = SeoExtractor(docsConfig)
     val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
+    val summonLandingRenderer = SummonLandingRenderer()
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
-    val docsHosts = (System.getenv("DOCS_HOSTS") ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.localhost,docs.localhost")
+    val summonLandingHosts = (System.getenv("SUMMON_LANDING_HOSTS") ?: "yousef.codes,dev.yousef.codes,uat.yousef.codes")
+        .split(",")
+        .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+    val docsHosts = (System.getenv("DOCS_HOSTS")
+        ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.localhost,docs.localhost,summon.site")
         .split(",")
         .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
     val configuredPort = appConfig.port
@@ -68,6 +65,15 @@ fun Application.configureRouting(
         hydrationBundle?.let { bundle ->
             get("/summon-hydration.js") {
                 call.respondBytes(bundle, ContentType.Application.JavaScript)
+            }
+        }
+
+        summonLandingHosts.forEach { hostName ->
+            host(hostName) {
+                get("/") {
+                    val page = summonLandingRenderer.landingPage()
+                    call.respondSummonPage(page)
+                }
             }
         }
 

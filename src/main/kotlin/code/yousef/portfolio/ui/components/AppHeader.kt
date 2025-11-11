@@ -18,6 +18,7 @@ import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.top
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.textDecoration
 
@@ -40,6 +41,7 @@ private val defaultNavItems = listOf(
 
 private val projectsLabel = LocalizedText("Projects", "المشاريع")
 private val summonLabel = LocalizedText("Summon", "سُمّون")
+private val startProjectLabel = LocalizedText("Start your project", "ابدأ مشروعك")
 
 @Composable
 fun AppHeader(
@@ -70,6 +72,11 @@ fun AppHeader(
         .alignItems(AlignItems.Center)
         .justifyContent(JustifyContent.SpaceBetween)
         .gap(PortfolioTheme.Spacing.lg)
+        .flexWrap(FlexWrap.Wrap)
+        .position(Position.Sticky)
+        .top(PortfolioTheme.Spacing.md)
+        .zIndex(20)
+        .boxShadow("0 25px 80px rgba(0,0,0,0.35)")
 
     Row(modifier = containerModifier) {
         NavDropdownStyles()
@@ -79,6 +86,7 @@ fun AppHeader(
                 .fontSize(0.9.rem)
                 .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
                 .fontWeight(700)
+                .flex(grow = 0, shrink = 1, basis = "180px")
         )
 
         Row(
@@ -86,6 +94,8 @@ fun AppHeader(
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.md)
+                .flex(grow = 1, shrink = 1, basis = "360px")
+                .flexWrap(FlexWrap.Wrap)
         ) {
             navItems.forEach { item ->
                 val href =
@@ -114,6 +124,9 @@ fun AppHeader(
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.md)
+                .flex(grow = 1, shrink = 0, basis = "220px")
+                .justifyContent(JustifyContent.FlexEnd)
+                .flexWrap(FlexWrap.Wrap)
         ) {
             if (chrome.isAdminSession) {
                 val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
@@ -152,7 +165,7 @@ fun AppHeader(
             }
             val hireNavigation = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
             ButtonLink(
-                label = LocalizedText("Hire Me", "توظيفي").resolve(locale),
+                label = startProjectLabel.resolve(locale),
                 href = hireHref,
                 modifier = Modifier()
                     .display(Display.InlineFlex)
@@ -324,6 +337,7 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
             align-items: center;
             justify-content: space-between;
             gap: ${PortfolioTheme.Spacing.lg};
+            flex-wrap: wrap;
           }
           .native-header__logo {
             font-size: 0.9rem;
@@ -334,6 +348,7 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
             display: flex;
             align-items: center;
             gap: ${PortfolioTheme.Spacing.md};
+            flex-wrap: wrap;
           }
           .native-header__link {
             text-decoration: none;
@@ -410,6 +425,8 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
             display: flex;
             align-items: center;
             gap: ${PortfolioTheme.Spacing.md};
+            flex-wrap: wrap;
+            justify-content: flex-end;
           }
           .native-header__hire {
             display: inline-flex;
@@ -441,6 +458,16 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
           .native-header__locale a.active {
             color: ${PortfolioTheme.Colors.BACKGROUND};
             background: ${PortfolioTheme.Colors.ACCENT_ALT};
+          }
+          @media (max-width: 768px) {
+            .native-header__links,
+            .native-header__actions {
+              width: 100%;
+              justify-content: flex-start;
+            }
+            .native-header__actions {
+              gap: ${PortfolioTheme.Spacing.sm};
+            }
           }
         </style>
         <div class="native-header">

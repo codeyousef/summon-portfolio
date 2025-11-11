@@ -16,13 +16,9 @@ import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
 import code.yousef.portfolio.ssr.SummonPage
-import code.yousef.portfolio.ssr.SummonRenderLock
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
 import code.yousef.portfolio.ui.admin.AdminSectionPage
-import code.yousef.portfolio.ui.foundation.LocalPageChrome
-import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
-import code.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -593,20 +589,5 @@ private suspend fun ApplicationCall.handleBlogDelete(
     } else {
         adminContentService.deleteBlogPost(id)
         respondRedirect("$redirectTarget?success=blog-delete")
-    }
-}
-
-private suspend fun ApplicationCall.respondSummonPage(page: SummonPage, status: HttpStatusCode = HttpStatusCode.OK) {
-    SummonRenderLock.withLock {
-        respondSummonHydrated(status) {
-            val renderer = getPlatformRenderer()
-            renderer.renderHeadElements(page.head)
-            val session = sessions.get<AdminSession>()
-            val chrome =
-                session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
-            val provider = LocalPageChrome.provides(chrome)
-            provider.current
-            page.content()
-        }
     }
 }

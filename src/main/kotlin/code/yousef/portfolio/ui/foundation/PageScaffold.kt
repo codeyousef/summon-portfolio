@@ -40,6 +40,11 @@ fun PageScaffold(
           a:hover {
             color: ${PortfolioTheme.Colors.LINK_HOVER};
           }
+          a:focus-visible,
+          button:focus-visible {
+            outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
+            outline-offset: 3px;
+          }
           a[data-cta] {
             box-shadow: 0 0 20px rgba(255, 70, 104, 0.45);
           }
