@@ -18,6 +18,7 @@ import code.yousef.portfolio.ssr.SITE_URL
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -95,6 +96,9 @@ fun Application.configureRouting(
                     get("/health") {
                         call.respondHealth(bootInstant)
                     }
+                    get("/healthz") {
+                        call.respondHealthz(appConfig, bootInstant)
+                    }
                     docsRoutes(
                         docsService = docsService,
                         markdownRenderer = markdownRenderer,
@@ -148,29 +152,31 @@ fun Application.configureRouting(
             )
         }
         get("/healthz") {
-            val uptime = Duration.between(bootInstant, Instant.now()).seconds
-            call.respond(
-                HealthzResponse(
-                    ok = true,
-                    projectId = appConfig.projectId,
-                    emulator = appConfig.emulatorHost != null,
-                    uptimeSeconds = uptime
-                )
-            )
+            call.respondHealthz(appConfig, bootInstant)
         }
         get("/health") {
             call.respondHealth(bootInstant)
         }
         get("/db-test") {
-            val now = System.currentTimeMillis()
-            portfolioMetaService.touchHello(now)
-            val data = portfolioMetaService.fetchHello()
-            val payload = DbTestResponse(
-                ok = true,
-                exists = data != null,
-                data = data?.let(::toJsonElement) ?: JsonNull
-            )
-            call.respond(payload)
+            val response = runCatching {
+                val now = System.currentTimeMillis()
+                portfolioMetaService.touchHello(now)
+                val data = portfolioMetaService.fetchHello()
+                DbTestResponse(
+                    ok = true,
+                    exists = data != null,
+                    data = data?.let(::toJsonElement) ?: JsonNull,
+                    error = null
+                )
+            }.getOrElse { cause ->
+                log.error("db-test failed", cause)
+                val message = cause.message ?: cause::class.simpleName ?: "Internal server error"
+                return@get call.respond(
+                    HttpStatusCode.InternalServerError,
+                    DbTestResponse(ok = false, exists = false, data = JsonNull, error = message)
+                )
+            }
+            call.respond(response)
         }
         get("/sitemap.xml") {
             val sitemap = generateSitemapXml(contentService)
@@ -217,12 +223,25 @@ private data class HealthzResponse(
 private data class DbTestResponse(
     val ok: Boolean,
     val exists: Boolean,
-    val data: JsonElement
+    val data: JsonElement,
+    val error: String?
 )
 
 private suspend fun ApplicationCall.respondHealth(bootInstant: Instant) {
     val uptime = Duration.between(bootInstant, Instant.now()).seconds
     respond(HealthStatus(status = "ok", uptimeSeconds = uptime))
+}
+
+private suspend fun ApplicationCall.respondHealthz(appConfig: AppConfig, bootInstant: Instant) {
+    val uptime = Duration.between(bootInstant, Instant.now()).seconds
+    respond(
+        HealthzResponse(
+            ok = true,
+            projectId = appConfig.projectId,
+            emulator = appConfig.emulatorHost != null,
+            uptimeSeconds = uptime
+        )
+    )
 }
 
 private fun toJsonElement(value: Any?): JsonElement = when (value) {

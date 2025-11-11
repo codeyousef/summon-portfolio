@@ -17,7 +17,9 @@ import io.ktor.server.plugins.defaultheaders.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.sessions.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.util.UUID
 
 fun main(args: Array<String>) {
     System.setProperty("ktor.deployment.host", "0.0.0.0")
@@ -65,9 +67,24 @@ fun Application.module() {
     }
     install(StatusPages) {
         exception<Throwable> { call, cause ->
-            this@module.log.error("Unhandled server error", cause)
-            call.respondText("Something went wrong", status = HttpStatusCode.InternalServerError)
+            val errorId = UUID.randomUUID().toString()
+            this@module.log.error("Unhandled server error id=$errorId", cause)
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                ErrorResponse(
+                    ok = false,
+                    message = cause.message ?: "Internal server error",
+                    errorId = errorId
+                )
+            )
         }
     }
     configureRouting(appConfig, portfolioMetaService)
 }
+
+@Serializable
+private data class ErrorResponse(
+    val ok: Boolean,
+    val message: String,
+    val errorId: String
+)
