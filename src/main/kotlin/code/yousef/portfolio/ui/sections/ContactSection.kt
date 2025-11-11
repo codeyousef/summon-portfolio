@@ -8,6 +8,7 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.forms.*
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.extensions.percent
@@ -27,6 +28,21 @@ fun ContactSection(
 ) {
     val actionPath = if (locale == PortfolioLocale.EN) "/api/contact" else "/${locale.code}/api/contact"
     ContentSection(modifier = modifier) {
+        RawHtml(
+            """
+            <style>
+              @media (max-width: 768px) {
+                .contact-columns {
+                  flex-direction: column !important;
+                }
+                .contact-columns > * {
+                  flex: 1 1 100% !important;
+                  max-width: 100% !important;
+                }
+              }
+            </style>
+            """.trimIndent()
+        )
         Paragraph(
             text = ContactCopy.lead.resolve(locale),
             modifier = Modifier()
@@ -41,6 +57,7 @@ fun ContactSection(
                 .alignItems(AlignItems.Stretch)
                 .gap(PortfolioTheme.Spacing.xl)
                 .width(100.percent)
+                .attribute("class", "contact-columns")
         ) {
             Column(
                 modifier = Modifier()

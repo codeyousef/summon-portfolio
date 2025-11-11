@@ -456,9 +456,21 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 <img src="/static/logo.png" alt="Summon" width="24" height="24" style="display:inline-block;vertical-align:middle;margin:0;" />
                 """.trimIndent()
             )
-            Text(
-                text = "with Summon",
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            AnchorLink(
+                label = "Summon",
+                href = SUMMON_DOCS_URL,
+                modifier = Modifier()
+                    .textDecoration("underline")
+                    .color(PortfolioTheme.Colors.ACCENT_ALT),
+                navigationMode = LinkNavigationMode.Native,
+                dataAttributes = mapOf("footer-link" to "summon"),
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null
             )
         }
     }

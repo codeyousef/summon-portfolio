@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui
 
 import code.yousef.portfolio.content.PortfolioContent
+import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
@@ -30,6 +31,58 @@ import code.yousef.summon.modifier.StylingModifiers.lineHeight
 
 private const val SUMMON_URL = "https://summon.yousef.codes"
 
+private object LandingCopy {
+    val heroTitle = LocalizedText(
+        en = "I design & build high-performance websites and mobile apps.",
+        ar = "أصمم وأبني مواقع وتطبيقات عالية الأداء."
+    )
+    val heroBody = LocalizedText(
+        en = "I’m Yousef — a developer who creates fast, modern digital products that look great, feel smooth, and work everywhere: web, iOS, Android, and desktop. %SUMMON% powers the same work I ship for clients.",
+        ar = "أنا يوسف — مطور يبني منتجات رقمية سريعة وعصرية تعمل بسلاسة على الويب وiOS وAndroid وسطح المكتب. %SUMMON% هي التقنية نفسها التي أستخدمها لعملائي."
+    )
+    val heroTrust = LocalizedText(
+        en = "Trusted by developers and creatives — I built %SUMMON%, a custom UI framework used to power fast, responsive apps.",
+        ar = "يثق بي المطورون والمبدعون — أنشأت %SUMMON%، إطار واجهات مخصص يشغّل تطبيقات سريعة ومتجاوبة."
+    )
+    val heroStack = LocalizedText(
+        en = "I build with React/Next.js and Kotlin Multiplatform — the same tools used by companies like Netflix, JetBrains, and Google.",
+        ar = "أبني باستخدام React/Next.js وKotlin Multiplatform — نفس الأدوات التي تستخدمها شركات مثل نتفلكس وجيت براينز وجوجل."
+    )
+    val whatEyebrow = LocalizedText("What I build", "ما الذي أبنيه")
+    val whatTitle =
+        LocalizedText("Web, mobile, desktop — one cohesive experience.", "ويب، جوال، سطح مكتب — تجربة واحدة متماسكة.")
+    val featuredHeading = LocalizedText("Built the tools I use.", "بنيت الأدوات التي أستخدمها.")
+    val featuredBody = LocalizedText(
+        en = "I created %SUMMON%, a modern UI framework that makes websites load faster, perform better, and scale cleanly across devices. It’s the same engineering mindset I bring to client projects.",
+        ar = "أنشأت %SUMMON%، إطار واجهات حديث يجعل المواقع أسرع وأفضل أداءً وأسهل في التوسّع على أي جهاز. هذا هو نفس التفكير الهندسي الذي أقدّمه لمشاريع العملاء."
+    )
+    val caseEyebrow = LocalizedText("Case studies", "دراسات حالة")
+    val caseTitle = LocalizedText("Recent builds and experiments.", "أحدث المشاريع والتجارب.")
+    val whyEyebrow = LocalizedText("Why work with me", "لماذا تعمل معي")
+    val whyTitle = LocalizedText("One developer. Every platform. Same quality.", "مطور واحد. جميع المنصات. نفس الجودة.")
+    val processEyebrow = LocalizedText("Process", "المنهجية")
+    val processTitle = LocalizedText("From idea to launch, I make it simple.", "من الفكرة إلى الإطلاق — أجعلها بسيطة.")
+    val testimonialEyebrow = LocalizedText("Social proof", "آراء العملاء")
+    val testimonialTitle = LocalizedText("Teams keep coming back.", "العملاء يعودون مجددًا.")
+    val contactHeadline = LocalizedText("Let’s build something great.", "فلنبنِ شيئًا رائعًا.")
+    val contactBodyPrimary = LocalizedText(
+        en = "Have an idea or project in mind? I’ll help you bring it to life — fast, clean, and cross-platform from day one.",
+        ar = "هل لديك فكرة أو مشروع في ذهنك؟ سأساعدك على تنفيذه بسرعة وجودة وبشكل متعدد المنصات منذ اليوم الأول."
+    )
+    val contactBodySecondary = LocalizedText(
+        en = "No agencies, no outsourcing — you’ll work directly with me.",
+        ar = "لا وكالات ولا تعهيد — ستعمل معي مباشرة."
+    )
+    val heroPrimaryCta = LocalizedText("Start your project", "ابدأ مشروعك")
+    val heroSecondaryCta = LocalizedText("Explore Summon", "استكشف سُمّون")
+}
+
+private fun summonAnchor(locale: PortfolioLocale, label: LocalizedText = LocalizedText("Summon", "سُمّون")): String =
+    "<a href=\"$SUMMON_URL\" class=\"summon-inline-link\" data-cta=\"summon-link\">${label.resolve(locale)}</a>"
+
+private fun LocalizedText.resolveWithSummon(locale: PortfolioLocale): String =
+    this.resolve(locale).replace("%SUMMON%", summonAnchor(locale))
+
 @Composable
 fun PortfolioLandingPage(
     content: PortfolioContent,
@@ -46,13 +99,13 @@ fun PortfolioLandingPage(
 
     PageScaffold(locale = locale) {
         AppHeader(locale = locale)
-        HeroBand()
-        WhatIBuildSection()
-        WhyWorkWithMeSection()
-        FeaturedProjectSection(projectName = summonProjectTitle)
-        CaseStudySection()
-        ProcessSection()
-        TestimonialSection()
+        HeroBand(locale)
+        WhatIBuildSection(locale)
+        WhyWorkWithMeSection(locale)
+        FeaturedProjectSection(locale, projectName = summonProjectTitle)
+        CaseStudySection(locale)
+        ProcessSection(locale)
+        TestimonialSection(locale)
         ContactCtaSection(locale)
         PortfolioFooter(locale = locale)
         StructuredDataSnippet()
@@ -60,7 +113,7 @@ fun PortfolioLandingPage(
 }
 
 @Composable
-private fun HeroBand() {
+private fun HeroBand(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("hero")) {
         Column(
             modifier = Modifier()
@@ -69,7 +122,7 @@ private fun HeroBand() {
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
             Text(
-                text = "I design & build high-performance websites and mobile apps.",
+                text = LandingCopy.heroTitle.resolve(locale),
                 modifier = Modifier()
                     .fontSize(cssClamp(42.px, 6.vw, 76.px))
                     .fontWeight(900)
@@ -85,13 +138,12 @@ private fun HeroBand() {
                     .color("transparent")
                     .letterSpacing("-0.02em")
             )
-            Paragraph(
-                text = "I’m Yousef — a developer who creates fast, modern digital products that look great, feel smooth, and work everywhere: web, iOS, Android, and desktop.",
-                modifier = Modifier()
-                    .color("rgba(255,255,255,0.88)")
-                    .fontSize(1.25.rem)
-                    .lineHeight(1.6)
-                    .fontWeight(500)
+            RawHtml(
+                """
+                <p style="color:rgba(255,255,255,0.88);font-size:1.25rem;line-height:1.6;font-weight:500;">
+                  ${LandingCopy.heroBody.resolveWithSummon(locale)}
+                </p>
+                """.trimIndent()
             )
             Row(
                 modifier = Modifier()
@@ -100,36 +152,38 @@ private fun HeroBand() {
                     .flexWrap(FlexWrap.Wrap)
             ) {
                 PrimaryCtaButton(
-                    text = "Start your project",
+                    text = LandingCopy.heroPrimaryCta.resolve(locale),
                     href = "/contact",
                     modifier = Modifier()
                         .minWidth("200px")
                         .whiteSpace(WhiteSpace.NoWrap)
                 )
                 SecondaryCtaButton(
-                    text = "Explore Summon",
+                    text = LandingCopy.heroSecondaryCta.resolve(locale),
                     href = SUMMON_URL,
                     modifier = Modifier()
                         .minWidth("220px")
                         .whiteSpace(WhiteSpace.NoWrap)
                 )
             }
-            Paragraph(
-                text = "Trusted by developers and creatives — I built Summon, a custom UI framework used to power fast, responsive apps.",
-                modifier = Modifier()
-                    .color("rgba(255,255,255,0.78)")
-                    .fontWeight(500)
+            RawHtml(
+                """
+                <p style="color:rgba(255,255,255,0.78);font-weight:500;">
+                  ${LandingCopy.heroTrust.resolveWithSummon(locale)}
+                </p>
+                """.trimIndent()
             )
         }
     }
 }
 
 @Composable
-private fun WhatIBuildSection() {
+private fun WhatIBuildSection(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("build")) {
         SectionHeading(
-            eyebrow = "What I build",
-            title = "Web, mobile, desktop — one cohesive experience."
+            locale = locale,
+            eyebrow = LandingCopy.whatEyebrow,
+            title = LandingCopy.whatTitle
         )
         Column(
             modifier = Modifier()
@@ -149,28 +203,36 @@ private fun WhatIBuildSection() {
                         .gap(PortfolioTheme.Spacing.sm)
                 ) {
                     Text(
-                        text = item.title,
+                        text = item.title.resolve(locale),
                         modifier = Modifier()
                             .fontWeight(700)
                             .fontSize(1.1.rem)
                     )
                     Paragraph(
-                        text = item.description,
+                        text = item.description.resolve(locale),
                         modifier = Modifier()
                             .color("rgba(255,255,255,0.82)")
                     )
                 }
             }
         }
+        RawHtml(
+            """
+            <p style="color:rgba(255,255,255,0.8);font-style:italic;">
+              ${LandingCopy.heroStack.resolve(locale)}
+            </p>
+            """.trimIndent()
+        )
     }
 }
 
 @Composable
-private fun WhyWorkWithMeSection() {
+private fun WhyWorkWithMeSection(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("why")) {
         SectionHeading(
-            eyebrow = "Why work with me",
-            title = "One developer. Every platform. Same quality."
+            locale = locale,
+            eyebrow = LandingCopy.whyEyebrow,
+            title = LandingCopy.whyTitle
         )
         Column(
             modifier = Modifier()
@@ -191,28 +253,22 @@ private fun WhyWorkWithMeSection() {
                             .gap(PortfolioTheme.Spacing.xs)
                     ) {
                         Text(
-                            text = item.title,
+                            text = item.title.resolve(locale),
                             modifier = Modifier().fontWeight(700)
                         )
                         Paragraph(
-                            text = item.description,
+                            text = item.description.resolve(locale),
                             modifier = Modifier().color("rgba(255,255,255,0.82)")
                         )
                     }
                 }
             }
-            Paragraph(
-                text = "I build with React/Next.js and Kotlin Multiplatform — the same tools used by companies like Netflix, JetBrains, and Google.",
-                modifier = Modifier()
-                    .color("rgba(255,255,255,0.8)")
-                    .style("font-style", "italic")
-            )
         }
     }
 }
 
 @Composable
-private fun FeaturedProjectSection(projectName: String) {
+private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String) {
     SectionWrap(modifier = Modifier().id("featured")) {
         Box(
             modifier = Modifier()
@@ -233,17 +289,18 @@ private fun FeaturedProjectSection(projectName: String) {
                     .gap(PortfolioTheme.Spacing.md)
             ) {
                 Text(
-                    text = "Built the tools I use.",
+                    text = LandingCopy.featuredHeading.resolve(locale),
                     modifier = Modifier()
                         .fontSize(cssClamp(32.px, 4.vw, 48.px))
                         .fontWeight(800)
                         .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
                 )
-                Paragraph(
-                    text = "I created Summon, a modern UI framework that makes websites load faster, perform better, and scale cleanly across devices. It’s the same engineering mindset I bring to client projects.",
-                    modifier = Modifier()
-                        .color("#1c0d11")
-                        .fontWeight(600)
+                RawHtml(
+                    """
+                    <p style=\"color:#1c0d11;font-weight:600;\">
+                      ${LandingCopy.featuredBody.resolveWithSummon(locale)}
+                    </p>
+                    """.trimIndent()
                 )
                 Row(
                     modifier = Modifier()
@@ -252,7 +309,7 @@ private fun FeaturedProjectSection(projectName: String) {
                         .gap(PortfolioTheme.Spacing.sm)
                 ) {
                     PrimaryCtaButton(
-                        text = "Explore $projectName",
+                        text = LocalizedText("Explore", "استكشف").resolve(locale) + " $projectName",
                         href = SUMMON_URL
                     )
                 }
@@ -262,11 +319,12 @@ private fun FeaturedProjectSection(projectName: String) {
 }
 
 @Composable
-private fun CaseStudySection() {
+private fun CaseStudySection(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("projects")) {
         SectionHeading(
-            eyebrow = "Case studies",
-            title = "Recent builds and experiments."
+            locale = locale,
+            eyebrow = LandingCopy.caseEyebrow,
+            title = LandingCopy.caseTitle
         )
         Column(
             modifier = Modifier()
@@ -293,19 +351,20 @@ private fun CaseStudySection() {
                         """.trimIndent()
                     )
                     Text(
-                        text = "${study.client} · ${study.industry}",
+                        text = "${study.client} · ${study.industry.resolve(locale)}",
                         modifier = Modifier().fontWeight(700)
                     )
                     Paragraph(
-                        text = study.summary,
+                        text = study.summary.resolve(locale),
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     )
-                    Paragraph(
-                        text = study.highlight,
-                        modifier = Modifier()
-                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                            .fontWeight(600)
+                    RawHtml(
+                        """
+                        <p style=\"color:${PortfolioTheme.Colors.TEXT_PRIMARY};font-weight:600;\">
+                          ${study.highlight.resolveWithSummon(locale)}
+                        </p>
+                        """.trimIndent()
                     )
                     Row(
                         modifier = Modifier()
@@ -314,13 +373,13 @@ private fun CaseStudySection() {
                     ) {
                         Column {
                             Text(
-                                text = study.statLabel,
+                                text = study.statLabel.resolve(locale),
                                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
                             )
                             Text(text = study.statValue, modifier = Modifier().fontWeight(700))
                         }
                         ButtonLink(
-                            label = "View details",
+                            label = LocalizedText("View details", "عرض التفاصيل").resolve(locale),
                             href = "#contact",
                             modifier = Modifier()
                                 .textDecoration("none")
@@ -343,11 +402,12 @@ private fun CaseStudySection() {
 }
 
 @Composable
-private fun ProcessSection() {
+private fun ProcessSection(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("process")) {
         SectionHeading(
-            eyebrow = "Process",
-            title = "From idea to launch, I make it simple."
+            locale = locale,
+            eyebrow = LandingCopy.processEyebrow,
+            title = LandingCopy.processTitle
         )
         Column(
             modifier = Modifier()
@@ -380,12 +440,12 @@ private fun ProcessSection() {
                                 .fontWeight(700)
                         )
                         Text(
-                            text = step.title,
+                            text = step.title.resolve(locale),
                             modifier = Modifier().fontWeight(700)
                         )
                     }
                     Paragraph(
-                        text = step.description,
+                        text = step.description.resolve(locale),
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     )
@@ -396,11 +456,12 @@ private fun ProcessSection() {
 }
 
 @Composable
-private fun TestimonialSection() {
+private fun TestimonialSection(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("testimonial")) {
         SectionHeading(
-            eyebrow = "Social proof",
-            title = "Teams keep coming back."
+            locale = locale,
+            eyebrow = LandingCopy.testimonialEyebrow,
+            title = LandingCopy.testimonialTitle
         )
         Column(
             modifier = Modifier()
@@ -427,13 +488,17 @@ private fun TestimonialSection() {
                         """.trimIndent()
                     )
                     Paragraph(
-                        text = testimonial.quote,
+                        text = testimonial.quote.resolveWithSummon(locale),
                         modifier = Modifier()
                             .fontSize(1.1.rem)
                             .lineHeight(1.5)
                     )
                     Paragraph(
-                        text = "${testimonial.author} — ${testimonial.role}, ${testimonial.company}",
+                        text = "${testimonial.author} — ${testimonial.role.resolve(locale)}, ${
+                            testimonial.company.resolve(
+                                locale
+                            )
+                        }",
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     )
@@ -457,19 +522,19 @@ private fun ContactCtaSection(locale: PortfolioLocale) {
                 .gap(PortfolioTheme.Spacing.md)
         ) {
             Text(
-                text = "Let’s build something great.",
+                text = LandingCopy.contactHeadline.resolve(locale),
                 modifier = Modifier()
                     .fontSize(cssClamp(32.px, 4.vw, 48.px))
                     .fontWeight(800)
                     .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
             )
             Paragraph(
-                text = "Have an idea or project in mind? I’ll help you bring it to life — fast, clean, and cross-platform from day one.",
+                text = LandingCopy.contactBodyPrimary.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
             Paragraph(
-                text = "No agencies, no outsourcing — you’ll work directly with me.",
+                text = LandingCopy.contactBodySecondary.resolve(locale),
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
         }
@@ -479,22 +544,23 @@ private fun ContactCtaSection(locale: PortfolioLocale) {
 
 @Composable
 private fun SectionHeading(
-    eyebrow: String,
-    title: String
+    locale: PortfolioLocale,
+    eyebrow: LocalizedText,
+    title: LocalizedText
 ) {
     Column(
         modifier = Modifier()
             .gap(PortfolioTheme.Spacing.xs)
     ) {
         Text(
-            text = eyebrow.uppercase(),
+            text = eyebrow.resolve(locale).uppercase(),
             modifier = Modifier()
                 .fontSize(0.85.rem)
                 .letterSpacing("0.3em")
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
         Text(
-            text = title,
+            text = title.resolve(locale),
             modifier = Modifier()
                 .fontSize(cssClamp(32.px, 4.vw, 48.px))
                 .fontWeight(800)
@@ -574,100 +640,192 @@ private fun SecondaryCtaButton(
     )
 }
 
-private data class BuildCapability(val title: String, val description: String)
+private data class BuildCapability(val title: LocalizedText, val description: LocalizedText)
 
 private val buildCapabilities = listOf(
     BuildCapability(
-        title = "Websites & Web Apps",
-        description = "Fast-loading, responsive websites that feel as smooth as apps — perfect for businesses, startups, and creators."
+        title = LocalizedText("Websites & Web Apps", "مواقع وتطبيقات ويب"),
+        description = LocalizedText(
+            en = "Fast-loading, responsive websites that feel as smooth as apps — perfect for businesses, startups, and creators.",
+            ar = "مواقع سريعة ومتجاوبة تشبه التطبيقات في سلاستها — مثالية للأعمال والشركات الناشئة وصنّاع المحتوى."
+        )
     ),
     BuildCapability(
-        title = "Mobile Apps (iOS & Android)",
-        description = "One app that runs beautifully on both platforms — no need for two codebases."
+        title = LocalizedText("Mobile Apps (iOS & Android)", "تطبيقات جوال (iOS وAndroid)"),
+        description = LocalizedText(
+            en = "One app that runs beautifully on both platforms — no need for two codebases.",
+            ar = "تطبيق واحد يعمل بكفاءة على كلا النظامين دون الحاجة لقاعدتي كود منفصلتين."
+        )
     ),
     BuildCapability(
-        title = "Desktop & Cross-Platform Tools",
-        description = "Powerful desktop or internal tools that share code across web, mobile, and desktop — consistent and efficient."
+        title = LocalizedText("Desktop & Cross-Platform Tools", "تطبيقات سطح المكتب والمتعددة المنصات"),
+        description = LocalizedText(
+            en = "Powerful desktop or internal tools that share code across web, mobile, and desktop — consistent and efficient.",
+            ar = "أدوات سطح مكتب أو حلول داخلية تشارك الكود بين الويب والجوال وسطح المكتب — تجربة متناسقة وفعالة."
+        )
     ),
     BuildCapability(
-        title = "Custom Systems & Dashboards",
-        description = "Admin panels, analytics tools, or full product dashboards tailored to your workflow."
+        title = LocalizedText("Custom Systems & Dashboards", "أنظمة مخصصة ولوحات تحكم"),
+        description = LocalizedText(
+            en = "Admin panels, analytics tools, or full product dashboards tailored to your workflow.",
+            ar = "لوحات تحكم وأدوات تحليل أو أنظمة إدارية مصممة خصيصًا لتدفق عملك."
+        )
     )
 )
 
 private data class CaseStudy(
     val client: String,
-    val industry: String,
-    val summary: String,
-    val highlight: String,
-    val statLabel: String,
+    val industry: LocalizedText,
+    val summary: LocalizedText,
+    val highlight: LocalizedText,
+    val statLabel: LocalizedText,
     val statValue: String
 )
 
 private val caseStudies = listOf(
     CaseStudy(
         client = "Futura Labs",
-        industry = "AI SaaS",
-        summary = "Designed a multilingual marketing site and onboarding flow that loads in under a second worldwide.",
-        highlight = "Summon SSR + edge caching",
-        statLabel = "Faster load",
+        industry = LocalizedText("AI SaaS", "حلول ذكاء اصطناعي"),
+        summary = LocalizedText(
+            en = "Designed a multilingual marketing site and onboarding flow that loads in under a second worldwide.",
+            ar = "صممت موقعًا تسويقيًا متعدد اللغات ومسار ترحيب يقل زمن تحميله عن ثانية في كل مكان."
+        ),
+        highlight = LocalizedText(
+            en = "%SUMMON% SSR + edge caching",
+            ar = "%SUMMON% مع SSR وتخزين عند الحافة"
+        ),
+        statLabel = LocalizedText("Faster load", "تحمّل أسرع"),
         statValue = "-42%"
     ),
     CaseStudy(
         client = "Redline Mobility",
-        industry = "Transportation",
-        summary = "Unified their booking dashboard across desktop, tablet, and in-vehicle displays using one Kotlin codebase.",
-        highlight = "Compose + Summon UI kit",
-        statLabel = "Ops saved",
+        industry = LocalizedText("Transportation", "النقل"),
+        summary = LocalizedText(
+            en = "Unified their booking dashboard across desktop, tablet, and in-vehicle displays using one Kotlin codebase.",
+            ar = "وحّدت لوحة الحجز عبر سطح المكتب والأجهزة اللوحية وشاشات المركبات باستخدام قاعدة كود Kotlin واحدة."
+        ),
+        highlight = LocalizedText(
+            en = "Compose + %SUMMON% UI kit",
+            ar = "واجهة Compose مع حزمة واجهات %SUMMON%"
+        ),
+        statLabel = LocalizedText("Ops saved", "ساعات موفَّرة"),
         statValue = "60 hrs/mo"
     ),
     CaseStudy(
         client = "Northwind Commerce",
-        industry = "Retail",
-        summary = "Built a secure admin portal with live metrics, dark mode, and localized Arabic content for GCC teams.",
-        highlight = "Summon modifiers + hydration",
-        statLabel = "Bug rate",
+        industry = LocalizedText("Retail", "التجزئة"),
+        summary = LocalizedText(
+            en = "Built a secure admin portal with live metrics, dark mode, and localized Arabic content for GCC teams.",
+            ar = "بنيت بوابة إدارية آمنة ببيانات مباشرة ووضع داكن ومحتوى عربي لفِرق الخليج."
+        ),
+        highlight = LocalizedText(
+            en = "%SUMMON% modifiers + hydration",
+            ar = "معدلّات %SUMMON% مع Hydration"
+        ),
+        statLabel = LocalizedText("Bug rate", "نسبة الأخطاء"),
         statValue = "-35%"
     )
 )
 
-private data class Reason(val emoji: String, val title: String, val description: String)
+private data class Reason(val emoji: String, val title: LocalizedText, val description: LocalizedText)
 
 private val reasonsToWorkWithMe = listOf(
-    Reason("⚡", "Fast & Reliable", "Your app feels instant, loads fast, and runs smoothly."),
-    Reason("🧩", "Consistent Experience", "Looks and feels right on every device — web, mobile, or desktop."),
-    Reason("🛠️", "Built for Growth", "Clean code, scalable design systems, and easy maintenance."),
-    Reason("🎯", "End-to-End", "I handle design, development, deployment, and support — start to finish.")
+    Reason(
+        "⚡",
+        LocalizedText("Fast & Reliable", "سريع وموثوق"),
+        LocalizedText(
+            en = "Your app feels instant, loads fast, and runs smoothly.",
+            ar = "تطبيقك يستجيب فورًا ويحمّل بسرعة ويعمل بسلاسة."
+        )
+    ),
+    Reason(
+        "🧩",
+        LocalizedText("Consistent Experience", "تجربة متناسقة"),
+        LocalizedText(
+            en = "Looks and feels right on every device — web, mobile, or desktop.",
+            ar = "مظهر وسلوك متناسق على كل جهاز — ويب أو جوال أو سطح مكتب."
+        )
+    ),
+    Reason(
+        "🛠️",
+        LocalizedText("Built for Growth", "جاهز للنمو"),
+        LocalizedText(
+            en = "Clean code, scalable design systems, and easy maintenance.",
+            ar = "كود نظيف وأنظمة تصميم قابلة للتوسّع وصيانة سهلة."
+        )
+    ),
+    Reason(
+        "🎯",
+        LocalizedText("End-to-End", "حل متكامل"),
+        LocalizedText(
+            en = "I handle design, development, deployment, and support — start to finish.",
+            ar = "أتولّى التصميم والتطوير والنشر والدعم — من البداية حتى النهاية."
+        )
+    )
 )
 
-private data class ProcessStep(val number: Int, val title: String, val description: String)
+private data class ProcessStep(val number: Int, val title: LocalizedText, val description: LocalizedText)
 
 private val processSteps = listOf(
-    ProcessStep(1, "Discovery Call", "We talk about your goals and map out what you actually need."),
-    ProcessStep(2, "Proposal & Plan", "You’ll get a clear scope, timeline, and fixed quote."),
-    ProcessStep(3, "Design & Build", "You’ll see progress weekly — no mystery."),
-    ProcessStep(4, "Launch & Support", "Once live, I stay available for updates or scaling.")
+    ProcessStep(
+        1,
+        LocalizedText("Discovery Call", "جلسة تعريف"),
+        LocalizedText(
+            en = "We talk about your goals and map out what you actually need.",
+            ar = "نتحدث عن أهدافك ونحدد ما تحتاجه فعليًا."
+        )
+    ),
+    ProcessStep(
+        2,
+        LocalizedText("Proposal & Plan", "عرض وخطة"),
+        LocalizedText(
+            en = "You’ll get a clear scope, timeline, and fixed quote.",
+            ar = "تحصل على نطاق عمل واضح وجدول زمني وتسعيرة ثابتة."
+        )
+    ),
+    ProcessStep(
+        3,
+        LocalizedText("Design & Build", "التصميم والتنفيذ"),
+        LocalizedText(
+            en = "You’ll see progress weekly — no mystery.",
+            ar = "تشاهد التقدم أسبوعيًا — بلا مفاجآت."
+        )
+    ),
+    ProcessStep(
+        4,
+        LocalizedText("Launch & Support", "الإطلاق والدعم"),
+        LocalizedText(
+            en = "Once live, I stay available for updates or scaling.",
+            ar = "بعد الإطلاق أظل متاحًا للتحديثات أو التوسع."
+        )
+    )
 )
 
 private data class Testimonial(
-    val quote: String,
+    val quote: LocalizedText,
     val author: String,
-    val role: String,
-    val company: String
+    val role: LocalizedText,
+    val company: LocalizedText
 )
 
 private val testimonials = listOf(
     Testimonial(
-        quote = "“Yousef rebuilt our marketing site and internal dashboard in six weeks. Page speed doubled and the UI finally matches our brand.”",
+        quote = LocalizedText(
+            en = "“Yousef rebuilt our marketing site and internal dashboard in six weeks. Page speed doubled and the UI finally matches our brand.”",
+            ar = "\"أعاد يوسف بناء موقعنا ولوحة التحكم الداخلية خلال ستة أسابيع. تضاعفت سرعة التصفح وأصبحت الواجهة تعكس هويتنا.\""
+        ),
         author = "Laila A.",
-        role = "Head of Product",
-        company = "Verve Studio"
+        role = LocalizedText("Head of Product", "رئيسة المنتج"),
+        company = LocalizedText("Verve Studio", "Verve Studio")
     ),
     Testimonial(
-        quote = "“He handled everything — architecture, Summon components, deployment. Launch day was the calmest we’ve had.”",
+        quote = LocalizedText(
+            en = "“He handled everything — architecture, %SUMMON% components, deployment. Launch day was the calmest we’ve had.”",
+            ar = "\"تولى كل شيء — الهيكلة ومكوّنات %SUMMON% والنشر. كان يوم الإطلاق الأكثر هدوءًا لنا.\""
+        ),
         author = "Marcus R.",
-        role = "COO",
-        company = "Atlas Billing"
+        role = LocalizedText("COO", "المدير التشغيلي"),
+        company = LocalizedText("Atlas Billing", "Atlas Billing")
     )
 )
 

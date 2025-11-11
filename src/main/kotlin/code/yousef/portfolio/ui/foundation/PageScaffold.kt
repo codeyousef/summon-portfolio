@@ -53,6 +53,13 @@ fun PageScaffold(
             box-shadow: 0 0 30px rgba(255, 70, 104, 0.6);
             transform: translateY(-2px);
           }
+          .summon-inline-link {
+            color: ${PortfolioTheme.Colors.ACCENT_ALT};
+            text-decoration: underline;
+          }
+          .summon-inline-link:hover {
+            color: #ffffff;
+          }
         </style>
         """.trimIndent()
     )
@@ -90,13 +97,20 @@ fun PageScaffold(
             WebGlCanvas()
             GrainLayer()
         }
-        Column(
-            modifier = Modifier()
-                .position(Position.Relative)
-                .zIndex(2)
-                .padding(PortfolioTheme.Spacing.xl)
-                .gap(PortfolioTheme.Spacing.xl)
-        ) {
+        val columnModifier = Modifier()
+            .position(Position.Relative)
+            .zIndex(2)
+            .padding(PortfolioTheme.Spacing.xl)
+            .gap(PortfolioTheme.Spacing.xl)
+            .let { base ->
+                val extra = PortfolioTheme.Spacing.md
+                if (locale.direction.equals("rtl", ignoreCase = true)) {
+                    base.style("padding-left", "calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                } else {
+                    base.style("padding-right", "calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                }
+            }
+        Column(modifier = columnModifier) {
             content()
         }
         if (enableAuroraEffects) {

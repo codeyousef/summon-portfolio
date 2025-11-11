@@ -59,6 +59,7 @@ fun AppHeader(
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
     val docsHref = resolveDocsHref(docsBaseUrl)
+    val toggleId = if (forceNativeLinks) "app-nav-toggle-native" else "app-nav-toggle"
     val containerModifier = modifier
         .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
@@ -80,6 +81,16 @@ fun AppHeader(
 
     Row(modifier = containerModifier) {
         NavDropdownStyles()
+        RawHtml(
+            """
+            <input type="checkbox" id="$toggleId" class="app-header__toggle-input" aria-label="Toggle navigation" />
+            <label for="$toggleId" class="app-header__toggle" role="button" aria-controls="app-header-nav app-header-actions">
+              <span></span>
+              <span></span>
+              <span></span>
+            </label>
+            """.trimIndent()
+        )
         Text(
             text = "YOUSEF BAITALMAL",
             modifier = Modifier()
@@ -96,6 +107,8 @@ fun AppHeader(
                 .gap(PortfolioTheme.Spacing.md)
                 .flex(grow = 1, shrink = 1, basis = "360px")
                 .flexWrap(FlexWrap.Wrap)
+                .attribute("class", "app-header__nav")
+                .attribute("id", "app-header-nav")
         ) {
             navItems.forEach { item ->
                 val href =
@@ -127,6 +140,8 @@ fun AppHeader(
                 .flex(grow = 1, shrink = 0, basis = "220px")
                 .justifyContent(JustifyContent.FlexEnd)
                 .flexWrap(FlexWrap.Wrap)
+                .attribute("class", "app-header__actions")
+                .attribute("id", "app-header-actions")
         ) {
             if (chrome.isAdminSession) {
                 val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
@@ -589,6 +604,52 @@ private fun NavDropdownStyles() {
         .nav-dropdown__menu a:focus {
           background: ${PortfolioTheme.Colors.SURFACE};
           color: ${PortfolioTheme.Colors.ACCENT_ALT};
+        }
+        .app-header__toggle-input {
+          display: none;
+        }
+        .app-header__toggle {
+          position: absolute;
+          right: ${PortfolioTheme.Spacing.md};
+          top: ${PortfolioTheme.Spacing.md};
+          width: 40px;
+          height: 32px;
+          border-radius: ${PortfolioTheme.Radii.md};
+          border: 1px solid ${PortfolioTheme.Colors.BORDER};
+          background: ${PortfolioTheme.Colors.SURFACE};
+          display: inline-flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px;
+          cursor: pointer;
+          z-index: 30;
+        }
+        .app-header__toggle span {
+          display: block;
+          height: 2px;
+          width: 100%;
+          background: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+        }
+        @media (min-width: 960px) {
+          .app-header__toggle {
+            display: none;
+          }
+          .app-header__nav,
+          .app-header__actions {
+            display: flex !important;
+          }
+        }
+        @media (max-width: 959px) {
+          .app-header__nav,
+          .app-header__actions {
+            display: none;
+            width: 100%;
+          }
+          .app-header__toggle-input:checked ~ .app-header__nav,
+          .app-header__toggle-input:checked ~ .app-header__actions {
+            display: flex !important;
+          }
         }
         </style>
         """.trimIndent()
