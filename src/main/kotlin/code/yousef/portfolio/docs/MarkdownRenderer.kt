@@ -49,6 +49,7 @@ class MarkdownRenderer(
         .allowAttributes("href", "title", "target", "rel").onElements("a")
         .allowAttributes("src", "alt", "title").onElements("img")
         .allowAttributes("class").onElements("code", "pre", "table")
+        .allowAttributes("id").onElements("h1", "h2", "h3", "h4", "h5", "h6")
         .allowStyling()
         .toFactory()
 
