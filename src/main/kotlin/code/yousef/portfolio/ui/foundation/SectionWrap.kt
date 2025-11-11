@@ -20,7 +20,7 @@ fun SectionWrap(
         modifier = modifier
             .width(cssMin(1200.px, 92.vw))
             .marginHorizontalAutoZero()
-            .padding("${cssClamp(22.px, 4.vw, 48.px)} 0")
+            .padding("${cssClamp(22.px, 4.vw, 48.px)} ${cssClamp(16.px, 6.vw, 48.px)}")
             .gap(PortfolioTheme.Spacing.lg)
     ) {
         content()

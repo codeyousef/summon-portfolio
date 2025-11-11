@@ -624,12 +624,23 @@ private fun NavDropdownStyles() {
           padding: 8px;
           cursor: pointer;
           z-index: 30;
+          transition: background ${PortfolioTheme.Motion.DEFAULT};
         }
         .app-header__toggle span {
           display: block;
           height: 2px;
           width: 100%;
           background: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+          transition: transform ${PortfolioTheme.Motion.DEFAULT};
+        }
+        .app-header__toggle-input:checked + .app-header__toggle span:nth-child(1) {
+          transform: translateY(8px) rotate(45deg);
+        }
+        .app-header__toggle-input:checked + .app-header__toggle span:nth-child(2) {
+          opacity: 0;
+        }
+        .app-header__toggle-input:checked + .app-header__toggle span:nth-child(3) {
+          transform: translateY(-8px) rotate(-45deg);
         }
         @media (min-width: 960px) {
           .app-header__toggle {
@@ -643,12 +654,23 @@ private fun NavDropdownStyles() {
         @media (max-width: 959px) {
           .app-header__nav,
           .app-header__actions {
-            display: none;
+            display: none !important;
             width: 100%;
+            flex-direction: column;
+            gap: ${PortfolioTheme.Spacing.md};
+            margin-top: ${PortfolioTheme.Spacing.sm};
+            max-height: 0;
+            opacity: 0;
+            transform: translateY(-12px);
+            overflow: hidden;
+            transition: max-height ${PortfolioTheme.Motion.DEFAULT}, opacity ${PortfolioTheme.Motion.DEFAULT}, transform ${PortfolioTheme.Motion.DEFAULT};
           }
           .app-header__toggle-input:checked ~ .app-header__nav,
           .app-header__toggle-input:checked ~ .app-header__actions {
             display: flex !important;
+            max-height: 600px;
+            opacity: 1;
+            transform: translateY(0);
           }
         }
         </style>

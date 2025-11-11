@@ -34,6 +34,7 @@ fun ContactSection(
               @media (max-width: 768px) {
                 .contact-columns {
                   flex-direction: column !important;
+                  gap: ${PortfolioTheme.Spacing.md} !important;
                 }
                 .contact-columns > * {
                   flex: 1 1 100% !important;
