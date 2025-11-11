@@ -4,6 +4,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.foundation.Canvas
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.foundation.ScriptTag
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
@@ -20,43 +21,58 @@ fun PageScaffold(
     enableAuroraEffects: Boolean = true,
     content: () -> Unit
 ) {
+    RawHtml(
+        """
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          body {
+            font-family: ${PortfolioTheme.Typography.FONT_SANS};
+            color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+            background-color: ${PortfolioTheme.Colors.BACKGROUND};
+          }
+          a {
+            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
+            text-decoration: none;
+            transition: color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+          }
+          a:hover {
+            color: ${PortfolioTheme.Colors.LINK_HOVER};
+          }
+          a[data-cta] {
+            box-shadow: 0 0 20px rgba(255, 70, 104, 0.45);
+          }
+          a[data-cta]:hover {
+            color: #ffffff;
+            box-shadow: 0 0 30px rgba(255, 70, 104, 0.6);
+            transform: translateY(-2px);
+          }
+        </style>
+        """.trimIndent()
+    )
+
     val scaffoldModifier = modifier
         .minHeight("100vh")
         .backgroundColor(PortfolioTheme.Colors.BACKGROUND)
         .backgroundLayers {
             radialGradient {
-                size("1300px", "900px")
-                position("22%", "4%")              // replaces the CSS “at 22% 4%”
-                colorStop("rgba(255,59,106,0.48)", "0%")
-                colorStop("rgba(15,17,23,0.02)", "65%")
+                position("20% 30%")
+                colorStop("rgba(255,70,104,0.2)", "0%")
+                colorStop("transparent", "60%")
             }
             radialGradient {
-                size("1000px", "780px")
-                position("78%", "-8%")
-                colorStop("rgba(46,130,220,0.42)", "0%")
-                colorStop("rgba(8,9,12,0.05)", "55%")
+                position("80% 70%")
+                colorStop("rgba(106,215,255,0.15)", "0%")
+                colorStop("transparent", "60%")
             }
-            radialGradient {
-                size("2200px", "1500px")
-                position("40%", "-40%")
-                colorStop("rgba(226,68,122,0.3)", "0%")
-                colorStop("rgba(10,11,13,0)", "70%")
-            }
-            radialGradient {
-                size("1200px", "900px")
-                position("25%", "12%")
-                colorStop("#15161c", "0%")
-                colorStop(PortfolioTheme.Colors.BACKGROUND.toString(), "55%")
+            linearGradient {
+                direction("180deg")
+                colorStop("#001a2c", "0%")
+                colorStop("#05294a", "100%")
             }
         }
         .backgroundColor(PortfolioTheme.Colors.BACKGROUND_ALT)
-        .backgroundBlendModes(
-            BlendMode.Screen,
-            BlendMode.Screen,
-            BlendMode.Screen,
-            BlendMode.Normal,
-            BlendMode.Normal
-        )
         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
         .fontFamily(PortfolioTheme.Typography.FONT_SANS)
         .position(Position.Relative)

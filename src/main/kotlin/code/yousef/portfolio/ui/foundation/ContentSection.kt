@@ -32,6 +32,7 @@ fun ContentSection(
                 .borderRadius(PortfolioTheme.Radii.lg)
                 .padding(PortfolioTheme.Spacing.xl)
                 .gap(PortfolioTheme.Spacing.lg)
+                .backdropBlur(20.px)
                 .multipleShadows(
                     shadowConfig(
                         0,

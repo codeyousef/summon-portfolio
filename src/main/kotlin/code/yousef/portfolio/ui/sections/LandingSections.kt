@@ -453,10 +453,12 @@ fun PortfolioFooter(locale: PortfolioLocale) {
             )
             RawHtml(
                 """
-                <a href="$SUMMON_DOCS_URL" target="_blank" rel="noopener" aria-label="Summon Framework" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.25rem;">
-                  <img src="/static/logo-footer.png" alt="Summon logo" width="64" height="24" style="display:block;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,0.35);" />
-                </a>
+                <img src="/static/logo-footer.png" alt="Summon" width="64" height="24" style="display:inline-block;vertical-align:middle;border-radius:999px;margin:0 0.25rem;" />
                 """.trimIndent()
+            )
+            Text(
+                text = "with Summon",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
     }

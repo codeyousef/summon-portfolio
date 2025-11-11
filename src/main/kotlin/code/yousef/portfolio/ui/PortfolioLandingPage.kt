@@ -6,6 +6,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
+import code.yousef.portfolio.ui.sections.ContactSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
@@ -21,6 +22,7 @@ import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.modifier.WhiteSpace
 import code.yousef.summon.modifier.cssClamp
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
@@ -50,7 +52,7 @@ fun PortfolioLandingPage(
         FeaturedProjectSection(projectName = summonProjectTitle)
         ProcessSection()
         TestimonialSection()
-        ContactCtaSection()
+        ContactCtaSection(locale)
         PortfolioFooter(locale = locale)
     }
 }
@@ -69,6 +71,16 @@ private fun HeroBand() {
                 modifier = Modifier()
                     .fontSize(cssClamp(42.px, 6.vw, 76.px))
                     .fontWeight(900)
+                    .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
+                    .backgroundLayers {
+                        linearGradient {
+                            direction("90deg")
+                            colorStop("#ffffff", "0%")
+                            colorStop("#aeefff", "100%")
+                        }
+                    }
+                    .backgroundClipText()
+                    .color("transparent")
                     .letterSpacing("-0.02em")
             )
             Paragraph(
@@ -222,6 +234,7 @@ private fun FeaturedProjectSection(projectName: String) {
                     modifier = Modifier()
                         .fontSize(cssClamp(32.px, 4.vw, 48.px))
                         .fontWeight(800)
+                        .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
                 )
                 Paragraph(
                     text = "I created Summon, a modern UI framework that makes websites load faster, perform better, and scale cleanly across devices. It’s the same engineering mindset I bring to client projects.",
@@ -326,7 +339,7 @@ private fun TestimonialSection() {
 }
 
 @Composable
-private fun ContactCtaSection() {
+private fun ContactCtaSection(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("contact")) {
         Column(
             modifier = Modifier()
@@ -343,34 +356,20 @@ private fun ContactCtaSection() {
                 modifier = Modifier()
                     .fontSize(cssClamp(32.px, 4.vw, 48.px))
                     .fontWeight(800)
+                    .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
             )
             Paragraph(
                 text = "Have an idea or project in mind? I’ll help you bring it to life — fast, clean, and cross-platform from day one.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
-            Row(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .gap(PortfolioTheme.Spacing.sm)
-                    .flexWrap(FlexWrap.Wrap)
-            ) {
-                PrimaryCtaButton(
-                    text = "Start your project",
-                    href = "/contact"
-                )
-                SecondaryCtaButton(
-                    text = "Email me directly",
-                    href = "mailto:hi@yousef.codes",
-                    openInNewTab = false
-                )
-            }
             Paragraph(
                 text = "No agencies, no outsourcing — you’ll work directly with me.",
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
         }
     }
+    ContactSection(locale = locale)
 }
 
 @Composable
@@ -394,6 +393,7 @@ private fun SectionHeading(
             modifier = Modifier()
                 .fontSize(cssClamp(32.px, 4.vw, 48.px))
                 .fontWeight(800)
+                .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
         )
     }
 }
@@ -411,7 +411,8 @@ private fun PrimaryCtaButton(text: String, href: String, modifier: Modifier = Mo
             .padding("0", PortfolioTheme.Spacing.lg)
             .borderRadius(PortfolioTheme.Radii.lg)
             .background(PortfolioTheme.Gradients.ACCENT)
-            .color("#0b0c12")
+            .color("#ffffff")
+            .textDecoration("none")
             .fontWeight(800)
             .letterSpacing("-0.01em"),
         target = null,
@@ -448,7 +449,9 @@ private fun SecondaryCtaButton(
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
             .padding("0", PortfolioTheme.Spacing.lg)
-            .color(PortfolioTheme.Colors.TEXT_PRIMARY),
+            .textDecoration("none")
+            .backgroundColor("transparent")
+            .color(PortfolioTheme.Colors.TEXT_SECONDARY),
         target = targetAttr,
         rel = relAttr,
         title = null,

@@ -58,7 +58,7 @@ fun Application.configureRouting(
     val seoExtractor = SeoExtractor(docsConfig)
     val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
-    val docsHosts = (System.getenv("DOCS_HOSTS") ?: "summon.yousef.codes,summon.localhost,docs.localhost")
+    val docsHosts = (System.getenv("DOCS_HOSTS") ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.localhost,docs.localhost")
         .split(",")
         .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
     val configuredPort = appConfig.port
