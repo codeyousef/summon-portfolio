@@ -3,6 +3,7 @@ package code.yousef.portfolio.server.routes
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ssr.SummonRenderLock
 import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
 import code.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
@@ -144,10 +145,12 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondDocsPage(
     page: SummonPage,
     status: HttpStatusCode = HttpStatusCode.OK
 ) {
-    respondSummonHydrated(status) {
-        val renderer = getPlatformRenderer()
-        renderer.renderHeadElements(page.head)
-        page.content()
+    SummonRenderLock.withLock {
+        respondSummonHydrated(status) {
+            val renderer = getPlatformRenderer()
+            renderer.renderHeadElements(page.head)
+            page.content()
+        }
     }
 }
 

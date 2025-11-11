@@ -16,6 +16,7 @@ import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ssr.SummonRenderLock
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
 import code.yousef.portfolio.ui.admin.AdminSectionPage
@@ -596,14 +597,16 @@ private suspend fun ApplicationCall.handleBlogDelete(
 }
 
 private suspend fun ApplicationCall.respondSummonPage(page: SummonPage, status: HttpStatusCode = HttpStatusCode.OK) {
-    respondSummonHydrated(status) {
-        val renderer = getPlatformRenderer()
-        renderer.renderHeadElements(page.head)
-        val session = sessions.get<AdminSession>()
-        val chrome =
-            session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
-        val provider = LocalPageChrome.provides(chrome)
-        provider.current
-        page.content()
+    SummonRenderLock.withLock {
+        respondSummonHydrated(status) {
+            val renderer = getPlatformRenderer()
+            renderer.renderHeadElements(page.head)
+            val session = sessions.get<AdminSession>()
+            val chrome =
+                session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
+            val provider = LocalPageChrome.provides(chrome)
+            provider.current
+            page.content()
+        }
     }
 }
