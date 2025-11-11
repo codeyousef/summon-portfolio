@@ -7,3 +7,6 @@ ktor:
   plugins:
     contentnegotiation:
       json: true
+
+gcp:
+  projectId: local-dev-project

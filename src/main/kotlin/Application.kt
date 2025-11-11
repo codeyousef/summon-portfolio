@@ -1,5 +1,9 @@
 package code.yousef
 
+import code.yousef.config.loadAppConfig
+import code.yousef.firestore.FirestoreProvider
+import code.yousef.firestore.PortfolioMetaRepository
+import code.yousef.firestore.PortfolioMetaService
 import code.yousef.portfolio.admin.auth.AdminSession
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -16,10 +20,28 @@ import io.ktor.server.sessions.*
 import kotlinx.serialization.json.Json
 
 fun main(args: Array<String>) {
+    System.setProperty("ktor.deployment.host", "0.0.0.0")
+    System.getenv("PORT")?.let { System.setProperty("ktor.deployment.port", it) }
     io.ktor.server.netty.EngineMain.main(args)
 }
 
 fun Application.module() {
+    val appConfig = loadAppConfig()
+    log.info(
+        "Starting Summon Portfolio with projectId={}, emulator={}, port={}",
+        appConfig.projectId,
+        appConfig.emulatorHost ?: "OFF",
+        appConfig.port
+    )
+
+    val firestore = FirestoreProvider.create(appConfig)
+    val portfolioMetaService = PortfolioMetaService(PortfolioMetaRepository(firestore))
+
+    environment.monitor.subscribe(ApplicationStopped) {
+        runCatching { firestore.close() }
+            .onFailure { throwable -> log.warn("Failed to close Firestore", throwable) }
+    }
+
     install(DefaultHeaders)
     install(CallLogging)
     install(AutoHeadResponse)
@@ -47,5 +69,5 @@ fun Application.module() {
             call.respondText("Something went wrong", status = HttpStatusCode.InternalServerError)
         }
     }
-    configureRouting()
+    configureRouting(appConfig, portfolioMetaService)
 }

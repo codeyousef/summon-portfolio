@@ -1,5 +1,7 @@
 package code.yousef
 
+import code.yousef.config.AppConfig
+import code.yousef.firestore.PortfolioMetaService
 import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.contact.ContactService
@@ -24,7 +26,10 @@ import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
 
-fun Application.configureRouting() {
+fun Application.configureRouting(
+    appConfig: AppConfig,
+    portfolioMetaService: PortfolioMetaService
+) {
     val bootInstant = Instant.now()
     val contentStore = FileContentStore.fromEnvironment()
     val contentService = PortfolioContentService.default(contentStore)
@@ -49,9 +54,7 @@ fun Application.configureRouting() {
     val docsHosts = (System.getenv("DOCS_HOSTS") ?: "summon.yousef.codes,summon.localhost,docs.localhost")
         .split(",")
         .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
-    val configuredPort = environment.config.propertyOrNull("ktor.deployment.port")?.getString()?.toIntOrNull()
-        ?: System.getenv("PORT")?.toIntOrNull()
-        ?: 8080
+    val configuredPort = appConfig.port
 
     routing {
         staticResources("/static", "static")
@@ -139,10 +142,30 @@ fun Application.configureRouting() {
             )
         }
         get("/healthz") {
-            call.respondText("ok")
+            val uptime = Duration.between(bootInstant, Instant.now()).seconds
+            call.respond(
+                mapOf(
+                    "ok" to true,
+                    "projectId" to appConfig.projectId,
+                    "emulator" to (appConfig.emulatorHost != null),
+                    "uptimeSeconds" to uptime
+                )
+            )
         }
         get("/health") {
             call.respondHealth(bootInstant)
+        }
+        get("/db-test") {
+            val now = System.currentTimeMillis()
+            portfolioMetaService.touchHello(now)
+            val data = portfolioMetaService.fetchHello()
+            call.respond(
+                mapOf(
+                    "ok" to true,
+                    "exists" to (data != null),
+                    "data" to (data ?: emptyMap<String, Any>())
+                )
+            )
         }
         get("/sitemap.xml") {
             val sitemap = generateSitemapXml(contentService)
