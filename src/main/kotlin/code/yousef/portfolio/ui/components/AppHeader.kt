@@ -346,7 +346,15 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
           }
           .native-header__dropdown {
             position: relative;
-            padding-bottom: ${PortfolioTheme.Spacing.md};
+            padding-bottom: 0;
+          }
+          .native-header__dropdown::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            height: ${PortfolioTheme.Spacing.md};
           }
           .native-header__dropdown:hover .native-header__menu,
           .native-header__dropdown:focus-within .native-header__menu {
@@ -491,7 +499,15 @@ private fun NavDropdownStyles() {
           display: inline-flex;
           flex-direction: column;
           align-items: flex-start;
-          padding-bottom: 32px;
+          padding-bottom: 0;
+        }
+        .nav-dropdown::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 100%;
+          height: ${PortfolioTheme.Spacing.md};
         }
         .nav-dropdown__button {
           background: transparent;

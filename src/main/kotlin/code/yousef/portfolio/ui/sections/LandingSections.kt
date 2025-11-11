@@ -12,6 +12,7 @@ import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Box
@@ -20,7 +21,6 @@ import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.core.style.Color
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
@@ -453,7 +453,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
             )
             RawHtml(
                 """
-                <img src="/static/logo.png" alt="Summon" width="24" height="24" style="display:inline-block;vertical-align:middle;margin:0 0.25rem;" />
+                <img src="/static/logo.png" alt="Summon" width="24" height="24" style="display:inline-block;vertical-align:middle;margin:0;" />
                 """.trimIndent()
             )
             Text(

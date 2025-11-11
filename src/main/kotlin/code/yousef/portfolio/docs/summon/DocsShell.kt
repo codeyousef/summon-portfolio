@@ -7,7 +7,9 @@ import code.yousef.portfolio.docs.TocEntry
 import code.yousef.portfolio.docs.summon.components.DocsSidebar
 import code.yousef.portfolio.docs.summon.components.Prose
 import code.yousef.portfolio.docs.summon.components.Toc
+import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.foundation.RawHtml
@@ -163,6 +165,7 @@ fun DocsShell(
             }
             Toc(entries = toc)
         }
+        PortfolioFooter(locale = PortfolioLocale.EN)
     }
 }
 
