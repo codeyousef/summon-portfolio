@@ -124,12 +124,15 @@ fun AdminDashboardPage(
                                     .borderRadius(PortfolioTheme.Radii.md)
                             ) {
                                 Text(
-                                    text = "${submission.name} · ${submission.whatsapp}",
+                                    text = submission.name,
                                     modifier = Modifier().fontWeight(600)
                                 )
-                                submission.email?.let {
+                                listOfNotNull(
+                                    submission.email?.let { "Email: $it" },
+                                    submission.whatsapp?.let { "WhatsApp: $it" }
+                                ).forEach { line ->
                                     Text(
-                                        text = it,
+                                        text = line,
                                         modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                     )
                                 }

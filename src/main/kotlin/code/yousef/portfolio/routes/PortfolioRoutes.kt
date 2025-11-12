@@ -437,7 +437,7 @@ private suspend fun ApplicationCall.receiveContactRequest(): ContactRequest? {
             ContactRequest(
                 name = params["name"].orEmpty(),
                 email = params["email"],
-                whatsapp = params["whatsapp"].orEmpty(),
+                whatsapp = params["whatsapp"],
                 requirements = params["requirements"].orEmpty()
             )
         }

@@ -44,12 +44,23 @@ fun ContactSection(
             </style>
             """.trimIndent()
         )
-        Paragraph(
-            text = ContactCopy.lead.resolve(locale),
+        Column(
             modifier = Modifier()
-                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .lineHeight(1.6)
-        )
+                .gap(PortfolioTheme.Spacing.xs)
+        ) {
+            Paragraph(
+                text = ContactCopy.lead.resolve(locale),
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .lineHeight(1.6)
+            )
+            Paragraph(
+                text = ContactCopy.contactMethods.resolve(locale),
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .lineHeight(1.4)
+            )
+        }
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -113,6 +124,7 @@ private fun ContactForm(
             .width(100.percent)
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
+            .attribute("id", "contact-form")
     ) {
         FormTextField(
             name = "name",
@@ -133,6 +145,15 @@ private fun ContactForm(
             required = false,
             fullWidth = true
         )
+        FormTextField(
+            name = "whatsapp",
+            label = ContactCopy.whatsapp.resolve(locale),
+            placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
+            optionalLabel = optionalLabel,
+            inputMode = "tel",
+            required = false,
+            fullWidth = true
+        )
         FormTextArea(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
@@ -148,6 +169,25 @@ private fun ContactForm(
             fullWidth = true
         )
     }
+    RawHtml(
+        """
+        <script>
+          (function() {
+            const form = document.getElementById('contact-form');
+            if (!form) return;
+            form.addEventListener('submit', function(event) {
+              const email = form.querySelector('[name="email"]').value.trim();
+              const whatsapp = form.querySelector('[name="whatsapp"]').value.trim();
+              if (!email && !whatsapp) {
+                event.preventDefault();
+                alert('Please enter an email or WhatsApp number.');
+                form.querySelector('[name="email"]').focus();
+              }
+            });
+          })();
+        </script>
+        """.trimIndent()
+    )
 }
 
 private object ContactCopy {
@@ -160,9 +200,15 @@ private object ContactCopy {
         en = "Average response time: under 24h. Share a sentence or two about your project and I’ll follow up with a plan.",
         ar = "متوسط وقت الرد أقل من 24 ساعة. شارك سطرًا أو سطرين عن مشروعك وسأتواصل معك بخطة واضحة."
     )
+    val contactMethods = LocalizedText(
+        en = "Prefer WhatsApp or email? Use whichever is fastest — just include at least one so I can reply.",
+        ar = "يمكنك استخدام البريد الإلكتروني أو رقم واتساب — فقط اذكر أحدهما على الأقل حتى أتمكن من الرد."
+    )
     val formTitle = LocalizedText("Project details", "تفاصيل المشروع")
     val name = LocalizedText("Name", "الاسم")
     val email = LocalizedText("Email", "البريد الإلكتروني")
+    val whatsapp = LocalizedText("WhatsApp", "رقم واتساب")
+    val whatsappPlaceholder = LocalizedText("+1 555 123 4567", "+966 5X XXX XXXX")
     val requirements = LocalizedText("What are we building?", "ماذا سنبني؟")
     val optional = LocalizedText("Optional", "اختياري")
     val submit = LocalizedText("Send request", "أرسل الطلب")

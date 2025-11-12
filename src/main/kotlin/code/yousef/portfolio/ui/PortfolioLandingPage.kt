@@ -11,6 +11,8 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.ContactSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
+import code.yousef.portfolio.ui.sections.ServicesSection
+import code.yousef.portfolio.ui.sections.BlogTeaserSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
@@ -71,7 +73,7 @@ private object LandingCopy {
         ar = "لا وكالات ولا تعهيد — ستعمل معي مباشرة."
     )
     val heroPrimaryCta = LocalizedText("Start your project", "ابدأ مشروعك")
-    val heroSecondaryCta = LocalizedText("Explore Summon", "استكشف سُمّون")
+    val heroSecondaryCta = LocalizedText("Explore Summon", "استكشف Summon")
 }
 
 @Composable
@@ -96,8 +98,19 @@ fun PortfolioLandingPage(
         ) {}
         HeroBand(locale)
         WhatIBuildSection(locale)
+        ServicesSection(
+            services = content.services,
+            locale = locale,
+            onRequestServices = {},
+            modifier = Modifier().id("services")
+        )
         WhyWorkWithMeSection(locale)
         FeaturedProjectSection(locale, projectName = summonProjectTitle)
+        BlogTeaserSection(
+            posts = content.blogPosts,
+            locale = locale,
+            modifier = Modifier().id("blog")
+        )
         CaseStudySection(locale)
         ProcessSection(locale)
         TestimonialSection(locale)
@@ -832,7 +845,7 @@ private val testimonials = listOf(
     Testimonial(
         quote = LocalizedText(
             en = "“He handled everything — architecture, %SUMMON% components, deployment. Launch day was the calmest we’ve had.”",
-            ar = "\"تولى كل شيء — الهيكلة ومكوّنات %SUMMON% والنشر. كان يوم الإطلاق الأكثر هدوءًا لنا.\""
+            ar = "تولى كل شيء — الهيكلة ومكوّنات Summon والنشر. كان يوم الإطلاق الأكثر هدوءًا لنا."
         ),
         author = "Marcus R.",
         role = LocalizedText("COO", "المدير التشغيلي"),

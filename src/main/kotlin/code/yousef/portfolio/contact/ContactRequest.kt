@@ -6,6 +6,6 @@ import kotlinx.serialization.Serializable
 data class ContactRequest(
     val name: String,
     val email: String?,
-    val whatsapp: String,
+    val whatsapp: String?,
     val requirements: String
 )

@@ -6,7 +6,7 @@ data class ContactSubmission(
     val id: String,
     val name: String,
     val email: String?,
-    val whatsapp: String,
+    val whatsapp: String?,
     val requirements: String,
     val createdAt: Instant
 )

@@ -42,7 +42,7 @@ private val defaultNavItems = listOf(
 )
 
 private val projectsLabel = LocalizedText("Projects", "المشاريع")
-private val summonLabel = LocalizedText("Summon", "سُمّون")
+private val summonLabel = LocalizedText("Summon", "Summon")
 private val startProjectLabel = LocalizedText("Start your project", "ابدأ مشروعك")
 
 @Composable
@@ -51,7 +51,8 @@ fun AppHeader(
     modifier: Modifier = Modifier(),
     forceNativeLinks: Boolean = false,
     nativeBaseUrl: String? = null,
-    docsBaseUrl: String? = null
+    docsBaseUrl: String? = null,
+    forcePortfolioAnchors: Boolean = false
 ) {
     if (forceNativeLinks) {
         NativeAppHeader(locale = locale, baseUrl = nativeBaseUrl)
@@ -149,9 +150,16 @@ fun AppHeader(
                     .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .opacity(0.9F)
+                val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
                 navItems.forEach { item ->
                     val href =
-                        if (forceNativeLinks) item.target.absoluteHref(locale, nativeBaseUrl) else item.target.href(locale)
+                        if (forceNativeLinks) {
+                            item.target.absoluteHref(locale, nativeBaseUrl)
+                        } else if (prefixOverride != null) {
+                            prefixOverride + item.target.href(locale)
+                        } else {
+                            item.target.href(locale)
+                        }
                     val label = item.label.resolve(locale)
                     navLink(
                         label = label,
@@ -161,7 +169,7 @@ fun AppHeader(
                         navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
                     )
                 }
-                ProjectsDropdown(locale = locale, summonHref = summonMarketingUrl())
+                ProjectsDropdown(locale = locale, summonHref = summonMarketingUrl(), forcePortfolioAnchors = forcePortfolioAnchors)
             }
         }
 
@@ -211,10 +219,10 @@ fun AppHeader(
                     navigationMode = LinkNavigationMode.Native
                 )
             }
-            val hireHref = if (forceNativeLinks) {
-                NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
-            } else {
-                NavTarget.Section("contact").href(locale)
+            val hireHref = when {
+                forceNativeLinks -> NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
+                forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
+                else -> NavTarget.Section("contact").href(locale)
             }
             val hireNavigation = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
             ButtonLink(
@@ -315,7 +323,7 @@ private fun LocaleToggleButton(
 }
 
 @Composable
-private fun ProjectsDropdown(locale: PortfolioLocale, summonHref: String) {
+private fun ProjectsDropdown(locale: PortfolioLocale, summonHref: String, forcePortfolioAnchors: Boolean) {
     val label = projectsLabel.resolve(locale)
     val summonText = summonLabel.resolve(locale)
     RawHtml(
@@ -332,6 +340,7 @@ private fun ProjectsDropdown(locale: PortfolioLocale, summonHref: String) {
         """.trimIndent()
     )
 }
+
 
 private fun NavTarget.href(locale: PortfolioLocale): String {
     val prefix = locale.pathPrefix()
