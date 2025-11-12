@@ -54,16 +54,17 @@ fun ContentSection(
 
 @Composable
 private fun ContentSectionStyles() {
+    val mobileInset = PortfolioTheme.Spacing.sm
     RawHtml(
         """
         <style>
           @media (max-width: 768px) {
             .content-section {
               max-width: none !important;
-              width: 100vw !important;
-              margin-left: calc(50% - 50vw) !important;
+              width: calc(100vw - $mobileInset) !important;
+              margin-left: calc(50% - 50vw + $mobileInset) !important;
               margin-right: calc(50% - 50vw) !important;
-              padding: ${PortfolioTheme.Spacing.sm} !important;
+              padding: ${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.md} !important;
             }
             .content-section__inner {
               padding: ${PortfolioTheme.Spacing.md} !important;

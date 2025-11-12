@@ -104,7 +104,7 @@ fun FormStyleSheet() {
           .summon-form-select,
           .summon-form-textarea {
             width: 100%;
-            padding: 18px 20px;
+            padding: 16px 14px;
             border-radius: 16px;
             border: 1px solid rgba(255,255,255,0.1);
             background: rgba(255,255,255,0.04);
@@ -112,6 +112,13 @@ fun FormStyleSheet() {
             font-size: 1rem;
             font-family: inherit;
             transition: border-color 180ms ease, box-shadow 180ms ease;
+          }
+          @media (max-width: 768px) {
+            .summon-form-control,
+            .summon-form-select,
+            .summon-form-textarea {
+              padding: 14px 12px;
+            }
           }
           .summon-form-control:focus,
           .summon-form-select:focus,

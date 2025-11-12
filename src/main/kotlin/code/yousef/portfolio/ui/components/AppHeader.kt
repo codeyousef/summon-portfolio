@@ -81,7 +81,7 @@ fun AppHeader(
         .gap(PortfolioTheme.Spacing.lg)
         .flexWrap(FlexWrap.Wrap)
         .position(Position.Sticky)
-        .top(PortfolioTheme.Spacing.md)
+        .top(0.px)
         .zIndex(20)
         .style("margin-inline-start", "-$paddingStart")
         .style("margin-inline-end", "-$paddingEnd")
