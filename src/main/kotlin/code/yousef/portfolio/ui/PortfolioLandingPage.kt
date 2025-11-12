@@ -3,16 +3,17 @@ package code.yousef.portfolio.ui
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.i18n.pathPrefix
+import code.yousef.portfolio.ssr.summonMarketingUrl
+import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.ServicesOverlay
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
+import code.yousef.portfolio.ui.sections.BlogTeaserSection
 import code.yousef.portfolio.ui.sections.ContactSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.portfolio.ui.sections.ServicesSection
-import code.yousef.portfolio.ui.sections.BlogTeaserSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
@@ -32,6 +33,7 @@ import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.runtime.rememberMutableStateOf
 
 
 private object LandingCopy {
@@ -82,13 +84,13 @@ fun PortfolioLandingPage(
     locale: PortfolioLocale,
     servicesModalOpen: Boolean = false
 ) {
-    if (servicesModalOpen) {
-        // Legacy query param now simply highlights the contact section by ensuring it stays rendered below.
-    }
     val summonProjectTitle = content.projects.firstOrNull { it.slug == "summon-framework" }
         ?.title
         ?.resolve(locale)
         ?: "Summon"
+    val servicesModalState = rememberMutableStateOf(servicesModalOpen)
+    val openServicesModal = { servicesModalState.value = true }
+    val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
         AppHeader(locale = locale)
@@ -101,7 +103,7 @@ fun PortfolioLandingPage(
         ServicesSection(
             services = content.services,
             locale = locale,
-            onRequestServices = {},
+            onRequestServices = openServicesModal,
             modifier = Modifier().id("services")
         )
         WhyWorkWithMeSection(locale)
@@ -116,6 +118,13 @@ fun PortfolioLandingPage(
         TestimonialSection(locale)
         ContactCtaSection(locale)
         PortfolioFooter(locale = locale)
+        ServicesOverlay(
+            open = servicesModalState.value,
+            services = content.services,
+            locale = locale,
+            contactHref = "#contact",
+            onClose = closeServicesModal
+        )
         StructuredDataSnippet()
     }
 }

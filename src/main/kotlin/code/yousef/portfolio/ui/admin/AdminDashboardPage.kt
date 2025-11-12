@@ -162,6 +162,7 @@ fun AdminDashboardPage(
                 .display(Display.Flex)
                 .gap(PortfolioTheme.Spacing.xl)
                 .alignItems(AlignItems.Stretch)
+                .margin(PortfolioTheme.Spacing.xxl, "0", "0", "0")
         ) {
             AdminSidebar(locale = locale, basePath = adminBasePath, activeSection = activeSection)
             Column(
