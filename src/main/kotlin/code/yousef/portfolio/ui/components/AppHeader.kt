@@ -64,12 +64,7 @@ fun AppHeader(
     val containerModifier = modifier
         .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
-        .borderWidth(1)
-        .borderStyle(BorderStyle.Solid)
-        .borderColor(PortfolioTheme.Colors.BORDER)
-        .borderRadius(PortfolioTheme.Radii.lg)
         .padding(PortfolioTheme.Spacing.md)
-        .backdropBlur(16.px)
         .display(Display.Flex)
         .alignItems(AlignItems.Center)
         .justifyContent(JustifyContent.SpaceBetween)
@@ -78,14 +73,13 @@ fun AppHeader(
         .position(Position.Sticky)
         .top(PortfolioTheme.Spacing.md)
         .zIndex(20)
-        .boxShadow("0 25px 80px rgba(0,0,0,0.35)")
 
     Row(
         modifier = containerModifier
             .attribute("class", "app-header")
             .attribute("data-menu-open", "false")
     ) {
-        NavDropdownStyles()
+        AppHeaderStyles()
         RawHtml(
             """
             <input type="checkbox" id="$toggleId" class="app-header__toggle-input" aria-label="Toggle navigation" />
@@ -132,6 +126,14 @@ fun AppHeader(
                     .attribute("class", "app-header__nav")
                     .attribute("id", "app-header-nav")
             ) {
+                val baseNavModifier = Modifier()
+                    .textDecoration("none")
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .fontSize(0.85.rem)
+                    .letterSpacing(0.08.rem)
+                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                    .borderRadius(PortfolioTheme.Radii.pill)
+                    .opacity(0.9F)
                 navItems.forEach { item ->
                     val href =
                         if (forceNativeLinks) item.target.absoluteHref(locale, nativeBaseUrl) else item.target.href(locale)
@@ -139,19 +141,18 @@ fun AppHeader(
                     navLink(
                         label = label,
                         href = href,
-                        modifier = Modifier()
-                            .textDecoration("none")
-                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .fontSize(0.85.rem)
-                            .letterSpacing(0.08.rem)
-                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                            .borderRadius(PortfolioTheme.Radii.pill)
-                            .opacity(0.9F),
+                        modifier = baseNavModifier,
                         dataAttributes = mapOf("nav" to label.lowercase()),
                         navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
                     )
                 }
-                ProjectsDropdown(locale = locale, docsHref = docsHref)
+                navLink(
+                    label = projectsLabel.resolve(locale),
+                    href = docsHref,
+                    modifier = baseNavModifier,
+                    dataAttributes = mapOf("nav" to "projects"),
+                    navigationMode = LinkNavigationMode.Native
+                )
             }
         }
 
@@ -250,6 +251,7 @@ private fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, na
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.pill)
+            .attribute("class", "app-header__locale-toggle")
     ) {
         LocaleToggleButton(
             locale = PortfolioLocale.EN,
@@ -543,98 +545,29 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
 }
 
 @Composable
-private fun ProjectsDropdown(locale: PortfolioLocale, docsHref: String) {
-    val label = projectsLabel.resolve(locale)
-    val summonText = summonLabel.resolve(locale)
-    RawHtml(
-        """
-        <div class="nav-dropdown">
-          <button class="nav-dropdown__button" type="button" aria-haspopup="true">
-            <span>$label</span>
-            <span class="nav-dropdown__caret" aria-hidden="true">▾</span>
-          </button>
-          <div class="nav-dropdown__menu">
-            <a href="$docsHref">$summonText</a>
-          </div>
-        </div>
-        """.trimIndent()
-    )
-}
-
-@Composable
-private fun NavDropdownStyles() {
+private fun AppHeaderStyles() {
     RawHtml(
         """
         <style>
-        .nav-dropdown {
-          position: relative;
-          display: inline-flex;
-          flex-direction: column;
-          align-items: flex-start;
-          padding-bottom: 0;
-          align-self: center;
+        .app-header {
+          width: 100%;
+          border-radius: 0 !important;
+          border-width: 0 !important;
         }
-        .nav-dropdown::after {
-          content: "";
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 100%;
-          height: ${PortfolioTheme.Spacing.md};
+        .app-header__nav-wrapper,
+        .app-header__actions-wrapper {
+          flex: 1 1 100%;
         }
-        .nav-dropdown__button {
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          text-decoration: none;
-          color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-          font-size: 0.85rem;
-          letter-spacing: 0.08rem;
-          padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
-          border-radius: ${PortfolioTheme.Radii.pill};
+        .app-header__nav {
+          width: 100%;
+        }
+        .app-header__nav [data-nav] {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          text-transform: none;
+          justify-content: center;
         }
-        .nav-dropdown__button:focus-visible {
-          outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
-        }
-        .nav-dropdown__caret {
-          font-size: 0.75rem;
-          opacity: 0.7;
-        }
-        .nav-dropdown__menu {
-          position: absolute;
-          top: 100%;
-          margin-top: 6px;
-          left: 0;
-          display: none;
-          flex-direction: column;
-          background: ${PortfolioTheme.Colors.BACKGROUND};
-          border: 1px solid ${PortfolioTheme.Colors.BORDER};
-          border-radius: ${PortfolioTheme.Radii.md};
-          min-width: 200px;
-          padding: 8px;
-          box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-          z-index: 25;
-        }
-        .nav-dropdown:hover .nav-dropdown__menu,
-        .nav-dropdown:focus-within .nav-dropdown__menu {
-          display: flex;
-        }
-        .nav-dropdown__menu a {
-          text-decoration: none;
-          color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-          padding: 8px 10px;
-          border-radius: 12px;
-          font-size: 0.9rem;
-          white-space: nowrap;
-        }
-        .nav-dropdown__menu a:hover,
-        .nav-dropdown__menu a:focus {
-          background: ${PortfolioTheme.Colors.SURFACE};
-          color: ${PortfolioTheme.Colors.ACCENT_ALT};
+        .app-header__actions {
+          width: 100%;
         }
         .app-header__brand {
           display: flex;
@@ -712,12 +645,42 @@ private fun NavDropdownStyles() {
             overflow: hidden;
             transition: max-height ${PortfolioTheme.Motion.DEFAULT}, opacity ${PortfolioTheme.Motion.DEFAULT}, transform ${PortfolioTheme.Motion.DEFAULT};
           }
+          .app-header__nav {
+            flex-direction: column;
+            align-items: stretch;
+            gap: ${PortfolioTheme.Spacing.sm};
+          }
+          .app-header__nav [data-nav] {
+            width: 100% !important;
+            display: flex !important;
+            justify-content: flex-start;
+            padding: ${PortfolioTheme.Spacing.sm} 0 !important;
+            border-radius: 0 !important;
+            border-bottom: 1px solid ${PortfolioTheme.Colors.BORDER};
+          }
+          .app-header__nav [data-nav]:last-child {
+            border-bottom: none;
+          }
           .app-header[data-menu-open="true"] .app-header__nav-wrapper,
           .app-header[data-menu-open="true"] .app-header__actions-wrapper {
             display: flex !important;
             max-height: 600px;
             opacity: 1;
             transform: translateY(0);
+          }
+          .app-header__actions {
+            flex-direction: column;
+            align-items: stretch;
+            gap: ${PortfolioTheme.Spacing.md};
+            width: 100%;
+          }
+          .app-header__actions [data-nav] {
+            width: 100% !important;
+            justify-content: center;
+          }
+          .app-header__locale-toggle {
+            width: 100%;
+            justify-content: center;
           }
         }
         </style>
