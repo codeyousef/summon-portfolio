@@ -81,7 +81,9 @@ fun AppHeader(
         .boxShadow("0 25px 80px rgba(0,0,0,0.35)")
 
     Row(
-        modifier = containerModifier.attribute("class", "app-header")
+        modifier = containerModifier
+            .attribute("class", "app-header")
+            .attribute("data-menu-open", "false")
     ) {
         NavDropdownStyles()
         RawHtml(
@@ -99,7 +101,7 @@ fun AppHeader(
         ) {
             RawHtml(
                 """
-                <label for="$toggleId" class="app-header__toggle" role="button" tabindex="0" aria-controls="app-header-nav app-header-actions">
+                <label for="$toggleId" class="app-header__toggle" role="button" tabindex="0" aria-controls="app-header-nav app-header-actions" aria-expanded="false">
                   <span></span>
                   <span></span>
                   <span></span>
@@ -233,6 +235,7 @@ fun AppHeader(
         }
         }
     }
+    AppHeaderMenuScript()
 }
 
 @Composable
@@ -670,13 +673,13 @@ private fun NavDropdownStyles() {
           background: ${PortfolioTheme.Colors.TEXT_PRIMARY};
           transition: transform ${PortfolioTheme.Motion.DEFAULT};
         }
-        .app-header__toggle-input:checked ~ .app-header__brand .app-header__toggle span:nth-child(1) {
+        .app-header[data-menu-open="true"] .app-header__brand .app-header__toggle span:nth-child(1) {
           transform: translateY(8px) rotate(45deg);
         }
-        .app-header__toggle-input:checked ~ .app-header__brand .app-header__toggle span:nth-child(2) {
+        .app-header[data-menu-open="true"] .app-header__brand .app-header__toggle span:nth-child(2) {
           opacity: 0;
         }
-        .app-header__toggle-input:checked ~ .app-header__brand .app-header__toggle span:nth-child(3) {
+        .app-header[data-menu-open="true"] .app-header__brand .app-header__toggle span:nth-child(3) {
           transform: translateY(-8px) rotate(-45deg);
         }
         @media (min-width: 960px) {
@@ -709,8 +712,8 @@ private fun NavDropdownStyles() {
             overflow: hidden;
             transition: max-height ${PortfolioTheme.Motion.DEFAULT}, opacity ${PortfolioTheme.Motion.DEFAULT}, transform ${PortfolioTheme.Motion.DEFAULT};
           }
-          .app-header__toggle-input:checked ~ .app-header__nav-wrapper,
-          .app-header__toggle-input:checked ~ .app-header__actions-wrapper {
+          .app-header[data-menu-open="true"] .app-header__nav-wrapper,
+          .app-header[data-menu-open="true"] .app-header__actions-wrapper {
             display: flex !important;
             max-height: 600px;
             opacity: 1;
@@ -729,4 +732,51 @@ private fun resolveDocsHref(overrideValue: String?): String {
         ?: docsBaseEnv
         ?: "/summon"
     return candidate.trimEnd('/').ifBlank { "/summon" }
+}
+
+@Composable
+private fun AppHeaderMenuScript() {
+    RawHtml(
+        """
+        <script id="app-header-menu-script">
+        (function() {
+          if (window.__appHeaderMenuInit) return;
+          window.__appHeaderMenuInit = true;
+          function syncState(header, checkbox, toggle) {
+            var open = !!checkbox.checked;
+            header.setAttribute('data-menu-open', open ? 'true' : 'false');
+            if (toggle) {
+              toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+          }
+          function bindHeader(header) {
+            if (header.dataset.menuBound === 'true') return;
+            var checkbox = header.querySelector('.app-header__toggle-input');
+            var toggle = header.querySelector('.app-header__toggle');
+            if (!checkbox || !toggle) return;
+            header.dataset.menuBound = 'true';
+            var update = function() { syncState(header, checkbox, toggle); };
+            checkbox.addEventListener('change', update);
+            update();
+            var nodes = header.querySelectorAll('[data-nav]');
+            Array.prototype.forEach.call(nodes, function(node) {
+              node.addEventListener('click', function() {
+                if (!checkbox.checked) return;
+                checkbox.checked = false;
+                update();
+              });
+            });
+          }
+          function initHeaders() {
+            document.querySelectorAll('.app-header').forEach(bindHeader);
+          }
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initHeaders, { once: true });
+          } else {
+            initHeaders();
+          }
+        })();
+        </script>
+        """.trimIndent()
+    )
 }
