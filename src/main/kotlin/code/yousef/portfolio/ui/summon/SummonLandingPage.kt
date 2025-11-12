@@ -2,13 +2,17 @@ package code.yousef.portfolio.ui.summon
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ssr.portfolioBaseUrl
+import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
+import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
+import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
@@ -29,10 +33,21 @@ fun SummonLandingPage(
     apiReferenceUrl: String
 ) {
     PageScaffold(locale = PortfolioLocale.EN) {
+        AppHeader(
+            locale = PortfolioLocale.EN,
+            forceNativeLinks = true,
+            nativeBaseUrl = portfolioBaseUrl(),
+            docsBaseUrl = docsUrl
+        )
+        Box(
+            modifier = Modifier()
+                .height(PortfolioTheme.Spacing.xxl)
+        ) {}
         SummonHero(docsUrl, apiReferenceUrl)
         SummonFeatureGrid()
         SummonRuntimeCallout(docsUrl)
         SummonCtaFooter(docsUrl, apiReferenceUrl)
+        PortfolioFooter(locale = PortfolioLocale.EN)
     }
 }
 

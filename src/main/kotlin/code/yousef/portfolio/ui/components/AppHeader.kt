@@ -3,8 +3,8 @@ package code.yousef.portfolio.ui.components
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
-import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import code.yousef.summon.annotation.Composable
@@ -54,13 +54,12 @@ fun AppHeader(
     docsBaseUrl: String? = null
 ) {
     if (forceNativeLinks) {
-        NativeAppHeader(locale = locale, baseUrl = nativeBaseUrl, docsBaseUrl = docsBaseUrl)
+        NativeAppHeader(locale = locale, baseUrl = nativeBaseUrl)
         return
     }
 
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
-    val docsHref = resolveDocsHref(docsBaseUrl)
     val toggleId = if (forceNativeLinks) "app-nav-toggle-native" else "app-nav-toggle"
     val paddingStart = if (locale.direction.equals("rtl", ignoreCase = true)) {
         "calc(${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md})"
@@ -83,8 +82,8 @@ fun AppHeader(
         .flexWrap(FlexWrap.Wrap)
         .position(Position.Fixed)
         .top(0.px)
-        .left(0.px)
-        .right(0.px)
+        .style("left", "0")
+        .style("right", "0")
         .zIndex(50)
         .style("padding-inline-start", "calc(${PortfolioTheme.Spacing.md} + $paddingStart)")
         .style("padding-inline-end", "calc(${PortfolioTheme.Spacing.md} + $paddingEnd)")
@@ -94,6 +93,7 @@ fun AppHeader(
             .attribute("class", "app-header")
             .attribute("data-menu-open", "false")
     ) {
+        NavDropdownStyles()
         AppHeaderStyles()
         RawHtml(
             """
@@ -161,13 +161,7 @@ fun AppHeader(
                         navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
                     )
                 }
-                navLink(
-                    label = projectsLabel.resolve(locale),
-                    href = docsHref,
-                    modifier = baseNavModifier,
-                    dataAttributes = mapOf("nav" to "projects"),
-                    navigationMode = LinkNavigationMode.Native
-                )
+                ProjectsDropdown(locale = locale, summonHref = summonMarketingUrl())
             }
         }
 
@@ -181,9 +175,9 @@ fun AppHeader(
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .gap(PortfolioTheme.Spacing.md)
-                    .flex(grow = 1, shrink = 0, basis = "220px")
+                    .flex(grow = 0, shrink = 0, basis = "auto")
                     .justifyContent(JustifyContent.FlexEnd)
-                    .flexWrap(FlexWrap.Wrap)
+                    .flexWrap(FlexWrap.NoWrap)
                     .attribute("class", "app-header__actions")
                     .attribute("id", "app-header-actions")
             ) {
@@ -320,6 +314,25 @@ private fun LocaleToggleButton(
     )
 }
 
+@Composable
+private fun ProjectsDropdown(locale: PortfolioLocale, summonHref: String) {
+    val label = projectsLabel.resolve(locale)
+    val summonText = summonLabel.resolve(locale)
+    RawHtml(
+        """
+        <div class="nav-dropdown">
+          <button class="nav-dropdown__button" type="button" aria-haspopup="true">
+            <span>$label</span>
+            <span class="nav-dropdown__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="nav-dropdown__menu">
+            <a href="$summonHref">$summonText</a>
+          </div>
+        </div>
+        """.trimIndent()
+    )
+}
+
 private fun NavTarget.href(locale: PortfolioLocale): String {
     val prefix = locale.pathPrefix()
     return when (this) {
@@ -345,6 +358,86 @@ private fun NavTarget.absoluteHref(locale: PortfolioLocale, nativeBaseUrl: Strin
     }
 }
 
+@Composable
+private fun NavDropdownStyles() {
+    RawHtml(
+        """
+        <style>
+        .nav-dropdown {
+          position: relative;
+          display: inline-flex;
+          flex-direction: column;
+          align-items: flex-start;
+          padding-bottom: 0;
+          align-self: center;
+        }
+        .nav-dropdown::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 100%;
+          height: ${PortfolioTheme.Spacing.md};
+        }
+        .nav-dropdown__button {
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          text-decoration: none;
+          color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
+          font-size: 0.85rem;
+          letter-spacing: 0.08rem;
+          padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
+          border-radius: ${PortfolioTheme.Radii.pill};
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          text-transform: none;
+        }
+        .nav-dropdown__button:focus-visible {
+          outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
+        }
+        .nav-dropdown__caret {
+          font-size: 0.75rem;
+          opacity: 0.7;
+        }
+        .nav-dropdown__menu {
+          position: absolute;
+          top: 100%;
+          margin-top: 6px;
+          left: 0;
+          display: none;
+          flex-direction: column;
+          background: ${PortfolioTheme.Colors.BACKGROUND};
+          border: 1px solid ${PortfolioTheme.Colors.BORDER};
+          border-radius: ${PortfolioTheme.Radii.md};
+          min-width: 200px;
+          padding: 8px;
+          box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+          z-index: 25;
+        }
+        .nav-dropdown:hover .nav-dropdown__menu,
+        .nav-dropdown:focus-within .nav-dropdown__menu {
+          display: flex;
+        }
+        .nav-dropdown__menu a {
+          text-decoration: none;
+          color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+          padding: 8px 10px;
+          border-radius: 12px;
+          font-size: 0.9rem;
+          white-space: nowrap;
+        }
+        .nav-dropdown__menu a:hover,
+        .nav-dropdown__menu a:focus {
+          background: ${PortfolioTheme.Colors.SURFACE};
+          color: ${PortfolioTheme.Colors.ACCENT_ALT};
+        }
+        </style>
+        """.trimIndent()
+    )
+}
+
 private fun navLink(
     label: String,
     href: String,
@@ -368,8 +461,9 @@ private fun navLink(
     )
 }
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
-private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseUrl: String?) {
+private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
     val root = baseUrl?.trimEnd('/') ?: portfolioBaseUrl().trimEnd('/')
     val localeBase = if (locale == PortfolioLocale.EN) root else "$root/${locale.code}"
     val navHtml = buildString {
@@ -378,7 +472,7 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
             append("""<a class="native-header__link" href="$href">${item.label.resolve(locale)}</a>""")
         }
     }
-    val docsHref = resolveDocsHref(docsBaseUrl)
+    val summonHref = summonMarketingUrl()
     val hireHref = NavTarget.Section("contact").absoluteHref(locale, localeBase)
     val hireLabel = LocalizedText("Hire Me", "توظيفي").resolve(locale)
     val enHref = root
@@ -542,7 +636,7 @@ private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseU
                 <span class="native-header__dropdown-caret" aria-hidden="true">▾</span>
               </button>
               <div class="native-header__menu">
-                <a href="$docsHref">$summonText</a>
+                <a href="$summonHref">$summonText</a>
               </div>
             </div>
           </nav>
@@ -569,9 +663,11 @@ private fun AppHeaderStyles() {
           border-radius: 0 !important;
           border-width: 0 !important;
         }
-        .app-header__nav-wrapper,
+        .app-header__nav-wrapper {
+          flex: 1 1 auto;
+        }
         .app-header__actions-wrapper {
-          flex: 1 1 100%;
+          flex: 0 0 auto;
         }
         .app-header__nav {
           width: 100%;
@@ -582,7 +678,7 @@ private fun AppHeaderStyles() {
           justify-content: center;
         }
         .app-header__actions {
-          width: 100%;
+          width: auto;
         }
         .app-header__brand {
           display: flex;
@@ -701,12 +797,6 @@ private fun AppHeaderStyles() {
         </style>
         """.trimIndent()
     )
-}
-
-private fun resolveDocsHref(overrideValue: String?): String {
-    val candidate = overrideValue?.takeIf { it.isNotBlank() }
-        ?: docsBaseUrl()
-    return candidate.trimEnd('/').ifBlank { "/summon" }
 }
 
 @Composable

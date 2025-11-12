@@ -38,16 +38,12 @@ private object LandingCopy {
         ar = "أصمم وأبني مواقع وتطبيقات عالية الأداء."
     )
     val heroBody = LocalizedText(
-        en = "I’m Yousef — a developer who creates fast, modern digital products that look great, feel smooth, and work everywhere: web, iOS, Android, and desktop. %SUMMON% powers the same work I ship for clients.",
-        ar = "أنا يوسف — مطور يبني منتجات رقمية سريعة وعصرية تعمل بسلاسة على الويب وiOS وAndroid وسطح المكتب. %SUMMON% هي التقنية نفسها التي أستخدمها لعملائي."
+        en = "I’m Yousef — a full-stack engineer who ships web, mobile, and desktop products using the right tool for the job: React/Next.js, Kotlin Multiplatform, Spring, Ktor, Quarkus, Django, and %SUMMON% when custom UI speed matters.",
+        ar = "أنا يوسف — مهندس برمجيات كامل يبني منتجات للويب والجوال وسطح المكتب باستخدام الأداة المناسبة: React/Next.js وKotlin Multiplatform وSpring وKtor وQuarkus وDjango و%SUMMON% حين نحتاج واجهات فائقة الأداء."
     )
     val heroTrust = LocalizedText(
         en = "Trusted by developers and creatives — I built %SUMMON%, a custom UI framework used to power fast, responsive apps.",
         ar = "يثق بي المطورون والمبدعون — أنشأت %SUMMON%، إطار واجهات مخصص يشغّل تطبيقات سريعة ومتجاوبة."
-    )
-    val heroStack = LocalizedText(
-        en = "I build with React/Next.js and Kotlin Multiplatform — the same tools used by companies like Netflix, JetBrains, and Google.",
-        ar = "أبني باستخدام React/Next.js وKotlin Multiplatform — نفس الأدوات التي تستخدمها شركات مثل نتفلكس وجيت براينز وجوجل."
     )
     val whatEyebrow = LocalizedText("What I build", "ما الذي أبنيه")
     val whatTitle =
@@ -154,7 +150,8 @@ private fun HeroBand(locale: PortfolioLocale) {
                     href = contactHref,
                     modifier = Modifier()
                         .minWidth("200px")
-                        .whiteSpace(WhiteSpace.NoWrap)
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    navigationMode = LinkNavigationMode.Client
                 )
                 SecondaryCtaButton(
                     text = LandingCopy.heroSecondaryCta.resolve(locale),
@@ -214,13 +211,6 @@ private fun WhatIBuildSection(locale: PortfolioLocale) {
                 }
             }
         }
-        RawHtml(
-            """
-            <p style="color:rgba(255,255,255,0.8);font-style:italic;">
-              ${LandingCopy.heroStack.resolve(locale)}
-            </p>
-            """.trimIndent()
-        )
     }
 }
 
@@ -568,7 +558,12 @@ private fun SectionHeading(
 }
 
 @Composable
-private fun PrimaryCtaButton(text: String, href: String, modifier: Modifier = Modifier()) {
+private fun PrimaryCtaButton(
+    text: String,
+    href: String,
+    modifier: Modifier = Modifier(),
+    navigationMode: LinkNavigationMode = LinkNavigationMode.Native
+) {
     ButtonLink(
         label = text,
         href = href,
@@ -576,18 +571,14 @@ private fun PrimaryCtaButton(text: String, href: String, modifier: Modifier = Mo
             .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
-            .height(56.px)
-            .padding("0", PortfolioTheme.Spacing.lg)
-            .borderRadius(PortfolioTheme.Radii.lg)
-            .background(PortfolioTheme.Gradients.ACCENT)
+            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+            .borderRadius(PortfolioTheme.Radii.pill)
+            .backgroundColor(PortfolioTheme.Colors.ACCENT)
             .color("#ffffff")
             .textDecoration("none")
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.ACCENT_ALT)
-            .boxShadow("0 18px 40px rgba(255,70,104,0.45)")
-            .fontWeight(800)
-            .letterSpacing("-0.01em"),
+            .fontWeight(600)
+            .letterSpacing("-0.01em")
+            .whiteSpace(WhiteSpace.NoWrap),
         target = null,
         rel = null,
         title = null,
@@ -596,7 +587,7 @@ private fun PrimaryCtaButton(text: String, href: String, modifier: Modifier = Mo
         ariaDescribedBy = null,
         dataHref = null,
         dataAttributes = mapOf("cta" to text.lowercase()),
-        navigationMode = LinkNavigationMode.Native
+        navigationMode = LinkNavigationMode.Client
     )
 }
 
@@ -644,29 +635,29 @@ private val buildCapabilities = listOf(
     BuildCapability(
         title = LocalizedText("Websites & Web Apps", "مواقع وتطبيقات ويب"),
         description = LocalizedText(
-            en = "Fast-loading, responsive websites that feel as smooth as apps — perfect for businesses, startups, and creators.",
-            ar = "مواقع سريعة ومتجاوبة تشبه التطبيقات في سلاستها — مثالية للأعمال والشركات الناشئة وصنّاع المحتوى."
+            en = "React, Next.js, %SUMMON%, or classic SSR stacks (Spring/Ktor/Django) for marketing sites, product dashboards, and commerce flows that stay fast worldwide.",
+            ar = "أبني مواقع وتطبيقات ويب باستخدام React وNext.js و%SUMMON% أو أطر SSR مثل Spring وKtor وDjango لضمان السرعة عالميًا."
         )
     ),
     BuildCapability(
-        title = LocalizedText("Mobile Apps (iOS & Android)", "تطبيقات جوال (iOS وAndroid)"),
+        title = LocalizedText("APIs & Backends", "واجهات برمجية وأنظمة خلفية"),
         description = LocalizedText(
-            en = "One app that runs beautifully on both platforms — no need for two codebases.",
-            ar = "تطبيق واحد يعمل بكفاءة على كلا النظامين دون الحاجة لقاعدتي كود منفصلتين."
+            en = "Modern services built with Spring Boot, Ktor, Quarkus, or Django REST — complete with auth, observability, and CI/CD pipelines.",
+            ar = "أنظمة خلفية حديثة بـ Spring Boot وKtor وQuarkus وDjango REST مع المصادقة والمراقبة وخطوط CI/CD."
         )
     ),
     BuildCapability(
-        title = LocalizedText("Desktop & Cross-Platform Tools", "تطبيقات سطح المكتب والمتعددة المنصات"),
+        title = LocalizedText("Mobile Apps (Kotlin Multiplatform)", "تطبيقات جوال (Kotlin Multiplatform)"),
         description = LocalizedText(
-            en = "Powerful desktop or internal tools that share code across web, mobile, and desktop — consistent and efficient.",
-            ar = "أدوات سطح مكتب أو حلول داخلية تشارك الكود بين الويب والجوال وسطح المكتب — تجربة متناسقة وفعالة."
+            en = "One Kotlin Multiplatform codebase for iOS + Android with Compose and native integrations — including secure offline modes and analytics hooks.",
+            ar = "قاعدة كود Kotlin Multiplatform واحدة لـ iOS وAndroid مع Compose وتكاملات محلية، وتشمل أوضاع عدم الاتصال والتحليلات."
         )
     ),
     BuildCapability(
-        title = LocalizedText("Custom Systems & Dashboards", "أنظمة مخصصة ولوحات تحكم"),
+        title = LocalizedText("Desktop & Internal Tools", "تطبيقات سطح المكتب والأدوات الداخلية"),
         description = LocalizedText(
-            en = "Admin panels, analytics tools, or full product dashboards tailored to your workflow.",
-            ar = "لوحات تحكم وأدوات تحليل أو أنظمة إدارية مصممة خصيصًا لتدفق عملك."
+            en = "Compose Desktop and web hybrids for mission-critical tooling, installers, or kiosk experiences that sync with your backend in real time.",
+            ar = "تطبيقات Compose Desktop أو هجينة لأدوات حيوية أو أنظمة نقاط عرض تتزامن مع الخلفية في الوقت الفعلي."
         )
     )
 )

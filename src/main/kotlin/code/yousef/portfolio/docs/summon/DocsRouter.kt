@@ -11,6 +11,7 @@ import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
@@ -168,14 +169,16 @@ private fun DocsNotFoundContent(navJson: String) {
 @Composable
 private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Composable () -> Unit) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
-        SectionWrap {
-            AppHeader(
-                locale = PortfolioLocale.EN,
-                forceNativeLinks = true,
-                nativeBaseUrl = navBaseUrl,
-                docsBaseUrl = docsBaseUrl
-            )
-        }
+        AppHeader(
+            locale = PortfolioLocale.EN,
+            forceNativeLinks = true,
+            nativeBaseUrl = navBaseUrl,
+            docsBaseUrl = docsBaseUrl
+        )
+        Box(
+            modifier = Modifier()
+                .height(PortfolioTheme.Spacing.xxl)
+        ) {}
         SectionWrap {
             content()
         }
