@@ -3,26 +3,31 @@ package code.yousef.portfolio.ui.components
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
+import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
-import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.input.Button
+import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
+import code.yousef.summon.components.styles.GlobalStyle
 import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.positionInset
 import code.yousef.summon.modifier.LayoutModifiers.top
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.textDecoration
+import code.yousef.summon.modifier.TextDecoration
+import code.yousef.summon.runtime.rememberMutableStateOf
 
 private sealed interface NavTarget {
     data class Section(val id: String) : NavTarget
@@ -37,12 +42,11 @@ private data class NavItem(
 private val defaultNavItems = listOf(
     NavItem(LocalizedText("About", "حول"), NavTarget.Section("hero")),
     NavItem(LocalizedText("Services", "الخدمات"), NavTarget.Section("services")),
-    NavItem(LocalizedText("Blog", "المدونة"), NavTarget.Section("blog")),
+    NavItem(LocalizedText("Blog", "المدونة"), NavTarget.Page("/blog")),
     NavItem(LocalizedText("Contact", "اتصل"), NavTarget.Section("contact"))
 )
 
 private val projectsLabel = LocalizedText("Projects", "المشاريع")
-private val summonLabel = LocalizedText("Summon", "Summon")
 private val startProjectLabel = LocalizedText("Start your project", "ابدأ مشروعك")
 
 @Composable
@@ -54,14 +58,9 @@ fun AppHeader(
     docsBaseUrl: String? = null,
     forcePortfolioAnchors: Boolean = false
 ) {
-    if (forceNativeLinks) {
-        NativeAppHeader(locale = locale, baseUrl = nativeBaseUrl)
-        return
-    }
-
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
-    val toggleId = if (forceNativeLinks) "app-nav-toggle-native" else "app-nav-toggle"
+    val docsHref = resolveDocsHref(docsBaseUrl)
     val paddingStart = if (locale.direction.equals("rtl", ignoreCase = true)) {
         "calc(${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md})"
     } else {
@@ -72,6 +71,9 @@ fun AppHeader(
     } else {
         "calc(${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md})"
     }
+    val containerPaddingStart = "calc(${PortfolioTheme.Spacing.md} + $paddingStart)"
+    val containerPaddingEnd = "calc(${PortfolioTheme.Spacing.md} + $paddingEnd)"
+    val menuOpenState = rememberMutableStateOf(false)
     val containerModifier = modifier
         .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
@@ -83,24 +85,26 @@ fun AppHeader(
         .flexWrap(FlexWrap.Wrap)
         .position(Position.Fixed)
         .top(0.px)
-        .style("left", "0")
-        .style("right", "0")
+        .positionInset(left = "0", right = "0")
         .zIndex(50)
-        .style("padding-inline-start", "calc(${PortfolioTheme.Spacing.md} + $paddingStart)")
-        .style("padding-inline-end", "calc(${PortfolioTheme.Spacing.md} + $paddingEnd)")
+        .let { base ->
+            if (locale.direction.equals("rtl", ignoreCase = true)) {
+                base
+                    .style("padding-right", containerPaddingStart)
+                    .style("padding-left", containerPaddingEnd)
+            } else {
+                base
+                    .style("padding-left", containerPaddingStart)
+                    .style("padding-right", containerPaddingEnd)
+            }
+        }
 
     Row(
         modifier = containerModifier
             .attribute("class", "app-header")
-            .attribute("data-menu-open", "false")
+            .attribute("data-menu-open", if (menuOpenState.value) "true" else "false")
     ) {
-        NavDropdownStyles()
         AppHeaderStyles()
-        RawHtml(
-            """
-            <input type="checkbox" id="$toggleId" class="app-header__toggle-input" aria-label="Toggle navigation" />
-            """.trimIndent()
-        )
         Box(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -109,14 +113,19 @@ fun AppHeader(
                 .flex(grow = 1, shrink = 1, basis = "220px")
                 .attribute("class", "app-header__brand")
         ) {
-            RawHtml(
-                """
-                <label for="$toggleId" class="app-header__toggle" role="button" tabindex="0" aria-controls="app-header-nav app-header-actions" aria-expanded="false">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </label>
-                """.trimIndent()
+            val toggleOpenLabel = LocalizedText("Open menu", "افتح القائمة").resolve(locale)
+            val toggleCloseLabel = LocalizedText("Close menu", "أغلق القائمة").resolve(locale)
+            val toggleLabel = if (menuOpenState.value) toggleCloseLabel else toggleOpenLabel
+            Button(
+                onClick = { menuOpenState.value = !menuOpenState.value },
+                label = toggleLabel,
+                modifier = Modifier()
+                    .attribute("class", "app-header__toggle")
+                    .attribute("aria-controls", "app-header-nav app-header-actions")
+                    .attribute("aria-expanded", if (menuOpenState.value) "true" else "false")
+                    .attribute("aria-label", toggleLabel),
+                variant = ButtonVariant.SECONDARY,
+                disabled = false
             )
             Text(
                 text = "YOUSEF BAITALMAL",
@@ -143,7 +152,7 @@ fun AppHeader(
                     .attribute("id", "app-header-nav")
             ) {
                 val baseNavModifier = Modifier()
-                    .textDecoration("none")
+                    .textDecoration(TextDecoration.None)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(0.85.rem)
                     .letterSpacing(0.08.rem)
@@ -174,7 +183,13 @@ fun AppHeader(
                         navigationMode = linkMode
                     )
                 }
-                ProjectsDropdown(locale = locale, summonHref = summonMarketingUrl(), forcePortfolioAnchors = forcePortfolioAnchors)
+                navLink(
+                    label = projectsLabel.resolve(locale),
+                    href = docsHref,
+                    modifier = baseNavModifier,
+                    dataAttributes = mapOf("nav" to "projects"),
+                    navigationMode = LinkNavigationMode.Native
+                )
             }
         }
 
@@ -200,7 +215,7 @@ fun AppHeader(
                     label = "Admin",
                     href = adminHref,
                     modifier = Modifier()
-                        .textDecoration("none")
+                        .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .fontSize(0.85.rem)
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
@@ -215,7 +230,7 @@ fun AppHeader(
                     label = "Logout",
                     href = "/admin/logout",
                     modifier = Modifier()
-                        .textDecoration("none")
+                        .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .fontSize(0.85.rem)
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
@@ -246,7 +261,7 @@ fun AppHeader(
                     .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .fontWeight(600)
-                    .textDecoration("none")
+                    .textDecoration(TextDecoration.None)
                     .whiteSpace(WhiteSpace.NoWrap),
                 target = null,
                 rel = null,
@@ -262,7 +277,6 @@ fun AppHeader(
         }
         }
     }
-    AppHeaderMenuScript()
 }
 
 @Composable
@@ -318,7 +332,7 @@ private fun LocaleToggleButton(
         label = locale.code.uppercase(),
         href = href,
         modifier = Modifier()
-            .textDecoration("none")
+            .textDecoration(TextDecoration.None)
             .color(if (isActive) PortfolioTheme.Colors.BACKGROUND else PortfolioTheme.Colors.TEXT_SECONDARY)
             .backgroundColor(if (isActive) PortfolioTheme.Colors.ACCENT_ALT else "transparent")
             .fontSize(0.75.rem)
@@ -330,26 +344,6 @@ private fun LocaleToggleButton(
         navigationMode = LinkNavigationMode.Native
     )
 }
-
-@Composable
-private fun ProjectsDropdown(locale: PortfolioLocale, summonHref: String, forcePortfolioAnchors: Boolean) {
-    val label = projectsLabel.resolve(locale)
-    val summonText = summonLabel.resolve(locale)
-    RawHtml(
-        """
-        <div class="nav-dropdown">
-          <button class="nav-dropdown__button" type="button" aria-haspopup="true">
-            <span>$label</span>
-            <span class="nav-dropdown__caret" aria-hidden="true">▾</span>
-          </button>
-          <div class="nav-dropdown__menu">
-            <a href="$summonHref">$summonText</a>
-          </div>
-        </div>
-        """.trimIndent()
-    )
-}
-
 
 private fun NavTarget.href(locale: PortfolioLocale): String {
     val prefix = locale.pathPrefix()
@@ -376,86 +370,6 @@ private fun NavTarget.absoluteHref(locale: PortfolioLocale, nativeBaseUrl: Strin
     }
 }
 
-@Composable
-private fun NavDropdownStyles() {
-    RawHtml(
-        """
-        <style>
-        .nav-dropdown {
-          position: relative;
-          display: inline-flex;
-          flex-direction: column;
-          align-items: flex-start;
-          padding-bottom: 0;
-          align-self: center;
-        }
-        .nav-dropdown::after {
-          content: "";
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 100%;
-          height: ${PortfolioTheme.Spacing.md};
-        }
-        .nav-dropdown__button {
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          text-decoration: none;
-          color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-          font-size: 0.85rem;
-          letter-spacing: 0.08rem;
-          padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
-          border-radius: ${PortfolioTheme.Radii.pill};
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          text-transform: none;
-        }
-        .nav-dropdown__button:focus-visible {
-          outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
-        }
-        .nav-dropdown__caret {
-          font-size: 0.75rem;
-          opacity: 0.7;
-        }
-        .nav-dropdown__menu {
-          position: absolute;
-          top: 100%;
-          margin-top: 6px;
-          left: 0;
-          display: none;
-          flex-direction: column;
-          background: ${PortfolioTheme.Colors.BACKGROUND};
-          border: 1px solid ${PortfolioTheme.Colors.BORDER};
-          border-radius: ${PortfolioTheme.Radii.md};
-          min-width: 200px;
-          padding: 8px;
-          box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-          z-index: 25;
-        }
-        .nav-dropdown:hover .nav-dropdown__menu,
-        .nav-dropdown:focus-within .nav-dropdown__menu {
-          display: flex;
-        }
-        .nav-dropdown__menu a {
-          text-decoration: none;
-          color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-          padding: 8px 10px;
-          border-radius: 12px;
-          font-size: 0.9rem;
-          white-space: nowrap;
-        }
-        .nav-dropdown__menu a:hover,
-        .nav-dropdown__menu a:focus {
-          background: ${PortfolioTheme.Colors.SURFACE};
-          color: ${PortfolioTheme.Colors.ACCENT_ALT};
-        }
-        </style>
-        """.trimIndent()
-    )
-}
-
 private fun navLink(
     label: String,
     href: String,
@@ -479,203 +393,17 @@ private fun navLink(
     )
 }
 
-@Suppress("UNUSED_PARAMETER")
-@Composable
-private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?) {
-    val root = baseUrl?.trimEnd('/') ?: portfolioBaseUrl().trimEnd('/')
-    val localeBase = if (locale == PortfolioLocale.EN) root else "$root/${locale.code}"
-    val navHtml = buildString {
-        defaultNavItems.forEach { item ->
-            val href = item.target.absoluteHref(locale, localeBase)
-            append("""<a class="native-header__link" href="$href">${item.label.resolve(locale)}</a>""")
-        }
-    }
-    val summonHref = summonMarketingUrl()
-    val hireHref = NavTarget.Section("contact").absoluteHref(locale, localeBase)
-    val hireLabel = LocalizedText("Hire Me", "توظيفي").resolve(locale)
-    val enHref = root
-    val arHref = "$root/${PortfolioLocale.AR.code}"
-    val projectsLabelValue = projectsLabel.resolve(locale)
-    val summonText = summonLabel.resolve(locale)
-    RawHtml(
-        """
-        <style>
-          .native-header {
-            width: 100%;
-            background: ${PortfolioTheme.Colors.SURFACE};
-            border: 1px solid ${PortfolioTheme.Colors.BORDER};
-            border-radius: ${PortfolioTheme.Radii.lg};
-            padding: ${PortfolioTheme.Spacing.md};
-            backdrop-filter: blur(16px);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: ${PortfolioTheme.Spacing.lg};
-            flex-wrap: wrap;
-          }
-          .native-header__logo {
-            font-size: 0.9rem;
-            font-weight: 700;
-            letter-spacing: ${PortfolioTheme.Typography.HERO_TRACKING};
-          }
-          .native-header__links {
-            display: flex;
-            align-items: center;
-            gap: ${PortfolioTheme.Spacing.md};
-            flex-wrap: wrap;
-          }
-          .native-header__link {
-            text-decoration: none;
-            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-            font-size: 0.85rem;
-            letter-spacing: 0.08rem;
-            padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
-            border-radius: ${PortfolioTheme.Radii.pill};
-            opacity: 0.9;
-          }
-          .native-header__dropdown {
-            position: relative;
-            padding-bottom: 0;
-          }
-          .native-header__dropdown::after {
-            content: "";
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 100%;
-            height: ${PortfolioTheme.Spacing.md};
-          }
-          .native-header__dropdown:hover .native-header__menu,
-          .native-header__dropdown:focus-within .native-header__menu {
-            display: flex;
-          }
-          .native-header__dropdown-button {
-            background: transparent;
-            border: none;
-            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-            font-size: 0.85rem;
-            letter-spacing: 0.08rem;
-            padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
-            border-radius: ${PortfolioTheme.Radii.pill};
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-          }
-          .native-header__dropdown-button:focus-visible {
-            outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
-          }
-          .native-header__dropdown-caret {
-            font-size: 0.75rem;
-            opacity: 0.7;
-          }
-          .native-header__menu {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            display: none;
-            flex-direction: column;
-            background: ${PortfolioTheme.Colors.BACKGROUND};
-            border: 1px solid ${PortfolioTheme.Colors.BORDER};
-            border-radius: ${PortfolioTheme.Radii.md};
-            min-width: 200px;
-            padding: 8px;
-            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-            z-index: 30;
-          }
-          .native-header__menu a {
-            text-decoration: none;
-            color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-            padding: 8px 10px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            white-space: nowrap;
-          }
-          .native-header__menu a:hover {
-            background: ${PortfolioTheme.Colors.SURFACE};
-            color: ${PortfolioTheme.Colors.ACCENT_ALT};
-          }
-          .native-header__actions {
-            display: flex;
-            align-items: center;
-            gap: ${PortfolioTheme.Spacing.md};
-            flex-wrap: wrap;
-            justify-content: flex-end;
-          }
-          .native-header__hire {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: ${PortfolioTheme.Colors.ACCENT};
-            color: #ffffff;
-            padding: ${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.lg};
-            border-radius: ${PortfolioTheme.Radii.pill};
-            font-weight: 600;
-            text-decoration: none;
-          }
-          .native-header__locale {
-            display: inline-flex;
-            align-items: center;
-            gap: ${PortfolioTheme.Spacing.xs};
-            padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
-            border: 1px solid ${PortfolioTheme.Colors.BORDER};
-            border-radius: ${PortfolioTheme.Radii.pill};
-          }
-          .native-header__locale a {
-            text-decoration: none;
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
-            border-radius: ${PortfolioTheme.Radii.pill};
-            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-          }
-          .native-header__locale a.active {
-            color: ${PortfolioTheme.Colors.BACKGROUND};
-            background: ${PortfolioTheme.Colors.ACCENT_ALT};
-          }
-          @media (max-width: 768px) {
-            .native-header__links,
-            .native-header__actions {
-              width: 100%;
-              justify-content: flex-start;
-            }
-            .native-header__actions {
-              gap: ${PortfolioTheme.Spacing.sm};
-            }
-          }
-        </style>
-        <div class="native-header">
-          <span class="native-header__logo">YOUSEF BAITALMAL</span>
-          <nav class="native-header__links">
-            $navHtml
-            <div class="native-header__dropdown">
-              <button class="native-header__dropdown-button" type="button" aria-haspopup="true">
-                <span>$projectsLabelValue</span>
-                <span class="native-header__dropdown-caret" aria-hidden="true">▾</span>
-              </button>
-              <div class="native-header__menu">
-                <a href="$summonHref">$summonText</a>
-              </div>
-            </div>
-          </nav>
-          <div class="native-header__actions">
-            <a class="native-header__hire" href="$hireHref">$hireLabel</a>
-            <div class="native-header__locale">
-              <a class="${if (locale == PortfolioLocale.EN) "active" else ""}" href="$enHref">EN</a>
-              <span style="color:${PortfolioTheme.Colors.TEXT_SECONDARY}; font-size:0.75rem;">|</span>
-              <a class="${if (locale == PortfolioLocale.AR) "active" else ""}" href="$arHref">AR</a>
-            </div>
-          </div>
-        </div>
-        """.trimIndent()
-    )
+private fun resolveDocsHref(override: String?): String {
+    val fallback = docsBaseUrl()
+    val resolved = override?.takeIf { it.isNotBlank() } ?: fallback
+    return resolved.trimEnd('/')
 }
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 private fun AppHeaderStyles() {
-    RawHtml(
+    GlobalStyle(
         """
-        <style>
         .app-header {
           width: 100%;
           border-radius: 0 !important;
@@ -708,13 +436,6 @@ private fun AppHeaderStyles() {
           gap: ${PortfolioTheme.Spacing.sm};
           min-width: 0;
         }
-        .app-header__toggle-input {
-          position: absolute;
-          opacity: 0;
-          pointer-events: none;
-          width: 1px;
-          height: 1px;
-        }
         .app-header__toggle {
           width: 44px;
           height: 38px;
@@ -722,31 +443,40 @@ private fun AppHeaderStyles() {
           border: 1px solid ${PortfolioTheme.Colors.BORDER};
           background: ${PortfolioTheme.Colors.SURFACE};
           display: inline-flex;
-          flex-direction: column;
+          align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 10px;
           cursor: pointer;
           transition: background ${PortfolioTheme.Motion.DEFAULT};
+          position: relative;
+          padding: 0;
+          font-size: 0;
         }
         .app-header__toggle:focus-visible {
           outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
         }
-        .app-header__toggle span {
-          display: block;
+        .app-header__toggle::before,
+        .app-header__toggle::after {
+          content: "";
+          position: absolute;
+          left: 12px;
+          right: 12px;
           height: 2px;
-          width: 100%;
           background: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-          transition: transform ${PortfolioTheme.Motion.DEFAULT};
+          transition: transform ${PortfolioTheme.Motion.DEFAULT}, box-shadow ${PortfolioTheme.Motion.DEFAULT};
         }
-        .app-header[data-menu-open="true"] .app-header__brand .app-header__toggle span:nth-child(1) {
-          transform: translateY(8px) rotate(45deg);
+        .app-header__toggle::before {
+          top: 12px;
+          box-shadow: 0 10px 0 ${PortfolioTheme.Colors.TEXT_PRIMARY};
         }
-        .app-header[data-menu-open="true"] .app-header__brand .app-header__toggle span:nth-child(2) {
-          opacity: 0;
+        .app-header__toggle::after {
+          top: 24px;
         }
-        .app-header[data-menu-open="true"] .app-header__brand .app-header__toggle span:nth-child(3) {
-          transform: translateY(-8px) rotate(-45deg);
+        .app-header[data-menu-open="true"] .app-header__toggle::before {
+          transform: translateY(6px) rotate(45deg);
+          box-shadow: none;
+        }
+        .app-header[data-menu-open="true"] .app-header__toggle::after {
+          transform: translateY(-6px) rotate(-45deg);
         }
         @media (min-width: 960px) {
           .app-header__brand {
@@ -816,54 +546,6 @@ private fun AppHeaderStyles() {
             justify-content: center;
           }
         }
-        </style>
-        """.trimIndent()
-    )
-}
-
-@Composable
-private fun AppHeaderMenuScript() {
-    RawHtml(
-        """
-        <script id="app-header-menu-script">
-        (function() {
-          if (window.__appHeaderMenuInit) return;
-          window.__appHeaderMenuInit = true;
-          function syncState(header, checkbox, toggle) {
-            var open = !!checkbox.checked;
-            header.setAttribute('data-menu-open', open ? 'true' : 'false');
-            if (toggle) {
-              toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-            }
-          }
-          function bindHeader(header) {
-            if (header.dataset.menuBound === 'true') return;
-            var checkbox = header.querySelector('.app-header__toggle-input');
-            var toggle = header.querySelector('.app-header__toggle');
-            if (!checkbox || !toggle) return;
-            header.dataset.menuBound = 'true';
-            var update = function() { syncState(header, checkbox, toggle); };
-            checkbox.addEventListener('change', update);
-            update();
-            var nodes = header.querySelectorAll('[data-nav]');
-            Array.prototype.forEach.call(nodes, function(node) {
-              node.addEventListener('click', function() {
-                if (!checkbox.checked) return;
-                checkbox.checked = false;
-                update();
-              });
-            });
-          }
-          function initHeaders() {
-            document.querySelectorAll('.app-header').forEach(bindHeader);
-          }
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initHeaders, { once: true });
-          } else {
-            initHeaders();
-          }
-        })();
-        </script>
         """.trimIndent()
     )
 }
