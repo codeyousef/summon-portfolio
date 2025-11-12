@@ -662,6 +662,10 @@ private fun AppHeaderStyles() {
           width: 100%;
           border-radius: 0 !important;
           border-width: 0 !important;
+          background: rgba(5, 20, 35, 0.92);
+          border-bottom: 1px solid ${PortfolioTheme.Colors.BORDER};
+          backdrop-filter: blur(18px);
+          box-shadow: 0 12px 40px rgba(0,0,0,0.45);
         }
         .app-header__nav-wrapper {
           flex: 1 1 auto;

@@ -90,6 +90,10 @@ fun PortfolioLandingPage(
 
     PageScaffold(locale = locale) {
         AppHeader(locale = locale)
+        Box(
+            modifier = Modifier()
+                .height(PortfolioTheme.Spacing.xxl)
+        ) {}
         HeroBand(locale)
         WhatIBuildSection(locale)
         WhyWorkWithMeSection(locale)
@@ -258,6 +262,23 @@ private fun WhyWorkWithMeSection(locale: PortfolioLocale) {
 @Composable
 private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String) {
     SectionWrap(modifier = Modifier().id("featured")) {
+        RawHtml(
+            """
+            <style>
+              .featured-callout .summon-inline-link {
+                color: #0a0b0d !important;
+                background: rgba(255,255,255,0.92);
+                padding: 0.05em 0.5em;
+                border-radius: 999px;
+                font-weight: 600;
+                text-decoration: none;
+              }
+              .featured-callout .summon-inline-link:hover {
+                background: #ffffff;
+              }
+            </style>
+            """.trimIndent()
+        )
         Box(
             modifier = Modifier()
                 .borderRadius(PortfolioTheme.Radii.lg)
@@ -269,6 +290,7 @@ private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String)
                     }
                 }
                 .padding(PortfolioTheme.Spacing.xl)
+                .attribute("class", "featured-callout")
         ) {
             Column(
                 modifier = Modifier()

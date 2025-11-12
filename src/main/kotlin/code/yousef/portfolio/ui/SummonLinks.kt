@@ -4,7 +4,7 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.summonMarketingUrl
 
-private val summonLabel = LocalizedText("Summon", "سُمّون")
+private val summonLabel = LocalizedText("Summon", "Summon")
 
 data class SummonInlineText(val value: String, val hasSummonLink: Boolean)
 
