@@ -8,7 +8,6 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.forms.*
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.extensions.percent
@@ -28,22 +27,6 @@ fun ContactSection(
 ) {
     val actionPath = if (locale == PortfolioLocale.EN) "/api/contact" else "/${locale.code}/api/contact"
     ContentSection(modifier = modifier) {
-        RawHtml(
-            """
-            <style>
-              @media (max-width: 768px) {
-                .contact-columns {
-                  flex-direction: column !important;
-                  gap: ${PortfolioTheme.Spacing.md} !important;
-                }
-                .contact-columns > * {
-                  flex: 1 1 100% !important;
-                  max-width: 100% !important;
-                }
-              }
-            </style>
-            """.trimIndent()
-        )
         Column(
             modifier = Modifier()
                 .gap(PortfolioTheme.Spacing.xs)
@@ -64,19 +47,15 @@ fun ContactSection(
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection(FlexDirection.Row)
                 .flexWrap(FlexWrap.Wrap)
                 .alignItems(AlignItems.Stretch)
                 .gap(PortfolioTheme.Spacing.xl)
                 .width(100.percent)
-                .attribute("class", "contact-columns")
         ) {
             Column(
                 modifier = Modifier()
-                    .flex(grow = 1, shrink = 1, basis = "280px")
-                    .width(100.percent)
-                    .maxWidth(420.px)
-                    .minWidth("0px")
+                    .flex(grow = 1, shrink = 1, basis = "320px")
+                    .width("min(100%, 420px)")
                     .display(Display.Flex)
                     .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
@@ -100,9 +79,7 @@ fun ContactSection(
                 action = actionPath,
                 modifier = Modifier()
                     .flex(grow = 1, shrink = 1, basis = "360px")
-                    .width(100.percent)
-                    .maxWidth(100.percent)
-                    .minWidth("0px")
+                    .width("min(100%, 520px)")
             )
         }
     }
@@ -124,7 +101,6 @@ private fun ContactForm(
             .width(100.percent)
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
-            .attribute("id", "contact-form")
     ) {
         FormTextField(
             name = "name",
@@ -169,25 +145,6 @@ private fun ContactForm(
             fullWidth = true
         )
     }
-    RawHtml(
-        """
-        <script>
-          (function() {
-            const form = document.getElementById('contact-form');
-            if (!form) return;
-            form.addEventListener('submit', function(event) {
-              const email = form.querySelector('[name="email"]').value.trim();
-              const whatsapp = form.querySelector('[name="whatsapp"]').value.trim();
-              if (!email && !whatsapp) {
-                event.preventDefault();
-                alert('Please enter an email or WhatsApp number.');
-                form.querySelector('[name="email"]').focus();
-              }
-            });
-          })();
-        </script>
-        """.trimIndent()
-    )
 }
 
 private object ContactCopy {

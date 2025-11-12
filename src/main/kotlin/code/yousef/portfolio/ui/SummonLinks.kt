@@ -13,7 +13,7 @@ fun summonInlineAnchor(
     label: LocalizedText = summonLabel
 ): String {
     val href = summonMarketingUrl()
-    return "<a href=\"$href\" class=\"summon-inline-link\" data-cta=\"summon-link\">${label.resolve(locale)}</a>"
+    return "<a href=\"$href\">${label.resolve(locale)}</a>"
 }
 
 fun LocalizedText.resolveSummonInline(locale: PortfolioLocale): SummonInlineText {

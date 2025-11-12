@@ -7,14 +7,16 @@ import code.yousef.portfolio.docs.TocEntry
 import code.yousef.portfolio.docs.summon.components.DocsSidebar
 import code.yousef.portfolio.docs.summon.components.Prose
 import code.yousef.portfolio.docs.summon.components.Toc
+import code.yousef.portfolio.docs.summon.safeHref
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -36,111 +38,6 @@ fun DocsShell(
             .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.lg)
     ) {
-        RawHtml(
-            """
-            <style>
-            .prose-docs {
-              line-height: 1.7;
-              font-size: 1rem;
-              color: #e4e4f0;
-            }
-            .prose-docs pre {
-              padding: 16px;
-              background: rgba(255,255,255,0.04);
-              border-radius: 12px;
-              overflow-x: auto;
-            }
-            .prose-docs code {
-              font-family: "JetBrains Mono", monospace;
-              font-size: 0.95rem;
-            }
-            .prose-docs table {
-              width: 100%;
-              border-collapse: collapse;
-            }
-            .prose-docs table td,
-            .prose-docs table th {
-              border: 1px solid rgba(255,255,255,0.06);
-              padding: 10px;
-            }
-            .prose-docs a {
-              color: ${PortfolioTheme.Colors.ACCENT_ALT};
-              text-decoration: none;
-            }
-            .prose-docs a:hover {
-              text-decoration: underline;
-            }
-            .prose-docs h1,
-            .prose-docs h2,
-            .prose-docs h3,
-            .prose-docs h4,
-            .prose-docs h5,
-            .prose-docs h6 {
-              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-              margin-top: 28px;
-              margin-bottom: 12px;
-            }
-            .prose-docs p,
-            .prose-docs li {
-              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-            }
-            .docs-sidebar__link {
-              display: block;
-              padding: ${PortfolioTheme.Spacing.xs} ${PortfolioTheme.Spacing.sm};
-              border-radius: ${PortfolioTheme.Radii.md};
-              text-decoration: none;
-              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-              transition: background ${PortfolioTheme.Motion.DEFAULT}, color ${PortfolioTheme.Motion.DEFAULT};
-            }
-            .docs-sidebar__link:hover {
-              background-color: ${PortfolioTheme.Colors.SURFACE_STRONG};
-              color: ${PortfolioTheme.Colors.ACCENT_ALT};
-            }
-            .docs-sidebar__link--active {
-              background-color: ${PortfolioTheme.Colors.SURFACE_STRONG};
-              color: ${PortfolioTheme.Colors.ACCENT_ALT};
-            }
-            .docs-sidebar,
-            .docs-toc {
-              z-index: 2;
-            }
-            .docs-toc__link {
-              display: block;
-              padding: ${PortfolioTheme.Spacing.xs};
-              text-decoration: none;
-              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-              font-size: 0.95rem;
-            }
-            .docs-toc__link:hover {
-              color: ${PortfolioTheme.Colors.ACCENT_ALT};
-            }
-            .docs-neighbor__link {
-              text-decoration: none;
-              font-weight: 600;
-              color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-            }
-            .docs-neighbor__link:hover {
-              color: ${PortfolioTheme.Colors.ACCENT_ALT};
-            }
-            .prose-docs [id] {
-              scroll-margin-top: 140px;
-            }
-            @media (max-width: 1024px) {
-              .docs-sidebar,
-              .docs-toc {
-                position: relative !important;
-                top: auto !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                flex-basis: 100% !important;
-              }
-              .docs-toc {
-                margin-top: ${PortfolioTheme.Spacing.md};
-              }
-            }
-            </style>
-            """.trimIndent()
-        )
         Text(
             text = meta.title,
             modifier = Modifier()
@@ -196,10 +93,20 @@ private fun NeighborRow(neighbors: NeighborLinks) {
 
 @Composable
 private fun DocsNeighborLink(label: String, href: String, slot: String) {
-    val html = """
-        <a class="docs-neighbor__link" href="${safeHref(href)}"${dataAttributes(mapOf("neighbor" to slot))}>
-          ${htmlEscape(label)}
-        </a>
-    """.trimIndent()
-    RawHtml(html)
+    AnchorLink(
+        label = label,
+        href = safeHref(href),
+        modifier = Modifier()
+            .fontWeight(600)
+            .color(PortfolioTheme.Colors.TEXT_PRIMARY),
+        navigationMode = LinkNavigationMode.Native,
+        dataAttributes = mapOf("neighbor" to slot),
+        target = null,
+        rel = null,
+        title = null,
+        id = null,
+        ariaLabel = null,
+        ariaDescribedBy = null,
+        dataHref = null
+    )
 }

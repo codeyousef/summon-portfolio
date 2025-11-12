@@ -13,7 +13,7 @@ import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.display.Image
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Box
@@ -33,6 +33,7 @@ import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.color
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.modifier.TextDecoration
 import java.time.Year
 
 @Composable
@@ -398,16 +399,19 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 text = "Built with",
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
-            RawHtml(
-                """
-                <img src="/static/logo.png" alt="Summon" width="24" height="24" style="display:inline-block;vertical-align:middle;margin:0;" />
-                """.trimIndent()
+            Image(
+                src = "/static/logo.png",
+                alt = "Summon",
+                modifier = Modifier()
+                    .width(24.px)
+                    .height(24.px)
+                    .display(Display.InlineFlex)
             )
             AnchorLink(
                 label = "Summon",
                 href = summonMarketingUrl(),
                 modifier = Modifier()
-                    .textDecoration("underline")
+                    .textDecoration(TextDecoration.Underline)
                     .color(PortfolioTheme.Colors.ACCENT_ALT),
                 navigationMode = LinkNavigationMode.Native,
                 dataAttributes = mapOf("footer-link" to "summon"),

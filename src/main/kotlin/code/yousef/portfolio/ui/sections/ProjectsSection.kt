@@ -10,7 +10,7 @@ import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.resolveSummonInline
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.display.RichText
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
@@ -22,6 +22,7 @@ import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.modifier.TextDecoration
 
 @Composable
 fun ProjectsSection(
@@ -169,7 +170,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
                     .fontSize(2.rem)
                     .fontWeight(700)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .textDecoration("none"),
+                    .textDecoration(TextDecoration.None),
                 navigationMode = LinkNavigationMode.Native,
                 dataAttributes = mapOf("project-link" to "summon"),
                 target = null,
@@ -189,12 +190,11 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             )
         }
         if (description.hasSummonLink) {
-            RawHtml(
-                """
-                <p style="color:${PortfolioTheme.Colors.TEXT_SECONDARY};line-height:1.7;">
-                  ${description.value}
-                </p>
-                """.trimIndent()
+            RichText(
+                "<p>${description.value}</p>",
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .lineHeight(1.7)
             )
         } else {
             Text(

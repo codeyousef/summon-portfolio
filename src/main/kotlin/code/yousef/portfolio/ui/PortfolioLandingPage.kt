@@ -16,13 +16,14 @@ import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.portfolio.ui.sections.ServicesSection
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
+import code.yousef.summon.components.display.RichText
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.ButtonLink
 import code.yousef.summon.components.navigation.LinkNavigationMode
+import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.extensions.vw
@@ -33,7 +34,9 @@ import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.modifier.TextDecoration
 import code.yousef.summon.runtime.rememberMutableStateOf
+import code.yousef.summon.runtime.LocalPlatformRenderer
 
 
 private object LandingCopy {
@@ -155,12 +158,13 @@ private fun HeroBand(locale: PortfolioLocale) {
                     .color("transparent")
                     .letterSpacing("-0.02em")
             )
-            RawHtml(
-                """
-                <p style="color:rgba(255,255,255,0.88);font-size:1.25rem;line-height:1.6;font-weight:500;">
-                  ${LandingCopy.heroBody.resolveWithSummonLink(locale)}
-                </p>
-                """.trimIndent()
+            RichText(
+                "<p>${LandingCopy.heroBody.resolveWithSummonLink(locale)}</p>",
+                modifier = Modifier()
+                    .color("rgba(255,255,255,0.88)")
+                    .fontSize(1.25.rem)
+                    .lineHeight(1.6)
+                    .fontWeight(500)
             )
             Row(
                 modifier = Modifier()
@@ -187,12 +191,11 @@ private fun HeroBand(locale: PortfolioLocale) {
                         .whiteSpace(WhiteSpace.NoWrap)
                 )
             }
-            RawHtml(
-                """
-                <p style="color:rgba(255,255,255,0.78);font-weight:500;">
-                  ${LandingCopy.heroTrust.resolveWithSummonLink(locale)}
-                </p>
-                """.trimIndent()
+            RichText(
+                "<p>${LandingCopy.heroTrust.resolveWithSummonLink(locale)}</p>",
+                modifier = Modifier()
+                    .color("rgba(255,255,255,0.78)")
+                    .fontWeight(500)
             )
         }
     }
@@ -284,23 +287,6 @@ private fun WhyWorkWithMeSection(locale: PortfolioLocale) {
 @Composable
 private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String) {
     SectionWrap(modifier = Modifier().id("featured")) {
-        RawHtml(
-            """
-            <style>
-              .featured-callout .summon-inline-link {
-                color: #0a0b0d !important;
-                background: rgba(255,255,255,0.92);
-                padding: 0.05em 0.5em;
-                border-radius: 999px;
-                font-weight: 600;
-                text-decoration: none;
-              }
-              .featured-callout .summon-inline-link:hover {
-                background: #ffffff;
-              }
-            </style>
-            """.trimIndent()
-        )
         Box(
             modifier = Modifier()
                 .borderRadius(PortfolioTheme.Radii.lg)
@@ -312,7 +298,6 @@ private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String)
                     }
                 }
                 .padding(PortfolioTheme.Spacing.xl)
-                .attribute("class", "featured-callout")
         ) {
             Column(
                 modifier = Modifier()
@@ -327,12 +312,11 @@ private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String)
                         .fontWeight(800)
                         .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
                 )
-                RawHtml(
-                    """
-                    <p style=\"color:#1c0d11;font-weight:600;\">
-                      ${LandingCopy.featuredBody.resolveWithSummonLink(locale)}
-                    </p>
-                    """.trimIndent()
+                RichText(
+                    "<p>${LandingCopy.featuredBody.resolveWithSummonLink(locale)}</p>",
+                    modifier = Modifier()
+                        .color("#1c0d11")
+                        .fontWeight(600)
                 )
                 Row(
                     modifier = Modifier()
@@ -375,13 +359,30 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                         .padding(PortfolioTheme.Spacing.lg)
                         .gap(PortfolioTheme.Spacing.sm)
                 ) {
-                    RawHtml(
-                        """
-                        <div style=\"width:100%;height:180px;border-radius:20px;background:linear-gradient(135deg,#4f46e5,#ec4899);display:flex;align-items:center;justify-content:center;font-weight:700;color:#ffffff;letter-spacing:0.08em;\">
-                          ${study.client.take(16)}
-                        </div>
-                        """.trimIndent()
-                    )
+                    Box(
+                        modifier = Modifier()
+                            .width(100.percent)
+                            .height(180.px)
+                            .borderRadius(20.px)
+                            .backgroundLayers {
+                                linearGradient {
+                                    direction("135deg")
+                                    colorStop("#4f46e5", "0%")
+                                    colorStop("#ec4899", "100%")
+                                }
+                            }
+                            .display(Display.Flex)
+                            .alignItems(AlignItems.Center)
+                            .justifyContent(JustifyContent.Center)
+                    ) {
+                        Text(
+                            text = study.client.take(16),
+                            modifier = Modifier()
+                                .fontWeight(700)
+                                .color("#ffffff")
+                                .letterSpacing("0.08em")
+                        )
+                    }
                     Text(
                         text = "${study.client} · ${study.industry.resolve(locale)}",
                         modifier = Modifier().fontWeight(700)
@@ -391,12 +392,11 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     )
-                    RawHtml(
-                        """
-                        <p style=\"color:${PortfolioTheme.Colors.TEXT_PRIMARY};font-weight:600;\">
-                          ${study.highlight.resolveWithSummonLink(locale)}
-                        </p>
-                        """.trimIndent()
+                    RichText(
+                        "<p>${study.highlight.resolveWithSummonLink(locale)}</p>",
+                        modifier = Modifier()
+                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                            .fontWeight(600)
                     )
                     Row(
                         modifier = Modifier()
@@ -410,12 +410,12 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                             )
                             Text(text = study.statValue, modifier = Modifier().fontWeight(700))
                         }
-                        ButtonLink(
-                            label = LocalizedText("View details", "عرض التفاصيل").resolve(locale),
-                            href = "#contact",
-                            modifier = Modifier()
-                                .textDecoration("none")
-                                .color(PortfolioTheme.Colors.ACCENT_ALT),
+                            ButtonLink(
+                                label = LocalizedText("View details", "عرض التفاصيل").resolve(locale),
+                                href = "#contact",
+                                modifier = Modifier()
+                                    .textDecoration(TextDecoration.None)
+                                    .color(PortfolioTheme.Colors.ACCENT_ALT),
                             navigationMode = LinkNavigationMode.Client,
                             dataAttributes = mapOf("case-study" to study.client.lowercase()),
                             target = null,
@@ -512,13 +512,29 @@ private fun TestimonialSection(locale: PortfolioLocale) {
                         .padding(PortfolioTheme.Spacing.lg)
                         .gap(PortfolioTheme.Spacing.sm)
                 ) {
-                    RawHtml(
-                        """
-                        <div style=\"width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,#22d3ee,#3b82f6);display:flex;align-items:center;justify-content:center;font-weight:700;color:#001a2c;\">
-                          ★
-                        </div>
-                        """.trimIndent()
-                    )
+                    Box(
+                        modifier = Modifier()
+                            .width(48.px)
+                            .height(48.px)
+                            .borderRadius(16.px)
+                            .backgroundLayers {
+                                linearGradient {
+                                    direction("135deg")
+                                    colorStop("#22d3ee", "0%")
+                                    colorStop("#3b82f6", "100%")
+                                }
+                            }
+                            .display(Display.Flex)
+                            .alignItems(AlignItems.Center)
+                            .justifyContent(JustifyContent.Center)
+                    ) {
+                        Text(
+                            text = "★",
+                            modifier = Modifier()
+                                .fontWeight(700)
+                                .color("#001a2c")
+                        )
+                    }
                     Paragraph(
                         text = testimonial.quote.resolveWithSummonLink(locale),
                         modifier = Modifier()
@@ -619,7 +635,7 @@ private fun PrimaryCtaButton(
             .borderRadius(PortfolioTheme.Radii.pill)
             .backgroundColor(PortfolioTheme.Colors.ACCENT)
             .color("#ffffff")
-            .textDecoration("none")
+            .textDecoration(TextDecoration.None)
             .fontWeight(600)
             .letterSpacing("-0.01em")
             .whiteSpace(WhiteSpace.NoWrap),
@@ -657,7 +673,7 @@ private fun SecondaryCtaButton(
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
             .padding("0", PortfolioTheme.Spacing.lg)
-            .textDecoration("none")
+            .textDecoration(TextDecoration.None)
             .backgroundColor("rgba(255,255,255,0.03)")
             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             .boxShadow("0 10px 30px rgba(0,0,0,0.25)"),
@@ -864,9 +880,8 @@ private val testimonials = listOf(
 
 @Composable
 private fun StructuredDataSnippet() {
-    RawHtml(
-        """
-        <script type="application/ld+json">
+    val renderer = runCatching { LocalPlatformRenderer.current }.getOrNull() ?: return
+    val schema = """
         {
           "@context": "https://schema.org",
           "@type": "Person",
@@ -887,7 +902,15 @@ private fun StructuredDataSnippet() {
             ]
           }
         }
-        </script>
-        """.trimIndent()
-    )
+    """.trimIndent()
+    renderer.renderHeadElements {
+        script(
+            null,
+            "application/ld+json",
+            "portfolio-structured-data",
+            false,
+            false,
+            schema
+        )
+    }
 }

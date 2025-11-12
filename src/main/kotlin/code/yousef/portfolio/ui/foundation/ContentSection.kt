@@ -2,7 +2,6 @@ package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.core.style.Color
@@ -17,10 +16,9 @@ fun ContentSection(
     surface: Boolean = true,
     content: () -> Unit
 ) {
-    ContentSectionStyles()
     val wrapperModifier = modifier
         .maxWidth(1200.px)
-        .width(100.percent)
+        .width("min(100%, calc(100vw - ${PortfolioTheme.Spacing.sm}))")
         .marginHorizontalAutoZero()
         .padding(PortfolioTheme.Spacing.xl)
         .attribute("class", "content-section")
@@ -50,28 +48,4 @@ fun ContentSection(
             content()
         }
     }
-}
-
-@Composable
-private fun ContentSectionStyles() {
-    val mobileInset = PortfolioTheme.Spacing.sm
-    RawHtml(
-        """
-        <style>
-          @media (max-width: 768px) {
-            .content-section {
-              max-width: none !important;
-              width: calc(100vw - $mobileInset) !important;
-              margin-left: calc(50% - 50vw + $mobileInset) !important;
-              margin-right: calc(50% - 50vw) !important;
-              padding: ${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.sm} ${PortfolioTheme.Spacing.md} !important;
-            }
-            .content-section__inner {
-              padding: ${PortfolioTheme.Spacing.md} !important;
-              border-radius: 0;
-            }
-          }
-        </style>
-        """.trimIndent()
-    )
 }

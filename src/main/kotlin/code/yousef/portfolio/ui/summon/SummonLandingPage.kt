@@ -9,7 +9,6 @@ import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Row
@@ -24,6 +23,8 @@ import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.modifier.TextDecoration
+import code.yousef.summon.modifier.WhiteSpace
 import java.net.URI
 
 @Composable
@@ -218,7 +219,7 @@ private fun SummonRuntimeCallout(docsUrl: String) {
                     label = "Open documentation",
                     href = docsUrl,
                     modifier = Modifier()
-                        .textDecoration("none")
+                        .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.ACCENT_ALT),
                     navigationMode = LinkNavigationMode.Native,
                     dataAttributes = mapOf("summon-cta" to "docs-secondary"),
@@ -241,9 +242,7 @@ private fun SummonRuntimeCallout(docsUrl: String) {
                     .padding(PortfolioTheme.Spacing.lg)
                     .backgroundColor(PortfolioTheme.Colors.SURFACE)
             ) {
-                RawHtml(
-                    """
-                    <pre style="margin:0;font-size:0.9rem;line-height:1.5;white-space:pre-wrap;">
+                val snippet = """
 @Component
 fun PricingCard(plan: Plan) {
   Column(
@@ -266,8 +265,15 @@ fun PricingCard(plan: Plan) {
     )
   }
 }
-                    </pre>
-                    """.trimIndent()
+                """.trimIndent()
+                Text(
+                    text = snippet,
+                    modifier = Modifier()
+                        .fontFamily(PortfolioTheme.Typography.FONT_MONO)
+                        .fontSize(0.9.rem)
+                        .lineHeight(1.5)
+                        .whiteSpace(WhiteSpace.PreWrap)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             }
         }

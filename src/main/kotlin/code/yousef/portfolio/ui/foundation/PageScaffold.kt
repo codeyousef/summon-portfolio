@@ -4,7 +4,6 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.foundation.Canvas
-import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.foundation.ScriptTag
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
@@ -13,6 +12,7 @@ import code.yousef.summon.extensions.px
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.minHeight
+import code.yousef.summon.runtime.LocalPlatformRenderer
 
 @Composable
 fun PageScaffold(
@@ -21,48 +21,7 @@ fun PageScaffold(
     enableAuroraEffects: Boolean = true,
     content: () -> Unit
 ) {
-    RawHtml(
-        """
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-        <style>
-          body {
-            font-family: ${PortfolioTheme.Typography.FONT_SANS};
-            color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-            background-color: ${PortfolioTheme.Colors.BACKGROUND};
-          }
-          a {
-            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-            text-decoration: none;
-            transition: color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
-          }
-          a:hover {
-            color: ${PortfolioTheme.Colors.LINK_HOVER};
-          }
-          a:focus-visible,
-          button:focus-visible {
-            outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
-            outline-offset: 3px;
-          }
-          a[data-cta] {
-            box-shadow: 0 0 20px rgba(255, 70, 104, 0.45);
-          }
-          a[data-cta]:hover {
-            color: #ffffff;
-            box-shadow: 0 0 30px rgba(255, 70, 104, 0.6);
-            transform: translateY(-2px);
-          }
-          .summon-inline-link {
-            color: ${PortfolioTheme.Colors.ACCENT_ALT};
-            text-decoration: underline;
-          }
-          .summon-inline-link:hover {
-            color: #ffffff;
-          }
-        </style>
-        """.trimIndent()
-    )
+    InjectFontAssets()
 
     val scaffoldModifier = modifier
         .minHeight("100vh")
@@ -116,6 +75,23 @@ fun PageScaffold(
         if (enableAuroraEffects) {
             WebGlScript()
         }
+    }
+}
+
+@Composable
+private fun InjectFontAssets() {
+    val renderer = runCatching { LocalPlatformRenderer.current }.getOrNull() ?: return
+    renderer.renderHeadElements {
+        link("preconnect", "https://fonts.googleapis.com", null, null, null, null)
+        link("preconnect", "https://fonts.gstatic.com", null, null, null, null)
+        link(
+            "stylesheet",
+            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
+            null,
+            "text/css",
+            null,
+            null
+        )
     }
 }
 
