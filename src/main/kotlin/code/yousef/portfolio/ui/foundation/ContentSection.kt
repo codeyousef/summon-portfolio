@@ -59,11 +59,15 @@ private fun ContentSectionStyles() {
         <style>
           @media (max-width: 768px) {
             .content-section {
-              padding: ${PortfolioTheme.Spacing.md} !important;
+              max-width: none !important;
+              width: 100vw !important;
+              margin-left: calc(50% - 50vw) !important;
+              margin-right: calc(50% - 50vw) !important;
+              padding: ${PortfolioTheme.Spacing.sm} !important;
             }
             .content-section__inner {
               padding: ${PortfolioTheme.Spacing.md} !important;
-              border-radius: ${PortfolioTheme.Radii.md};
+              border-radius: 0;
             }
           }
         </style>

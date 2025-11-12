@@ -61,6 +61,16 @@ fun AppHeader(
     val navItems = defaultNavItems
     val docsHref = resolveDocsHref(docsBaseUrl)
     val toggleId = if (forceNativeLinks) "app-nav-toggle-native" else "app-nav-toggle"
+    val paddingStart = if (locale.direction.equals("rtl", ignoreCase = true)) {
+        "calc(${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md})"
+    } else {
+        PortfolioTheme.Spacing.xl
+    }
+    val paddingEnd = if (locale.direction.equals("rtl", ignoreCase = true)) {
+        PortfolioTheme.Spacing.xl
+    } else {
+        "calc(${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md})"
+    }
     val containerModifier = modifier
         .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
@@ -73,17 +83,10 @@ fun AppHeader(
         .position(Position.Sticky)
         .top(PortfolioTheme.Spacing.md)
         .zIndex(20)
-        .let { base ->
-            if (locale.direction.equals("rtl", ignoreCase = true)) {
-                base
-                    .style("margin-right", "-${PortfolioTheme.Spacing.xl}")
-                    .style("margin-left", "calc(-1 * (${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md}))")
-            } else {
-                base
-                    .style("margin-left", "-${PortfolioTheme.Spacing.xl}")
-                    .style("margin-right", "calc(-1 * (${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md}))")
-            }
-        }
+        .style("margin-inline-start", "-$paddingStart")
+        .style("margin-inline-end", "-$paddingEnd")
+        .style("width", "calc(100% + ($paddingStart) + ($paddingEnd))")
+        .style("margin-top", "-${PortfolioTheme.Spacing.xl}")
 
     Row(
         modifier = containerModifier
