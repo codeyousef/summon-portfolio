@@ -386,7 +386,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 .gap(PortfolioTheme.Spacing.xs)
         ) {
             Text(text = "© $currentYear")
-            Text(text = "Yousef Baitalmal — Portfolio")
+            Text(text = "Yousef Baitalmal")
         }
         Row(
             modifier = Modifier()

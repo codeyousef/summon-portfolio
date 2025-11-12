@@ -33,12 +33,7 @@ fun SummonLandingPage(
     apiReferenceUrl: String
 ) {
     PageScaffold(locale = PortfolioLocale.EN) {
-        AppHeader(
-            locale = PortfolioLocale.EN,
-            forceNativeLinks = true,
-            nativeBaseUrl = portfolioBaseUrl(),
-            docsBaseUrl = docsUrl
-        )
+        AppHeader(locale = PortfolioLocale.EN)
         Box(
             modifier = Modifier()
                 .height(PortfolioTheme.Spacing.xxl)
@@ -69,7 +64,7 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                     .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
             )
             Paragraph(
-                text = "A Kotlin Multiplatform UI framework for glassy, high-performance apps across JVM, JS, and WASM.",
+                text = "A Kotlin Multiplatform frontend framework for high-performance apps across JVM, JS, and WASM.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(1.3.rem)
@@ -246,21 +241,24 @@ private fun SummonRuntimeCallout(docsUrl: String) {
             ) {
                 RawHtml(
                     """
-                    <pre style=\"margin:0;font-size:0.9rem;line-height:1.5;white-space:pre-wrap;\">
+                    <pre style="margin:0;font-size:0.9rem;line-height:1.5;white-space:pre-wrap;">
 @Component
 fun PricingCard(plan: Plan) {
   Column(
-    modifier = Modifier
-      .borderRadius(\"24px\")
-      .padding(\"24px\")
-      .backgroundColor(\"rgba(255,255,255,0.04)\")
+    modifier = Modifier()
+      .borderRadius(24.px)
+      .padding(24.px)
+      .backgroundColor(PortfolioTheme.Colors.SURFACE)
   ) {
     Text(plan.name)
-    Text(plan.price, modifier = Modifier
-      .fontSize(\"2rem\")
-      .fontWeight(700))
+    Text(
+      plan.price,
+      modifier = Modifier()
+        .fontSize(2.rem)
+        .fontWeight(700)
+    )
     ButtonLink(
-      label = \"Deploy\",
+      label = "Deploy",
       href = plan.url,
       navigationMode = LinkNavigationMode.Native
     )

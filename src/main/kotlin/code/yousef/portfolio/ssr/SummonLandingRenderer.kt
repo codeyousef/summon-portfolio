@@ -17,9 +17,9 @@ class SummonLandingRenderer {
 
     private fun headBlock(): (HeadScope) -> Unit = { head ->
         val marketingUrl = summonMarketingUrl()
-        val title = "Summon · Kotlin Multiplatform UI framework"
+        val title = "Summon · Kotlin Multiplatform frontend framework"
         val description =
-            "Summon is a Kotlin Multiplatform UI framework for shipping glassy, high-performance interfaces."
+            "Summon is a Kotlin Multiplatform frontend framework for shipping high-performance interfaces across web, mobile, and desktop."
         head.title(title)
         head.meta("description", description, null, null, null)
         head.meta(null, title, "og:title", null, null)
