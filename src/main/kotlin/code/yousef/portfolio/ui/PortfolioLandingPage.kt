@@ -5,6 +5,7 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ssr.summonMarketingUrl
+import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
@@ -145,9 +146,12 @@ private fun HeroBand(locale: PortfolioLocale) {
                     .gap(PortfolioTheme.Spacing.sm)
                     .flexWrap(FlexWrap.Wrap)
             ) {
+                val prefix = locale.pathPrefix()
+                val home = if (prefix.isEmpty()) "/" else prefix
+                val contactHref = "$home#contact"
                 PrimaryCtaButton(
                     text = LandingCopy.heroPrimaryCta.resolve(locale),
-                    href = "/contact",
+                    href = contactHref,
                     modifier = Modifier()
                         .minWidth("200px")
                         .whiteSpace(WhiteSpace.NoWrap)

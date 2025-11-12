@@ -81,13 +81,13 @@ fun AppHeader(
         .justifyContent(JustifyContent.SpaceBetween)
         .gap(PortfolioTheme.Spacing.lg)
         .flexWrap(FlexWrap.Wrap)
-        .position(Position.Sticky)
+        .position(Position.Fixed)
         .top(0.px)
-        .zIndex(20)
-        .style("margin-inline-start", "-$paddingStart")
-        .style("margin-inline-end", "-$paddingEnd")
-        .style("width", "calc(100% + ($paddingStart) + ($paddingEnd))")
-        .style("margin-top", "-${PortfolioTheme.Spacing.xl}")
+        .left(0.px)
+        .right(0.px)
+        .zIndex(50)
+        .style("padding-inline-start", "calc(${PortfolioTheme.Spacing.md} + $paddingStart)")
+        .style("padding-inline-end", "calc(${PortfolioTheme.Spacing.md} + $paddingEnd)")
 
     Row(
         modifier = containerModifier

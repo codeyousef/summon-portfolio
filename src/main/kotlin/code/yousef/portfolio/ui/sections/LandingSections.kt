@@ -377,67 +377,15 @@ private fun HeroMockCard() {
 
 @Composable
 fun PortfolioFooter(locale: PortfolioLocale) {
-    val prefix = locale.pathPrefix()
-    val homePath = if (prefix.isEmpty()) "/" else prefix
-    val localizedPage: (String) -> String = { path ->
-        if (prefix.isEmpty()) path else "$prefix$path"
-    }
-    val footerLinks = listOf(
-        LocalizedText("About", "نبذة") to "$homePath#hero",
-        LocalizedText("Projects", "المشاريع") to localizedPage("/projects"),
-        LocalizedText("Services", "الخدمات") to localizedPage("/services"),
-        LocalizedText("Blog", "المدونة") to localizedPage("/blog"),
-        LocalizedText("Contact", "اتصل") to "$homePath#contact"
-    )
+    val currentYear = Year.now().value
     SectionWrap {
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .flexWrap(FlexWrap.Wrap)
-                .gap(PortfolioTheme.Spacing.sm)
-        ) {
-            footerLinks.forEach { (label, href) ->
-                val resolvedLabel = label.resolve(locale)
-                val navigationMode = if (href.contains("#")) {
-                    LinkNavigationMode.Client
-                } else {
-                    LinkNavigationMode.Native
-                }
-                AnchorLink(
-                    label = resolvedLabel,
-                    href = href,
-                    modifier = Modifier()
-                        .textDecoration("none")
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderWidth(1)
-                        .borderStyle(BorderStyle.Solid)
-                        .borderColor(PortfolioTheme.Colors.BORDER)
-                        .borderRadius(PortfolioTheme.Radii.md)
-                        .backgroundColor("#ffffff10")
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY),
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("footer-link" to resolvedLabel.lowercase()),
-                    navigationMode = navigationMode
-                )
-            }
-        }
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.xs)
         ) {
-            Text(text = "©")
-            Text(
-                text = Year.now().value.toString(),
-                modifier = Modifier().id("year")
-            )
+            Text(text = "© $currentYear")
             Text(text = "Yousef Baitalmal — Portfolio")
         }
         Row(
