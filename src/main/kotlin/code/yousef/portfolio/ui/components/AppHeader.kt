@@ -151,6 +151,11 @@ fun AppHeader(
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .opacity(0.9F)
                 val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
+                val linkMode = if (forceNativeLinks || forcePortfolioAnchors) {
+                    LinkNavigationMode.Native
+                } else {
+                    LinkNavigationMode.Client
+                }
                 navItems.forEach { item ->
                     val href =
                         if (forceNativeLinks) {
@@ -166,7 +171,7 @@ fun AppHeader(
                         href = href,
                         modifier = baseNavModifier,
                         dataAttributes = mapOf("nav" to label.lowercase()),
-                        navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
+                        navigationMode = linkMode
                     )
                 }
                 ProjectsDropdown(locale = locale, summonHref = summonMarketingUrl(), forcePortfolioAnchors = forcePortfolioAnchors)
@@ -224,7 +229,11 @@ fun AppHeader(
                 forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
                 else -> NavTarget.Section("contact").href(locale)
             }
-            val hireNavigation = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
+            val hireNavigation = if (forceNativeLinks || forcePortfolioAnchors) {
+                LinkNavigationMode.Native
+            } else {
+                LinkNavigationMode.Client
+            }
             ButtonLink(
                 label = startProjectLabel.resolve(locale),
                 href = hireHref,

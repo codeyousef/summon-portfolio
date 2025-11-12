@@ -2,7 +2,6 @@ package code.yousef.portfolio.ui.summon
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
@@ -33,7 +32,10 @@ fun SummonLandingPage(
     apiReferenceUrl: String
 ) {
     PageScaffold(locale = PortfolioLocale.EN) {
-        AppHeader(locale = PortfolioLocale.EN)
+        AppHeader(
+            locale = PortfolioLocale.EN,
+            forcePortfolioAnchors = true
+        )
         Box(
             modifier = Modifier()
                 .height(PortfolioTheme.Spacing.xxl)
