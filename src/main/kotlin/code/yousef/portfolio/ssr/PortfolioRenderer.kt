@@ -91,7 +91,7 @@ class PortfolioRenderer(
 
     private fun canonicalUrl(locale: PortfolioLocale): String =
         when (locale) {
-            PortfolioLocale.EN -> SITE_URL
-            else -> "$SITE_URL/${locale.code}"
+            PortfolioLocale.EN -> portfolioBaseUrl()
+            else -> "${portfolioBaseUrl().trimEnd('/')}/${locale.code}"
         }
 }

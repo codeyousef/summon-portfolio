@@ -3,7 +3,8 @@ package code.yousef.portfolio.ui.components
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
-import code.yousef.portfolio.ssr.SITE_URL
+import code.yousef.portfolio.ssr.docsBaseUrl
+import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import code.yousef.summon.annotation.Composable
@@ -297,7 +298,7 @@ private fun LocaleToggleButton(
 ) {
     val isActive = locale == current
     val href = if (forceNativeLinks) {
-        val baseRoot = nativeBaseUrl?.trimEnd('/') ?: SITE_URL.trimEnd('/')
+        val baseRoot = nativeBaseUrl?.trimEnd('/') ?: portfolioBaseUrl().trimEnd('/')
         if (locale == PortfolioLocale.EN) baseRoot else "$baseRoot/${locale.code}"
     } else {
         if (locale == PortfolioLocale.EN) "/" else "/${locale.code}"
@@ -332,7 +333,7 @@ private fun NavTarget.href(locale: PortfolioLocale): String {
 }
 
 private fun NavTarget.absoluteHref(locale: PortfolioLocale, nativeBaseUrl: String?): String {
-    val defaultBase = SITE_URL.trimEnd('/')
+    val defaultBase = portfolioBaseUrl().trimEnd('/')
     val suppliedBase = nativeBaseUrl?.trimEnd('/')
     val base = suppliedBase ?: when (locale) {
         PortfolioLocale.EN -> defaultBase
@@ -369,7 +370,7 @@ private fun navLink(
 
 @Composable
 private fun NativeAppHeader(locale: PortfolioLocale, baseUrl: String?, docsBaseUrl: String?) {
-    val root = baseUrl?.trimEnd('/') ?: SITE_URL.trimEnd('/')
+    val root = baseUrl?.trimEnd('/') ?: portfolioBaseUrl().trimEnd('/')
     val localeBase = if (locale == PortfolioLocale.EN) root else "$root/${locale.code}"
     val navHtml = buildString {
         defaultNavItems.forEach { item ->
@@ -702,12 +703,9 @@ private fun AppHeaderStyles() {
     )
 }
 
-private val docsBaseEnv: String? = System.getenv("DOCS_BASE_URL")?.takeIf { it.isNotBlank() }
-
 private fun resolveDocsHref(overrideValue: String?): String {
     val candidate = overrideValue?.takeIf { it.isNotBlank() }
-        ?: docsBaseEnv
-        ?: "/summon"
+        ?: docsBaseUrl()
     return candidate.trimEnd('/').ifBlank { "/summon" }
 }
 

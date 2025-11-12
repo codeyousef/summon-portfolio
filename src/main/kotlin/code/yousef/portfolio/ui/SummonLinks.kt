@@ -2,8 +2,7 @@ package code.yousef.portfolio.ui
 
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
-
-const val SUMMON_MARKETING_URL = "https://summon.yousef.codes"
+import code.yousef.portfolio.ssr.summonMarketingUrl
 
 private val summonLabel = LocalizedText("Summon", "سُمّون")
 
@@ -12,7 +11,10 @@ data class SummonInlineText(val value: String, val hasSummonLink: Boolean)
 fun summonInlineAnchor(
     locale: PortfolioLocale,
     label: LocalizedText = summonLabel
-): String = "<a href=\"$SUMMON_MARKETING_URL\" class=\"summon-inline-link\" data-cta=\"summon-link\">${label.resolve(locale)}</a>"
+): String {
+    val href = summonMarketingUrl()
+    return "<a href=\"$href\" class=\"summon-inline-link\" data-cta=\"summon-link\">${label.resolve(locale)}</a>"
+}
 
 fun LocalizedText.resolveSummonInline(locale: PortfolioLocale): SummonInlineText {
     val token = "%SUMMON%"

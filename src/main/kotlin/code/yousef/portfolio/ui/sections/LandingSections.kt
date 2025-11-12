@@ -8,7 +8,7 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ui.SUMMON_MARKETING_URL
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Paragraph
@@ -457,7 +457,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
             )
             AnchorLink(
                 label = "Summon",
-                href = SUMMON_MARKETING_URL,
+                href = summonMarketingUrl(),
                 modifier = Modifier()
                     .textDecoration("underline")
                     .color(PortfolioTheme.Colors.ACCENT_ALT),

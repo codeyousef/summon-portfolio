@@ -97,15 +97,19 @@ class BlogRenderer(
         head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
     }
 
-    private fun blogCanonical(locale: PortfolioLocale): String =
-        when (locale) {
-            PortfolioLocale.EN -> "$SITE_URL/blog"
-            else -> "$SITE_URL/${locale.code}/blog"
+    private fun blogCanonical(locale: PortfolioLocale): String {
+        val base = portfolioBaseUrl().trimEnd('/')
+        return when (locale) {
+            PortfolioLocale.EN -> "$base/blog"
+            else -> "$base/${locale.code}/blog"
         }
+    }
 
-    private fun blogDetailCanonical(locale: PortfolioLocale, slug: String): String =
-        when (locale) {
-            PortfolioLocale.EN -> "$SITE_URL/blog/$slug"
-            else -> "$SITE_URL/${locale.code}/blog/$slug"
+    private fun blogDetailCanonical(locale: PortfolioLocale, slug: String): String {
+        val base = portfolioBaseUrl().trimEnd('/')
+        return when (locale) {
+            PortfolioLocale.EN -> "$base/blog/$slug"
+            else -> "$base/${locale.code}/blog/$slug"
         }
+    }
 }

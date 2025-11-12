@@ -4,6 +4,7 @@ import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
@@ -153,7 +154,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                 )
                 SecondaryCtaButton(
                     text = LandingCopy.heroSecondaryCta.resolve(locale),
-                    href = SUMMON_MARKETING_URL,
+                    href = summonMarketingUrl(),
                     modifier = Modifier()
                         .minWidth("220px")
                         .whiteSpace(WhiteSpace.NoWrap)
@@ -303,7 +304,7 @@ private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String)
                 ) {
                     PrimaryCtaButton(
                         text = LocalizedText("Explore", "استكشف").resolve(locale) + " $projectName",
-                        href = SUMMON_MARKETING_URL
+                        href = summonMarketingUrl()
                     )
                 }
             }

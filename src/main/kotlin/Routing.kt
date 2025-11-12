@@ -201,11 +201,12 @@ fun Application.configureRouting(
 }
 
 private fun generateSitemapXml(contentService: PortfolioContentService): String {
+    val base = portfolioBaseUrl().trimEnd('/')
     val urls = mutableSetOf(
-        "$SITE_URL/",
-        "$SITE_URL/blog",
-        "$SITE_URL/ar",
-        "$SITE_URL/ar/blog"
+        "$base/",
+        "$base/blog",
+        "$base/ar",
+        "$base/ar/blog"
     )
     contentService.load().blogPosts.forEach { post ->
         urls += "https://portfolio.summon.local/blog/${post.slug}"

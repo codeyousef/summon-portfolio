@@ -5,7 +5,7 @@ import code.yousef.portfolio.content.model.ProjectCategory
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ui.SUMMON_MARKETING_URL
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.resolveSummonInline
 import code.yousef.summon.annotation.Composable
@@ -164,7 +164,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
         if (project.slug == SUMMON_PROJECT_SLUG) {
             AnchorLink(
                 label = projectTitle,
-                href = SUMMON_MARKETING_URL,
+                href = summonMarketingUrl(),
                 modifier = Modifier()
                     .fontSize(2.rem)
                     .fontWeight(700)
