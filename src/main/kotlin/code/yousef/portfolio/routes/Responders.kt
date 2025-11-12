@@ -10,6 +10,7 @@ import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonH
 import code.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.request.*
 import io.ktor.server.sessions.*
 
 suspend fun ApplicationCall.respondSummonPage(
@@ -17,7 +18,7 @@ suspend fun ApplicationCall.respondSummonPage(
     status: HttpStatusCode = HttpStatusCode.OK
 ) {
     SummonRenderLock.withLock {
-        val host = request.origin.serverHost
+        val host = request.host()
         val links = resolveEnvironmentLinks(host)
         EnvironmentLinksRegistry.withLinks(links) {
             respondSummonHydrated(status) {

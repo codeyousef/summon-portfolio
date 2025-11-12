@@ -46,10 +46,10 @@ object EnvironmentLinksRegistry {
 
     fun current(): EnvironmentLinks? = threadLocal.get()
 
-    fun withLinks(links: EnvironmentLinks, block: () -> Unit) {
+    suspend fun <T> withLinks(links: EnvironmentLinks, block: suspend () -> T): T {
         try {
             threadLocal.set(links)
-            block()
+            return block()
         } finally {
             threadLocal.remove()
         }
