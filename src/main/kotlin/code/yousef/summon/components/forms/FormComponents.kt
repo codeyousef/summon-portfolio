@@ -104,7 +104,7 @@ fun FormStyleSheet() {
           .summon-form-select,
           .summon-form-textarea {
             width: 100%;
-            padding: 16px 14px;
+            padding: 12px 10px;
             border-radius: 16px;
             border: 1px solid rgba(255,255,255,0.1);
             background: rgba(255,255,255,0.04);
@@ -117,7 +117,7 @@ fun FormStyleSheet() {
             .summon-form-control,
             .summon-form-select,
             .summon-form-textarea {
-              padding: 14px 12px;
+              padding: 10px 8px;
             }
           }
           .summon-form-control:focus,
