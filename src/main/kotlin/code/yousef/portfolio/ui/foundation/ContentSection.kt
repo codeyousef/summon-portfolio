@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.summon.annotation.Composable
+import code.yousef.summon.components.foundation.RawHtml
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.core.style.Color
@@ -16,15 +17,18 @@ fun ContentSection(
     surface: Boolean = true,
     content: () -> Unit
 ) {
+    ContentSectionStyles()
     val wrapperModifier = modifier
         .maxWidth(1200.px)
         .width(100.percent)
         .marginHorizontalAutoZero()
         .padding(PortfolioTheme.Spacing.xl)
+        .attribute("class", "content-section")
 
     Box(modifier = wrapperModifier) {
         Column(
             modifier = Modifier()
+                .attribute("class", "content-section__inner")
                 .backgroundColor(if (surface) PortfolioTheme.Colors.SURFACE else "transparent")
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
@@ -46,4 +50,23 @@ fun ContentSection(
             content()
         }
     }
+}
+
+@Composable
+private fun ContentSectionStyles() {
+    RawHtml(
+        """
+        <style>
+          @media (max-width: 768px) {
+            .content-section {
+              padding: ${PortfolioTheme.Spacing.md} !important;
+            }
+            .content-section__inner {
+              padding: ${PortfolioTheme.Spacing.md} !important;
+              border-radius: ${PortfolioTheme.Radii.md};
+            }
+          }
+        </style>
+        """.trimIndent()
+    )
 }

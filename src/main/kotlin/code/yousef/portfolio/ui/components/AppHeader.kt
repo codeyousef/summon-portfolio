@@ -73,6 +73,17 @@ fun AppHeader(
         .position(Position.Sticky)
         .top(PortfolioTheme.Spacing.md)
         .zIndex(20)
+        .let { base ->
+            if (locale.direction.equals("rtl", ignoreCase = true)) {
+                base
+                    .style("margin-right", "-${PortfolioTheme.Spacing.xl}")
+                    .style("margin-left", "calc(-1 * (${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md}))")
+            } else {
+                base
+                    .style("margin-left", "-${PortfolioTheme.Spacing.xl}")
+                    .style("margin-right", "calc(-1 * (${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md}))")
+            }
+        }
 
     Row(
         modifier = containerModifier
