@@ -421,9 +421,9 @@ private fun ProjectsDropdown(
         Column(
             modifier = Modifier()
                 .position(Position.Absolute)
-                .top(("calc(100% + 4px)"))
+                .top(("calc(100% + 0px)"))
                 .positionInset(left = "0")
-                .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                .backgroundColor("#0a2540")
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
                 .borderColor(PortfolioTheme.Colors.BORDER)
@@ -606,10 +606,21 @@ private fun AppHeaderStyles() {
             justify-content: center;
           }
         }
+        .projects-dropdown {
+          position: relative;
+        }
+        .projects-dropdown__menu {
+          margin-top: 0;
+          transition: opacity 0.15s ease, visibility 0s linear 0.15s;
+          visibility: hidden;
+        }
         .projects-dropdown:hover .projects-dropdown__menu,
-        .projects-dropdown__menu:hover {
+        .projects-dropdown__menu:hover,
+        .projects-dropdown:focus-within .projects-dropdown__menu {
           opacity: 1 !important;
           pointer-events: auto !important;
+          visibility: visible !important;
+          transition-delay: 0s;
         }
         """.trimIndent()
     )
