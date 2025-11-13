@@ -10,22 +10,25 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.input.TextField
+import code.yousef.summon.components.input.TextFieldType
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
+import code.yousef.summon.components.navigation.AnchorLink
+import code.yousef.summon.components.navigation.LinkNavigationMode
 import code.yousef.summon.extensions.rem
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.TextDecoration
+import code.yousef.summon.runtime.rememberMutableStateOf
 import code.yousef.summon.seo.HeadScope
-import kotlinx.serialization.json.Json
 import java.net.URI
 
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
-    private val portfolioOrigin: String,
-    private val json: Json = Json { ignoreUnknownKeys = true }
+    private val portfolioOrigin: String
 ) {
     fun render(
         requestPath: String,
@@ -57,13 +60,12 @@ class DocsRouter(
 
     fun notFound(requestPath: String, sidebar: DocsNavTree, origin: String): SummonPage {
         val canonical = seoExtractor.canonical(requestPath)
-        val navJson = json.encodeToString(sidebar).replace("</", "<\\/")
         val navBase = resolveNavBase(origin)
         return SummonPage(
             head = headBlock("Not found", "This page could not be located.", canonical),
             content = {
                 DocsPageFrame(navBase, origin) {
-                    DocsNotFoundContent(navJson)
+                    DocsNotFoundContent(sidebar)
                 }
             }
         )
@@ -106,7 +108,9 @@ class DocsRouter(
 }
 
 @Composable
-private fun DocsNotFoundContent(navJson: String) {
+private fun DocsNotFoundContent(navTree: DocsNavTree) {
+    val searchQueryState = rememberMutableStateOf("")
+    val flattenedEntries = navTree.flatten()
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -130,38 +134,105 @@ private fun DocsNotFoundContent(navJson: String) {
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
-        RawHtml(
-            """
-            <div class="docs-search">
-              <input id="docs-search-input" type="search" placeholder="Search docs..." />
-              <ul id="docs-search-results"></ul>
-            </div>
-            <script>
-              (function(){
-                const nav = $navJson;
-                const entries = [];
-                nav.sections?.forEach(section => {
-                  section.children?.forEach(child => entries.push(child));
-                });
-                const input = document.getElementById('docs-search-input');
-                const results = document.getElementById('docs-search-results');
-                if (!input || !results) return;
-                input.addEventListener('input', () => {
-                  const q = input.value.toLowerCase();
-                  results.innerHTML = '';
-                  if (!q) return;
-                  entries.filter(e => e.title.toLowerCase().includes(q)).slice(0,7).forEach(match => {
-                    const li = document.createElement('li');
-                    const link = document.createElement('a');
-                    link.href = match.path;
-                    link.textContent = match.title;
-                    li.appendChild(link);
-                    results.appendChild(li);
-                  });
-                });
-              })();
-            </script>
-            """.trimIndent()
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.sm)
+        ) {
+            TextField(
+                value = searchQueryState.value,
+                onValueChange = { searchQueryState.value = it },
+                label = "Search docs",
+                placeholder = "Components, hydration, routing…",
+                modifier = Modifier()
+                    .width("100%")
+                    .borderRadius(PortfolioTheme.Radii.md),
+                type = TextFieldType.Search
+            )
+            val query = searchQueryState.value.trim()
+            if (query.isBlank()) {
+                Text(
+                    text = "Or jump into these popular sections:",
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                )
+                DocsSearchSuggestions(flattenedEntries)
+            } else {
+                val matches = flattenedEntries
+                    .filter { it.title.contains(query, ignoreCase = true) }
+                    .take(7)
+                if (matches.isEmpty()) {
+                    Text(
+                        text = "No matching topics yet. Try another keyword.",
+                        modifier = Modifier()
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier()
+                            .display(Display.Flex)
+                            .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+                            .gap(PortfolioTheme.Spacing.xs)
+                    ) {
+                        matches.forEach { DocsSearchResult(it) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocsSearchSuggestions(entries: List<DocsNavNode>) {
+    Column(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+            .gap(PortfolioTheme.Spacing.xs)
+    ) {
+        entries.take(5).forEach { node ->
+            AnchorLink(
+                label = node.title,
+                href = safeHref(node.path),
+                modifier = Modifier()
+                    .textDecoration(TextDecoration.None)
+                    .color(PortfolioTheme.Colors.ACCENT)
+                    .fontWeight(600),
+                navigationMode = LinkNavigationMode.Native
+            )
+        }
+    }
+}
+
+@Composable
+private fun DocsSearchResult(node: DocsNavNode) {
+    Column(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+            .gap(PortfolioTheme.Spacing.xs)
+            .padding(PortfolioTheme.Spacing.sm)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
+            .borderRadius(PortfolioTheme.Radii.md)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
+    ) {
+        AnchorLink(
+            label = node.title,
+            href = safeHref(node.path),
+            modifier = Modifier()
+                .textDecoration(TextDecoration.None)
+                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                .fontWeight(600),
+            navigationMode = LinkNavigationMode.Native
+        )
+        Text(
+            text = node.path,
+            modifier = Modifier()
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                .fontSize(0.85.rem)
         )
     }
 }

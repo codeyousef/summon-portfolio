@@ -56,17 +56,18 @@ fun PageScaffold(
             WebGlCanvas()
             GrainLayer()
         }
+        val isRtl = locale.direction.equals("rtl", ignoreCase = true)
+        val flexColumnPadding = "calc(${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md})"
         val columnModifier = Modifier()
             .position(Position.Relative)
             .zIndex(2)
             .padding(PortfolioTheme.Spacing.xl)
             .gap(PortfolioTheme.Spacing.xl)
             .let { base ->
-                val extra = PortfolioTheme.Spacing.md
-                if (locale.direction.equals("rtl", ignoreCase = true)) {
-                    base.style("padding-left", "calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                if (isRtl) {
+                    base.paddingLeft(flexColumnPadding)
                 } else {
-                    base.style("padding-right", "calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                    base.paddingRight(flexColumnPadding)
                 }
             }
         Column(modifier = columnModifier) {

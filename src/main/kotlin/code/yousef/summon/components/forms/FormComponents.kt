@@ -4,26 +4,29 @@ import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Label
 import code.yousef.summon.components.display.Markdown
 import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.input.Button
+import code.yousef.summon.components.input.ButtonVariant
+import code.yousef.summon.components.input.Checkbox
+import code.yousef.summon.components.input.Select
+import code.yousef.summon.components.input.TextArea
+import code.yousef.summon.components.input.TextField
+import code.yousef.summon.components.input.TextFieldType as SummonTextFieldType
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.gap
+import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.runtime.LocalPlatformRenderer
+import code.yousef.summon.runtime.SelectOption
+import code.yousef.summon.runtime.rememberMutableStateOf
 import kotlin.math.abs
 
-/**
- * HTTP method for form submissions.
- */
 enum class FormMethod(val value: String) {
     GET("get"),
     POST("post")
 }
 
-/**
- * Supported input types for [FormTextField].
- */
 enum class FormTextFieldType(val value: String) {
     TEXT("text"),
     PASSWORD("password"),
@@ -35,35 +38,23 @@ enum class FormTextFieldType(val value: String) {
     SLUG("text");
 }
 
-/**
- * Data model for `<select>` options.
- */
 data class FormSelectOption(
     val value: String,
     val label: String,
     val disabled: Boolean = false
 )
 
-/**
- * Represents a hidden input that should be emitted at the start of a form.
- */
 data class FormHiddenField(
     val name: String,
     val value: String
 )
 
-/**
- * Submit/reset button type attribute.
- */
 enum class FormButtonType(val value: String) {
     SUBMIT("submit"),
     BUTTON("button"),
     RESET("reset")
 }
 
-/**
- * Visual tone for [FormButton].
- */
 enum class FormButtonTone {
     PRIMARY,
     ACCENT,
@@ -71,124 +62,11 @@ enum class FormButtonTone {
     GHOST
 }
 
-/**
- * Injects form-specific CSS classes. Safe to call multiple times per page.
- */
 @Composable
 fun FormStyleSheet() {
-    RawHtml(
-        """
-        <style>
-          .summon-form-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 28px;
-            padding: 24px 24px 32px;
-            box-sizing: border-box;
-          }
-          @media (min-width: 900px) {
-            .summon-form-stack {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            }
-            .summon-form-group.full-width {
-              grid-column: 1 / -1;
-            }
-          }
-          .summon-form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-          }
-          .summon-form-control,
-          .summon-form-select,
-          .summon-form-textarea {
-            width: 100%;
-            padding: 12px 10px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.1);
-            background: rgba(255,255,255,0.04);
-            color: #eaeaf0;
-            font-size: 1rem;
-            font-family: inherit;
-            transition: border-color 180ms ease, box-shadow 180ms ease;
-          }
-          @media (max-width: 768px) {
-            .summon-form-control,
-            .summon-form-select,
-            .summon-form-textarea {
-              padding: 10px 8px;
-            }
-          }
-          .summon-form-control:focus,
-          .summon-form-select:focus,
-          .summon-form-textarea:focus {
-            border-color: rgba(255,255,255,0.35);
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
-          }
-          .summon-form-checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.95rem;
-            color: #eaeaf0;
-          }
-          .summon-form-checkbox {
-            width: 18px;
-            height: 18px;
-            border-radius: 6px;
-          }
-          .summon-form-button {
-            border: none;
-            border-radius: 22px;
-            padding: 14px 24px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 160ms ease, box-shadow 160ms ease;
-            margin-top: 8px;
-          }
-          .summon-form-button:hover {
-            transform: translateY(-1px);
-          }
-          .summon-form-button:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.12);
-          }
-          .summon-form-button--primary {
-            background: linear-gradient(120deg,#2c2f41,#3b3f55);
-            color: #f0f0f5;
-          }
-          .summon-form-button--accent {
-            background: linear-gradient(120deg,#ff3b6a,#b01235);
-            color: #ffffff;
-          }
-          .summon-form-button--danger {
-            background: transparent;
-            color: #ff7a7a;
-            border: 1px solid rgba(255,122,122,0.6);
-          }
-          .summon-form-button--ghost {
-            background: transparent;
-            color: #eaeaf0;
-            border: 1px solid rgba(255,255,255,0.12);
-          }
-          .summon-form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-          }
-          .summon-form-actions.full-width {
-            justify-content: stretch;
-          }
-        </style>
-        """.trimIndent()
-    )
+    // No-op: layout + styling handled directly through modifiers.
 }
 
-/**
- * Form container that emits semantic `<form>` markup without requiring hydration.
- */
 @Composable
 fun Form(
     action: String,
@@ -208,24 +86,19 @@ fun Form(
     }
 
     renderer.renderForm(onSubmit = null, modifier = formModifier) {
-        hiddenFields.forEach { hidden ->
-            RawHtml(
-                """<input type="hidden" name="${hidden.name.htmlEscape()}" value="${hidden.value.htmlEscape()}">"""
-            )
-        }
-
+        hiddenFields.forEach { HiddenFormField(it) }
         Column(
             modifier = Modifier()
-                .addFormClass("summon-form-stack")
+                .display(Display.Grid)
+                .gridTemplateColumns("repeat(auto-fit, minmax(280px, 1fr))")
+                .gap("28px")
+                .padding("24px 24px 32px")
         ) {
             content()
         }
     }
 }
 
-/**
- * General-purpose text field with label + helper support.
- */
 @Composable
 fun FormTextField(
     name: String,
@@ -244,6 +117,7 @@ fun FormTextField(
     fullWidth: Boolean = false
 ) {
     val fieldId = rememberFieldId(name)
+    val valueState = rememberMutableStateOf(defaultValue)
     FormFieldGroup(
         fieldId = fieldId,
         label = label,
@@ -253,37 +127,24 @@ fun FormTextField(
         helperText = helperText,
         fullWidth = fullWidth
     ) {
-        RawHtml(
-            buildString {
-                append("<input")
-                append(" class=\"summon-form-control\"")
-                append(" id=\"$fieldId\"")
-                append(" name=\"${name.htmlEscape()}\"")
-                append(" type=\"${type.value}\"")
-                append(" value=\"${defaultValue.htmlEscape()}\"")
-                if (required) append(" required")
-                if (!placeholder.isNullOrBlank()) {
-                    append(" placeholder=\"${placeholder.htmlEscape()}\"")
-                }
-                if (!autoComplete.isNullOrBlank()) {
-                    append(" autocomplete=\"${autoComplete.htmlEscape()}\"")
-                }
-                if (!inputMode.isNullOrBlank()) {
-                    append(" inputmode=\"${inputMode.htmlEscape()}\"")
-                }
-                if (readonly) append(" readonly")
-                dataAttributes.forEach { (key, value) ->
-                    append(" data-${key.htmlEscape()}=\"${value.htmlEscape()}\"")
-                }
-                append(">")
-            }
+        val modifier = baseInputModifier(fieldId, name, required, dataAttributes)
+            .attributeIfNotNull("autocomplete", autoComplete)
+            .attributeIfNotNull("inputmode", inputMode)
+        TextField(
+            value = valueState.value,
+            onValueChange = { valueState.value = it },
+            modifier = modifier,
+            label = "",
+            placeholder = placeholder.orEmpty(),
+            type = type.toSummonType(),
+            isError = false,
+            isEnabled = true,
+            isReadOnly = readonly,
+            validators = emptyList()
         )
     }
 }
 
-/**
- * Multi-line form control for longer responses.
- */
 @Composable
 fun FormTextArea(
     name: String,
@@ -299,6 +160,7 @@ fun FormTextArea(
     fullWidth: Boolean = true
 ) {
     val fieldId = rememberFieldId(name)
+    val valueState = rememberMutableStateOf(defaultValue)
     FormFieldGroup(
         fieldId = fieldId,
         label = label,
@@ -308,31 +170,19 @@ fun FormTextArea(
         helperText = helperText,
         fullWidth = fullWidth
     ) {
-        RawHtml(
-            buildString {
-                append("<textarea")
-                append(" class=\"summon-form-textarea\"")
-                append(" id=\"$fieldId\"")
-                append(" name=\"${name.htmlEscape()}\"")
-                append(" style=\"min-height:$minHeight\"")
-                if (required) append(" required")
-                if (!placeholder.isNullOrBlank()) {
-                    append(" placeholder=\"${placeholder.htmlEscape()}\"")
-                }
-                dataAttributes.forEach { (key, value) ->
-                    append(" data-${key.htmlEscape()}=\"${value.htmlEscape()}\"")
-                }
-                append(">")
-                append(defaultValue.htmlEscape())
-                append("</textarea>")
-            }
+        TextArea(
+            valueState.value,
+            { valueState.value = it },
+            baseInputModifier(fieldId, name, required, dataAttributes).minHeight(minHeight),
+            true,
+            false,
+            null,
+            null,
+            placeholder ?: ""
         )
     }
 }
 
-/**
- * Select element for enumerated choices.
- */
 @Composable
 fun FormSelect(
     name: String,
@@ -346,6 +196,9 @@ fun FormSelect(
     fullWidth: Boolean = false
 ) {
     val fieldId = rememberFieldId(name)
+    val selectOptions = options.map { SelectOption(it.value, it.label, it.disabled) }
+    val initialSelection = selectedValue ?: selectOptions.firstOrNull()?.value
+    val selectedState = rememberMutableStateOf<String?>(initialSelection)
     FormFieldGroup(
         fieldId = fieldId,
         label = label,
@@ -355,56 +208,51 @@ fun FormSelect(
         helperText = helperText,
         fullWidth = fullWidth
     ) {
-        RawHtml(
-            buildString {
-                append("<select")
-                append(" class=\"summon-form-select\"")
-                append(" id=\"$fieldId\"")
-                append(" name=\"${name.htmlEscape()}\"")
-                if (required) append(" required")
-                append(">")
-                options.forEach { option ->
-                    append("<option value=\"${option.value.htmlEscape()}\"")
-                    if (selectedValue != null && option.value == selectedValue) {
-                        append(" selected")
-                    }
-                    if (option.disabled) append(" disabled")
-                    append(">")
-                    append(option.label.htmlEscape())
-                    append("</option>")
-                }
-                append("</select>")
-            }
+        Select(
+            selectedState,
+            selectOptions,
+            { selectedState.value = it },
+            "",
+            "",
+            baseInputModifier(fieldId, name, required, emptyMap()),
+            true,
+            false,
+            selectOptions.size,
+            emptyList()
         )
     }
 }
 
-/**
- * Checkbox input with inline helper text.
- */
 @Composable
 fun FormCheckbox(
     name: String,
     label: String,
-    checked: Boolean = false,
-    description: String? = null
+    description: String? = null,
+    checked: Boolean = false
 ) {
     val fieldId = rememberFieldId(name)
+    val checkedState = rememberMutableStateOf(checked)
     Column(
         modifier = Modifier()
-            .addFormClass("summon-form-group full-width")
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
+            .gap("8px")
+            .gridColumn("1 / -1")
     ) {
-        RawHtml(
-            buildString {
-                append("<label class=\"summon-form-checkbox-label\" for=\"$fieldId\">")
-                append("<input type=\"checkbox\" class=\"summon-form-checkbox\"")
-                append(" id=\"$fieldId\"")
-                append(" name=\"${name.htmlEscape()}\"")
-                if (checked) append(" checked")
-                append(">")
-                append(label.htmlEscape())
-                append("</label>")
-            }
+        Checkbox(
+            checked = checkedState.value,
+            onCheckedChange = { checkedState.value = it },
+            modifier = Modifier()
+                .attribute("name", name)
+                .attribute("value", "true")
+                .id(fieldId)
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap("10px"),
+            enabled = true,
+            label = label,
+            isIndeterminate = false,
+            validators = emptyList()
         )
         description?.let {
             Text(
@@ -417,9 +265,6 @@ fun FormCheckbox(
     }
 }
 
-/**
- * Semantic button designed for classic form submissions.
- */
 @Composable
 fun FormButton(
     text: String,
@@ -428,37 +273,25 @@ fun FormButton(
     fullWidth: Boolean = false,
     dataAttributes: Map<String, String> = emptyMap()
 ) {
-    val toneClass = when (tone) {
-        FormButtonTone.PRIMARY -> "summon-form-button--primary"
-        FormButtonTone.ACCENT -> "summon-form-button--accent"
-        FormButtonTone.DANGER -> "summon-form-button--danger"
-        FormButtonTone.GHOST -> "summon-form-button--ghost"
+    Row(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .justifyContent(JustifyContent.FlexEnd)
+            .gridColumn("1 / -1")
+            .let { base -> if (fullWidth) base.width("100%") else base }
+    ) {
+        Button(
+            onClick = {},
+            label = text,
+            modifier = buttonModifier(fullWidth, tone)
+                .attribute("type", type.value)
+                .applyDataAttributes(dataAttributes),
+            variant = tone.toButtonVariant(),
+            disabled = false
+        )
     }
-    RawHtml(
-        buildString {
-            val actionsClass =
-                if (fullWidth) "summon-form-group full-width summon-form-actions full-width" else "summon-form-group full-width summon-form-actions"
-            append("<div class=\"$actionsClass\">")
-            append("<button type=\"${type.value}\"")
-            append(" class=\"summon-form-button $toneClass\"")
-            if (fullWidth) {
-                append(" style=\"width:100%\"")
-            }
-            dataAttributes.forEach { (key, value) ->
-                append(" data-${key.htmlEscape()}=\"${value.htmlEscape()}\"")
-            }
-            append(">")
-            append(text.htmlEscape())
-            append("</button>")
-            append("</div>")
-        }
-    )
 }
 
-/**
- * Minimal markdown editor used for blog content authoring.
- * Renders a textarea plus optional preview rendered via [Markdown].
- */
 @Composable
 fun MarkdownEditorField(
     name: String,
@@ -473,8 +306,10 @@ fun MarkdownEditorField(
 ) {
     Column(
         modifier = Modifier()
-            .addFormClass("summon-form-group full-width")
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
             .gap("12px")
+            .gridColumn("1 / -1")
     ) {
         FormTextArea(
             name = name,
@@ -528,12 +363,10 @@ private fun FormFieldGroup(
 ) {
     Column(
         modifier = Modifier()
-            .addFormClass(
-                buildString {
-                    append("summon-form-group")
-                    if (fullWidth) append(" full-width")
-                }
-            )
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
+            .gap("12px")
+            .let { base -> if (fullWidth) base.gridColumn("1 / -1") else base }
     ) {
         Row(
             modifier = Modifier()
@@ -579,22 +412,120 @@ private fun FormFieldGroup(
     }
 }
 
-private fun Modifier.addFormClass(className: String): Modifier =
-    this.attribute("class", className)
+@Composable
+private fun HiddenFormField(field: FormHiddenField) {
+    val state = rememberMutableStateOf(field.value)
+    TextField(
+        value = state.value,
+        onValueChange = { state.value = it },
+        modifier = Modifier()
+            .attribute("name", field.name)
+            .display(Display.None),
+        label = "",
+        placeholder = "",
+        type = SummonTextFieldType.Text,
+        isError = false,
+        isEnabled = true,
+        isReadOnly = true,
+        validators = emptyList()
+    )
+}
+
+private fun FormTextFieldType.toSummonType(): SummonTextFieldType =
+    when (this) {
+        FormTextFieldType.TEXT, FormTextFieldType.SLUG -> SummonTextFieldType.Text
+        FormTextFieldType.PASSWORD -> SummonTextFieldType.Password
+        FormTextFieldType.EMAIL -> SummonTextFieldType.Email
+        FormTextFieldType.NUMBER -> SummonTextFieldType.Number
+        FormTextFieldType.DATE -> SummonTextFieldType.Date
+        FormTextFieldType.URL -> SummonTextFieldType.Url
+        FormTextFieldType.TEL -> SummonTextFieldType.Tel
+    }
+
+private fun Modifier.baseInputStyling(): Modifier =
+    this
+        .width("100%")
+        .padding("12px 10px")
+        .borderWidth(1)
+        .borderStyle(BorderStyle.Solid)
+        .borderColor("rgba(255,255,255,0.1)")
+        .borderRadius("16px")
+        .backgroundColor("rgba(255,255,255,0.04)")
+        .color(PRIMARY_TEXT)
+        .fontSize("1rem")
+
+private fun baseInputModifier(
+    fieldId: String,
+    name: String,
+    required: Boolean,
+    dataAttributes: Map<String, String>
+): Modifier {
+    var modifier = Modifier()
+        .id(fieldId)
+        .attribute("name", name)
+        .baseInputStyling()
+    if (required) {
+        modifier = modifier.attribute("required", "required")
+    }
+    modifier = modifier.applyDataAttributes(dataAttributes)
+    return modifier
+}
+
+private fun Modifier.applyDataAttributes(data: Map<String, String>): Modifier {
+    var current = this
+    data.forEach { (key, value) ->
+        current = current.attribute("data-$key", value)
+    }
+    return current
+}
+
+private fun Modifier.attributeIfNotNull(attribute: String, value: String?): Modifier =
+    if (value.isNullOrBlank()) this else this.attribute(attribute, value)
+
+private fun buttonModifier(fullWidth: Boolean, tone: FormButtonTone): Modifier {
+    var base = Modifier()
+        .padding("14px 24px")
+        .borderRadius("22px")
+        .fontWeight(600)
+        .color(PRIMARY_TEXT)
+        .attribute("data-form-button", tone.name.lowercase())
+    if (fullWidth) {
+        base = base.width("100%")
+    }
+    base = when (tone) {
+        FormButtonTone.PRIMARY -> base
+            .backgroundColor("linear-gradient(120deg,#2c2f41,#3b3f55)")
+            .borderWidth(0)
+        FormButtonTone.ACCENT -> base
+            .backgroundColor("linear-gradient(120deg,#ff3b6a,#b01235)")
+            .borderWidth(0)
+        FormButtonTone.DANGER -> base
+            .backgroundColor("transparent")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor("rgba(255,122,122,0.6)")
+        FormButtonTone.GHOST -> base
+            .backgroundColor("transparent")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor("rgba(255,255,255,0.12)")
+    }
+    return base
+}
+
+private fun FormButtonTone.toButtonVariant(): ButtonVariant =
+    when (this) {
+        FormButtonTone.PRIMARY -> ButtonVariant.PRIMARY
+        FormButtonTone.ACCENT -> ButtonVariant.PRIMARY
+        FormButtonTone.DANGER -> ButtonVariant.DANGER
+        FormButtonTone.GHOST -> ButtonVariant.GHOST
+    }
 
 private fun rememberFieldId(name: String): String {
     val base = name.lowercase().replace("""[^a-z0-9_-]""".toRegex(), "-")
     val suffix = abs(name.hashCode()).toString(16).take(4)
     return "field-$base-$suffix"
 }
-
-private fun String.htmlEscape(): String =
-    this
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&#39;")
 
 private const val PRIMARY_TEXT = "#eaeaf0"
 private const val SECONDARY_TEXT = "#a7a7b3"

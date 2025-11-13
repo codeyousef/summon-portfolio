@@ -12,7 +12,8 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.summon.annotation.Composable
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.forms.*
-import code.yousef.summon.components.foundation.RawHtml
+import code.yousef.summon.components.input.Button
+import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
@@ -24,9 +25,8 @@ import code.yousef.summon.modifier.*
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
-import code.yousef.summon.runtime.LocalPlatformRenderer
-import code.yousef.summon.runtime.PlatformRenderer
-import code.yousef.summon.runtime.setPlatformRenderer
+import code.yousef.summon.modifier.TextDecoration
+import code.yousef.summon.runtime.rememberMutableStateOf
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
@@ -173,7 +173,6 @@ fun AdminDashboardPage(
             ) {
                 AppHeader(locale = locale)
                 FormStyleSheet()
-                AdminFormCss()
                 activeContent()
             }
         }
@@ -233,14 +232,14 @@ private fun AdminSidebar(
             .gap(PortfolioTheme.Spacing.md)
             .width(260.px)
             .padding(PortfolioTheme.Spacing.lg)
-            .background(PortfolioTheme.Gradients.GLASS)
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .borderRadius(PortfolioTheme.Radii.lg)
-            .style("height", "100%")
-            .style("min-height", "calc(100vh - 160px)")
-            .style("align-self", "stretch")
+                .background(PortfolioTheme.Gradients.GLASS)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.lg)
+                .height("100%")
+                .minHeight("calc(100vh - 160px)")
+                .alignSelf(AlignSelf.Stretch)
     ) {
         navItems.forEach { section ->
             val isActive = section == activeSection
@@ -255,8 +254,8 @@ private fun AdminSidebar(
                     label = section.label(),
                     href = target,
                     modifier = Modifier()
-                        .textDecoration("none")
-                        .style("text-align", "center")
+                        .textDecoration(TextDecoration.None)
+                        .textAlign(TextAlign.Center)
                         .color(
                             if (isActive) PortfolioTheme.Colors.TEXT_PRIMARY else PortfolioTheme.Colors.TEXT_SECONDARY
                         )
@@ -590,92 +589,51 @@ private fun AdminFormDisclosure(
     defaultOpen: Boolean,
     content: @Composable () -> Unit
 ) {
-    val openAttr = if (defaultOpen) "open" else ""
-    val innerHtml = renderFragmentHtml(content)
-    RawHtml(
-        """
-        <details class="summon-admin-form" $openAttr>
-          <summary>${summary.htmlEscape()}</summary>
-          <div class="summon-admin-form-body">
-            $innerHtml
-          </div>
-        </details>
-        """.trimIndent(),
-        sanitize = false
-    )
-}
-
-@Composable
-private fun AdminFormCss() {
-    RawHtml(
-        """
-        <style>
-  details.summon-admin-form {
-    margin-top: 12px;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 24px;
-    background: rgba(12,14,20,0.65);
-    backdrop-filter: blur(24px);
-    overflow: hidden;
-    box-shadow: 0 24px 70px rgba(0,0,0,0.45);
-  }
-  details.summon-admin-form summary {
-    cursor: pointer;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 18px 28px;
-    list-style: none;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  details.summon-admin-form summary::-webkit-details-marker {
-    display: none;
-  }
-  details.summon-admin-form summary::after {
-    content: "▾";
-    font-size: 0.95rem;
-    transition: transform 160ms ease;
-    color: rgba(255,255,255,0.65);
-  }
-  details.summon-admin-form[open] summary::after {
-    transform: rotate(180deg);
-  }
-  details.summon-admin-form[open] summary {
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-  .summon-admin-form-body {
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    background: linear-gradient(135deg, rgba(19,22,33,0.9), rgba(9,10,14,0.92));
-    border-top: 1px solid rgba(255,255,255,0.05);
-  }
-        </style>
-        """.trimIndent()
-    )
-}
-
-private fun renderFragmentHtml(content: @Composable () -> Unit): String {
-    val previousRenderer = runCatching { LocalPlatformRenderer.current }.getOrNull()
-    val renderer = PlatformRenderer()
-    val document = try {
-        renderer.renderComposableRoot(content)
-    } finally {
-        previousRenderer?.let { setPlatformRenderer(it) }
+    val openState = rememberMutableStateOf(defaultOpen)
+    val caret = if (openState.value) "▾" else "▸"
+    Column(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
+            .borderRadius(PortfolioTheme.Radii.lg)
+            .background("rgba(12,14,20,0.65)")
+            .boxShadow(PortfolioTheme.Shadows.MEDIUM)
+            .backdropBlur(24.px)
+            .overflow(Overflow.Hidden)
+    ) {
+        Button(
+            onClick = { openState.value = !openState.value },
+            label = "$caret $summary",
+            modifier = Modifier()
+                .width("100%")
+                .display(Display.Flex)
+                .justifyContent(JustifyContent.SpaceBetween)
+                .alignItems(AlignItems.Center)
+                .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.xl)
+                .backgroundColor("transparent")
+                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                .fontWeight(600)
+                .letterSpacing("0.02em"),
+            variant = ButtonVariant.GHOST,
+            disabled = false,
+            dataAttributes = mapOf("admin-form-summary" to summary.lowercase())
+        )
+        if (openState.value) {
+            Column(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(PortfolioTheme.Spacing.lg)
+                    .padding(PortfolioTheme.Spacing.xl)
+                    .background("linear-gradient(135deg, rgba(19,22,33,0.9), rgba(9,10,14,0.92))")
+            ) {
+                content()
+            }
+        }
     }
-    val bodyStart = document.indexOf("<body")
-    if (bodyStart == -1) return document
-    val bodyOpenEnd = document.indexOf('>', bodyStart)
-    if (bodyOpenEnd == -1) return document.substring(bodyStart)
-    val bodyCloseStart = document.lastIndexOf("</body>")
-    if (bodyCloseStart == -1 || bodyCloseStart <= bodyOpenEnd) {
-        return document.substring(bodyOpenEnd + 1)
-    }
-    return document.substring(bodyOpenEnd + 1, bodyCloseStart)
 }
 
 private fun Project.summaryLabel(fallback: String): String =
@@ -692,11 +650,3 @@ private fun String?.orFallback(fallback: String): String =
 
 private fun adminAction(basePath: String, suffix: String): String =
     "$basePath/$suffix"
-
-private fun String?.htmlEscape(): String =
-    this?.replace("&", "&amp;")
-        ?.replace("<", "&lt;")
-        ?.replace(">", "&gt;")
-        ?.replace("\"", "&quot;")
-        ?.replace("'", "&#39;")
-        ?: ""

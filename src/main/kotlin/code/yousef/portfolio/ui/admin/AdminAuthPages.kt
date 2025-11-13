@@ -27,7 +27,7 @@ fun AdminLoginPage(
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .fontSize("0.85rem")
-                .textAlign("center")
+                .textAlign(TextAlign.Center)
                 .margin("0 0 8px 0")
         )
         Form(
@@ -139,13 +139,13 @@ private fun AdminAuthScaffold(
                         text = title,
                         modifier = Modifier()
                             .fontSize("1.5rem")
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                     )
                     Text(
                         text = subtitle,
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                     )
                 }
                 if (!errorMessage.isNullOrBlank()) {
@@ -153,7 +153,7 @@ private fun AdminAuthScaffold(
                         text = errorMessage,
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.DANGER)
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                             .padding(PortfolioTheme.Spacing.sm)
                             .backgroundColor("rgba(255,77,77,0.12)")
                             .borderRadius(PortfolioTheme.Radii.md)

@@ -90,12 +90,12 @@ fun AppHeader(
         .let { base ->
             if (locale.direction.equals("rtl", ignoreCase = true)) {
                 base
-                    .style("padding-right", containerPaddingStart)
-                    .style("padding-left", containerPaddingEnd)
+                    .paddingRight(containerPaddingStart)
+                    .paddingLeft(containerPaddingEnd)
             } else {
                 base
-                    .style("padding-left", containerPaddingStart)
-                    .style("padding-right", containerPaddingEnd)
+                    .paddingLeft(containerPaddingStart)
+                    .paddingRight(containerPaddingEnd)
             }
         }
 

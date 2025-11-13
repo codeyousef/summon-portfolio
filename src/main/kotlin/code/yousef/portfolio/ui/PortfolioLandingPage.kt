@@ -535,8 +535,8 @@ private fun TestimonialSection(locale: PortfolioLocale) {
                                 .color("#001a2c")
                         )
                     }
-                    Paragraph(
-                        text = testimonial.quote.resolveWithSummonLink(locale),
+                    RichText(
+                        "<p>${testimonial.quote.resolveWithSummonLink(locale)}</p>",
                         modifier = Modifier()
                             .fontSize(1.1.rem)
                             .lineHeight(1.5)
