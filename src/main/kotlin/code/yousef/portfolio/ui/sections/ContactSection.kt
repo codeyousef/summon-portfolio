@@ -10,6 +10,7 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.forms.*
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
+import code.yousef.summon.components.styles.GlobalStyle
 import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.extensions.rem
@@ -93,6 +94,7 @@ private fun ContactForm(
 ) {
     val optionalLabel = ContactCopy.optional.resolve(locale)
     FormStyleSheet()
+    ContactFormStyles()
     Form(
         action = action,
         modifier = modifier
@@ -134,7 +136,7 @@ private fun ContactForm(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
             required = true,
-            placeholder = ContactCopy.requirements.resolve(locale),
+            placeholder = null,
             minHeight = "180px",
             optionalLabel = optionalLabel,
             fullWidth = true
@@ -175,4 +177,15 @@ private object ContactCopy {
     val errorName = LocalizedText("Name is required", "الاسم مطلوب")
     val errorEmail = LocalizedText("Please enter a valid email", "يرجى إدخال بريد صحيح")
     val errorRequirements = LocalizedText("Share a bit about your project", "شارك تفاصيل حول مشروعك")
+}
+
+@Composable
+private fun ContactFormStyles() {
+    GlobalStyle(
+        """
+        textarea::placeholder {
+          opacity: 0.6;
+        }
+        """.trimIndent()
+    )
 }
