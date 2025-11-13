@@ -103,8 +103,8 @@ fun AppHeader(
 
     Row(
         modifier = containerModifier
-            .attribute("class", "app-header")
-            .attribute("data-menu-open", if (menuOpenState.value) "true" else "false")
+            .className("app-header")
+            .dataAttribute("menu-open", if (menuOpenState.value) "true" else "false")
     ) {
         AppHeaderStyles()
         Box(
@@ -113,7 +113,7 @@ fun AppHeader(
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.md)
                 .flex(grow = 1, shrink = 1, basis = "220px")
-                .attribute("class", "app-header__brand")
+                .className("app-header__brand")
         ) {
             val toggleOpenLabel = LocalizedText("Open menu", "افتح القائمة").resolve(locale)
             val toggleCloseLabel = LocalizedText("Close menu", "أغلق القائمة").resolve(locale)
@@ -123,9 +123,9 @@ fun AppHeader(
                 label = toggleLabel,
                 modifier = Modifier()
                     .className("app-header__toggle")
-                    .attribute("aria-controls", "app-header-nav app-header-actions")
-                    .attribute("aria-expanded", if (menuOpenState.value) "true" else "false")
-                    .attribute("aria-label", toggleLabel),
+                    .ariaControls("app-header-nav app-header-actions")
+                    .ariaExpanded(menuOpenState.value)
+                    .ariaLabel(toggleLabel),
                 variant = ButtonVariant.SECONDARY,
                 disabled = false
             )
@@ -141,7 +141,7 @@ fun AppHeader(
         Box(
             modifier = Modifier()
                 .flex(grow = 1, shrink = 1, basis = "360px")
-                .attribute("class", "app-header__nav-wrapper")
+                .className("app-header__nav-wrapper")
         ) {
             Row(
                 modifier = Modifier()
@@ -150,8 +150,8 @@ fun AppHeader(
                     .gap(PortfolioTheme.Spacing.md)
                     .flex(grow = 1, shrink = 1, basis = "360px")
                     .flexWrap(FlexWrap.Wrap)
-                    .attribute("class", "app-header__nav")
-                    .attribute("id", "app-header-nav")
+                    .className("app-header__nav")
+                    .id("app-header-nav")
             ) {
                 val baseNavModifier = Modifier()
                     .textDecoration(TextDecoration.None)
@@ -196,7 +196,7 @@ fun AppHeader(
         Box(
             modifier = Modifier()
                 .flex(grow = 0, shrink = 1, basis = "240px")
-                .attribute("class", "app-header__actions-wrapper")
+                .className("app-header__actions-wrapper")
         ) {
             Row(
                 modifier = Modifier()
@@ -206,8 +206,8 @@ fun AppHeader(
                     .flex(grow = 0, shrink = 0, basis = "auto")
                     .justifyContent(JustifyContent.FlexEnd)
                     .flexWrap(FlexWrap.NoWrap)
-                    .attribute("class", "app-header__actions")
-                    .attribute("id", "app-header-actions")
+                    .className("app-header__actions")
+                    .id("app-header-actions")
             ) {
             if (chrome.isAdminSession) {
                 val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
@@ -291,7 +291,7 @@ private fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, na
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.pill)
-            .attribute("class", "app-header__locale-toggle")
+            .className("app-header__locale-toggle")
     ) {
         LocaleToggleButton(
             locale = PortfolioLocale.EN,
