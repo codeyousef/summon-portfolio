@@ -12,6 +12,7 @@ import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.input.Button
 import code.yousef.summon.components.input.ButtonVariant
 import code.yousef.summon.components.layout.Box
+import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.navigation.AnchorLink
 import code.yousef.summon.components.navigation.ButtonLink
@@ -47,6 +48,7 @@ private val defaultNavItems = listOf(
 )
 
 private val projectsLabel = LocalizedText("Projects", "المشاريع")
+private val summonProjectLabel = LocalizedText("Summon", "سمون")
 private val startProjectLabel = LocalizedText("Start your project", "ابدأ مشروعك")
 
 @Composable
@@ -183,12 +185,10 @@ fun AppHeader(
                         navigationMode = linkMode
                     )
                 }
-                navLink(
-                    label = projectsLabel.resolve(locale),
-                    href = docsHref,
-                    modifier = baseNavModifier,
-                    dataAttributes = mapOf("nav" to "projects"),
-                    navigationMode = LinkNavigationMode.Native
+                ProjectsDropdown(
+                    locale = locale,
+                    summonUrl = docsHref,
+                    baseNavModifier = baseNavModifier
                 )
             }
         }
@@ -399,6 +399,68 @@ private fun resolveDocsHref(override: String?): String {
     return resolved.trimEnd('/')
 }
 
+@Composable
+private fun ProjectsDropdown(
+    locale: PortfolioLocale,
+    summonUrl: String,
+    baseNavModifier: Modifier
+) {
+    val dropdownOpenState = rememberMutableStateOf(false)
+    
+    Box(
+        modifier = Modifier()
+            .position(Position.Relative)
+            .attribute("class", "projects-dropdown")
+            .attribute("data-dropdown-open", if (dropdownOpenState.value) "true" else "false")
+    ) {
+        Button(
+            onClick = { dropdownOpenState.value = !dropdownOpenState.value },
+            label = projectsLabel.resolve(locale),
+            modifier = baseNavModifier
+                .attribute("class", "projects-dropdown__trigger")
+                .attribute("aria-expanded", if (dropdownOpenState.value) "true" else "false")
+                .attribute("aria-haspopup", "true"),
+            variant = ButtonVariant.SECONDARY,
+            disabled = false
+        )
+        
+        if (dropdownOpenState.value) {
+            Column(
+                modifier = Modifier()
+                    .position(Position.Absolute)
+                    .top(("calc(100% + 8px)"))
+                    .positionInset(left = "0")
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(PortfolioTheme.Colors.BORDER)
+                    .borderRadius(PortfolioTheme.Radii.lg)
+                    .boxShadow("0 12px 40px rgba(0,0,0,0.45)")
+                    .padding(PortfolioTheme.Spacing.xs)
+                    .minWidth("160px")
+                    .zIndex(100)
+                    .attribute("class", "projects-dropdown__menu")
+            ) {
+                navLink(
+                    label = summonProjectLabel.resolve(locale),
+                    href = summonUrl,
+                    modifier = Modifier()
+                        .textDecoration(TextDecoration.None)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .fontSize(0.85.rem)
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                        .borderRadius(PortfolioTheme.Radii.md)
+                        .display(Display.Block)
+                        .width(100.percent)
+                        .attribute("class", "projects-dropdown__item"),
+                    dataAttributes = mapOf("nav" to "summon"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+            }
+        }
+    }
+}
+
 @Suppress("UNUSED_PARAMETER")
 @Composable
 private fun AppHeaderStyles() {
@@ -544,6 +606,33 @@ private fun AppHeaderStyles() {
           .app-header__locale-toggle {
             width: 100%;
             justify-content: center;
+          }
+        }
+        .projects-dropdown__trigger {
+          background: transparent;
+          border: none;
+          cursor: pointer;
+        }
+        .projects-dropdown__item {
+          text-align: left;
+          transition: background ${PortfolioTheme.Motion.DEFAULT}, color ${PortfolioTheme.Motion.DEFAULT};
+        }
+        .projects-dropdown__item:hover {
+          background: rgba(255,255,255,0.05);
+          color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+        }
+        @media (max-width: 959px) {
+          .projects-dropdown__menu {
+            position: static !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin-top: ${PortfolioTheme.Spacing.xs};
+          }
+          .projects-dropdown__item {
+            padding: ${PortfolioTheme.Spacing.sm} 0 !important;
+            border-bottom: 1px solid ${PortfolioTheme.Colors.BORDER};
           }
         }
         """.trimIndent()
