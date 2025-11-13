@@ -415,6 +415,7 @@ private fun ProjectsDropdown(
                 .attribute("class", "projects-dropdown__trigger")
                 .attribute("tabindex", "0")
                 .cursor(Cursor.Pointer)
+                .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
         ) {
             Text(projectsLabel.resolve(locale))
         }
@@ -422,7 +423,7 @@ private fun ProjectsDropdown(
         Column(
             modifier = Modifier()
                 .position(Position.Absolute)
-                .top(("calc(100% + 8px)"))
+                .top(("calc(100% + 4px)"))
                 .positionInset(left = "0")
                 .backgroundColor(PortfolioTheme.Colors.SURFACE)
                 .borderWidth(1)
@@ -606,22 +607,29 @@ private fun AppHeaderStyles() {
         .projects-dropdown {
           position: relative;
         }
+        .projects-dropdown__trigger {
+          position: relative;
+        }
         .projects-dropdown__menu {
-          transition: opacity ${PortfolioTheme.Motion.DEFAULT}, transform ${PortfolioTheme.Motion.DEFAULT};
-          transform: translateY(-8px);
+          transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+          transform: translateY(-4px);
+          visibility: hidden;
         }
         .projects-dropdown:hover .projects-dropdown__menu,
-        .projects-dropdown:focus-within .projects-dropdown__menu {
+        .projects-dropdown__menu:hover {
           opacity: 1 !important;
           pointer-events: auto !important;
           transform: translateY(0);
+          visibility: visible;
+          transition-delay: 0s;
         }
         .projects-dropdown__item {
           text-align: left;
-          transition: background ${PortfolioTheme.Motion.DEFAULT}, color ${PortfolioTheme.Motion.DEFAULT};
+          transition: background 0.2s ease, color 0.2s ease;
+          white-space: nowrap;
         }
         .projects-dropdown__item:hover {
-          background: rgba(255,255,255,0.05);
+          background: rgba(255,255,255,0.08);
           color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
         }
         @media (max-width: 959px) {
