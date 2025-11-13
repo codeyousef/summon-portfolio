@@ -122,7 +122,7 @@ fun AppHeader(
                 onClick = { menuOpenState.value = !menuOpenState.value },
                 label = toggleLabel,
                 modifier = Modifier()
-                    .attribute("class", "app-header__toggle")
+                    .className("app-header__toggle")
                     .attribute("aria-controls", "app-header-nav app-header-actions")
                     .attribute("aria-expanded", if (menuOpenState.value) "true" else "false")
                     .attribute("aria-label", toggleLabel),
