@@ -405,58 +405,53 @@ private fun ProjectsDropdown(
     summonUrl: String,
     baseNavModifier: Modifier
 ) {
-    val dropdownOpenState = rememberMutableStateOf(false)
-    
     Box(
         modifier = Modifier()
             .position(Position.Relative)
             .attribute("class", "projects-dropdown")
-            .attribute("data-dropdown-open", if (dropdownOpenState.value) "true" else "false")
     ) {
-        Button(
-            onClick = { dropdownOpenState.value = !dropdownOpenState.value },
-            label = projectsLabel.resolve(locale),
+        Box(
             modifier = baseNavModifier
                 .attribute("class", "projects-dropdown__trigger")
-                .attribute("aria-expanded", if (dropdownOpenState.value) "true" else "false")
-                .attribute("aria-haspopup", "true"),
-            variant = ButtonVariant.SECONDARY,
-            disabled = false
-        )
+                .attribute("tabindex", "0")
+                .cursor(Cursor.Pointer)
+        ) {
+            Text(projectsLabel.resolve(locale))
+        }
         
-        if (dropdownOpenState.value) {
-            Column(
+        Column(
+            modifier = Modifier()
+                .position(Position.Absolute)
+                .top(("calc(100% + 8px)"))
+                .positionInset(left = "0")
+                .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.lg)
+                .boxShadow("0 12px 40px rgba(0,0,0,0.45)")
+                .padding(PortfolioTheme.Spacing.xs)
+                .minWidth("160px")
+                .zIndex(100)
+                .opacity(0F)
+                .pointerEvents(PointerEvents.None)
+                .attribute("class", "projects-dropdown__menu")
+        ) {
+            navLink(
+                label = summonProjectLabel.resolve(locale),
+                href = summonUrl,
                 modifier = Modifier()
-                    .position(Position.Absolute)
-                    .top(("calc(100% + 8px)"))
-                    .positionInset(left = "0")
-                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .borderRadius(PortfolioTheme.Radii.lg)
-                    .boxShadow("0 12px 40px rgba(0,0,0,0.45)")
-                    .padding(PortfolioTheme.Spacing.xs)
-                    .minWidth("160px")
-                    .zIndex(100)
-                    .attribute("class", "projects-dropdown__menu")
-            ) {
-                navLink(
-                    label = summonProjectLabel.resolve(locale),
-                    href = summonUrl,
-                    modifier = Modifier()
-                        .textDecoration(TextDecoration.None)
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .fontSize(0.85.rem)
-                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
-                        .borderRadius(PortfolioTheme.Radii.md)
-                        .display(Display.Block)
-                        .width(100.percent)
-                        .attribute("class", "projects-dropdown__item"),
-                    dataAttributes = mapOf("nav" to "summon"),
-                    navigationMode = LinkNavigationMode.Native
-                )
-            }
+                    .textDecoration(TextDecoration.None)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .fontSize(0.85.rem)
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                    .borderRadius(PortfolioTheme.Radii.md)
+                    .display(Display.Block)
+                    .width(100.percent)
+                    .attribute("class", "projects-dropdown__item"),
+                dataAttributes = mapOf("nav" to "summon"),
+                navigationMode = LinkNavigationMode.Native
+            )
         }
     }
 }
@@ -608,10 +603,18 @@ private fun AppHeaderStyles() {
             justify-content: center;
           }
         }
-        .projects-dropdown__trigger {
-          background: transparent;
-          border: none;
-          cursor: pointer;
+        .projects-dropdown {
+          position: relative;
+        }
+        .projects-dropdown__menu {
+          transition: opacity ${PortfolioTheme.Motion.DEFAULT}, transform ${PortfolioTheme.Motion.DEFAULT};
+          transform: translateY(-8px);
+        }
+        .projects-dropdown:hover .projects-dropdown__menu,
+        .projects-dropdown:focus-within .projects-dropdown__menu {
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          transform: translateY(0);
         }
         .projects-dropdown__item {
           text-align: left;
@@ -629,6 +632,9 @@ private fun AppHeaderStyles() {
             border: none !important;
             padding: 0 !important;
             margin-top: ${PortfolioTheme.Spacing.xs};
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: none !important;
           }
           .projects-dropdown__item {
             padding: ${PortfolioTheme.Spacing.sm} 0 !important;
