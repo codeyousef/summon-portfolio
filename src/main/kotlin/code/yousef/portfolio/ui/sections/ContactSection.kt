@@ -5,9 +5,11 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.summon.annotation.Composable
+import code.yousef.summon.components.display.Label
 import code.yousef.summon.components.display.Paragraph
 import code.yousef.summon.components.display.Text
 import code.yousef.summon.components.forms.*
+import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
 import code.yousef.summon.components.layout.Row
 import code.yousef.summon.components.styles.GlobalStyle
@@ -20,6 +22,7 @@ import code.yousef.summon.modifier.LayoutModifiers.flexWrap
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
 import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import code.yousef.summon.runtime.LocalPlatformRenderer
 
 @Composable
 fun ContactSection(
@@ -132,11 +135,10 @@ private fun ContactForm(
             required = false,
             fullWidth = true
         )
-        FormTextArea(
+        CustomTextArea(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
             required = true,
-            placeholder = null,
             minHeight = "180px",
             optionalLabel = optionalLabel,
             fullWidth = true
@@ -193,4 +195,78 @@ private fun ContactFormStyles() {
         }
         """.trimIndent()
     )
+}
+
+@Composable
+private fun CustomTextArea(
+    name: String,
+    label: String,
+    required: Boolean = false,
+    optionalLabel: String? = "Optional",
+    minHeight: String = "160px",
+    fullWidth: Boolean = true
+) {
+    val fieldId = "field-$name"
+    val renderer = LocalPlatformRenderer.current
+    
+    Column(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
+            .gap("8px")
+            .gridColumn("1 / -1")
+            .let { if (fullWidth) it.width(100.percent) else it }
+    ) {
+        // Label
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .justifyContent(JustifyContent.SpaceBetween)
+                .alignItems(AlignItems.Center)
+        ) {
+            Label(
+                text = label,
+                forElement = fieldId,
+                modifier = Modifier()
+                    .fontWeight(600)
+                    .fontSize(0.9.rem)
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+            if (!required && optionalLabel != null) {
+                Text(
+                    text = optionalLabel,
+                    modifier = Modifier()
+                        .fontSize(0.8.rem)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                )
+            }
+        }
+        
+        // Textarea
+        Box(
+            modifier = Modifier()
+                .width(100.percent)
+        ) {
+            renderer.renderTextArea(
+                value = "",
+                onValueChange = {},
+                modifier = Modifier()
+                    .id(fieldId)
+                    .attribute("name", name)
+                    .let { if (required) it.attribute("required", "required") else it }
+                    .width(100.percent)
+                    .minHeight(minHeight)
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(PortfolioTheme.Colors.BORDER)
+                    .borderRadius(PortfolioTheme.Radii.md)
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    .fontSize(0.95.rem)
+                    .fontFamily("inherit")
+                    .lineHeight("1.5")
+            )
+        }
+    }
 }
