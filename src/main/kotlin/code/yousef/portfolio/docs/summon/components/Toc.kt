@@ -15,6 +15,7 @@ import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.top
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.textDecoration
 import code.yousef.summon.extensions.px
 
 @Composable
@@ -69,7 +70,13 @@ private fun DocsTocLink(entry: TocEntry) {
             modifier = Modifier()
                 .display(Display.Block)
                 .padding(PortfolioTheme.Spacing.xs)
-                .color(PortfolioTheme.Colors.TEXT_PRIMARY),
+                .textDecoration(TextDecoration.None)
+                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                .cursor(Cursor.Pointer)
+                .hover(
+                    Modifier()
+                        .color(PortfolioTheme.Colors.ACCENT)
+                ),
             navigationMode = LinkNavigationMode.Native,
             dataAttributes = mapOf("toc-entry" to entry.anchor),
             target = null,

@@ -14,6 +14,7 @@ import code.yousef.summon.modifier.LayoutModifiers.flexDirection
 import code.yousef.summon.modifier.LayoutModifiers.gap
 import code.yousef.summon.modifier.LayoutModifiers.top
 import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.summon.modifier.StylingModifiers.textDecoration
 
 @Composable
 fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
@@ -74,11 +75,16 @@ private fun DocsSidebarLink(
         .display(Display.Block)
         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
         .borderRadius(PortfolioTheme.Radii.md)
+        .textDecoration(TextDecoration.None)
         .color(
             if (active) PortfolioTheme.Colors.ACCENT_ALT else PortfolioTheme.Colors.TEXT_PRIMARY
         )
         .backgroundColor(
             if (active) PortfolioTheme.Colors.SURFACE_STRONG else "transparent"
+        )
+        .hover(
+            Modifier()
+                .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
         )
     AnchorLink(
         label = label,
