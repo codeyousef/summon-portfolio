@@ -408,14 +408,13 @@ private fun ProjectsDropdown(
     Box(
         modifier = Modifier()
             .position(Position.Relative)
-            .attribute("class", "projects-dropdown")
+            .className("projects-dropdown")
     ) {
         Box(
             modifier = baseNavModifier
-                .attribute("class", "projects-dropdown__trigger")
-                .attribute("tabindex", "0")
                 .cursor(Cursor.Pointer)
                 .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                .className("projects-dropdown__trigger")
         ) {
             Text(projectsLabel.resolve(locale))
         }
@@ -436,7 +435,7 @@ private fun ProjectsDropdown(
                 .zIndex(100)
                 .opacity(0F)
                 .pointerEvents(PointerEvents.None)
-                .attribute("class", "projects-dropdown__menu")
+                .className("projects-dropdown__menu")
         ) {
             navLink(
                 label = summonProjectLabel.resolve(locale),
@@ -449,7 +448,11 @@ private fun ProjectsDropdown(
                     .borderRadius(PortfolioTheme.Radii.md)
                     .display(Display.Block)
                     .width(100.percent)
-                    .attribute("class", "projects-dropdown__item"),
+                    .hover(
+                        Modifier()
+                            .backgroundColor("rgba(255,255,255,0.08)")
+                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    ),
                 dataAttributes = mapOf("nav" to "summon"),
                 navigationMode = LinkNavigationMode.Native
             )
@@ -604,50 +607,10 @@ private fun AppHeaderStyles() {
             justify-content: center;
           }
         }
-        .projects-dropdown {
-          position: relative;
-        }
-        .projects-dropdown__trigger {
-          position: relative;
-        }
-        .projects-dropdown__menu {
-          transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
-          transform: translateY(-4px);
-          visibility: hidden;
-        }
         .projects-dropdown:hover .projects-dropdown__menu,
         .projects-dropdown__menu:hover {
           opacity: 1 !important;
           pointer-events: auto !important;
-          transform: translateY(0);
-          visibility: visible;
-          transition-delay: 0s;
-        }
-        .projects-dropdown__item {
-          text-align: left;
-          transition: background 0.2s ease, color 0.2s ease;
-          white-space: nowrap;
-        }
-        .projects-dropdown__item:hover {
-          background: rgba(255,255,255,0.08);
-          color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-        }
-        @media (max-width: 959px) {
-          .projects-dropdown__menu {
-            position: static !important;
-            box-shadow: none !important;
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            margin-top: ${PortfolioTheme.Spacing.xs};
-            opacity: 1 !important;
-            pointer-events: auto !important;
-            transform: none !important;
-          }
-          .projects-dropdown__item {
-            padding: ${PortfolioTheme.Spacing.sm} 0 !important;
-            border-bottom: 1px solid ${PortfolioTheme.Colors.BORDER};
-          }
         }
         """.trimIndent()
     )
