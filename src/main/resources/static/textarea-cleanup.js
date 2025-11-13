@@ -20,6 +20,26 @@
         textarea.innerHTML = '';
         textarea.textContent = '';
       }
+      
+      // Check parent and siblings for comment text nodes or elements
+      var parent = textarea.parentElement;
+      if (parent) {
+        // Remove text nodes with the comment
+        var nodes = Array.from(parent.childNodes);
+        nodes.forEach(function(node) {
+          if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.COMMENT_NODE) {
+            var text = node.textContent || '';
+            if (text.indexOf('onValueChange') > -1 || text.indexOf('<!--') > -1) {
+              node.parentNode.removeChild(node);
+            }
+          } else if (node.nodeType === Node.ELEMENT_NODE && node !== textarea) {
+            var elemText = node.textContent || '';
+            if (elemText.indexOf('onValueChange') > -1 && elemText.length < 100) {
+              node.style.display = 'none';
+            }
+          }
+        });
+      }
     });
   }
   
@@ -35,6 +55,7 @@
   setTimeout(cleanTextAreas, 300);
   setTimeout(cleanTextAreas, 500);
   setTimeout(cleanTextAreas, 1000);
+  setTimeout(cleanTextAreas, 2000);
   
   // Also observe for changes
   var observer = new MutationObserver(cleanTextAreas);
