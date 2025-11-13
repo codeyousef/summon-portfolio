@@ -7,6 +7,7 @@ import code.yousef.summon.components.foundation.Canvas
 import code.yousef.summon.components.foundation.ScriptTag
 import code.yousef.summon.components.layout.Box
 import code.yousef.summon.components.layout.Column
+import code.yousef.summon.components.styles.GlobalStyle
 import code.yousef.summon.extensions.percent
 import code.yousef.summon.extensions.px
 import code.yousef.summon.modifier.*
@@ -22,6 +23,7 @@ fun PageScaffold(
     content: () -> Unit
 ) {
     InjectFontAssets()
+    VisitedLinkStyles()
 
     val scaffoldModifier = modifier
         .minHeight("100vh")
@@ -138,5 +140,16 @@ private fun WebGlScript() {
         id = "aurora-gl-script",
         src = "/static/aurora-bg.js",
         defer = true
+    )
+}
+
+@Composable
+private fun VisitedLinkStyles() {
+    GlobalStyle(
+        """
+        a:visited {
+          color: currentColor;
+        }
+        """.trimIndent()
     )
 }
