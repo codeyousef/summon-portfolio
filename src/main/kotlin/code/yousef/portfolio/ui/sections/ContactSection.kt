@@ -135,10 +135,15 @@ private fun ContactForm(
             required = false,
             fullWidth = true
         )
-        CustomTextArea(
+        // NOTE: TextArea shows "<!-- onValueChange handler needed (JS) -->" during SSR
+        // This is a Summon framework bug. The cleanup script in textarea-cleanup.js
+        // attempts to remove it after page load, but the framework may re-inject it.
+        // The proper fix must be in the Summon framework itself - see summon-update.md #2
+        FormTextArea(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
             required = true,
+            placeholder = null,
             minHeight = "180px",
             optionalLabel = optionalLabel,
             fullWidth = true
@@ -197,76 +202,4 @@ private fun ContactFormStyles() {
     )
 }
 
-@Composable
-private fun CustomTextArea(
-    name: String,
-    label: String,
-    required: Boolean = false,
-    optionalLabel: String? = "Optional",
-    minHeight: String = "160px",
-    fullWidth: Boolean = true
-) {
-    val fieldId = "field-$name"
-    val renderer = LocalPlatformRenderer.current
-    
-    Column(
-        modifier = Modifier()
-            .display(Display.Flex)
-            .flexDirection(FlexDirection.Column)
-            .gap("8px")
-            .gridColumn("1 / -1")
-            .let { if (fullWidth) it.width(100.percent) else it }
-    ) {
-        // Label
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .justifyContent(JustifyContent.SpaceBetween)
-                .alignItems(AlignItems.Center)
-        ) {
-            Label(
-                text = label,
-                forElement = fieldId,
-                modifier = Modifier()
-                    .fontWeight(600)
-                    .fontSize(0.9.rem)
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
-            if (!required && optionalLabel != null) {
-                Text(
-                    text = optionalLabel,
-                    modifier = Modifier()
-                        .fontSize(0.8.rem)
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                )
-            }
-        }
-        
-        // Textarea
-        Box(
-            modifier = Modifier()
-                .width(100.percent)
-        ) {
-            renderer.renderTextArea(
-                value = "",
-                onValueChange = {},
-                modifier = Modifier()
-                    .id(fieldId)
-                    .attribute("name", name)
-                    .let { if (required) it.attribute("required", "required") else it }
-                    .width(100.percent)
-                    .minHeight(minHeight)
-                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
-                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .borderRadius(PortfolioTheme.Radii.md)
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .fontSize(0.95.rem)
-                    .fontFamily("inherit")
-                    .lineHeight("1.5")
-            )
-        }
-    }
-}
+
