@@ -90,41 +90,22 @@ fun Application.configureRouting(
             }
             .forEach { (hostName, port) ->
                 val mountDocsForHost: Route.() -> Unit = {
-                    get("/") {
-                        val page = summonLandingRenderer.landingPage()
-                        call.respondSummonPage(page)
-                    }
                     get("/health") {
                         call.respondHealth(bootInstant)
                     }
                     get("/healthz") {
                         call.respondHealthz(appConfig, bootInstant)
                     }
-                    route("/docs") {
-                        docsRoutes(
-                            docsService = docsService,
-                            markdownRenderer = markdownRenderer,
-                            linkRewriter = linkRewriter,
-                            docsRouter = docsRouter,
-                            webhookHandler = webhookHandler,
-                            config = docsConfig,
-                            docsCatalog = docsCatalog,
-                            pathResolver = { call ->
-                                val raw = call.request.path().removePrefix("/docs").ifBlank { "/" }
-                                if (raw.startsWith("/")) raw else "/$raw"
-                            },
-                            registerInfrastructure = false
-                        )
-                    }
-                    get("/api-reference") {
-                        call.respondRedirect("/docs/api-reference")
-                    }
-                    get("/api-reference/{remaining...}") {
-                        val remainder = call.parameters.getAll("remaining")?.joinToString("/") ?: ""
-                        val target =
-                            if (remainder.isBlank()) "/docs/api-reference" else "/docs/api-reference/$remainder"
-                        call.respondRedirect(target)
-                    }
+                    docsRoutes(
+                        docsService = docsService,
+                        markdownRenderer = markdownRenderer,
+                        linkRewriter = linkRewriter,
+                        docsRouter = docsRouter,
+                        webhookHandler = webhookHandler,
+                        config = docsConfig,
+                        docsCatalog = docsCatalog,
+                        registerInfrastructure = false
+                    )
                 }
                 if (port != null) {
                     host(hostName, port) {
