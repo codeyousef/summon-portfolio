@@ -542,8 +542,8 @@ private fun AppHeaderStyles() {
           .app-header__brand {
             flex: 0 1 auto;
           }
-          .app-header__brand .app-header__toggle {
-            display: none;
+          .app-header__toggle {
+            display: none !important;
           }
           .app-header__nav-wrapper,
           .app-header__actions-wrapper {
