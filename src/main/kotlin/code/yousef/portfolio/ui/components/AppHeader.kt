@@ -413,7 +413,6 @@ private fun ProjectsDropdown(
         Box(
             modifier = baseNavModifier
                 .cursor(Cursor.Pointer)
-                .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
                 .className("projects-dropdown__trigger")
         ) {
             Text(projectsLabel.resolve(locale))
@@ -428,10 +427,10 @@ private fun ProjectsDropdown(
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
                 .borderColor(PortfolioTheme.Colors.BORDER)
-                .borderRadius(PortfolioTheme.Radii.lg)
-                .boxShadow("0 12px 40px rgba(0,0,0,0.45)")
-                .padding(PortfolioTheme.Spacing.xs)
-                .minWidth("160px")
+                .borderRadius("0px")
+                .boxShadow("0 4px 12px rgba(0,0,0,0.3)")
+                .padding("0px")
+                .minWidth("140px")
                 .zIndex(100)
                 .opacity(0F)
                 .pointerEvents(PointerEvents.None)
@@ -444,8 +443,8 @@ private fun ProjectsDropdown(
                     .textDecoration(TextDecoration.None)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(0.85.rem)
+                    .letterSpacing(0.08.rem)
                     .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
-                    .borderRadius(PortfolioTheme.Radii.md)
                     .display(Display.Block)
                     .width(100.percent)
                     .hover(
