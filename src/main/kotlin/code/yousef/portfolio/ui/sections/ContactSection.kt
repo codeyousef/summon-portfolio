@@ -183,6 +183,11 @@ private object ContactCopy {
 private fun ContactFormStyles() {
     GlobalStyle(
         """
+        textarea {
+          font-family: inherit;
+          font-size: inherit;
+          line-height: 1.5;
+        }
         textarea::placeholder {
           opacity: 0.6;
         }
