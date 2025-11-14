@@ -165,10 +165,13 @@ fun AppHeader(
                     )
                 }
                 Dropdown(
-                    trigger = {
-                        Text(
-                            text = projectsLabel.resolve(locale),
-                            modifier = baseNavModifier.cursor(Cursor.Pointer)
+                    trigger = { toggle ->
+                        Button(
+                            onClick = { toggle() },
+                            label = projectsLabel.resolve(locale),
+                            modifier = baseNavModifier,
+                            variant = ButtonVariant.SECONDARY,
+                            disabled = false
                         )
                     },
                     triggerBehavior = DropdownTriggerBehavior.BOTH

@@ -15,7 +15,7 @@ enum class DropdownTriggerBehavior { HOVER, CLICK, BOTH }
 
 @Composable
 fun Dropdown(
-    trigger: () -> Unit,
+    trigger: (toggle: () -> Unit) -> Unit,
     modifier: Modifier = Modifier(),
     triggerBehavior: DropdownTriggerBehavior = DropdownTriggerBehavior.CLICK,
     content: () -> Unit
@@ -26,12 +26,14 @@ fun Dropdown(
     Box(
         modifier = modifier
             .position(Position.Relative)
+            .let { m -> if (withHover) m.onMouseEnter { open.value = true }.onMouseLeave { open.value = false } else m }
     ) {
+        val toggle = { open.value = !open.value }
         Box(
             modifier = Modifier()
                 .cursor(Cursor.Pointer)
-                .onClick { open.value = !open.value }
-        ) { trigger() }
+                .let { m -> if (withClick) m.onClick { toggle() } else m }
+        ) { trigger(toggle) }
         if (open.value) {
             Box(
                 modifier = Modifier()
