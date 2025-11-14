@@ -164,12 +164,49 @@ fun AppHeader(
                         navigationMode = linkMode
                     )
                 }
-                ProjectsDropdown(
-                    locale = locale,
-                    baseModifier = baseNavModifier,
-                    docsHref = docsHref,
-                    projectsNavigationMode = linkMode
-                )
+                Dropdown(
+                    trigger = {
+                        Text(
+                            text = projectsLabel.resolve(locale),
+                            modifier = baseNavModifier.cursor(Cursor.Pointer)
+                        )
+                    },
+                    triggerBehavior = DropdownTriggerBehavior.BOTH
+                ) {
+                    AnchorLink(
+                        label = LocalizedText("Portfolio Projects", "المشاريع").resolve(locale),
+                        href = NavTarget.Page("/projects").href(locale),
+                        modifier = baseNavModifier
+                            .display(Display.Block)
+                            .whiteSpace(WhiteSpace.NoWrap),
+                        navigationMode = linkMode,
+                        dataAttributes = mapOf("nav" to "projects-portfolio"),
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null
+                    )
+                    DropdownDivider()
+                    AnchorLink(
+                        label = LocalizedText("Summon", "Summon").resolve(locale),
+                        href = docsHref,
+                        modifier = baseNavModifier
+                            .display(Display.Block)
+                            .whiteSpace(WhiteSpace.NoWrap),
+                        navigationMode = LinkNavigationMode.Native,
+                        dataAttributes = mapOf("nav" to "projects-summon"),
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null
+                    )
+                }
             }
         }
 
@@ -394,17 +431,6 @@ private fun ProjectsDropdown(
             Box(
                 modifier = Modifier()
                     .position(Position.Absolute)
-                    .top(36.px)
-                    .positionInset(left = "0")
-                    .display(Display.Flex)
-                    .flexDirection(FlexDirection.Column)
-                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .borderRadius(PortfolioTheme.Radii.md)
-                    .padding(PortfolioTheme.Spacing.xs)
-                    .zIndex(100)
             ) {
                 AnchorLink(
                     label = LocalizedText("Portfolio Projects", "المشاريع").resolve(locale),
