@@ -87,6 +87,7 @@ class PortfolioRenderer(
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)
         head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+        head.script("/static/textarea-cleanup.js", "application/javascript", "textarea-cleanup", true, false, null)
     }
 
     private fun canonicalUrl(locale: PortfolioLocale): String =

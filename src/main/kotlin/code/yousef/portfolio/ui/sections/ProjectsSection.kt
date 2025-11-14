@@ -190,7 +190,7 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
         }
         if (description.hasSummonLink) {
             RichText(
-                "<p>${description.value}</p>",
+                "<p>${description.html}</p>",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.7)

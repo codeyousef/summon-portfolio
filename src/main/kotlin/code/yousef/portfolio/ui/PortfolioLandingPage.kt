@@ -115,7 +115,7 @@ fun PortfolioLandingPage(
             locale = locale,
             modifier = Modifier().id("blog")
         )
-        CaseStudySection(locale)
+        CaseStudySection(projects = content.projects, locale = locale)
         ProcessSection(locale)
         TestimonialSection(locale)
         ContactCtaSection(locale)
@@ -334,7 +334,7 @@ private fun FeaturedProjectSection(locale: PortfolioLocale, projectName: String)
 }
 
 @Composable
-private fun CaseStudySection(locale: PortfolioLocale) {
+private fun CaseStudySection(projects: List<code.yousef.portfolio.content.model.Project>, locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("projects")) {
         SectionHeading(
             locale = locale,
@@ -347,7 +347,7 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                 .gridTemplateColumns("repeat(auto-fit, minmax(260px, 1fr))")
                 .gap(PortfolioTheme.Spacing.md)
         ) {
-            caseStudies.forEach { study ->
+            projects.sortedBy { it.order }.forEach { project ->
                 Column(
                     modifier = Modifier()
                         .borderWidth(1)
@@ -375,7 +375,7 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                             .justifyContent(JustifyContent.Center)
                     ) {
                         Text(
-                            text = study.client.take(16),
+                            text = project.layerLabel.resolve(locale),
                             modifier = Modifier()
                                 .fontWeight(700)
                                 .color("#ffffff")
@@ -383,16 +383,16 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                         )
                     }
                     Text(
-                        text = "${study.client} · ${study.industry.resolve(locale)}",
+                        text = "${project.title.resolve(locale)} · ${project.category.label.resolve(locale)}",
                         modifier = Modifier().fontWeight(700)
                     )
                     Paragraph(
-                        text = study.summary.resolve(locale),
+                        text = project.description.resolve(locale),
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     )
                     RichText(
-                        "<p>${study.highlight.resolveWithSummonLink(locale)}</p>",
+                        "<p>${project.layerName.resolveWithSummonLink(locale)}</p>",
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                             .fontWeight(600)
@@ -401,30 +401,19 @@ private fun CaseStudySection(locale: PortfolioLocale) {
                         modifier = Modifier()
                             .display(Display.Flex)
                             .gap(PortfolioTheme.Spacing.sm)
+                            .flexWrap(FlexWrap.Wrap)
                     ) {
-                        Column {
+                        project.technologies.forEach { tech ->
                             Text(
-                                text = study.statLabel.resolve(locale),
-                                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            )
-                            Text(text = study.statValue, modifier = Modifier().fontWeight(700))
-                        }
-                            ButtonLink(
-                                label = LocalizedText("View details", "عرض التفاصيل").resolve(locale),
-                                href = "#contact",
+                                text = tech,
                                 modifier = Modifier()
-                                    .textDecoration(TextDecoration.None)
-                                    .color(PortfolioTheme.Colors.ACCENT_ALT),
-                            navigationMode = LinkNavigationMode.Client,
-                            dataAttributes = mapOf("case-study" to study.client.lowercase()),
-                            target = null,
-                            rel = null,
-                            title = null,
-                            id = null,
-                            ariaLabel = null,
-                            ariaDescribedBy = null,
-                            dataHref = null
-                        )
+                                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                                    .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
+                                    .borderRadius(PortfolioTheme.Radii.md)
+                                    .fontSize(0.85.rem)
+                                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            )
+                        }
                     }
                 }
             }
@@ -534,8 +523,8 @@ private fun TestimonialSection(locale: PortfolioLocale) {
                                 .color("#001a2c")
                         )
                     }
-                    Paragraph(
-                        text = testimonial.quote.resolveWithSummonLink(locale),
+                    RichText(
+                        "<p>${testimonial.quote.resolveWithSummonLink(locale)}</p>",
                         modifier = Modifier()
                             .fontSize(1.1.rem)
                             .lineHeight(1.5)
@@ -721,59 +710,6 @@ private val buildCapabilities = listOf(
     )
 )
 
-private data class CaseStudy(
-    val client: String,
-    val industry: LocalizedText,
-    val summary: LocalizedText,
-    val highlight: LocalizedText,
-    val statLabel: LocalizedText,
-    val statValue: String
-)
-
-private val caseStudies = listOf(
-    CaseStudy(
-        client = "Futura Labs",
-        industry = LocalizedText("AI SaaS", "حلول ذكاء اصطناعي"),
-        summary = LocalizedText(
-            en = "Designed a multilingual marketing site and onboarding flow that loads in under a second worldwide.",
-            ar = "صممت موقعًا تسويقيًا متعدد اللغات ومسار ترحيب يقل زمن تحميله عن ثانية في كل مكان."
-        ),
-        highlight = LocalizedText(
-            en = "%SUMMON% SSR + edge caching",
-            ar = "%SUMMON% مع SSR وتخزين عند الحافة"
-        ),
-        statLabel = LocalizedText("Faster load", "تحمّل أسرع"),
-        statValue = "-42%"
-    ),
-    CaseStudy(
-        client = "Redline Mobility",
-        industry = LocalizedText("Transportation", "النقل"),
-        summary = LocalizedText(
-            en = "Unified their booking dashboard across desktop, tablet, and in-vehicle displays using one Kotlin codebase.",
-            ar = "وحّدت لوحة الحجز عبر سطح المكتب والأجهزة اللوحية وشاشات المركبات باستخدام قاعدة كود Kotlin واحدة."
-        ),
-        highlight = LocalizedText(
-            en = "Compose + %SUMMON% UI kit",
-            ar = "واجهة Compose مع حزمة واجهات %SUMMON%"
-        ),
-        statLabel = LocalizedText("Ops saved", "ساعات موفَّرة"),
-        statValue = "60 hrs/mo"
-    ),
-    CaseStudy(
-        client = "Northwind Commerce",
-        industry = LocalizedText("Retail", "التجزئة"),
-        summary = LocalizedText(
-            en = "Built a secure admin portal with live metrics, dark mode, and localized Arabic content for GCC teams.",
-            ar = "بنيت بوابة إدارية آمنة ببيانات مباشرة ووضع داكن ومحتوى عربي لفِرق الخليج."
-        ),
-        highlight = LocalizedText(
-            en = "%SUMMON% modifiers + hydration",
-            ar = "معدلّات %SUMMON% مع Hydration"
-        ),
-        statLabel = LocalizedText("Bug rate", "نسبة الأخطاء"),
-        statValue = "-35%"
-    )
-)
 
 private data class Reason(val emoji: String, val title: LocalizedText, val description: LocalizedText)
 

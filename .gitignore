@@ -47,6 +47,8 @@ storage/admin-credentials.json
 
 ### Old Portfolio (Next.js) ###
 old-portfolio/*
+/docs/private/*
+!/docs/private/summon-docs/
 /docs/private/summon-docs/*
-/docs/private/
+!/docs/private/summon-docs/accessibility-and-seo.md
 /AGENTS.md
