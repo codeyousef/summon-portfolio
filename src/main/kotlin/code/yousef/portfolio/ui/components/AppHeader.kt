@@ -112,8 +112,9 @@ fun AppHeader(
             val toggleLabel = if (menuOpenState.value) toggleCloseLabel else toggleOpenLabel
             Button(
                 onClick = { menuOpenState.value = !menuOpenState.value },
-                label = toggleLabel,
-                modifier = Modifier(),
+                label = "\u2630", // hamburger icon
+                modifier = Modifier()
+                    .display(Display.None),
                 variant = ButtonVariant.SECONDARY,
                 disabled = false
             )
@@ -138,6 +139,7 @@ fun AppHeader(
                     .flex(grow = 1, shrink = 1, basis = "360px")
                     .flexWrap(FlexWrap.Wrap)
                     .id("app-header-nav")
+
             ) {
                 val baseNavModifier = Modifier()
                     .textDecoration(TextDecoration.None)
@@ -171,12 +173,11 @@ fun AppHeader(
                         navigationMode = linkMode
                     )
                 }
-                navLink(
-                    label = projectsLabel.resolve(locale),
-                    href = docsHref,
-                    modifier = baseNavModifier,
-                    dataAttributes = mapOf("nav" to "projects"),
-                    navigationMode = LinkNavigationMode.Native
+                ProjectsDropdown(
+                    locale = locale,
+                    baseModifier = baseNavModifier,
+                    docsHref = docsHref,
+                    projectsNavigationMode = linkMode
                 )
             }
         }
@@ -194,6 +195,7 @@ fun AppHeader(
                     .justifyContent(JustifyContent.FlexEnd)
                     .flexWrap(FlexWrap.NoWrap)
                     .id("app-header-actions")
+
             ) {
             if (chrome.isAdminSession) {
                 val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
@@ -376,6 +378,78 @@ private fun navLink(
         dataAttributes = dataAttributes,
         navigationMode = navigationMode
     )
+}
+
+@Composable
+private fun ProjectsDropdown(
+    locale: PortfolioLocale,
+    baseModifier: Modifier,
+    docsHref: String,
+    projectsNavigationMode: LinkNavigationMode
+) {
+    val open = rememberMutableStateOf(false)
+    Box(
+        modifier = Modifier()
+            .position(Position.Relative)
+    ) {
+        Button(
+            onClick = { open.value = !open.value },
+            label = projectsLabel.resolve(locale),
+            modifier = baseModifier,
+            variant = ButtonVariant.SECONDARY,
+            disabled = false
+        )
+        if (open.value) {
+            Box(
+                modifier = Modifier()
+                    .position(Position.Absolute)
+                    .top(36.px)
+                    .positionInset(left = "0")
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(PortfolioTheme.Colors.BORDER)
+                    .borderRadius(PortfolioTheme.Radii.md)
+                    .padding(PortfolioTheme.Spacing.xs)
+                    .zIndex(100)
+            ) {
+                AnchorLink(
+                    label = LocalizedText("Portfolio Projects", "المشاريع").resolve(locale),
+                    href = NavTarget.Page("/projects").href(locale),
+                    modifier = baseModifier
+                        .display(Display.Block)
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("nav" to "projects-portfolio"),
+                    navigationMode = projectsNavigationMode
+                )
+                AnchorLink(
+                    label = LocalizedText("Summon", "Summon").resolve(locale),
+                    href = docsHref,
+                    modifier = baseModifier
+                        .display(Display.Block)
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("nav" to "projects-summon"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+            }
+        }
+    }
 }
 
 private fun resolveDocsHref(override: String?): String {
