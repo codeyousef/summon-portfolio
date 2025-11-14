@@ -23,14 +23,14 @@ suspend fun ApplicationCall.respondSummonPage(
         EnvironmentLinksRegistry.withLinks(links) {
             respondSummonHydrated(status) {
                 val renderer = getPlatformRenderer()
-                renderer.renderHeadElements(page.head)
                 val session = sessions.get<AdminSession>()
                 val chrome =
-                    session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) }
-                        ?: page.chrome
+                    session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
                 val provider = LocalPageChrome.provides(chrome)
                 provider.current
+                // Render body first, then head so specific metadata overwrites any defaults
                 page.content()
+                renderer.renderHeadElements(page.head)
             }
         }
     }
