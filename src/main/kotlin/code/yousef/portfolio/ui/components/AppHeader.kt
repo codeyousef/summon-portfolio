@@ -13,9 +13,7 @@ import codes.yousef.summon.components.input.Button
 import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.navigation.AnchorLink
-import codes.yousef.summon.components.navigation.ButtonLink
-import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.components.navigation.*
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -165,16 +163,16 @@ fun AppHeader(
                     )
                 }
                 Dropdown(
-                    trigger = { toggle ->
+                    trigger = {
                         Button(
-                            onClick = { toggle() },
                             label = projectsLabel.resolve(locale),
                             modifier = baseNavModifier,
                             variant = ButtonVariant.SECONDARY,
                             disabled = false
                         )
                     },
-                    triggerBehavior = DropdownTriggerBehavior.BOTH
+                    triggerBehavior = DropdownTrigger.BOTH,
+                    alignment = DropdownAlignment.LEFT
                 ) {
                     AnchorLink(
                         label = LocalizedText("Portfolio Projects", "المشاريع").resolve(locale),
