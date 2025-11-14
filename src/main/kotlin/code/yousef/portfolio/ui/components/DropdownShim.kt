@@ -47,7 +47,7 @@ fun Dropdown(
                     .borderColor(PortfolioTheme.Colors.BORDER)
                     .borderRadius(PortfolioTheme.Radii.md)
                     .padding(PortfolioTheme.Spacing.xs)
-                    .zIndex(100)
+                    .zIndex(1000)
             ) { content() }
         }
     }

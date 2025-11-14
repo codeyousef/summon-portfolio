@@ -47,7 +47,7 @@ fun PageScaffold(
         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
         .fontFamily(PortfolioTheme.Typography.FONT_SANS)
         .position(Position.Relative)
-        .overflow(Overflow.Hidden)
+        .overflow(Overflow.Visible)
 
 
     Box(modifier = scaffoldModifier) {
