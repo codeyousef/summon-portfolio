@@ -132,7 +132,7 @@ fun AppHeader(
                 val baseNavModifier = Modifier()
                     .textDecoration(TextDecoration.None)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                    .visited { color(PortfolioTheme.Colors.TEXT_SECONDARY) }
+                    .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
                     .fontSize(0.85.rem)
                     .letterSpacing(0.08.rem)
                     .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)

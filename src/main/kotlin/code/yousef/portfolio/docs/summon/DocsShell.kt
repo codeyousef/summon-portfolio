@@ -97,7 +97,8 @@ private fun DocsNeighborLink(label: String, href: String, slot: String) {
         href = safeHref(href),
         modifier = Modifier()
             .fontWeight(600)
-            .color(PortfolioTheme.Colors.TEXT_PRIMARY),
+            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            .visited(Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)),
         navigationMode = LinkNavigationMode.Native,
         dataAttributes = mapOf("neighbor" to slot),
         target = null,

@@ -69,7 +69,8 @@ private fun DocsTocLink(entry: TocEntry) {
             modifier = Modifier()
                 .display(Display.Block)
                 .padding(PortfolioTheme.Spacing.xs)
-                .color(PortfolioTheme.Colors.TEXT_PRIMARY),
+                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                .visited(Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)),
             navigationMode = LinkNavigationMode.Native,
             dataAttributes = mapOf("toc-entry" to entry.anchor),
             target = null,
