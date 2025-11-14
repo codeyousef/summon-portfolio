@@ -9,6 +9,8 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.input.Button
+import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
@@ -381,20 +383,12 @@ private fun ProjectsDropdown(
         modifier = Modifier()
             .position(Position.Relative)
     ) {
-        AnchorLink(
+        Button(
+            onClick = { open.value = !open.value },
             label = projectsLabel.resolve(locale),
-            href = "#projects-menu",
-            modifier = baseModifier
-                .cursor(Cursor.Pointer),
-            target = null,
-            rel = null,
-            title = null,
-            id = null,
-            ariaLabel = null,
-            ariaDescribedBy = null,
-            dataHref = null,
-            dataAttributes = mapOf("nav" to "projects"),
-            navigationMode = LinkNavigationMode.Native
+            modifier = baseModifier,
+            variant = ButtonVariant.SECONDARY,
+            disabled = false
         )
         if (open.value) {
             Box(

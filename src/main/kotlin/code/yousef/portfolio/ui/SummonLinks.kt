@@ -18,7 +18,7 @@ fun summonInlineAnchor(
 ): String {
     val href = summonMarketingUrl()
     val safeLabel = htmlEscape(label.resolve(locale))
-    return "<a href=\"$href\">$safeLabel</a>"
+    return "<a href=\"$href\" style=\"color: inherit; text-decoration: underline;\">$safeLabel</a>"
 }
 
 fun LocalizedText.resolveSummonInline(locale: PortfolioLocale): SummonInlineText {
