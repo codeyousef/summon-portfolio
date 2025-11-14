@@ -82,12 +82,15 @@ class BlogRenderer(
         val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef"
         val description = post?.excerpt?.resolve(locale) ?: "The requested article could not be located."
         head.title(title)
+        // Standard description
         head.meta("description", null, description, null, null)
+        // OpenGraph
         head.meta(null, "og:title", title, null, null)
         head.meta(null, "og:description", description, null, null)
         head.meta(null, "og:type", if (post != null) "article" else "website", null, null)
         head.meta(null, "og:url", canonical, null, null)
         head.meta(null, "og:locale", locale.code, null, null)
+        // Twitter
         head.meta("twitter:card", null, "summary_large_image", null, null)
         head.meta("twitter:title", null, title, null, null)
         head.meta("twitter:description", null, description, null, null)

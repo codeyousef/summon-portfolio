@@ -21,14 +21,17 @@ class SummonLandingRenderer {
         val description =
             "Summon is a Kotlin Multiplatform frontend framework for shipping high-performance interfaces across web, mobile, and desktop."
         head.title(title)
-        head.meta(null, description, "description", null, null)
-        head.meta("og:title", title, null, null, null)
-        head.meta("og:description", description, null, null, null)
-        head.meta("og:type", "website", null, null, null)
-        head.meta("og:url", marketingUrl, null, null, null)
-        head.meta(null, "summary_large_image", "twitter:card", null, null)
-        head.meta(null, title, "twitter:title", null, null)
-        head.meta(null, description, "twitter:description", null, null)
+        // Standard description
+        head.meta("description", null, description, null, null)
+        // OpenGraph
+        head.meta(null, "og:title", title, null, null)
+        head.meta(null, "og:description", description, null, null)
+        head.meta(null, "og:type", "website", null, null)
+        head.meta(null, "og:url", marketingUrl, null, null)
+        // Twitter
+        head.meta("twitter:card", null, "summary_large_image", null, null)
+        head.meta("twitter:title", null, title, null, null)
+        head.meta("twitter:description", null, description, null, null)
         head.link("canonical", marketingUrl, null, null, null, null)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
     }
