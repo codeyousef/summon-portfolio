@@ -80,7 +80,7 @@ class DocsRouter(
         head.meta("twitter:title", title, null, null, null)
         head.meta("twitter:description", description, null, null, null)
         head.link("canonical", canonical, null, null, null, null)
-        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+        head.script(HYDRATION_SCRIPT_PATH, null, "application/javascript", false, true, null)
     }
 
     private fun resolveNavBase(origin: String): String {
