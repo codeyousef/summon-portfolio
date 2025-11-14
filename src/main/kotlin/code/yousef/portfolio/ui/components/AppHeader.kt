@@ -174,38 +174,20 @@ fun AppHeader(
                     triggerBehavior = DropdownTrigger.CLICK,
                     alignment = DropdownAlignment.LEFT
                 ) {
-                    AnchorLink(
+                    DropdownItem(
                         label = LocalizedText("Portfolio Projects", "المشاريع").resolve(locale),
                         href = NavTarget.Page("/projects").href(locale),
                         modifier = baseNavModifier
                             .display(Display.Block)
-                            .whiteSpace(WhiteSpace.NoWrap),
-                        navigationMode = linkMode,
-                        dataAttributes = mapOf("nav" to "projects-portfolio"),
-                        target = null,
-                        rel = null,
-                        title = null,
-                        id = null,
-                        ariaLabel = null,
-                        ariaDescribedBy = null,
-                        dataHref = null
+                            .whiteSpace(WhiteSpace.NoWrap)
                     )
                     DropdownDivider()
-                    AnchorLink(
+                    DropdownItem(
                         label = LocalizedText("Summon", "Summon").resolve(locale),
                         href = docsHref,
                         modifier = baseNavModifier
                             .display(Display.Block)
-                            .whiteSpace(WhiteSpace.NoWrap),
-                        navigationMode = LinkNavigationMode.Native,
-                        dataAttributes = mapOf("nav" to "projects-summon"),
-                        target = null,
-                        rel = null,
-                        title = null,
-                        id = null,
-                        ariaLabel = null,
-                        ariaDescribedBy = null,
-                        dataHref = null
+                            .whiteSpace(WhiteSpace.NoWrap)
                     )
                 }
             }

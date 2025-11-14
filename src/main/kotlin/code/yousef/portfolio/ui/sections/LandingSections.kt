@@ -423,8 +423,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 href = summonMarketingUrl(),
                 modifier = Modifier()
                     .textDecoration(TextDecoration.Underline)
-                    .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .visited(Modifier().color(PortfolioTheme.Colors.ACCENT_ALT)),
+                    .color(PortfolioTheme.Colors.ACCENT_ALT),
                 navigationMode = LinkNavigationMode.Native,
                 dataAttributes = mapOf("footer-link" to "summon"),
                 target = null,
