@@ -171,7 +171,7 @@ fun AppHeader(
                             disabled = false
                         )
                     },
-                    triggerBehavior = DropdownTrigger.BOTH,
+                    triggerBehavior = DropdownTrigger.CLICK,
                     alignment = DropdownAlignment.LEFT
                 ) {
                     AnchorLink(
