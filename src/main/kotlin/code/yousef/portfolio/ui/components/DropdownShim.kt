@@ -30,7 +30,7 @@ fun Dropdown(
         Box(
             modifier = Modifier()
                 .cursor(Cursor.Pointer)
-                .let { m -> if (withClick) m.onClick { open.value = !open.value } else m }
+                .onClick { open.value = !open.value }
         ) { trigger() }
         if (open.value) {
             Box(
