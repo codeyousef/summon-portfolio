@@ -45,29 +45,29 @@ class BlogRenderer(
         val canonical = blogCanonical(locale)
         head.title("Articles · Yousef")
         head.meta(
+            "description",
             null,
             "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
-            "description",
             null,
             null
         )
-        head.meta(null, "Articles · Yousef", "og:title", null, null)
+        head.meta(null, "og:title", "Articles · Yousef", null, null)
         head.meta(
+            null,
             "og:description",
             "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
             null,
-            null,
             null
         )
-        head.meta("og:type", "website", null, null, null)
-        head.meta(null, canonical, "og:url", null, null)
-        head.meta(null, locale.code, "og:locale", null, null)
-        head.meta("twitter:card", "summary_large_image", null, null, null)
-        head.meta("twitter:title", "Articles · Yousef Baitalmal", null, null, null)
+        head.meta(null, "og:type", "website", null, null)
+        head.meta(null, "og:url", canonical, null, null)
+        head.meta(null, "og:locale", locale.code, null, null)
+        head.meta("twitter:card", null, "summary_large_image", null, null)
+        head.meta("twitter:title", null, "Articles · Yousef Baitalmal", null, null)
         head.meta(
+            "twitter:description",
             null,
             "Summon-first engineering notes, release write-ups, and systems breakdowns.",
-            "twitter:description",
             null,
             null
         )
@@ -82,15 +82,15 @@ class BlogRenderer(
         val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef"
         val description = post?.excerpt?.resolve(locale) ?: "The requested article could not be located."
         head.title(title)
-        head.meta(null, description, "description", null, null)
-        head.meta("og:title", title, null, null, null)
-        head.meta("og:description", description, null, null, null)
-        head.meta("og:type", if (post != null) "article" else "website", null, null, null)
-        head.meta(null, canonical, "og:url", null, null)
-        head.meta(null, locale.code, "og:locale", null, null)
-        head.meta("twitter:card", "summary_large_image", null, null, null)
-        head.meta(null, title, "twitter:title", null, null)
-        head.meta(null, description, "twitter:description", null, null)
+        head.meta("description", null, description, null, null)
+        head.meta(null, "og:title", title, null, null)
+        head.meta(null, "og:description", description, null, null)
+        head.meta(null, "og:type", if (post != null) "article" else "website", null, null)
+        head.meta(null, "og:url", canonical, null, null)
+        head.meta(null, "og:locale", locale.code, null, null)
+        head.meta("twitter:card", null, "summary_large_image", null, null)
+        head.meta("twitter:title", null, title, null, null)
+        head.meta("twitter:description", null, description, null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.EN, slug), "en", null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.AR, slug), "ar", null, null, null)

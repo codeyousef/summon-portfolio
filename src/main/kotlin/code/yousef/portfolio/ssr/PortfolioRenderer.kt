@@ -68,21 +68,21 @@ class PortfolioRenderer(
     ): (HeadScope) -> Unit = { head ->
         val canonical = canonicalUrl(locale)
         head.title(pageTitle)
-        head.meta(null, description, "description", null, null)
-        head.meta("og:title", pageTitle, null, null, null)
+        head.meta("description", null, description, null, null)
+        head.meta(null, "og:title", pageTitle, null, null)
         head.meta(
+            null,
             "og:description",
             description,
             null,
-            null,
             null
         )
-        head.meta("og:type", "website", null, null, null)
-        head.meta("og:url", canonical, null, null, null)
-        head.meta("og:locale", locale.code, null, null, null)
-        head.meta(null, "summary_large_image", "twitter:card", null, null)
-        head.meta(null, pageTitle, "twitter:title", null, null)
-        head.meta(null, description, "twitter:description", null, null)
+        head.meta(null, "og:type", "website", null, null)
+        head.meta(null, "og:url", canonical, null, null)
+        head.meta(null, "og:locale", locale.code, null, null)
+        head.meta("twitter:card", null, "summary_large_image", null, null)
+        head.meta("twitter:title", null, pageTitle, null, null)
+        head.meta("twitter:description", null, description, null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)
