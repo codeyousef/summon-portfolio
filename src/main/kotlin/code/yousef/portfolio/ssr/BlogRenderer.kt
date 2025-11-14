@@ -45,36 +45,36 @@ class BlogRenderer(
         val canonical = blogCanonical(locale)
         head.title("Articles · Yousef")
         head.meta(
-            "description",
-            "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
             null,
+            "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
+            "description",
             null,
             null
         )
         head.meta(null, "Articles · Yousef", "og:title", null, null)
         head.meta(
-            null,
-            "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
             "og:description",
+            "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
+            null,
             null,
             null
         )
-        head.meta(null, "website", "og:type", null, null)
+        head.meta("og:type", "website", null, null, null)
         head.meta(null, canonical, "og:url", null, null)
         head.meta(null, locale.code, "og:locale", null, null)
         head.meta("twitter:card", "summary_large_image", null, null, null)
         head.meta("twitter:title", "Articles · Yousef Baitalmal", null, null, null)
         head.meta(
-            "twitter:description",
-            "Summon-first engineering notes, release write-ups, and systems breakdowns.",
             null,
+            "Summon-first engineering notes, release write-ups, and systems breakdowns.",
+            "twitter:description",
             null,
             null
         )
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", blogCanonical(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", blogCanonical(PortfolioLocale.AR), "ar", null, null, null)
-        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
     }
 
     private fun detailHead(locale: PortfolioLocale, post: BlogPost?, slug: String): (HeadScope) -> Unit = { head ->
@@ -82,19 +82,19 @@ class BlogRenderer(
         val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef"
         val description = post?.excerpt?.resolve(locale) ?: "The requested article could not be located."
         head.title(title)
-        head.meta("description", description, null, null, null)
-        head.meta(null, title, "og:title", null, null)
-        head.meta(null, description, "og:description", null, null)
-        head.meta(null, if (post != null) "article" else "website", "og:type", null, null)
+        head.meta(null, description, "description", null, null)
+        head.meta("og:title", title, null, null, null)
+        head.meta("og:description", description, null, null, null)
+        head.meta("og:type", if (post != null) "article" else "website", null, null, null)
         head.meta(null, canonical, "og:url", null, null)
         head.meta(null, locale.code, "og:locale", null, null)
         head.meta("twitter:card", "summary_large_image", null, null, null)
-        head.meta("twitter:title", title, null, null, null)
-        head.meta("twitter:description", description, null, null, null)
+        head.meta(null, title, "twitter:title", null, null)
+        head.meta(null, description, "twitter:description", null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.EN, slug), "en", null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.AR, slug), "ar", null, null, null)
-        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
     }
 
     private fun blogCanonical(locale: PortfolioLocale): String {

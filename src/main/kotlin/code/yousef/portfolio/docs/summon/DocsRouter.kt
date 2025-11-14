@@ -71,14 +71,14 @@ class DocsRouter(
 
     private fun headBlock(title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
         head.title("$title · Summon Docs")
-        head.meta("description", description, null, null, null)
-        head.meta(null, title, "og:title", null, null)
-        head.meta(null, description, "og:description", null, null)
-        head.meta(null, canonical, "og:url", null, null)
-        head.meta(null, "article", "og:type", null, null)
-        head.meta("twitter:card", "summary_large_image", null, null, null)
-        head.meta("twitter:title", title, null, null, null)
-        head.meta("twitter:description", description, null, null, null)
+        head.meta(null, description, "description", null, null)
+        head.meta("og:title", title, null, null, null)
+        head.meta("og:description", description, null, null, null)
+        head.meta("og:url", canonical, null, null, null)
+        head.meta("og:type", "article", null, null, null)
+        head.meta(null, "summary_large_image", "twitter:card", null, null)
+        head.meta(null, title, "twitter:title", null, null)
+        head.meta(null, description, "twitter:description", null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.script(HYDRATION_SCRIPT_PATH, null, "application/javascript", false, true, null)
     }
