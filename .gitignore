@@ -52,3 +52,7 @@ old-portfolio/*
 /docs/private/summon-docs/*
 !/docs/private/summon-docs/accessibility-and-seo.md
 /AGENTS.md
+
+# Ignore local GCP service account keys
+gh-deployer.json
+*.key.json
