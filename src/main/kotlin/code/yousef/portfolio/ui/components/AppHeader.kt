@@ -107,18 +107,8 @@ fun AppHeader(
                 .gap(PortfolioTheme.Spacing.md)
                 .flex(grow = 1, shrink = 1, basis = "220px")
         ) {
-            val toggleOpenLabel = LocalizedText("Open menu", "افتح القائمة").resolve(locale)
-            val toggleCloseLabel = LocalizedText("Close menu", "أغلق القائمة").resolve(locale)
-            val toggleLabel = if (menuOpenState.value) toggleCloseLabel else toggleOpenLabel
-            Button(
-                onClick = { menuOpenState.value = !menuOpenState.value },
-                label = "\u2630", // hamburger icon
-                modifier = Modifier()
-                    .display(Display.None),
-                variant = ButtonVariant.SECONDARY,
-                disabled = false
-            )
-            Text(
+
+        Text(
                 text = "YOUSEF BAITALMAL",
                 modifier = Modifier()
                     .fontSize(0.9.rem)
