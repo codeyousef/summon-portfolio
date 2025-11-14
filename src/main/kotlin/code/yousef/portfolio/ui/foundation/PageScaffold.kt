@@ -102,7 +102,7 @@ private fun WebGlCanvas() {
             .position(Position.Fixed)
             .inset("0")
             .width(100.percent)
-            .height(3000.px)
+            .height(3500.px)
             .pointerEvents(PointerEvents.None)
             .zIndex(0)
     )

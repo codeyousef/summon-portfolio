@@ -43,7 +43,7 @@ class BlogRenderer(
 
     private fun listHead(locale: PortfolioLocale): (HeadScope) -> Unit = { head ->
         val canonical = blogCanonical(locale)
-        head.title("Articles · Yousef Baitalmal")
+        head.title("Articles · Yousef")
         head.meta(
             "description",
             "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
@@ -51,7 +51,7 @@ class BlogRenderer(
             null,
             null
         )
-        head.meta(null, "Articles · Yousef Baitalmal", "og:title", null, null)
+        head.meta(null, "Articles · Yousef", "og:title", null, null)
         head.meta(
             null,
             "Summon-first engineering notes, release write-ups, and systems breakdowns from the portfolio.",
@@ -79,7 +79,7 @@ class BlogRenderer(
 
     private fun detailHead(locale: PortfolioLocale, post: BlogPost?, slug: String): (HeadScope) -> Unit = { head ->
         val canonical = blogDetailCanonical(locale, slug)
-        val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef Baitalmal"
+        val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef"
         val description = post?.excerpt?.resolve(locale) ?: "The requested article could not be located."
         head.title(title)
         head.meta("description", description, null, null, null)

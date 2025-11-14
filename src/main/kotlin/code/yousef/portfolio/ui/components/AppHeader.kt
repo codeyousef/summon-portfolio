@@ -9,8 +9,6 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.input.Button
-import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
@@ -109,7 +107,7 @@ fun AppHeader(
         ) {
 
         Text(
-                text = "YOUSEF BAITALMAL",
+            text = "YOUSEF",
                 modifier = Modifier()
                     .fontSize(0.9.rem)
                     .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
@@ -382,12 +380,20 @@ private fun ProjectsDropdown(
         modifier = Modifier()
             .position(Position.Relative)
     ) {
-        Button(
-            onClick = { open.value = !open.value },
+        AnchorLink(
             label = projectsLabel.resolve(locale),
-            modifier = baseModifier,
-            variant = ButtonVariant.SECONDARY,
-            disabled = false
+            href = "#projects-menu",
+            modifier = baseModifier
+                .cursor(Cursor.Pointer),
+            target = null,
+            rel = null,
+            title = null,
+            id = null,
+            ariaLabel = null,
+            ariaDescribedBy = null,
+            dataHref = null,
+            dataAttributes = mapOf("nav" to "projects"),
+            navigationMode = LinkNavigationMode.Native
         )
         if (open.value) {
             Box(

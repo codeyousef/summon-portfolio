@@ -6,7 +6,7 @@ const mouse = {x: 0, y: 0};
 let startTime = performance.now();
 let paletteIndex = 0;
 
-const CANVAS_HEIGHT = 3000;
+const CANVAS_HEIGHT = 3500;
 
 const palettes = [
     {a: [0.09, 0.06, 0.08], b: [0.55, 0.08, 0.19], c: [0.9, 0.22, 0.39], d: [0.98, 0.72, 0.83]},

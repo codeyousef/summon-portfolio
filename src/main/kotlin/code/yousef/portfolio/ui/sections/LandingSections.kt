@@ -147,7 +147,7 @@ private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
                     .gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(
-                    text = "Yousef Baitalmal",
+                    text = "Yousef",
                     modifier = Modifier().fontWeight(800)
                 )
                 Text(
@@ -255,7 +255,20 @@ private fun CtaRow(
             text = secondaryLabel,
             href = "#contact"
         )
-        GhostActionButton(text = "Featured Services", onClick = onRequestServices)
+        ButtonLink(
+            label = "View featured services",
+            href = "/services",
+            modifier = Modifier().textDecoration(TextDecoration.None).color(PortfolioTheme.Colors.TEXT_PRIMARY),
+            target = null,
+            rel = null,
+            title = null,
+            id = null,
+            ariaLabel = null,
+            ariaDescribedBy = null,
+            dataHref = null,
+            dataAttributes = emptyMap(),
+            navigationMode = LinkNavigationMode.Native
+        )
     }
 }
 
@@ -385,7 +398,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 .gap(PortfolioTheme.Spacing.xs)
         ) {
             Text(text = "© $currentYear")
-            Text(text = "Yousef Baitalmal")
+            Text(text = "Yousef")
         }
         Row(
             modifier = Modifier()

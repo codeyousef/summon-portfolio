@@ -820,7 +820,7 @@ private fun StructuredDataSnippet() {
         {
           "@context": "https://schema.org",
           "@type": "Person",
-          "name": "Yousef Baitalmal",
+          "name": "Yousef",
           "url": "https://dev.yousef.codes",
           "sameAs": [
             "https://www.linkedin.com/in/yousefbaitalmal",

@@ -142,7 +142,7 @@ object PortfolioContentSeed {
             ),
             publishedAt = LocalDate.of(2024, 1, 1),
             featured = true,
-            author = "Yousef Baitalmal",
+            author = "Yousef",
             tags = listOf("engineering", "introduction", "coding")
         )
     )
