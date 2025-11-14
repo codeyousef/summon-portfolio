@@ -83,8 +83,11 @@ class PortfolioRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)
+        // Critical hydration script (defer)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
+        // Non-critical cleanup script (async)
         head.script("/static/textarea-cleanup.js", "textarea-cleanup", "application/javascript", true, false, null)
+        // (Structured data currently omitted until HeadScope gains inline support)
     }
 
     private fun canonicalUrl(locale: PortfolioLocale): String =
