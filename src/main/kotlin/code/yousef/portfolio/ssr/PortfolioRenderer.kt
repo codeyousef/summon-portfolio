@@ -75,7 +75,7 @@ class PortfolioRenderer(
         head.meta(null, "og:description", description, null, null)
         head.meta(null, "og:type", "website", null, null)
         head.meta(null, "og:url", canonical, null, null)
-        head.meta(null, "og:locale", locale.code, null, null)
+        head.meta(null, "og:locale", if (locale == PortfolioLocale.EN) "en_US" else locale.code, null, null)
         // Twitter: name attributes
         head.meta("twitter:card", null, "summary_large_image", null, null)
         head.meta("twitter:title", null, pageTitle, null, null)

@@ -82,12 +82,12 @@ private fun InjectFontAssets() {
     val renderer = runCatching { LocalPlatformRenderer.current }.getOrNull() ?: return
     renderer.renderHeadElements {
         link("preconnect", "https://fonts.googleapis.com", null, null, null, null)
-        link("preconnect", "https://fonts.gstatic.com", null, null, null, null)
+        link("preconnect", "https://fonts.gstatic.com", null, null, null, "anonymous")
         link(
             "stylesheet",
             "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
             null,
-            "text/css",
+            null,
             null,
             null
         )

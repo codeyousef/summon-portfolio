@@ -28,6 +28,7 @@ class SummonLandingRenderer {
         head.meta(null, "og:description", description, null, null)
         head.meta(null, "og:type", "website", null, null)
         head.meta(null, "og:url", marketingUrl, null, null)
+        head.meta(null, "og:locale", "en_US", null, null)
         // Twitter
         head.meta("twitter:card", null, "summary_large_image", null, null)
         head.meta("twitter:title", null, title, null, null)

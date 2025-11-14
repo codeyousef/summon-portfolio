@@ -13,7 +13,9 @@ import codes.yousef.summon.components.input.Button
 import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.navigation.*
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.ButtonLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -162,34 +164,12 @@ fun AppHeader(
                         navigationMode = linkMode
                     )
                 }
-                Dropdown(
-                    trigger = {
-                        Button(
-                            label = projectsLabel.resolve(locale),
-                            modifier = baseNavModifier,
-                            variant = ButtonVariant.SECONDARY,
-                            disabled = false
-                        )
-                    },
-                    triggerBehavior = DropdownTrigger.CLICK,
-                    alignment = DropdownAlignment.LEFT
-                ) {
-                    DropdownItem(
-                        label = LocalizedText("Portfolio Projects", "المشاريع").resolve(locale),
-                        href = NavTarget.Page("/projects").href(locale),
-                        modifier = baseNavModifier
-                            .display(Display.Block)
-                            .whiteSpace(WhiteSpace.NoWrap)
-                    )
-                    DropdownDivider()
-                    DropdownItem(
-                        label = LocalizedText("Summon", "Summon").resolve(locale),
-                        href = docsHref,
-                        modifier = baseNavModifier
-                            .display(Display.Block)
-                            .whiteSpace(WhiteSpace.NoWrap)
-                    )
-                }
+                ProjectsDropdown(
+                    locale = locale,
+                    baseModifier = baseNavModifier,
+                    docsHref = docsHref,
+                    projectsNavigationMode = linkMode
+                )
             }
         }
 
