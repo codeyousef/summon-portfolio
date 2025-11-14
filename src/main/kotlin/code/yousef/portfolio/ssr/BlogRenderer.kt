@@ -6,7 +6,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.blog.BlogDetailPage
 import code.yousef.portfolio.ui.blog.BlogListPage
 import code.yousef.portfolio.ui.blog.BlogNotFoundPage
-import code.yousef.summon.seo.HeadScope
+import codes.yousef.summon.seo.HeadScope
 import io.ktor.http.*
 
 class BlogRenderer(

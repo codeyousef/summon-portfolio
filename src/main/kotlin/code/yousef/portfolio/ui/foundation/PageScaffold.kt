@@ -2,17 +2,17 @@ package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.foundation.Canvas
-import code.yousef.summon.components.foundation.ScriptTag
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.extensions.percent
-import code.yousef.summon.extensions.px
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.minHeight
-import code.yousef.summon.runtime.LocalPlatformRenderer
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.foundation.Canvas
+import codes.yousef.summon.components.foundation.ScriptTag
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.LayoutModifiers.minHeight
+import codes.yousef.summon.runtime.LocalPlatformRenderer
 
 @Composable
 fun PageScaffold(
@@ -48,8 +48,7 @@ fun PageScaffold(
         .fontFamily(PortfolioTheme.Typography.FONT_SANS)
         .position(Position.Relative)
         .overflow(Overflow.Hidden)
-        .attribute("lang", locale.code)
-        .attribute("dir", locale.direction)
+
 
     Box(modifier = scaffoldModifier) {
         if (enableAuroraEffects) {
@@ -64,9 +63,9 @@ fun PageScaffold(
             .let { base ->
                 val extra = PortfolioTheme.Spacing.md
                 if (locale.direction.equals("rtl", ignoreCase = true)) {
-                    base.style("padding-left", "calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                    base.paddingLeft("calc(${PortfolioTheme.Spacing.xl} + $extra)")
                 } else {
-                    base.style("padding-right", "calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                    base.paddingRight("calc(${PortfolioTheme.Spacing.xl} + $extra)")
                 }
             }
         Column(modifier = columnModifier) {

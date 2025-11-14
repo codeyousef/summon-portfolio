@@ -1,14 +1,13 @@
 package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.core.style.Color
-import code.yousef.summon.extensions.percent
-import code.yousef.summon.extensions.px
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.core.style.Color
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
 
 @Composable
 fun ContentSection(
@@ -21,12 +20,10 @@ fun ContentSection(
         .width("min(100%, calc(100vw - ${PortfolioTheme.Spacing.sm}))")
         .marginHorizontalAutoZero()
         .padding(PortfolioTheme.Spacing.xl)
-        .attribute("class", "content-section")
 
     Box(modifier = wrapperModifier) {
         Column(
             modifier = Modifier()
-                .attribute("class", "content-section__inner")
                 .backgroundColor(if (surface) PortfolioTheme.Colors.SURFACE else "transparent")
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)

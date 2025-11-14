@@ -10,12 +10,12 @@ import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.ContactSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import code.yousef.portfolio.ui.sections.ServicesSection
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Paragraph
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.modifier.Modifier
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.runtime.rememberMutableStateOf
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Paragraph
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.modifier.Modifier
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.runtime.rememberMutableStateOf
 
 @Composable
 fun ServicesPage(

@@ -1,6 +1,6 @@
 package code.yousef.portfolio.ui.foundation
 
-import code.yousef.summon.runtime.CompositionLocal
+import codes.yousef.summon.runtime.CompositionLocal
 
 data class PageChrome(
     val isAdminSession: Boolean = false,

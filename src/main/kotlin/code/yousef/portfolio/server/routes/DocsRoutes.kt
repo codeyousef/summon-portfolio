@@ -4,8 +4,8 @@ import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.ssr.SummonRenderLock
-import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
-import code.yousef.summon.runtime.getPlatformRenderer
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
+import codes.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*

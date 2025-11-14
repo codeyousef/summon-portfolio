@@ -5,7 +5,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
 import code.yousef.portfolio.ui.services.ServicesPage
-import code.yousef.summon.seo.HeadScope
+import codes.yousef.summon.seo.HeadScope
 
 class PortfolioRenderer(
     private val contentService: PortfolioContentService = PortfolioContentService.default()

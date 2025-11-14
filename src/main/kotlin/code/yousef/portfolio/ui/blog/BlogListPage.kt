@@ -9,17 +9,17 @@ import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.sections.ContactSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import java.time.format.DateTimeFormatter
 
 @Composable

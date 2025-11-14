@@ -7,17 +7,17 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.blog.blogDetailHref
 import code.yousef.portfolio.ui.blog.blogListHref
 import code.yousef.portfolio.ui.foundation.ContentSection
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.time.format.DateTimeFormatter
 
 @Composable

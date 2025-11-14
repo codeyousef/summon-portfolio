@@ -3,19 +3,19 @@ package code.yousef.portfolio.docs.summon.components
 import code.yousef.portfolio.docs.TocEntry
 import code.yousef.portfolio.docs.summon.safeFragmentHref
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.LinkNavigationMode
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.top
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.extensions.px
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.LayoutModifiers.top
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
 fun Toc(entries: List<TocEntry>) {
@@ -23,7 +23,7 @@ fun Toc(entries: List<TocEntry>) {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+            .flexDirection(codes.yousef.summon.modifier.FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.sm)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)

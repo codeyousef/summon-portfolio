@@ -4,21 +4,20 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Paragraph
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.forms.*
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.extensions.percent
-import code.yousef.summon.extensions.px
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.flexWrap
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Paragraph
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.forms.*
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 
 @Composable
 fun ContactSection(
@@ -91,10 +90,9 @@ private fun ContactForm(
     action: String,
     modifier: Modifier = Modifier()
 ) {
-    val optionalLabel = ContactCopy.optional.resolve(locale)
-    FormStyleSheet()
     Form(
         action = action,
+        method = FormMethod.Post,
         modifier = modifier
             .display(Display.Flex)
             .flexDirection(FlexDirection.Column)
@@ -105,44 +103,27 @@ private fun ContactForm(
         FormTextField(
             name = "name",
             label = ContactCopy.name.resolve(locale),
-            required = true,
-            placeholder = ContactCopy.name.resolve(locale),
-            autoComplete = "name",
-            optionalLabel = optionalLabel,
-            fullWidth = true
+            defaultValue = "",
+            required = true
         )
         FormTextField(
             name = "email",
             label = ContactCopy.email.resolve(locale),
-            type = FormTextFieldType.EMAIL,
-            placeholder = ContactCopy.email.resolve(locale),
-            autoComplete = "email",
-            optionalLabel = optionalLabel,
-            required = false,
-            fullWidth = true
+            defaultValue = ""
         )
         FormTextField(
             name = "whatsapp",
             label = ContactCopy.whatsapp.resolve(locale),
-            placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
-            optionalLabel = optionalLabel,
-            inputMode = "tel",
-            required = false,
-            fullWidth = true
+            defaultValue = ""
         )
         FormTextArea(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
-            required = true,
-            placeholder = ContactCopy.requirements.resolve(locale),
-            minHeight = "180px",
-            optionalLabel = optionalLabel,
-            fullWidth = true
+            defaultValue = "",
+            required = true
         )
         FormButton(
-            text = ContactCopy.submit.resolve(locale),
-            tone = FormButtonTone.ACCENT,
-            fullWidth = true
+            text = ContactCopy.submit.resolve(locale)
         )
     }
 }

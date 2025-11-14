@@ -8,17 +8,17 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.seo.HeadScope
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.seo.HeadScope
 import kotlinx.serialization.json.Json
 import java.net.URI
 
@@ -110,7 +110,7 @@ private fun DocsNotFoundContent(navJson: String) {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+            .flexDirection(codes.yousef.summon.modifier.FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.md)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
@@ -130,39 +130,26 @@ private fun DocsNotFoundContent(navJson: String) {
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
-        RawHtml(
-            """
-            <div class="docs-search">
-              <input id="docs-search-input" type="search" placeholder="Search docs..." />
-              <ul id="docs-search-results"></ul>
-            </div>
-            <script>
-              (function(){
-                const nav = $navJson;
-                const entries = [];
-                nav.sections?.forEach(section => {
-                  section.children?.forEach(child => entries.push(child));
-                });
-                const input = document.getElementById('docs-search-input');
-                const results = document.getElementById('docs-search-results');
-                if (!input || !results) return;
-                input.addEventListener('input', () => {
-                  const q = input.value.toLowerCase();
-                  results.innerHTML = '';
-                  if (!q) return;
-                  entries.filter(e => e.title.toLowerCase().includes(q)).slice(0,7).forEach(match => {
-                    const li = document.createElement('li');
-                    const link = document.createElement('a');
-                    link.href = match.path;
-                    link.textContent = match.title;
-                    li.appendChild(link);
-                    results.appendChild(li);
-                  });
-                });
-              })();
-            </script>
-            """.trimIndent()
-        )
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.sm)
+                .padding(PortfolioTheme.Spacing.md)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.lg)
+        ) {
+            Text(
+                text = "Search coming soon",
+                modifier = Modifier().fontWeight(700)
+            )
+            Text(
+                text = "Browse sections or use your browser search.",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
+        }
     }
 }
 

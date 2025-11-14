@@ -7,27 +7,24 @@ import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.input.Button
-import code.yousef.summon.components.input.ButtonVariant
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.ButtonLink
-import code.yousef.summon.components.navigation.LinkNavigationMode
-import code.yousef.summon.components.styles.GlobalStyle
-import code.yousef.summon.extensions.percent
-import code.yousef.summon.extensions.px
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.positionInset
-import code.yousef.summon.modifier.LayoutModifiers.top
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.modifier.StylingModifiers.textDecoration
-import code.yousef.summon.modifier.TextDecoration
-import code.yousef.summon.runtime.rememberMutableStateOf
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.input.Button
+import codes.yousef.summon.components.input.ButtonVariant
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.ButtonLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.LayoutModifiers.positionInset
+import codes.yousef.summon.modifier.LayoutModifiers.top
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.runtime.rememberMutableStateOf
 
 private sealed interface NavTarget {
     data class Section(val id: String) : NavTarget
@@ -90,28 +87,25 @@ fun AppHeader(
         .let { base ->
             if (locale.direction.equals("rtl", ignoreCase = true)) {
                 base
-                    .style("padding-right", containerPaddingStart)
-                    .style("padding-left", containerPaddingEnd)
+                    .paddingRight(containerPaddingStart)
+                    .paddingLeft(containerPaddingEnd)
             } else {
                 base
-                    .style("padding-left", containerPaddingStart)
-                    .style("padding-right", containerPaddingEnd)
+                    .paddingLeft(containerPaddingStart)
+                    .paddingRight(containerPaddingEnd)
             }
         }
 
     Row(
         modifier = containerModifier
-            .attribute("class", "app-header")
-            .attribute("data-menu-open", if (menuOpenState.value) "true" else "false")
     ) {
-        AppHeaderStyles()
+
         Box(
             modifier = Modifier()
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.md)
                 .flex(grow = 1, shrink = 1, basis = "220px")
-                .attribute("class", "app-header__brand")
         ) {
             val toggleOpenLabel = LocalizedText("Open menu", "افتح القائمة").resolve(locale)
             val toggleCloseLabel = LocalizedText("Close menu", "أغلق القائمة").resolve(locale)
@@ -119,11 +113,7 @@ fun AppHeader(
             Button(
                 onClick = { menuOpenState.value = !menuOpenState.value },
                 label = toggleLabel,
-                modifier = Modifier()
-                    .attribute("class", "app-header__toggle")
-                    .attribute("aria-controls", "app-header-nav app-header-actions")
-                    .attribute("aria-expanded", if (menuOpenState.value) "true" else "false")
-                    .attribute("aria-label", toggleLabel),
+                modifier = Modifier(),
                 variant = ButtonVariant.SECONDARY,
                 disabled = false
             )
@@ -139,7 +129,6 @@ fun AppHeader(
         Box(
             modifier = Modifier()
                 .flex(grow = 1, shrink = 1, basis = "360px")
-                .attribute("class", "app-header__nav-wrapper")
         ) {
             Row(
                 modifier = Modifier()
@@ -148,8 +137,7 @@ fun AppHeader(
                     .gap(PortfolioTheme.Spacing.md)
                     .flex(grow = 1, shrink = 1, basis = "360px")
                     .flexWrap(FlexWrap.Wrap)
-                    .attribute("class", "app-header__nav")
-                    .attribute("id", "app-header-nav")
+                    .id("app-header-nav")
             ) {
                 val baseNavModifier = Modifier()
                     .textDecoration(TextDecoration.None)
@@ -196,7 +184,6 @@ fun AppHeader(
         Box(
             modifier = Modifier()
                 .flex(grow = 0, shrink = 1, basis = "240px")
-                .attribute("class", "app-header__actions-wrapper")
         ) {
             Row(
                 modifier = Modifier()
@@ -206,8 +193,7 @@ fun AppHeader(
                     .flex(grow = 0, shrink = 0, basis = "auto")
                     .justifyContent(JustifyContent.FlexEnd)
                     .flexWrap(FlexWrap.NoWrap)
-                    .attribute("class", "app-header__actions")
-                    .attribute("id", "app-header-actions")
+                    .id("app-header-actions")
             ) {
             if (chrome.isAdminSession) {
                 val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
@@ -291,7 +277,6 @@ private fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, na
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.pill)
-            .attribute("class", "app-header__locale-toggle")
     ) {
         LocaleToggleButton(
             locale = PortfolioLocale.EN,
@@ -397,155 +382,4 @@ private fun resolveDocsHref(override: String?): String {
     val fallback = docsBaseUrl()
     val resolved = override?.takeIf { it.isNotBlank() } ?: fallback
     return resolved.trimEnd('/')
-}
-
-@Suppress("UNUSED_PARAMETER")
-@Composable
-private fun AppHeaderStyles() {
-    GlobalStyle(
-        """
-        .app-header {
-          width: 100%;
-          border-radius: 0 !important;
-          border-width: 0 !important;
-          background: rgba(5, 20, 35, 0.92);
-          border-bottom: 1px solid ${PortfolioTheme.Colors.BORDER};
-          backdrop-filter: blur(18px);
-          box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-        }
-        .app-header__nav-wrapper {
-          flex: 1 1 auto;
-        }
-        .app-header__actions-wrapper {
-          flex: 0 0 auto;
-        }
-        .app-header__nav {
-          width: 100%;
-        }
-        .app-header__nav [data-nav] {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .app-header__actions {
-          width: auto;
-        }
-        .app-header__brand {
-          display: flex;
-          align-items: center;
-          gap: ${PortfolioTheme.Spacing.sm};
-          min-width: 0;
-        }
-        .app-header__toggle {
-          width: 44px;
-          height: 38px;
-          border-radius: ${PortfolioTheme.Radii.md};
-          border: 1px solid ${PortfolioTheme.Colors.BORDER};
-          background: ${PortfolioTheme.Colors.SURFACE};
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: background ${PortfolioTheme.Motion.DEFAULT};
-          position: relative;
-          padding: 0;
-          font-size: 0;
-        }
-        .app-header__toggle:focus-visible {
-          outline: 2px solid ${PortfolioTheme.Colors.ACCENT_ALT};
-        }
-        .app-header__toggle::before,
-        .app-header__toggle::after {
-          content: "";
-          position: absolute;
-          left: 12px;
-          right: 12px;
-          height: 2px;
-          background: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-          transition: transform ${PortfolioTheme.Motion.DEFAULT}, box-shadow ${PortfolioTheme.Motion.DEFAULT};
-        }
-        .app-header__toggle::before {
-          top: 12px;
-          box-shadow: 0 10px 0 ${PortfolioTheme.Colors.TEXT_PRIMARY};
-        }
-        .app-header__toggle::after {
-          top: 24px;
-        }
-        .app-header[data-menu-open="true"] .app-header__toggle::before {
-          transform: translateY(6px) rotate(45deg);
-          box-shadow: none;
-        }
-        .app-header[data-menu-open="true"] .app-header__toggle::after {
-          transform: translateY(-6px) rotate(-45deg);
-        }
-        @media (min-width: 960px) {
-          .app-header__brand {
-            flex: 0 1 auto;
-          }
-          .app-header__brand .app-header__toggle {
-            display: none;
-          }
-          .app-header__nav-wrapper,
-          .app-header__actions-wrapper {
-            display: flex !important;
-          }
-        }
-        @media (max-width: 959px) {
-          .app-header__brand {
-            width: 100%;
-            justify-content: flex-start;
-          }
-          .app-header__nav-wrapper,
-          .app-header__actions-wrapper {
-            display: none !important;
-            width: 100%;
-            flex-direction: column;
-            gap: ${PortfolioTheme.Spacing.md};
-            margin-top: ${PortfolioTheme.Spacing.sm};
-            max-height: 0;
-            opacity: 0;
-            transform: translateY(-12px);
-            overflow: hidden;
-            transition: max-height ${PortfolioTheme.Motion.DEFAULT}, opacity ${PortfolioTheme.Motion.DEFAULT}, transform ${PortfolioTheme.Motion.DEFAULT};
-          }
-          .app-header__nav {
-            flex-direction: column;
-            align-items: stretch;
-            gap: ${PortfolioTheme.Spacing.sm};
-          }
-          .app-header__nav [data-nav] {
-            width: 100% !important;
-            display: flex !important;
-            justify-content: flex-start;
-            padding: ${PortfolioTheme.Spacing.sm} 0 !important;
-            border-radius: 0 !important;
-            border-bottom: 1px solid ${PortfolioTheme.Colors.BORDER};
-          }
-          .app-header__nav [data-nav]:last-child {
-            border-bottom: none;
-          }
-          .app-header[data-menu-open="true"] .app-header__nav-wrapper,
-          .app-header[data-menu-open="true"] .app-header__actions-wrapper {
-            display: flex !important;
-            max-height: 600px;
-            opacity: 1;
-            transform: translateY(0);
-          }
-          .app-header__actions {
-            flex-direction: column;
-            align-items: stretch;
-            gap: ${PortfolioTheme.Spacing.md};
-            width: 100%;
-          }
-          .app-header__actions [data-nav] {
-            width: 100% !important;
-            justify-content: center;
-          }
-          .app-header__locale-toggle {
-            width: 100%;
-            justify-content: center;
-          }
-        }
-        """.trimIndent()
-    )
 }

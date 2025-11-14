@@ -1,6 +1,6 @@
 package code.yousef.portfolio.theme
 
-import code.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.px
 
 object PortfolioTheme {
     object Colors {

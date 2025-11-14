@@ -6,34 +6,32 @@ import code.yousef.portfolio.content.model.HeroContent
 import code.yousef.portfolio.content.model.HeroMetric
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.i18n.pathPrefix
-import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ssr.summonMarketingUrl
+import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.SectionWrap
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Paragraph
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.display.Image
-import code.yousef.summon.components.input.Button
-import code.yousef.summon.components.input.ButtonVariant
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.ButtonLink
-import code.yousef.summon.components.navigation.LinkNavigationMode
-import code.yousef.summon.core.style.Color
-import code.yousef.summon.extensions.px
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.extensions.vw
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.flexWrap
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.color
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.modifier.StylingModifiers.lineHeight
-import code.yousef.summon.modifier.TextDecoration
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
+import codes.yousef.summon.components.display.Paragraph
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.input.Button
+import codes.yousef.summon.components.input.ButtonVariant
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.ButtonLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.core.style.Color
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.extensions.vw
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.color
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.time.Year
 
 @Composable
@@ -79,7 +77,7 @@ fun HeroSection(
                         }
                         .backgroundClipText()
                         .color(Color.TRANSPARENT)
-                        .style("text-shadow", "0 1px 0 #ffffff33")
+                        .boxShadow("0 1px 0 #ffffff33")
                 )
                 Text(
                     text = secondaryTitle,

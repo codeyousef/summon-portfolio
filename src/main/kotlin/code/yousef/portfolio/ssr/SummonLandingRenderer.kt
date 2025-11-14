@@ -1,7 +1,7 @@
 package code.yousef.portfolio.ssr
 
 import code.yousef.portfolio.ui.summon.SummonLandingPage
-import code.yousef.summon.seo.HeadScope
+import codes.yousef.summon.seo.HeadScope
 
 class SummonLandingRenderer {
 

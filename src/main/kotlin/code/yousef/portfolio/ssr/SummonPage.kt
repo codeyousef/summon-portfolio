@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ssr
 
 import code.yousef.portfolio.ui.foundation.PageChrome
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.seo.HeadScope
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.seo.HeadScope
 
 typealias ComposableContent = @Composable () -> Unit
 

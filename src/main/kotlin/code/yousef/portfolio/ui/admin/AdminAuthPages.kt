@@ -3,14 +3,17 @@ package code.yousef.portfolio.ui.admin
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.forms.*
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.extensions.px
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.forms.Form
+import codes.yousef.summon.components.forms.FormButton
+import codes.yousef.summon.components.forms.FormHiddenField
+import codes.yousef.summon.components.forms.FormTextField
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
 
 @Composable
 fun AdminLoginPage(
@@ -27,7 +30,7 @@ fun AdminLoginPage(
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .fontSize("0.85rem")
-                .textAlign("center")
+                .textAlign(TextAlign.Center)
                 .margin("0 0 8px 0")
         )
         Form(
@@ -38,20 +41,16 @@ fun AdminLoginPage(
                 name = "username",
                 label = "Username",
                 required = true,
-                placeholder = "admin",
-                fullWidth = true
+                defaultValue = ""
             )
             FormTextField(
                 name = "password",
                 label = "Password",
                 required = true,
-                type = FormTextFieldType.PASSWORD,
-                fullWidth = true
+                defaultValue = ""
             )
             FormButton(
-                text = "Sign In",
-                tone = FormButtonTone.ACCENT,
-                fullWidth = true
+                text = "Sign In"
             )
         }
     }
@@ -72,27 +71,22 @@ fun AdminChangePasswordPage(
                 name = "username",
                 label = "New Username",
                 required = true,
-                defaultValue = currentUsername,
-                fullWidth = true
+                defaultValue = currentUsername
             )
             FormTextField(
                 name = "password",
                 label = "New Password",
                 required = true,
-                type = FormTextFieldType.PASSWORD,
-                fullWidth = true
+                defaultValue = ""
             )
             FormTextField(
                 name = "confirm",
                 label = "Confirm Password",
                 required = true,
-                type = FormTextFieldType.PASSWORD,
-                fullWidth = true
+                defaultValue = ""
             )
             FormButton(
-                text = "Save Credentials",
-                tone = FormButtonTone.ACCENT,
-                fullWidth = true
+                text = "Save Credentials"
             )
         }
     }
@@ -128,7 +122,7 @@ private fun AdminAuthScaffold(
                     .boxShadow(PortfolioTheme.Shadows.MEDIUM)
                     .backdropBlur(24.px)
             ) {
-                FormStyleSheet()
+                // Form styles handled via modifiers
                 Column(
                     modifier = Modifier()
                         .display(Display.Flex)
@@ -139,13 +133,13 @@ private fun AdminAuthScaffold(
                         text = title,
                         modifier = Modifier()
                             .fontSize("1.5rem")
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                     )
                     Text(
                         text = subtitle,
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                     )
                 }
                 if (!errorMessage.isNullOrBlank()) {
@@ -153,7 +147,7 @@ private fun AdminAuthScaffold(
                         text = errorMessage,
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.DANGER)
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                             .padding(PortfolioTheme.Spacing.sm)
                             .backgroundColor("rgba(255,77,77,0.12)")
                             .borderRadius(PortfolioTheme.Radii.md)
