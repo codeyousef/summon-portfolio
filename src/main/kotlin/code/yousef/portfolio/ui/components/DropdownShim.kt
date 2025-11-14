@@ -26,7 +26,6 @@ fun Dropdown(
     Box(
         modifier = modifier
             .position(Position.Relative)
-            .let { m -> if (withHover) m.onMouseEnter { open.value = true }.onMouseLeave { open.value = false } else m }
     ) {
         val toggle = { open.value = !open.value }
         Box(
