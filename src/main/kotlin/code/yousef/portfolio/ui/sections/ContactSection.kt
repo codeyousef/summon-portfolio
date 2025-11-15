@@ -111,7 +111,12 @@ private fun ContactForm(
         }
         FormTextField(
             name = "name",
-            label = ContactCopy.name.resolve(locale),
+            label = {
+                Text(
+                    ContactCopy.name.resolve(locale),
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            }.toString(),
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
