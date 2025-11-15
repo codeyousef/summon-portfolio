@@ -41,13 +41,15 @@ fun AdminLoginPage(
                 name = "username",
                 label = "Username",
                 required = true,
-                defaultValue = ""
+                defaultValue = "",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "password",
                 label = "Password",
                 required = true,
-                defaultValue = ""
+                defaultValue = "",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormButton(
                 text = "Sign In"
@@ -71,19 +73,22 @@ fun AdminChangePasswordPage(
                 name = "username",
                 label = "New Username",
                 required = true,
-                defaultValue = currentUsername
+                defaultValue = currentUsername,
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "password",
                 label = "New Password",
                 required = true,
-                defaultValue = ""
+                defaultValue = "",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "confirm",
                 label = "Confirm Password",
                 required = true,
-                defaultValue = ""
+                defaultValue = "",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormButton(
                 text = "Save Credentials"
