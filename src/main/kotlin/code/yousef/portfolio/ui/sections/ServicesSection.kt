@@ -7,8 +7,6 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.input.Button
-import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.rem
@@ -62,17 +60,25 @@ fun ServicesSection(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.Center)
             ) {
-                Button(
-                    onClick = { onRequestServices() },
+                // Use a real link to /services for proper navigation
+                codes.yousef.summon.components.navigation.ButtonLink(
                     label = ServicesCopy.openModal.resolve(locale),
+                    href = "/services",
                     modifier = Modifier()
                         .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                         .borderRadius(PortfolioTheme.Radii.pill)
                         .fontWeight(600),
-                    variant = ButtonVariant.PRIMARY,
-                    disabled = false
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("cta" to "view-featured-services"),
+                    navigationMode = codes.yousef.summon.components.navigation.LinkNavigationMode.Native
                 )
             }
         }
