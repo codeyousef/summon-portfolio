@@ -37,16 +37,28 @@ fun AdminLoginPage(
             action = "/admin/login",
             hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList()
         ) {
+            Text(
+                text = "Username",
+                modifier = Modifier()
+                    .fontWeight("600")
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
             FormTextField(
                 name = "username",
-                label = "Username",
+                label = "",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
+            Text(
+                text = "Password",
+                modifier = Modifier()
+                    .fontWeight("600")
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
             FormTextField(
                 name = "password",
-                label = "Password",
+                label = "",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
@@ -69,23 +81,41 @@ fun AdminChangePasswordPage(
         errorMessage = errorMessage
     ) {
         Form(action = "/admin/change-password") {
+            Text(
+                text = "New Username",
+                modifier = Modifier()
+                    .fontWeight("600")
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
             FormTextField(
                 name = "username",
-                label = "New Username",
+                label = "",
                 required = true,
                 defaultValue = currentUsername,
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
+            Text(
+                text = "New Password",
+                modifier = Modifier()
+                    .fontWeight("600")
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
             FormTextField(
                 name = "password",
-                label = "New Password",
+                label = "",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
+            Text(
+                text = "Confirm Password",
+                modifier = Modifier()
+                    .fontWeight("600")
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
             FormTextField(
                 name = "confirm",
-                label = "Confirm Password",
+                label = "",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)

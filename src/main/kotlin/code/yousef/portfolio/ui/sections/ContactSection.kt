@@ -63,7 +63,7 @@ fun ContactSection(
                     text = ContactCopy.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.5.rem)
-                        .fontWeight(700)
+                        .fontWeight("700")
                 )
                 Text(
                     text = ContactCopy.subtitle.resolve(locale),
@@ -100,28 +100,53 @@ private fun ContactForm(
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
     ) {
+        // Labels rendered explicitly for accessible contrast
+        Text(
+            text = ContactCopy.name.resolve(locale),
+            modifier = Modifier()
+                .fontWeight(600)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+        )
         FormTextField(
             name = "name",
-            label = ContactCopy.name.resolve(locale),
+            label = "",
             defaultValue = "",
             required = true,
             modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
+        Text(
+            text = ContactCopy.email.resolve(locale),
+            modifier = Modifier()
+                .fontWeight(600)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+        )
         FormTextField(
             name = "email",
-            label = ContactCopy.email.resolve(locale),
+            label = "",
             defaultValue = "",
             modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+        )
+        Text(
+            text = ContactCopy.whatsapp.resolve(locale),
+            modifier = Modifier()
+                .fontWeight(600)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
         FormTextField(
             name = "whatsapp",
-            label = ContactCopy.whatsapp.resolve(locale),
+            label = "",
             defaultValue = "",
             modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
+        Text(
+            text = ContactCopy.requirements.resolve(locale),
+            modifier = Modifier()
+                .fontWeight(600)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+        )
         FormTextArea(
             name = "requirements",
-            label = ContactCopy.requirements.resolve(locale),
+            label = "",
             defaultValue = "",
             required = true,
             modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
