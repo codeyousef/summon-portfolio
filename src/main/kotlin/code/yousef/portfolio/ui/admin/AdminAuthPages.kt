@@ -14,6 +14,7 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.theme.ColorHelpers.textColor
 
 @Composable
 fun AdminLoginPage(
@@ -43,14 +44,14 @@ fun AdminLoginPage(
                 label = "Username",
                 required = true,
                 defaultValue = "",
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "password",
                 label = "Password",
                 required = true,
                 defaultValue = "",
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormButton(
                 text = "Sign In"
@@ -75,21 +76,21 @@ fun AdminChangePasswordPage(
                 label = "New Username",
                 required = true,
                 defaultValue = currentUsername,
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "password",
                 label = "New Password",
                 required = true,
                 defaultValue = "",
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "confirm",
                 label = "Confirm Password",
                 required = true,
                 defaultValue = "",
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormButton(
                 text = "Save Credentials"

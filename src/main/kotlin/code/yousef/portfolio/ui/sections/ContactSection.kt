@@ -17,6 +17,7 @@ import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
 import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
 import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.StylingModifiers.lineHeight
+import codes.yousef.summon.theme.ColorHelpers.textColor
 
 @Composable
 fun ContactSection(
@@ -106,26 +107,26 @@ private fun ContactForm(
             label = ContactCopy.name.resolve(locale),
             defaultValue = "",
             required = true,
-            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY),
         )
         FormTextField(
             name = "email",
             label = ContactCopy.email.resolve(locale),
             defaultValue = "",
-            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextField(
             name = "whatsapp",
             label = ContactCopy.whatsapp.resolve(locale),
             defaultValue = "",
-            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextArea(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
             defaultValue = "",
             required = true,
-            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormButton(
             text = ContactCopy.submit.resolve(locale)
