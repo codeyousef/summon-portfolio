@@ -135,6 +135,25 @@ fun Application.configureRouting(
             )
         }
 
+        // Serve docs under /docs on all hosts (marketing root remains at /)
+        route("/docs") {
+            docsRoutes(
+                docsService = docsService,
+                markdownRenderer = markdownRenderer,
+                linkRewriter = linkRewriter,
+                docsRouter = docsRouter,
+                webhookHandler = webhookHandler,
+                config = docsConfig,
+                docsCatalog = docsCatalog,
+                pathResolver = { call ->
+                    val raw = call.request.path()
+                    val stripped = raw.removePrefix("/docs")
+                    stripped.ifBlank { "/" }
+                },
+                registerInfrastructure = false
+            )
+        }
+
         // Redirect portfolio-hosted /docs and /api-reference paths to the Summon docs site
         route("/docs") {
             get {

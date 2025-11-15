@@ -19,22 +19,22 @@ private val stageLinks = mapOf(
     DeploymentStage.DEV to EnvironmentLinks(
         portfolioBase = "https://dev.yousef.codes",
         summonBase = "https://summon.dev.yousef.codes",
-        docsBase = "https://summon.dev.yousef.codes"
+        docsBase = "https://summon.dev.yousef.codes/docs"
     ),
     DeploymentStage.UAT to EnvironmentLinks(
         portfolioBase = "https://uat.yousef.codes",
         summonBase = "https://summon.uat.yousef.codes",
-        docsBase = "https://summon.uat.yousef.codes"
+        docsBase = "https://summon.uat.yousef.codes/docs"
     ),
     DeploymentStage.PROD to EnvironmentLinks(
         portfolioBase = "https://yousef.codes",
         summonBase = "https://summon.yousef.codes",
-        docsBase = "https://summon.yousef.codes"
+        docsBase = "https://summon.yousef.codes/docs"
     ),
     DeploymentStage.LOCAL to EnvironmentLinks(
         portfolioBase = SITE_URL,
         summonBase = SUMMON_MARKETING_URL,
-        docsBase = SUMMON_MARKETING_URL.trimEnd('/')
+        docsBase = SUMMON_MARKETING_URL.trimEnd('/') + "/docs"
     )
 )
 

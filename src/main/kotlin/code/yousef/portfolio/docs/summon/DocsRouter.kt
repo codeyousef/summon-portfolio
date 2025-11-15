@@ -5,13 +5,10 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.HYDRATION_SCRIPT_PATH
 import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
-
-import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
@@ -156,7 +153,8 @@ private fun DocsNotFoundContent(navJson: String) {
 @Composable
 private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Composable () -> Unit) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
-        SectionWrap {
+        // No AppHeader for docs; focus the content and nav only
+        SectionWrap(maxWidthPx = 1400) {
             content()
         }
     }

@@ -14,11 +14,12 @@ import codes.yousef.summon.modifier.marginHorizontalAutoZero
 @Composable
 fun SectionWrap(
     modifier: Modifier = Modifier(),
+    maxWidthPx: Int = 1200,
     content: () -> Unit
 ) {
     Column(
         modifier = modifier
-            .width(cssMin(1200.px, 92.vw))
+            .width(cssMin(maxWidthPx.px, 92.vw))
             .marginHorizontalAutoZero()
             .padding("${cssClamp(22.px, 4.vw, 48.px)} ${cssClamp(16.px, 6.vw, 48.px)}")
             .gap(PortfolioTheme.Spacing.lg)
