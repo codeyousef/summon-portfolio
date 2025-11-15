@@ -108,7 +108,6 @@ private fun ContactForm(
                 text = ContactCopy.name.resolve(locale),
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
-            Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
         }
         FormTextField(
             name = "name",
@@ -142,7 +141,6 @@ private fun ContactForm(
                 text = ContactCopy.requirements.resolve(locale),
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
-            Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
         }
         FormTextArea(
             name = "requirements",

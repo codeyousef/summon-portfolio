@@ -43,7 +43,6 @@ fun AdminLoginPage(
                 modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(text = "Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-                Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
             }
             FormTextField(
                 name = "username",
@@ -56,7 +55,6 @@ fun AdminLoginPage(
                 modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(text = "Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-                Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
             }
             FormTextField(
                 name = "password",
@@ -87,7 +85,6 @@ fun AdminChangePasswordPage(
                 modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(text = "New Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-                Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
             }
             FormTextField(
                 name = "username",
@@ -100,7 +97,6 @@ fun AdminChangePasswordPage(
                 modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(text = "New Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-                Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
             }
             FormTextField(
                 name = "password",
@@ -113,7 +109,6 @@ fun AdminChangePasswordPage(
                 modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
             ) {
                 Text(text = "Confirm Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-                Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
             }
             FormTextField(
                 name = "confirm",
