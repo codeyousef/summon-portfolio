@@ -102,28 +102,51 @@ private fun ContactForm(
             .minWidth("0px")
     ) {
         // Labels via component props to avoid duplicates
+        // Styled label + asterisk (avoid built-in label to control color and duplication)
+        Row(modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)) {
+            Text(
+                text = ContactCopy.name.resolve(locale),
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+            Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
+        }
         FormTextField(
             name = "name",
-            label = ContactCopy.name.resolve(locale),
+            label = "",
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
+        Text(
+            text = ContactCopy.email.resolve(locale),
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+        )
         FormTextField(
             name = "email",
-            label = ContactCopy.email.resolve(locale),
+            label = "",
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+        )
+        Text(
+            text = ContactCopy.whatsapp.resolve(locale),
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextField(
             name = "whatsapp",
-            label = ContactCopy.whatsapp.resolve(locale),
+            label = "",
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
+        Row(modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)) {
+            Text(
+                text = ContactCopy.requirements.resolve(locale),
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+            Text(text = "*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
+        }
         FormTextArea(
             name = "requirements",
-            label = ContactCopy.requirements.resolve(locale),
+            label = "",
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
