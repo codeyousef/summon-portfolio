@@ -104,14 +104,14 @@ private fun ContactForm(
         // Labels via component props to avoid duplicates
         // Styled label + asterisk (avoid built-in label to control color and duplication)
         Row(modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)) {
-            Text(
-                text = ContactCopy.name.resolve(locale),
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
+//            Text(
+//                text = ContactCopy.name.resolve(locale),
+//                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+//            )
         }
         FormTextField(
             name = "name",
-            label = "",
+            label = ContactCopy.name.resolve(locale),
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
