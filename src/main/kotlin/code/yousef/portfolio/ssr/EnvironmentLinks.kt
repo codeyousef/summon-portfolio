@@ -1,6 +1,6 @@
 package code.yousef.portfolio.ssr
 
-import java.util.Locale
+import java.util.*
 
 data class EnvironmentLinks(
     val portfolioBase: String,
@@ -19,22 +19,22 @@ private val stageLinks = mapOf(
     DeploymentStage.DEV to EnvironmentLinks(
         portfolioBase = "https://dev.yousef.codes",
         summonBase = "https://summon.dev.yousef.codes",
-        docsBase = "https://summon.dev.yousef.codes/docs"
+        docsBase = "https://summon.dev.yousef.codes"
     ),
     DeploymentStage.UAT to EnvironmentLinks(
         portfolioBase = "https://uat.yousef.codes",
         summonBase = "https://summon.uat.yousef.codes",
-        docsBase = "https://summon.uat.yousef.codes/docs"
+        docsBase = "https://summon.uat.yousef.codes"
     ),
     DeploymentStage.PROD to EnvironmentLinks(
         portfolioBase = "https://yousef.codes",
         summonBase = "https://summon.yousef.codes",
-        docsBase = "https://summon.yousef.codes/docs"
+        docsBase = "https://summon.yousef.codes"
     ),
     DeploymentStage.LOCAL to EnvironmentLinks(
         portfolioBase = SITE_URL,
         summonBase = SUMMON_MARKETING_URL,
-        docsBase = "${SUMMON_MARKETING_URL.trimEnd('/')}/docs"
+        docsBase = SUMMON_MARKETING_URL.trimEnd('/')
     )
 )
 
@@ -85,5 +85,5 @@ fun summonMarketingUrl(): String =
 fun docsBaseUrl(): String {
     EnvironmentLinksRegistry.current()?.docsBase?.let { return it }
     docsBaseOverride?.let { return it }
-    return "${summonMarketingUrl().trimEnd('/')}/docs"
+    return summonMarketingUrl().trimEnd('/')
 }

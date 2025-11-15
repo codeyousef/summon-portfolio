@@ -10,7 +10,6 @@ import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.routes.portfolioRoutes
-import code.yousef.portfolio.routes.respondSummonPage
 import code.yousef.portfolio.server.routes.docsRoutes
 import code.yousef.portfolio.ssr.*
 import io.ktor.http.*
@@ -134,6 +133,31 @@ fun Application.configureRouting(
                 },
                 registerInfrastructure = false
             )
+        }
+
+        // Redirect portfolio-hosted /docs and /api-reference paths to the Summon docs site
+        route("/docs") {
+            get {
+                call.respondRedirect(docsBaseUrl(), permanent = false)
+            }
+            get("{path...}") {
+                val segs = call.parameters.getAll("path") ?: emptyList()
+                val suffix = segs.joinToString("/").trim('/')
+                val target = if (suffix.isBlank()) docsBaseUrl() else "${docsBaseUrl().trimEnd('/')}/$suffix"
+                call.respondRedirect(target, permanent = false)
+            }
+        }
+        route("/api-reference") {
+            get {
+                call.respondRedirect("${docsBaseUrl().trimEnd('/')}/api-reference", permanent = false)
+            }
+            get("{path...}") {
+                val segs = call.parameters.getAll("path") ?: emptyList()
+                val suffix = segs.joinToString("/").trim('/')
+                val base = "${docsBaseUrl().trimEnd('/')}/api-reference"
+                val target = if (suffix.isBlank()) base else "$base/$suffix"
+                call.respondRedirect(target, permanent = false)
+            }
         }
 
         route("/") {
