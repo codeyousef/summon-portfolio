@@ -104,26 +104,46 @@ private fun ContactForm(
         // Use component labels so required asterisks appear inline
         FormTextField(
             name = "name",
-            label = ContactCopy.name.resolve(locale),
+            label = {
+                Text(
+                    ContactCopy.name.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY),
         )
         FormTextField(
             name = "email",
-            label = ContactCopy.email.resolve(locale),
+            label = {
+                Text(
+                    ContactCopy.email.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextField(
             name = "whatsapp",
-            label = ContactCopy.whatsapp.resolve(locale),
+            label = {
+                Text(
+                    ContactCopy.whatsapp.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextArea(
             name = "requirements",
-            label = ContactCopy.requirements.resolve(locale),
+            label = {
+                Text(
+                    ContactCopy.requirements.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
