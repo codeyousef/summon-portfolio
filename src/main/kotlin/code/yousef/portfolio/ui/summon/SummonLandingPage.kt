@@ -31,14 +31,7 @@ fun SummonLandingPage(
     apiReferenceUrl: String
 ) {
     PageScaffold(locale = PortfolioLocale.EN) {
-        AppHeader(
-            locale = PortfolioLocale.EN,
-            forcePortfolioAnchors = true
-        )
-        Box(
-            modifier = Modifier()
-                .height(PortfolioTheme.Spacing.xxl)
-        ) {}
+
         SummonHero(docsUrl, apiReferenceUrl)
         SummonFeatureGrid()
         SummonRuntimeCallout(docsUrl)

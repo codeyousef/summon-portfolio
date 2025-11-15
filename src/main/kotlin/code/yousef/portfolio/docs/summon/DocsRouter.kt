@@ -156,16 +156,6 @@ private fun DocsNotFoundContent(navJson: String) {
 @Composable
 private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Composable () -> Unit) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
-        AppHeader(
-            locale = PortfolioLocale.EN,
-            forceNativeLinks = true,
-            nativeBaseUrl = navBaseUrl,
-            docsBaseUrl = docsBaseUrl
-        )
-        Box(
-            modifier = Modifier()
-                .height(PortfolioTheme.Spacing.xxl)
-        ) {}
         SectionWrap {
             content()
         }

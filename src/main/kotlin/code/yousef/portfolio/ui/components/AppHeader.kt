@@ -164,11 +164,19 @@ fun AppHeader(
                         navigationMode = linkMode
                     )
                 }
-                ProjectsDropdown(
-                    locale = locale,
-                    baseModifier = baseNavModifier,
-                    docsHref = docsHref,
-                    projectsNavigationMode = linkMode
+                AnchorLink(
+                    label = "Summon",
+                    href = docsHref,
+                    modifier = baseNavModifier,
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("nav" to "summon"),
+                    navigationMode = LinkNavigationMode.Native
                 )
             }
         }
