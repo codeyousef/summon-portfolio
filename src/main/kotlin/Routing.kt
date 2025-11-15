@@ -12,6 +12,8 @@ import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.routes.portfolioRoutes
 import code.yousef.portfolio.server.routes.docsRoutes
 import code.yousef.portfolio.ssr.*
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
+import codes.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
@@ -80,6 +82,35 @@ fun Application.configureRouting(
             registerInfrastructure = true
         )
 
+        // Mount Summon landing on summon.* hosts at '/'
+        summonLandingHosts
+            .flatMap { rawHost ->
+                val parts = rawHost.split(":", limit = 2)
+                val host = parts[0]
+                val port = parts.getOrNull(1)?.toIntOrNull()
+                if (port != null) listOf(host to port) else listOf(host to null, host to configuredPort)
+            }
+            .forEach { (hostName, port) ->
+                val mountSummonForHost: Route.() -> Unit = {
+                    get("/") {
+                        val page = summonLandingRenderer.landingPage()
+                        SummonRenderLock.withLock {
+                            call.respondSummonHydrated {
+                                val renderer = getPlatformRenderer()
+                                renderer.renderHeadElements(page.head)
+                                page.content()
+                            }
+                        }
+                    }
+                }
+                if (port != null) {
+                    host(hostName, port) { mountSummonForHost() }
+                } else {
+                    host(hostName) { mountSummonForHost() }
+                }
+            }
+
+        // Keep docs mounted under /docs on all hosts and under /summon on portfolio host
         docsHosts
             .flatMap { rawHost ->
                 val parts = rawHost.split(":", limit = 2)
@@ -89,31 +120,30 @@ fun Application.configureRouting(
             }
             .forEach { (hostName, port) ->
                 val mountDocsForHost: Route.() -> Unit = {
-                    get("/health") {
-                        call.respondHealth(bootInstant)
+                    get("/health") { call.respondHealth(bootInstant) }
+                    get("/healthz") { call.respondHealthz(appConfig, bootInstant) }
+                    // Serve docs at /docs on docs hosts
+                    route("/docs") {
+                        docsRoutes(
+                            docsService = docsService,
+                            markdownRenderer = markdownRenderer,
+                            linkRewriter = linkRewriter,
+                            docsRouter = docsRouter,
+                            webhookHandler = webhookHandler,
+                            config = docsConfig,
+                            docsCatalog = docsCatalog,
+                            pathResolver = { call ->
+                                val raw = call.request.path()
+                                raw.removePrefix("/docs").ifBlank { "/" }
+                            },
+                            registerInfrastructure = false
+                        )
                     }
-                    get("/healthz") {
-                        call.respondHealthz(appConfig, bootInstant)
-                    }
-                    docsRoutes(
-                        docsService = docsService,
-                        markdownRenderer = markdownRenderer,
-                        linkRewriter = linkRewriter,
-                        docsRouter = docsRouter,
-                        webhookHandler = webhookHandler,
-                        config = docsConfig,
-                        docsCatalog = docsCatalog,
-                        registerInfrastructure = false
-                    )
                 }
                 if (port != null) {
-                    host(hostName, port) {
-                        mountDocsForHost()
-                    }
+                    host(hostName, port) { mountDocsForHost() }
                 } else {
-                    host(hostName) {
-                        mountDocsForHost()
-                    }
+                    host(hostName) { mountDocsForHost() }
                 }
             }
 
@@ -135,26 +165,7 @@ fun Application.configureRouting(
             )
         }
 
-        // Serve docs under /docs on all hosts (marketing root remains at /)
-        route("/docs") {
-            docsRoutes(
-                docsService = docsService,
-                markdownRenderer = markdownRenderer,
-                linkRewriter = linkRewriter,
-                docsRouter = docsRouter,
-                webhookHandler = webhookHandler,
-                config = docsConfig,
-                docsCatalog = docsCatalog,
-                pathResolver = { call ->
-                    val raw = call.request.path()
-                    val stripped = raw.removePrefix("/docs")
-                    stripped.ifBlank { "/" }
-                },
-                registerInfrastructure = false
-            )
-        }
-
-        // Redirect portfolio-hosted /docs and /api-reference paths to the Summon docs site
+        // Redirect portfolio-hosted /docs and /api-reference paths to the public docs site
         route("/docs") {
             get {
                 call.respondRedirect(docsBaseUrl(), permanent = false)
