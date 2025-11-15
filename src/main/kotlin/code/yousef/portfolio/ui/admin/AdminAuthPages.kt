@@ -9,6 +9,7 @@ import codes.yousef.summon.components.forms.Form
 import codes.yousef.summon.components.forms.FormButton
 import codes.yousef.summon.components.forms.FormHiddenField
 import codes.yousef.summon.components.forms.FormTextField
+import codes.yousef.summon.components.input.FormField
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.px
@@ -39,30 +40,32 @@ fun AdminLoginPage(
             hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList(),
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         ) {
-            Row(
-                modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
+            FormField(
+                label = {
+                    Text("Username", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
             ) {
-                Text(text = "Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+                FormTextField(
+                    name = "username",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
             }
-            FormTextField(
-                name = "username",
-                label = "",
-                required = true,
-                defaultValue = "",
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
-            Row(
-                modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
+            FormField(
+                label = {
+                    Text("Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
             ) {
-                Text(text = "Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+                FormTextField(
+                    name = "password",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
             }
-            FormTextField(
-                name = "password",
-                label = "",
-                required = true,
-                defaultValue = "",
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
             FormButton(
                 text = "Sign In"
             )
@@ -81,42 +84,45 @@ fun AdminChangePasswordPage(
         errorMessage = errorMessage
     ) {
         Form(action = "/admin/change-password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) {
-            Row(
-                modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
+            FormField(
+                label = {
+                    Text("New Username", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
             ) {
-                Text(text = "New Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+                FormTextField(
+                    name = "username",
+                    label = "",
+                    defaultValue = currentUsername,
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
             }
-            FormTextField(
-                name = "username",
-                label = "",
-                required = true,
-                defaultValue = currentUsername,
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
-            Row(
-                modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
+            FormField(
+                label = {
+                    Text("New Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
             ) {
-                Text(text = "New Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+                FormTextField(
+                    name = "password",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
             }
-            FormTextField(
-                name = "password",
-                label = "",
-                required = true,
-                defaultValue = "",
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
-            Row(
-                modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)
+            FormField(
+                label = {
+                    Text("Confirm Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
             ) {
-                Text(text = "Confirm Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+                FormTextField(
+                    name = "confirm",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
             }
-            FormTextField(
-                name = "confirm",
-                label = "",
-                required = true,
-                defaultValue = "",
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
             FormButton(
                 text = "Save Credentials"
             )

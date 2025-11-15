@@ -8,6 +8,7 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
+import codes.yousef.summon.components.input.FormField
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.percent
@@ -109,51 +110,74 @@ private fun ContactForm(
 //                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
 //            )
         }
-        FormTextField(
-            name = "name",
+        FormField(
             label = {
                 Text(
                     ContactCopy.name.resolve(locale),
                     modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
-            }.toString(),
-            defaultValue = "",
-            required = true,
-            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-        )
-        Text(
-            text = ContactCopy.email.resolve(locale),
-            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
-        )
-        FormTextField(
-            name = "email",
-            label = "",
-            defaultValue = "",
-            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-        )
-        Text(
-            text = ContactCopy.whatsapp.resolve(locale),
-            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
-        )
-        FormTextField(
-            name = "whatsapp",
-            label = "",
-            defaultValue = "",
-            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-        )
-        Row(modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)) {
-            Text(
-                text = ContactCopy.requirements.resolve(locale),
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            },
+            isRequired = true
+        ) {
+            FormTextField(
+                name = "name",
+                label = "",
+                defaultValue = "",
+                placeholder = ContactCopy.name.resolve(locale),
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
-        FormTextArea(
-            name = "requirements",
-            label = "",
-            defaultValue = "",
-            required = true,
-            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-        )
+        FormField(
+            label = {
+                Text(
+                    ContactCopy.email.resolve(locale),
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
+            isRequired = false
+        ) {
+            FormTextField(
+                name = "email",
+                label = "",
+                defaultValue = "",
+                placeholder = ContactCopy.email.resolve(locale),
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+        }
+        FormField(
+            label = {
+                Text(
+                    ContactCopy.whatsapp.resolve(locale),
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
+            isRequired = false
+        ) {
+            FormTextField(
+                name = "whatsapp",
+                label = "",
+                defaultValue = "",
+                placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+        }
+        FormField(
+            label = {
+                Text(
+                    ContactCopy.requirements.resolve(locale),
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
+            isRequired = true
+        ) {
+            FormTextArea(
+                name = "requirements",
+                label = "",
+                defaultValue = "",
+                required = true,
+                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+        }
         FormButton(
             text = ContactCopy.submit.resolve(locale)
         )
