@@ -101,46 +101,29 @@ private fun ContactForm(
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
     ) {
-        // Custom labels with theme color and inline asterisks
-        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
-            Text(ContactCopy.name.resolve(locale), modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-            Text("*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
-        }
+        // Labels via component props to avoid duplicates
         FormTextField(
             name = "name",
-            label = "",
+            label = ContactCopy.name.resolve(locale),
             defaultValue = "",
             required = true,
-            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY),
+            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
-        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
-            Text(ContactCopy.email.resolve(locale), modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-        }
         FormTextField(
             name = "email",
-            label = "",
+            label = ContactCopy.email.resolve(locale),
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
-        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
-            Text(ContactCopy.whatsapp.resolve(locale), modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
-        }
         FormTextField(
             name = "whatsapp",
-            label = "",
+            label = ContactCopy.whatsapp.resolve(locale),
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
-        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
-            Text(
-                ContactCopy.requirements.resolve(locale),
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
-            Text("*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
-        }
         FormTextArea(
             name = "requirements",
-            label = "",
+            label = ContactCopy.requirements.resolve(locale),
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
