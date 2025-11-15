@@ -114,7 +114,7 @@ private fun ContactForm(
             label = {
                 Text(
                     ContactCopy.name.resolve(locale),
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
             isRequired = true
@@ -124,14 +124,14 @@ private fun ContactForm(
                 label = "",
                 defaultValue = "",
                 placeholder = ContactCopy.name.resolve(locale),
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
         FormField(
             label = {
                 Text(
                     ContactCopy.email.resolve(locale),
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
             isRequired = false
@@ -141,14 +141,14 @@ private fun ContactForm(
                 label = "",
                 defaultValue = "",
                 placeholder = ContactCopy.email.resolve(locale),
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
         FormField(
             label = {
                 Text(
                     ContactCopy.whatsapp.resolve(locale),
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
             isRequired = false
@@ -158,14 +158,14 @@ private fun ContactForm(
                 label = "",
                 defaultValue = "",
                 placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
         FormField(
             label = {
                 Text(
                     ContactCopy.requirements.resolve(locale),
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
             isRequired = true
@@ -175,7 +175,7 @@ private fun ContactForm(
                 label = "",
                 defaultValue = "",
                 required = true,
-                modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
         FormButton(
@@ -202,7 +202,7 @@ private object ContactCopy {
     val name = LocalizedText("Name", "الاسم")
     val email = LocalizedText("Email", "البريد الإلكتروني")
     val whatsapp = LocalizedText("WhatsApp", "رقم واتساب")
-    val whatsappPlaceholder = LocalizedText("+1 555 123 4567", "+966 5X XXX XXXX")
+    val whatsappPlaceholder = LocalizedText("+966 565 123 4567", "+966 5X XXX XXXX")
     val requirements = LocalizedText("What are we building?", "ماذا سنبني؟")
     val optional = LocalizedText("Optional", "اختياري")
     val submit = LocalizedText("Send request", "أرسل الطلب")

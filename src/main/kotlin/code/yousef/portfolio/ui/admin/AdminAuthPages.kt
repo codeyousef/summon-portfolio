@@ -94,7 +94,7 @@ fun AdminChangePasswordPage(
                     name = "username",
                     label = "",
                     defaultValue = currentUsername,
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             }
             FormField(
@@ -107,12 +107,12 @@ fun AdminChangePasswordPage(
                     name = "password",
                     label = "",
                     defaultValue = "",
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             }
             FormField(
                 label = {
-                    Text("Confirm Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                    Text("Confirm Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
                 },
                 isRequired = true
             ) {
@@ -120,7 +120,7 @@ fun AdminChangePasswordPage(
                     name = "confirm",
                     label = "",
                     defaultValue = "",
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             }
             FormButton(
