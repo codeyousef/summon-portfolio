@@ -37,7 +37,7 @@ fun AdminLoginPage(
         Form(
             action = "/admin/login",
             hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList(),
-            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         ) {
             FormTextField(
                 name = "username",

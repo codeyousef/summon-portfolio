@@ -97,7 +97,7 @@ private fun ContactForm(
             .display(Display.Flex)
             .flexDirection(FlexDirection.Column)
             .width(100.percent)
-            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            .textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
     ) {
