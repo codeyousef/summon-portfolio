@@ -6,6 +6,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Paragraph
+import codes.yousef.summon.components.display.RichText
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
 import codes.yousef.summon.components.layout.Column
@@ -100,6 +101,10 @@ private fun ContactForm(
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
     ) {
+        // Improve contrast of labels on dark surfaces
+        RichText(
+            """<style>label{color:${PortfolioTheme.Colors.TEXT_PRIMARY} !important;}</style>"""
+        )
         FormTextField(
             name = "name",
             label = ContactCopy.name.resolve(locale),

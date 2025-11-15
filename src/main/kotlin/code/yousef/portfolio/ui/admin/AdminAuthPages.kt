@@ -37,6 +37,11 @@ fun AdminLoginPage(
             action = "/admin/login",
             hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList()
         ) {
+            // Improve label contrast on dark surface
+            Text(
+                text = "",
+                modifier = Modifier().rawStyle("label{color:${PortfolioTheme.Colors.TEXT_PRIMARY} !important;}")
+            )
             FormTextField(
                 name = "username",
                 label = "Username",
