@@ -35,7 +35,8 @@ fun AdminLoginPage(
         )
         Form(
             action = "/admin/login",
-            hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList()
+            hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList(),
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         ) {
             FormTextField(
                 name = "username",
@@ -68,7 +69,7 @@ fun AdminChangePasswordPage(
         subtitle = "Please set a new username and password before continuing.",
         errorMessage = errorMessage
     ) {
-        Form(action = "/admin/change-password") {
+        Form(action = "/admin/change-password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) {
             FormTextField(
                 name = "username",
                 label = "New Username",
