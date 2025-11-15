@@ -6,7 +6,6 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Paragraph
-import codes.yousef.summon.components.display.RichText
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
 import codes.yousef.summon.components.layout.Column
@@ -101,31 +100,31 @@ private fun ContactForm(
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
     ) {
-        // Improve contrast of labels on dark surfaces
-        RichText(
-            """<style>label{color:${PortfolioTheme.Colors.TEXT_PRIMARY} !important;}</style>"""
-        )
         FormTextField(
             name = "name",
             label = ContactCopy.name.resolve(locale),
             defaultValue = "",
-            required = true
+            required = true,
+            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextField(
             name = "email",
             label = ContactCopy.email.resolve(locale),
-            defaultValue = ""
+            defaultValue = "",
+            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextField(
             name = "whatsapp",
             label = ContactCopy.whatsapp.resolve(locale),
-            defaultValue = ""
+            defaultValue = "",
+            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextArea(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
             defaultValue = "",
-            required = true
+            required = true,
+            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormButton(
             text = ContactCopy.submit.resolve(locale)
