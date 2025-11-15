@@ -41,14 +41,14 @@ fun AdminLoginPage(
         ) {
             FormTextField(
                 name = "username",
-                label = { Text("Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) },
+                label = "Username",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "password",
-                label = { Text("Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) },
+                label = "Password",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
@@ -73,21 +73,21 @@ fun AdminChangePasswordPage(
         Form(action = "/admin/change-password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) {
             FormTextField(
                 name = "username",
-                label = { Text("New Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) },
+                label = "New Username",
                 required = true,
                 defaultValue = currentUsername,
                 modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "password",
-                label = { Text("New Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) },
+                label = "New Password",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
             FormTextField(
                 name = "confirm",
-                label = { Text("Confirm Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) },
+                label = "Confirm Password",
                 required = true,
                 defaultValue = "",
                 modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
