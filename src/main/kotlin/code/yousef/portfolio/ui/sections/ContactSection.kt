@@ -101,29 +101,46 @@ private fun ContactForm(
             .gap(PortfolioTheme.Spacing.md)
             .minWidth("0px")
     ) {
-        // Use component labels so required asterisks appear inline
+        // Custom labels with theme color and inline asterisks
+        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
+            Text(ContactCopy.name.resolve(locale), modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+            Text("*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
+        }
         FormTextField(
             name = "name",
-            label = ContactCopy.name.resolve(locale),
+            label = "",
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY),
         )
+        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
+            Text(ContactCopy.email.resolve(locale), modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+        }
         FormTextField(
             name = "email",
-            label = ContactCopy.email.resolve(locale),
+            label = "",
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
+        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
+            Text(ContactCopy.whatsapp.resolve(locale), modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+        }
         FormTextField(
             name = "whatsapp",
-            label = ContactCopy.whatsapp.resolve(locale),
+            label = "",
             defaultValue = "",
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
+        Row(modifier = Modifier().display(Display.Flex).gap(PortfolioTheme.Spacing.xxs).alignItems(AlignItems.Center)) {
+            Text(
+                ContactCopy.requirements.resolve(locale),
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+            Text("*", modifier = Modifier().color(PortfolioTheme.Colors.DANGER))
+        }
         FormTextArea(
             name = "requirements",
-            label = ContactCopy.requirements.resolve(locale),
+            label = "",
             defaultValue = "",
             required = true,
             modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
