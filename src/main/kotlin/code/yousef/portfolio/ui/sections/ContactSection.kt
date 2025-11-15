@@ -105,26 +105,26 @@ private fun ContactForm(
             label = ContactCopy.name.resolve(locale),
             defaultValue = "",
             required = true,
-            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextField(
             name = "email",
             label = ContactCopy.email.resolve(locale),
             defaultValue = "",
-            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextField(
             name = "whatsapp",
             label = ContactCopy.whatsapp.resolve(locale),
             defaultValue = "",
-            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormTextArea(
             name = "requirements",
             label = ContactCopy.requirements.resolve(locale),
             defaultValue = "",
             required = true,
-            modifier = Modifier().labelColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         )
         FormButton(
             text = ContactCopy.submit.resolve(locale)
