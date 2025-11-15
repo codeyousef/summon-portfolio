@@ -39,11 +39,11 @@ class SummonLandingRenderer {
 
     private fun docsUrl(): String {
         val override = System.getenv("SUMMON_DOCS_URL")?.takeIf { it.isNotBlank() }
-        return (override ?: docsBaseUrl()).trimEnd('/')
+        return (override ?: "/docs").trimEnd('/')
     }
 
     private fun apiReferenceUrl(): String {
         val override = System.getenv("SUMMON_API_REFERENCE_URL")?.takeIf { it.isNotBlank() }
-        return override ?: "${summonMarketingUrl().trimEnd('/')}/api-reference"
+        return override ?: "/api-reference"
     }
 }
