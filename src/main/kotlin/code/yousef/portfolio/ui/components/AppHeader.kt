@@ -121,63 +121,66 @@ fun AppHeader(
             modifier = Modifier()
                 .flex(grow = 1, shrink = 1, basis = "360px")
         ) {
-            Row(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .alignItems(AlignItems.Center)
-                    .gap(PortfolioTheme.Spacing.md)
-                    .flex(grow = 1, shrink = 1, basis = "360px")
-                    .flexWrap(FlexWrap.Wrap)
-                    .id("app-header-nav")
+            if (!menuOpenState.value) {
+                Row(
+                    modifier = Modifier()
+                        .display(Display.Flex)
+                        .alignItems(AlignItems.Center)
+                        .gap(PortfolioTheme.Spacing.md)
+                        .flex(grow = 1, shrink = 1, basis = "360px")
+                        .flexWrap(FlexWrap.Wrap)
+                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.None) }
+                        .id("app-header-nav")
 
-            ) {
-                val baseNavModifier = Modifier()
-                    .textDecoration(TextDecoration.None)
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                    .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
-                    .fontSize(0.85.rem)
-                    .letterSpacing(0.08.rem)
-                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                    .borderRadius(PortfolioTheme.Radii.pill)
-                    .opacity(0.9F)
-                val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
-                val linkMode = if (forceNativeLinks || forcePortfolioAnchors) {
-                    LinkNavigationMode.Native
-                } else {
-                    LinkNavigationMode.Client
-                }
-                navItems.forEach { item ->
-                    val href =
-                        if (forceNativeLinks) {
-                            item.target.absoluteHref(locale, nativeBaseUrl)
-                        } else if (prefixOverride != null) {
-                            prefixOverride + item.target.href(locale)
-                        } else {
-                            item.target.href(locale)
-                        }
-                    val label = item.label.resolve(locale)
-                    navLink(
-                        label = label,
-                        href = href,
+                ) {
+                    val baseNavModifier = Modifier()
+                        .textDecoration(TextDecoration.None)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
+                        .fontSize(0.85.rem)
+                        .letterSpacing(0.08.rem)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .opacity(0.9F)
+                    val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
+                    val linkMode = if (forceNativeLinks || forcePortfolioAnchors) {
+                        LinkNavigationMode.Native
+                    } else {
+                        LinkNavigationMode.Client
+                    }
+                    navItems.forEach { item ->
+                        val href =
+                            if (forceNativeLinks) {
+                                item.target.absoluteHref(locale, nativeBaseUrl)
+                            } else if (prefixOverride != null) {
+                                prefixOverride + item.target.href(locale)
+                            } else {
+                                item.target.href(locale)
+                            }
+                        val label = item.label.resolve(locale)
+                        navLink(
+                            label = label,
+                            href = href,
+                            modifier = baseNavModifier,
+                            dataAttributes = mapOf("nav" to label.lowercase()),
+                            navigationMode = linkMode
+                        )
+                    }
+                    AnchorLink(
+                        label = "Summon",
+                        href = docsHref,
                         modifier = baseNavModifier,
-                        dataAttributes = mapOf("nav" to label.lowercase()),
-                        navigationMode = linkMode
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null,
+                        dataAttributes = mapOf("nav" to "summon"),
+                        navigationMode = LinkNavigationMode.Native
                     )
                 }
-                AnchorLink(
-                    label = "Summon",
-                    href = docsHref,
-                    modifier = baseNavModifier,
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("nav" to "summon"),
-                    navigationMode = LinkNavigationMode.Native
-                )
             }
         }
 
@@ -236,6 +239,22 @@ fun AppHeader(
             } else {
                 LinkNavigationMode.Client
             }
+                // Mobile hamburger toggle (visible alongside actions)
+                Button(
+                    onClick = { menuOpenState.value = !menuOpenState.value },
+                    label = "☰",
+                    modifier = Modifier()
+                        .display(Display.None)
+                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Flex) }
+                        .textDecoration(TextDecoration.None)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .borderRadius(6)
+                        .ariaExpanded(menuOpenState.value)
+                        .ariaControls("app-header-nav"),
+                    variant = ButtonVariant.SECONDARY,
+                    disabled = false
+                )
             ButtonLink(
                 label = startProjectLabel.resolve(locale),
                 href = hireHref,
@@ -262,6 +281,68 @@ fun AppHeader(
             )
             LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
         }
+        }
+        // Collapsible mobile menu panel
+        if (menuOpenState.value) {
+            Box(
+                modifier = Modifier()
+                    .display(Display.None)
+                    .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Block) }
+                    .position(Position.Absolute)
+                    .top("100%")
+                    .positionInset(left = "0", right = "0")
+                    .zIndex(50)
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(PortfolioTheme.Colors.BORDER)
+                    .borderRadius(PortfolioTheme.Radii.lg)
+                    .padding(PortfolioTheme.Spacing.md)
+                    .id("mobile-menu")
+            ) {
+                val baseNavModifier = Modifier()
+                    .display(Display.Block)
+                    .textDecoration(TextDecoration.None)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
+                    .fontSize(1.rem)
+                    .padding(PortfolioTheme.Spacing.sm)
+                    .borderRadius(PortfolioTheme.Radii.md)
+                    .whiteSpace(WhiteSpace.NoWrap)
+                val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
+                val linkMode =
+                    if (forceNativeLinks || forcePortfolioAnchors) LinkNavigationMode.Native else LinkNavigationMode.Client
+                navItems.forEach { item ->
+                    val href = if (forceNativeLinks) {
+                        item.target.absoluteHref(locale, nativeBaseUrl)
+                    } else if (prefixOverride != null) {
+                        prefixOverride + item.target.href(locale)
+                    } else {
+                        item.target.href(locale)
+                    }
+                    navLink(
+                        label = item.label.resolve(locale),
+                        href = href,
+                        modifier = baseNavModifier,
+                        dataAttributes = mapOf("nav" to item.label.resolve(locale).lowercase()),
+                        navigationMode = linkMode
+                    )
+                }
+                AnchorLink(
+                    label = "Summon",
+                    href = docsHref,
+                    modifier = baseNavModifier,
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("nav" to "summon"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+            }
         }
     }
 }
