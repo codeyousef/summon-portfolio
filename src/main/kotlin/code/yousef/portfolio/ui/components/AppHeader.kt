@@ -275,19 +275,22 @@ fun AppHeader(
                 LinkNavigationMode.Client
             }
                 // Mobile hamburger toggle (hidden on desktop, visible on mobile)
-                // Using inline onclick as workaround until Summon onClick hydration is fixed
                 Box(
                     modifier = Modifier()
                         .id("hamburger-btn")
-                        .attribute("onclick", "document.getElementById('mobile-menu').style.display = document.getElementById('mobile-menu').style.display === 'none' ? 'block' : 'none';")
-                        .cursor(Cursor.Pointer)
                 ) {
-                    Text(
-                        text = "☰",
+                    Button(
+                        onClick = { 
+                            menuOpenState.value = !menuOpenState.value
+                        },
+                        label = "☰",
                         modifier = Modifier()
                             .fontSize(1.5.rem)
                             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                            .cursor(Cursor.Pointer),
+                        variant = ButtonVariant.SECONDARY,
+                        disabled = false
                     )
                 }
             ButtonLink(
