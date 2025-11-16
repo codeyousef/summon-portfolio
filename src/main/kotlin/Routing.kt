@@ -14,6 +14,7 @@ import code.yousef.portfolio.server.routes.docsRoutes
 import code.yousef.portfolio.ssr.*
 import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
 import codes.yousef.summon.runtime.getPlatformRenderer
+import codes.yousef.summon.runtime.CallbackRegistry
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
@@ -67,6 +68,20 @@ fun Application.configureRouting(
         hydrationBundle?.let { bundle ->
             get("/summon-hydration.js") {
                 call.respondBytes(bundle, ContentType.Application.JavaScript)
+            }
+        }
+        
+        // Summon callback endpoint for handling onClick and other interactive events
+        post("/summon/callback") {
+            val request = call.receive<CallbackRequest>()
+            val callbackId = request.callbackId
+            
+            try {
+                CallbackRegistry.executeCallback(callbackId)
+                call.respond(HttpStatusCode.OK)
+            } catch (e: Exception) {
+                log.error("Failed to execute callback $callbackId", e)
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
             }
         }
 
@@ -258,6 +273,9 @@ private fun generateSitemapXml(contentService: PortfolioContentService): String 
         appendLine("</urlset>")
     }
 }
+
+@Serializable
+private data class CallbackRequest(val callbackId: String)
 
 @Serializable
 private data class HealthStatus(val status: String, val uptimeSeconds: Long)
