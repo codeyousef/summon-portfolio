@@ -237,13 +237,13 @@ fun AppHeader(
             } else {
                 LinkNavigationMode.Client
             }
-                // Mobile hamburger toggle (visible alongside actions)
+                // Mobile hamburger toggle (hidden on desktop, visible on mobile)
                 Button(
                     onClick = { menuOpenState.value = !menuOpenState.value },
                     label = "☰",
                     modifier = Modifier()
-                        .display(Display.Flex)
-                        .mediaQuery(MediaQuery.MinWidth(Breakpoints.MD)) { display(Display.None) }
+                        .display(Display.None)
+                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Flex) }
                         .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
