@@ -80,6 +80,7 @@ fun AppHeader(
         .justifyContent(JustifyContent.SpaceBetween)
         .gap(PortfolioTheme.Spacing.lg)
         .flexWrap(FlexWrap.Wrap)
+        .mediaQuery(MediaQuery.MaxWidth(768)) { flexWrap(FlexWrap.NoWrap) }
         .position(Position.Fixed)
         .top(0.px)
         .positionInset(left = "0", right = "0")
@@ -123,8 +124,8 @@ fun AppHeader(
         ) {
             Box(
                 modifier = Modifier()
-                    .visibility(Visibility.Visible)
-                    .mediaQuery(MediaQuery.MaxWidth(768)) { visibility(Visibility.Hidden) }
+                    .display(Display.Block)
+                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.None) }
                     .id("app-header-nav")
             ) {
                 Row(
@@ -245,8 +246,8 @@ fun AppHeader(
                 // Mobile hamburger toggle (hidden on desktop, visible on mobile)
                 Box(
                     modifier = Modifier()
-                        .visibility(Visibility.Hidden)
-                        .mediaQuery(MediaQuery.MaxWidth(768)) { visibility(Visibility.Visible) }
+                        .display(Display.None)
+                        .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
                 ) {
                     Button(
                         onClick = { menuOpenState.value = !menuOpenState.value },
@@ -293,8 +294,8 @@ fun AppHeader(
         if (menuOpenState.value) {
             Box(
                 modifier = Modifier()
-                    .visibility(Visibility.Hidden)
-                    .mediaQuery(MediaQuery.MaxWidth(768)) { visibility(Visibility.Visible) }
+                    .display(Display.None)
+                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
                     .position(Position.Absolute)
                     .top("100%")
                     .positionInset(left = "0", right = "0")
