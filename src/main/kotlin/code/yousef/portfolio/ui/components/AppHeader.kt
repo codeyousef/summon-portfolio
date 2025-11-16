@@ -121,17 +121,21 @@ fun AppHeader(
             modifier = Modifier()
                 .flex(grow = 1, shrink = 1, basis = "360px")
         ) {
-            Row(
+            Box(
                 modifier = Modifier()
-                    .display(Display.Flex)
-                    .alignItems(AlignItems.Center)
-                    .gap(PortfolioTheme.Spacing.md)
-                    .flex(grow = 1, shrink = 1, basis = "360px")
-                    .flexWrap(FlexWrap.Wrap)
+                    .display(Display.Block)
                     .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.None) }
                     .id("app-header-nav")
-
             ) {
+                Row(
+                    modifier = Modifier()
+                        .display(Display.Flex)
+                        .alignItems(AlignItems.Center)
+                        .gap(PortfolioTheme.Spacing.md)
+                        .flex(grow = 1, shrink = 1, basis = "360px")
+                        .flexWrap(FlexWrap.Wrap)
+
+                ) {
                     val baseNavModifier = Modifier()
                         .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
@@ -179,6 +183,7 @@ fun AppHeader(
                         dataAttributes = mapOf("nav" to "summon"),
                         navigationMode = LinkNavigationMode.Native
                     )
+                }
             }
         }
 
