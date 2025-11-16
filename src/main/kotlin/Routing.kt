@@ -77,8 +77,13 @@ fun Application.configureRouting(
             val callbackId = request.callbackId
             
             try {
-                CallbackRegistry.executeCallback(callbackId)
-                call.respond(HttpStatusCode.OK)
+                val executed = codes.yousef.summon.runtime.CallbackRegistry.executeCallback(callbackId)
+                if (executed) {
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                } else {
+                    log.warn("Callback not found: $callbackId")
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Callback not found"))
+                }
             } catch (e: Exception) {
                 log.error("Failed to execute callback $callbackId", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
