@@ -275,26 +275,19 @@ fun AppHeader(
                 LinkNavigationMode.Client
             }
                 // Mobile hamburger toggle (hidden on desktop, visible on mobile)
+                // Using inline onclick as workaround until Summon onClick hydration is fixed
                 Box(
                     modifier = Modifier()
                         .id("hamburger-btn")
+                        .attribute("onclick", "document.getElementById('mobile-menu').style.display = document.getElementById('mobile-menu').style.display === 'none' ? 'block' : 'none';")
+                        .cursor(Cursor.Pointer)
                 ) {
-                    Button(
-                        onClick = {
-                            println("🔥 Hamburger clicked! Current state: ${menuOpenState.value}")
-                            menuOpenState.value = !menuOpenState.value
-                            println("🔥 New state: ${menuOpenState.value}")
-                        },
-                        label = "☰",
+                    Text(
+                        text = "☰",
                         modifier = Modifier()
-                            .textDecoration(TextDecoration.None)
+                            .fontSize(1.5.rem)
                             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                            .borderRadius(6)
-                            .ariaExpanded(menuOpenState.value)
-                            .ariaControls("mobile-menu"),
-                        variant = ButtonVariant.SECONDARY,
-                        disabled = false
                     )
                 }
             ButtonLink(
