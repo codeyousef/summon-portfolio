@@ -13,8 +13,8 @@ import code.yousef.portfolio.routes.portfolioRoutes
 import code.yousef.portfolio.server.routes.docsRoutes
 import code.yousef.portfolio.ssr.*
 import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
-import codes.yousef.summon.runtime.getPlatformRenderer
 import codes.yousef.summon.runtime.CallbackRegistry
+import codes.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
@@ -65,6 +65,26 @@ fun Application.configureRouting(
 
     routing {
         staticResources("/static", "static")
+
+        // Serve WASM file with correct MIME type
+        get("/summon-hydration.wasm") {
+            val wasmBytes = environment.classLoader.getResource("static/summon-hydration.wasm")?.readBytes()
+            if (wasmBytes != null) {
+                call.respondBytes(wasmBytes, ContentType("application", "wasm"))
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
+        get("/summon-hydration.wasm.js") {
+            val wasmJsBytes = environment.classLoader.getResource("static/summon-hydration.wasm.js")?.readBytes()
+            if (wasmJsBytes != null) {
+                call.respondBytes(wasmJsBytes, ContentType.Application.JavaScript)
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+        
         hydrationBundle?.let { bundle ->
             get("/summon-hydration.js") {
                 call.respondBytes(bundle, ContentType.Application.JavaScript)
