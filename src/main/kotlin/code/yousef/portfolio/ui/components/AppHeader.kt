@@ -238,21 +238,25 @@ fun AppHeader(
                 LinkNavigationMode.Client
             }
                 // Mobile hamburger toggle (hidden on desktop, visible on mobile)
-                Button(
-                    onClick = { menuOpenState.value = !menuOpenState.value },
-                    label = "☰",
+                Box(
                     modifier = Modifier()
                         .display(Display.None)
-                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Flex) }
-                        .textDecoration(TextDecoration.None)
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(6)
-                        .ariaExpanded(menuOpenState.value)
-                        .ariaControls("mobile-menu"),
-                    variant = ButtonVariant.SECONDARY,
-                    disabled = false
-                )
+                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Block) }
+                ) {
+                    Button(
+                        onClick = { menuOpenState.value = !menuOpenState.value },
+                        label = "☰",
+                        modifier = Modifier()
+                            .textDecoration(TextDecoration.None)
+                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                            .borderRadius(6)
+                            .ariaExpanded(menuOpenState.value)
+                            .ariaControls("mobile-menu"),
+                        variant = ButtonVariant.SECONDARY,
+                        disabled = false
+                    )
+                }
             ButtonLink(
                 label = startProjectLabel.resolve(locale),
                 href = hireHref,
