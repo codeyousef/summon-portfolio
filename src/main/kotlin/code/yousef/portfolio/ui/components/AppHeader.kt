@@ -19,7 +19,6 @@ import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
-import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.LayoutModifiers.positionInset
@@ -280,7 +279,11 @@ fun AppHeader(
                         .id("hamburger-btn")
                 ) {
                     Button(
-                        onClick = { menuOpenState.value = !menuOpenState.value },
+                        onClick = {
+                            println("🔥 Hamburger clicked! Current state: ${menuOpenState.value}")
+                            menuOpenState.value = !menuOpenState.value
+                            println("🔥 New state: ${menuOpenState.value}")
+                        },
                         label = "☰",
                         modifier = Modifier()
                             .textDecoration(TextDecoration.None)
