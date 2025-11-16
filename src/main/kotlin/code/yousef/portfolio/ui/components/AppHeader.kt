@@ -57,24 +57,32 @@ fun AppHeader(
     forcePortfolioAnchors: Boolean = false
 ) {
     GlobalStyle(css = """
+        /* Desktop navigation - hide on mobile */
         @media (max-width: 768px) {
             #app-header-nav {
                 display: none !important;
-            }
-            #hamburger-btn {
-                display: block !important;
-            }
-            #mobile-menu {
-                display: block !important;
             }
         }
         @media (min-width: 769px) {
             #app-header-nav {
                 display: block !important;
             }
+        }
+        
+        /* Hamburger button - show only on mobile */
+        @media (max-width: 768px) {
+            #hamburger-btn {
+                display: block !important;
+            }
+        }
+        @media (min-width: 769px) {
             #hamburger-btn {
                 display: none !important;
             }
+        }
+        
+        /* Mobile menu panel - hide on desktop, visibility on mobile controlled by inline styles */
+        @media (min-width: 769px) {
             #mobile-menu {
                 display: none !important;
             }
@@ -312,22 +320,22 @@ fun AppHeader(
             LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
         }
         }
-        // Collapsible mobile menu panel
-        if (menuOpenState.value) {
-            Box(
-                modifier = Modifier()
-                    .position(Position.Absolute)
-                    .top("100%")
-                    .positionInset(left = "0", right = "0")
-                    .zIndex(50)
-                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .borderRadius(PortfolioTheme.Radii.lg)
-                    .padding(PortfolioTheme.Spacing.md)
-                    .id("mobile-menu")
-            ) {
+        // Collapsible mobile menu panel (always rendered, visibility controlled by state)
+        Box(
+            modifier = Modifier()
+                .display(if (menuOpenState.value) Display.Block else Display.None)
+                .position(Position.Absolute)
+                .top("100%")
+                .positionInset(left = "0", right = "0")
+                .zIndex(50)
+                .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.lg)
+                .padding(PortfolioTheme.Spacing.md)
+                .id("mobile-menu")
+        ) {
                 val baseNavModifier = Modifier()
                     .display(Display.Block)
                     .textDecoration(TextDecoration.None)
@@ -370,7 +378,6 @@ fun AppHeader(
                     dataAttributes = mapOf("nav" to "summon"),
                     navigationMode = LinkNavigationMode.Native
                 )
-            }
         }
     }
 }
