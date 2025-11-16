@@ -179,8 +179,7 @@ fun AppHeader(
                         dataAttributes = mapOf("nav" to "summon"),
                         navigationMode = LinkNavigationMode.Native
                     )
-                }
-            )
+            }
         }
 
         Box(
