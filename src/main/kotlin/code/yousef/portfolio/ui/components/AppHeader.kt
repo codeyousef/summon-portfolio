@@ -121,18 +121,17 @@ fun AppHeader(
             modifier = Modifier()
                 .flex(grow = 1, shrink = 1, basis = "360px")
         ) {
-            if (!menuOpenState.value) {
-                Row(
-                    modifier = Modifier()
-                        .display(Display.Flex)
-                        .alignItems(AlignItems.Center)
-                        .gap(PortfolioTheme.Spacing.md)
-                        .flex(grow = 1, shrink = 1, basis = "360px")
-                        .flexWrap(FlexWrap.Wrap)
-                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.None) }
-                        .id("app-header-nav")
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .flex(grow = 1, shrink = 1, basis = "360px")
+                    .flexWrap(FlexWrap.Wrap)
+                    .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.None) }
+                    .id("app-header-nav")
 
-                ) {
+            ) {
                     val baseNavModifier = Modifier()
                         .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
@@ -181,7 +180,7 @@ fun AppHeader(
                         navigationMode = LinkNavigationMode.Native
                     )
                 }
-            }
+            )
         }
 
         Box(
@@ -244,14 +243,14 @@ fun AppHeader(
                     onClick = { menuOpenState.value = !menuOpenState.value },
                     label = "☰",
                     modifier = Modifier()
-                        .display(Display.None)
-                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Flex) }
+                        .display(Display.Flex)
+                        .mediaQuery(MediaQuery.MinWidth(Breakpoints.MD)) { display(Display.None) }
                         .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                         .borderRadius(6)
                         .ariaExpanded(menuOpenState.value)
-                        .ariaControls("app-header-nav"),
+                        .ariaControls("mobile-menu"),
                     variant = ButtonVariant.SECONDARY,
                     disabled = false
                 )
