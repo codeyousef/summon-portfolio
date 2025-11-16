@@ -124,7 +124,7 @@ fun AppHeader(
             Box(
                 modifier = Modifier()
                     .display(Display.Block)
-                    .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.None) }
+                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.None) }
                     .id("app-header-nav")
             ) {
                 Row(
@@ -246,7 +246,7 @@ fun AppHeader(
                 Box(
                     modifier = Modifier()
                         .display(Display.None)
-                        .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Block) }
+                        .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
                 ) {
                     Button(
                         onClick = { menuOpenState.value = !menuOpenState.value },
@@ -294,7 +294,7 @@ fun AppHeader(
             Box(
                 modifier = Modifier()
                     .display(Display.None)
-                    .mediaQuery(MediaQuery.MaxWidth(Breakpoints.MD - 1)) { display(Display.Block) }
+                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
                     .position(Position.Absolute)
                     .top("100%")
                     .positionInset(left = "0", right = "0")
