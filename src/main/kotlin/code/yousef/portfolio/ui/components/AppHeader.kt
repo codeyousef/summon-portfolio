@@ -123,8 +123,8 @@ fun AppHeader(
         ) {
             Box(
                 modifier = Modifier()
-                    .display(Display.Block)
-                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.None) }
+                    .visibility(Visibility.Visible)
+                    .mediaQuery(MediaQuery.MaxWidth(768)) { visibility(Visibility.Hidden) }
                     .id("app-header-nav")
             ) {
                 Row(
@@ -245,8 +245,8 @@ fun AppHeader(
                 // Mobile hamburger toggle (hidden on desktop, visible on mobile)
                 Box(
                     modifier = Modifier()
-                        .display(Display.None)
-                        .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
+                        .visibility(Visibility.Hidden)
+                        .mediaQuery(MediaQuery.MaxWidth(768)) { visibility(Visibility.Visible) }
                 ) {
                     Button(
                         onClick = { menuOpenState.value = !menuOpenState.value },
@@ -293,8 +293,8 @@ fun AppHeader(
         if (menuOpenState.value) {
             Box(
                 modifier = Modifier()
-                    .display(Display.None)
-                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
+                    .visibility(Visibility.Hidden)
+                    .mediaQuery(MediaQuery.MaxWidth(768)) { visibility(Visibility.Visible) }
                     .position(Position.Absolute)
                     .top("100%")
                     .positionInset(left = "0", right = "0")
