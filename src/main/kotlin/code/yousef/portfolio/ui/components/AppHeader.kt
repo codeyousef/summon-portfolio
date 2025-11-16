@@ -25,7 +25,8 @@ import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.LayoutModifiers.positionInset
 import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
-import codes.yousef.summon.runtime.rememberMutableStateOf
+import codes.yousef.summon.runtime.remember
+import codes.yousef.summon.state.mutableStateOf
 
 private sealed interface NavTarget {
     data class Section(val id: String) : NavTarget
@@ -104,7 +105,10 @@ fun AppHeader(
     }
     val containerPaddingStart = "calc(${PortfolioTheme.Spacing.md} + $paddingStart)"
     val containerPaddingEnd = "calc(${PortfolioTheme.Spacing.md} + $paddingEnd)"
-    val menuOpenState = rememberMutableStateOf(false)
+    
+    // SSR-safe state management with remember { mutableStateOf(...) }
+    val menuOpenState = remember { mutableStateOf(false) }
+    
     val containerModifier = modifier
         .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
@@ -282,6 +286,7 @@ fun AppHeader(
                     Button(
                         onClick = { 
                             menuOpenState.value = !menuOpenState.value
+                            println("🔥 Hamburger clicked! New state: ${menuOpenState.value}")
                         },
                         label = "☰",
                         modifier = Modifier()
@@ -502,7 +507,7 @@ private fun ProjectsDropdown(
     docsHref: String,
     projectsNavigationMode: LinkNavigationMode
 ) {
-    val open = rememberMutableStateOf(false)
+    val open = remember { mutableStateOf(false) }
     Box(
         modifier = Modifier()
             .position(Position.Relative)
