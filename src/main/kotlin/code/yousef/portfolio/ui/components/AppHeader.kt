@@ -16,6 +16,7 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -55,6 +56,31 @@ fun AppHeader(
     docsBaseUrl: String? = null,
     forcePortfolioAnchors: Boolean = false
 ) {
+    GlobalStyle(css = """
+        @media (max-width: 768px) {
+            #app-header-nav {
+                display: none !important;
+            }
+            #hamburger-btn {
+                display: block !important;
+            }
+            #mobile-menu {
+                display: block !important;
+            }
+        }
+        @media (min-width: 769px) {
+            #app-header-nav {
+                display: block !important;
+            }
+            #hamburger-btn {
+                display: none !important;
+            }
+            #mobile-menu {
+                display: none !important;
+            }
+        }
+    """)
+    
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
     val docsHref = resolveDocsHref(docsBaseUrl)
@@ -79,8 +105,7 @@ fun AppHeader(
         .alignItems(AlignItems.Center)
         .justifyContent(JustifyContent.SpaceBetween)
         .gap(PortfolioTheme.Spacing.lg)
-        .flexWrap(FlexWrap.Wrap)
-        .mediaQuery(MediaQuery.MaxWidth(768)) { flexWrap(FlexWrap.NoWrap) }
+        .flexWrap(FlexWrap.NoWrap)
         .position(Position.Fixed)
         .top(0.px)
         .positionInset(left = "0", right = "0")
@@ -124,8 +149,6 @@ fun AppHeader(
         ) {
             Box(
                 modifier = Modifier()
-                    .display(Display.Block)
-                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.None) }
                     .id("app-header-nav")
             ) {
                 Row(
@@ -246,8 +269,7 @@ fun AppHeader(
                 // Mobile hamburger toggle (hidden on desktop, visible on mobile)
                 Box(
                     modifier = Modifier()
-                        .display(Display.None)
-                        .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
+                        .id("hamburger-btn")
                 ) {
                     Button(
                         onClick = { menuOpenState.value = !menuOpenState.value },
@@ -294,8 +316,6 @@ fun AppHeader(
         if (menuOpenState.value) {
             Box(
                 modifier = Modifier()
-                    .display(Display.None)
-                    .mediaQuery(MediaQuery.MaxWidth(768)) { display(Display.Block) }
                     .position(Position.Absolute)
                     .top("100%")
                     .positionInset(left = "0", right = "0")
