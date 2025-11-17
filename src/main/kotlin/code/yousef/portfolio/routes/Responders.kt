@@ -16,9 +16,10 @@ import io.ktor.server.sessions.*
 
 @Composable
 private fun FullPage(page: SummonPage) {
-    val renderer = getPlatformRenderer()
-    renderer.renderHeadElements(page.head)
+    // ✅ Only render content - skip head elements to avoid separate callback context
     page.content()
+    
+    // TODO: Head elements need to be rendered elsewhere or integrated into page.content()
 }
 
 suspend fun ApplicationCall.respondSummonPage(
