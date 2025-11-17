@@ -15,7 +15,7 @@ import io.ktor.server.request.*
 import io.ktor.server.sessions.*
 
 @Composable
-private fun renderFullPage(page: SummonPage) {
+private fun FullPage(page: SummonPage) {
     val renderer = getPlatformRenderer()
     renderer.renderHeadElements(page.head)
     page.content()
@@ -34,10 +34,10 @@ suspend fun ApplicationCall.respondSummonPage(
                 val chrome =
                     session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
                 val provider = LocalPageChrome.provides(chrome)
-                provider.current
                 
-                // ✅ Render head and content in single composable scope
-                renderFullPage(page)
+                // ✅ Use provider and render everything in single composable
+                provider.current
+                FullPage(page)
             }
         }
     }
