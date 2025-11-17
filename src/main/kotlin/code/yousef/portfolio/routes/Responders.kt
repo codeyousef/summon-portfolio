@@ -28,9 +28,9 @@ suspend fun ApplicationCall.respondSummonPage(
                     session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
                 val provider = LocalPageChrome.provides(chrome)
                 provider.current
-                // Render body first, then head so specific metadata overwrites any defaults
-                page.content()
+                // Render head first with metadata, then body content
                 renderer.renderHeadElements(page.head)
+                page.content()
             }
         }
     }
