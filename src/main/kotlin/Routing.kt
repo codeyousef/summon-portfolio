@@ -69,7 +69,14 @@ fun Application.configureRouting(
         // Explicitly serve WASM files from static with correct MIME type
         get("/static/{filename}.wasm") {
             val filename = call.parameters["filename"]
-            val resource = environment.classLoader.getResource("static/$filename.wasm")
+            // Try to find the exact file first
+            var resource = environment.classLoader.getResource("static/$filename.wasm")
+            
+            // If not found, try the standard name (fallback for hashed requests)
+            if (resource == null) {
+                resource = environment.classLoader.getResource("static/summon-hydration.wasm")
+            }
+            
             if (resource != null) {
                 call.respondBytes(resource.readBytes(), ContentType("application", "wasm"))
             } else {
