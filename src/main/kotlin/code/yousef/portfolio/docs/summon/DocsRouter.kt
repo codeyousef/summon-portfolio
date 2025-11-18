@@ -77,7 +77,6 @@ class DocsRouter(
         head.meta("twitter:title", null, title, null, null)
         head.meta("twitter:description", null, description, null, null)
         head.link("canonical", canonical, null, null, null, null)
-        head.script("/static/wasm-polyfill.js", null, "application/javascript", false, true, null)
         head.script(HYDRATION_SCRIPT_PATH, null, "application/javascript", false, true, null)
     }
 

@@ -74,7 +74,6 @@ class BlogRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", blogCanonical(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", blogCanonical(PortfolioLocale.AR), "ar", null, null, null)
-        head.script("/static/wasm-polyfill.js", "wasm-polyfill", "application/javascript", false, false, null)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
     }
 
@@ -98,7 +97,6 @@ class BlogRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.EN, slug), "en", null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.AR, slug), "ar", null, null, null)
-        head.script("/static/wasm-polyfill.js", "wasm-polyfill", "application/javascript", false, false, null)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
     }
 
