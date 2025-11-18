@@ -34,6 +34,8 @@ class SummonLandingRenderer {
         head.meta("twitter:title", null, title, null, null)
         head.meta("twitter:description", null, description, null, null)
         head.link("canonical", marketingUrl, null, null, null, null)
+        head.meta("summon:hydration-mode", null, "js", null, null)
+        head.script("/static/process-polyfill.js", "process-polyfill", "application/javascript", false, false, null)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
     }
 
