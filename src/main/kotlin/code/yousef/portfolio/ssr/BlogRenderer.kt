@@ -74,9 +74,8 @@ class BlogRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", blogCanonical(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", blogCanonical(PortfolioLocale.AR), "ar", null, null, null)
-        head.meta("summon:hydration-mode", null, "js", null, null)
         head.script("/static/process-polyfill.js", "process-polyfill", "application/javascript", false, false, null)
-        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
+        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
     }
 
     private fun detailHead(locale: PortfolioLocale, post: BlogPost?, slug: String): (HeadScope) -> Unit = { head ->
@@ -99,9 +98,8 @@ class BlogRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.EN, slug), "en", null, null, null)
         head.link("alternate", blogDetailCanonical(PortfolioLocale.AR, slug), "ar", null, null, null)
-        head.meta("summon:hydration-mode", null, "js", null, null)
         head.script("/static/process-polyfill.js", "process-polyfill", "application/javascript", false, false, null)
-        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
+        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
     }
 
     private fun blogCanonical(locale: PortfolioLocale): String {

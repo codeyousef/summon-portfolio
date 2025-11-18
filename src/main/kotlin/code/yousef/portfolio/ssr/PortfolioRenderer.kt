@@ -83,12 +83,10 @@ class PortfolioRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)
-        // Force JS-only hydration (WASM has process.release bug in 0.4.8.9)
-        head.meta("summon:hydration-mode", null, "js", null, null)
-        // Polyfill for WASM process.release bug (must load before hydration)
+        // Polyfill MUST load synchronously (blocking) BEFORE hydration
         head.script("/static/process-polyfill.js", "process-polyfill", "application/javascript", false, false, null)
-        // Critical hydration script (defer)
-        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
+        // Hydration script also loads synchronously to ensure polyfill is applied
+        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
         // Non-critical cleanup script (async)
         head.script("/static/textarea-cleanup.js", "textarea-cleanup", "application/javascript", true, false, null)
         // (Structured data currently omitted until HeadScope gains inline support)
