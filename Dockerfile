@@ -13,8 +13,8 @@ RUN /workspace/gradlew --version || true
 # Now copy everything else and build the fat JAR
 COPY . /workspace
 
-# Build the server and export Summon hydration JS assets into resources/static
-RUN /workspace/gradlew -x test shadowJar :summonExportHydrationAssets --no-daemon
+# Build the server (hydration assets now embedded in Summon 0.4.8.9+)
+RUN /workspace/gradlew -x test shadowJar --no-daemon
 
 # Runtime stage
 FROM eclipse-temurin:17-jre
