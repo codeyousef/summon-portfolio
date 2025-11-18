@@ -66,7 +66,18 @@ fun Application.configureRouting(
     routing {
         staticResources("/static", "static")
 
-        // Serve WASM file with correct MIME type
+        // Explicitly serve WASM files from static with correct MIME type
+        get("/static/{filename}.wasm") {
+            val filename = call.parameters["filename"]
+            val resource = environment.classLoader.getResource("static/$filename.wasm")
+            if (resource != null) {
+                call.respondBytes(resource.readBytes(), ContentType("application", "wasm"))
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
+        // Serve WASM file with correct MIME type (legacy/fallback)
         get("/summon-hydration.wasm") {
             val wasmBytes = environment.classLoader.getResource("static/summon-hydration.wasm")?.readBytes()
             if (wasmBytes != null) {
@@ -272,6 +283,7 @@ fun Application.configureRouting(
             val sitemap = generateSitemapXml(contentService)
             call.respondText(sitemap, ContentType.Application.Xml)
         }
+
     }
 }
 
