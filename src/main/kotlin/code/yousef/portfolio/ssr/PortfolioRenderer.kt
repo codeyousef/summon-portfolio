@@ -83,8 +83,6 @@ class PortfolioRenderer(
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)
-        // Polyfill MUST load synchronously (blocking) BEFORE hydration
-        head.script("/static/process-polyfill.js", "process-polyfill", "application/javascript", false, false, null)
         // Hydration script also loads synchronously to ensure polyfill is applied
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
         // Non-critical cleanup script (async)
