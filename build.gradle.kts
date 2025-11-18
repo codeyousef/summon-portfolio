@@ -57,7 +57,6 @@ dependencies {
 
 tasks {
     shadowJar {
-        archiveClassifier.set("")
         mergeServiceFiles()
         isZip64 = true
     }
