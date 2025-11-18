@@ -61,4 +61,19 @@ tasks {
         mergeServiceFiles()
         isZip64 = true
     }
+
+    // Export Summon hydration assets (JS-only client) into resources/static
+    val summonExportHydrationAssets by registering(Copy::class) {
+        group = "summon"
+        description = "Export Summon hydration JS assets into resources/static for serving"
+
+        // Summon currently ships only the JS hydration client in this app; copy it into resources
+        from(layout.buildDirectory.dir("resources/main/static")) {
+            include("summon-hydration.js")
+        }
+        into(layout.projectDirectory.dir("src/main/resources/static"))
+
+        // Ensure resources are processed after copying
+        finalizedBy(processResources)
+    }
 }
