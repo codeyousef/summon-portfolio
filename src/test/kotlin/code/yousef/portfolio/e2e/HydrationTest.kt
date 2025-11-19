@@ -76,6 +76,25 @@ class HydrationTest {
     }
     
     @Test
+    fun `should serve process polyfill`() = testApplication {
+        environment {
+            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+        }
+        application {
+            module()
+        }
+
+        client.get("/static/process-polyfill.js").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val contentType = headers[HttpHeaders.ContentType]
+            assertTrue(
+                contentType?.startsWith("application/javascript") == true || contentType?.startsWith("text/javascript") == true,
+                "Content-Type should be javascript, got: $contentType"
+            )
+        }
+    }
+
+    @Test
     fun `should NOT serve obsolete polyfills`() = testApplication {
         environment {
             config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
@@ -86,7 +105,6 @@ class HydrationTest {
 
         // These files were removed and should return 404
         val obsoleteFiles = listOf(
-            "/static/process-polyfill.js",
             "/static/wasm-polyfill.js",
             "/static/initialize-summon.js"
         )

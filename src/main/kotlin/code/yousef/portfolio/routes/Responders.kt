@@ -16,6 +16,21 @@ import io.ktor.server.sessions.*
 
 @Composable
 private fun FullPage(page: SummonPage) {
+    val renderer = getPlatformRenderer()
+    // Inject polyfill for process.release.name issue in WASM JS bridge
+    renderer.renderHeadElements {
+        script(src = "/static/process-polyfill.js")
+    }
+    // We need to adapt the HeadScope lambda to what renderHeadElements expects
+    // Since we don't have easy access to HeadScope implementation here, we might need to rely on 
+    // the fact that renderHeadElements takes a lambda that operates on a builder.
+    // However, page.head is (HeadScope) -> Unit.
+    // If renderHeadElements expects (HeadScope) -> Unit, then we can pass it directly.
+    // But the error said: Argument type mismatch: actual type is 'PlatformRenderer', but 'HeadScope' was expected.
+    // This means page.head(renderer) is wrong because renderer is PlatformRenderer, not HeadScope.
+    
+    renderer.renderHeadElements(page.head)
+    
     // ✅ Only render content - skip head elements to avoid separate callback context
     page.content()
     
