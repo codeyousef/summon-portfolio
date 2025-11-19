@@ -15,6 +15,7 @@ fun Application.loadAppConfig(): AppConfig {
         ?: cfg.propertyOrNull("gcp.projectId")?.getString()
         ?: error("Missing GOOGLE_CLOUD_PROJECT and gcp.projectId fallback")
     val emulatorHost = env["FIRESTORE_EMULATOR_HOST"]
+        ?: cfg.propertyOrNull("firestore.emulatorHost")?.getString()
     val port = env["PORT"]?.toIntOrNull()
         ?: cfg.propertyOrNull("ktor.deployment.port")?.getString()?.toIntOrNull()
         ?: 8080

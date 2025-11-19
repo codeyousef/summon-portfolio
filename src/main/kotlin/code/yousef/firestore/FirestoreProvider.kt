@@ -7,7 +7,7 @@ import com.google.cloud.firestore.FirestoreOptions
 
 object FirestoreProvider {
     fun create(config: AppConfig): Firestore {
-        val builder = FirestoreOptions.getDefaultInstance().toBuilder()
+        val builder = FirestoreOptions.newBuilder()
             .setProjectId(config.projectId)
         if (config.emulatorHost != null) {
             builder.setEmulatorHost(config.emulatorHost)
