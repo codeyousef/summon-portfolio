@@ -68,25 +68,36 @@ fun Application.configureRouting(
 
         // Serve hydration assets at root to match Summon's injected script tags
         get("/summon-hydration.js") {
-            val resource = environment.classLoader.getResource("static/summon-hydration.js")
+            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.js")
             if (resource != null) {
                 call.respondBytes(resource.readBytes(), ContentType.Application.JavaScript)
             } else {
+                application.log.warn("summon-hydration.js not found in classpath")
                 call.respond(HttpStatusCode.NotFound)
             }
         }
         get("/summon-hydration.wasm") {
-            val resource = environment.classLoader.getResource("static/summon-hydration.wasm")
+            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm")
             if (resource != null) {
                 call.respondBytes(resource.readBytes(), ContentType.parse("application/wasm"))
             } else {
+                application.log.warn("summon-hydration.wasm not found in classpath")
                 call.respond(HttpStatusCode.NotFound)
             }
         }
         get("/summon-hydration.wasm.js") {
-            val resource = environment.classLoader.getResource("static/summon-hydration.wasm.js")
+            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm.js")
             if (resource != null) {
                 call.respondBytes(resource.readBytes(), ContentType.Application.JavaScript)
+            } else {
+                application.log.warn("summon-hydration.wasm.js not found in classpath")
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+        get("/summon-hydration.js.map") {
+            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.js.map")
+            if (resource != null) {
+                call.respondBytes(resource.readBytes(), ContentType.Application.Json)
             } else {
                 call.respond(HttpStatusCode.NotFound)
             }
