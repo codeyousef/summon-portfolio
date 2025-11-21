@@ -103,6 +103,25 @@ fun Application.configureRouting(
             }
         }
 
+        // Handle hashed WASM requests from the generated JS (e.g. /static/4a17d3187937dc0243ef.wasm)
+        get("/static/{filename}.wasm") {
+            val filename = call.parameters["filename"]
+            val resourcePath = "static/$filename.wasm"
+            var resource = this.javaClass.classLoader.getResource(resourcePath)
+            
+            if (resource == null) {
+                // Fallback to the standard name
+                resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm")
+            }
+            
+            if (resource != null) {
+                call.respondBytes(resource.readBytes(), ContentType.parse("application/wasm"))
+            } else {
+                application.log.warn("WASM resource not found: $resourcePath (and fallback failed)")
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
         // Summon callback endpoint for handling onClick and other interactive events
         post("/summon/callback") {
             val request = call.receive<CallbackRequest>()
