@@ -76,6 +76,11 @@ fun Application.configureRouting(
                     "var t,i=n.textContent,r=null==i?\"\":i;try{",
                     "var t,i=n.textContent,r=null==i?\"\":i.trim();try{"
                 )
+                // Patch to fix timestamp type mismatch (JSON number vs Kotlin Long/Instant)
+                content = content.replace(
+                    "c=r.timestamp;return new Mt(h,f,c instanceof qn?c:Y())",
+                    "c=r.timestamp;return new Mt(h,f,c instanceof qn?c:{hashCode:function(){return 0},equals:function(){return!1},toString:function(){return\"\"+c}})"
+                )
                 // Patch to debug hydration error: log the raw content if parsing fails
                 content = content.replace(
                     "Failed to parse hydration data: \"+e.message",
