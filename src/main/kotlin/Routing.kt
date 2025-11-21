@@ -71,6 +71,11 @@ fun Application.configureRouting(
             val resource = this.javaClass.classLoader.getResource("static/summon-hydration.js")
             if (resource != null) {
                 var content = resource.readText()
+                // Patch to trim hydration data before parsing
+                content = content.replace(
+                    "var t,i=n.textContent,r=null==i?\"\":i;try{",
+                    "var t,i=n.textContent,r=null==i?\"\":i.trim();try{"
+                )
                 // Patch to debug hydration error: log the raw content if parsing fails
                 content = content.replace(
                     "Failed to parse hydration data: \"+e.message",
@@ -96,6 +101,10 @@ fun Application.configureRouting(
             if (resource != null) {
                 // Also patch WASM glue if possible, though it might be different structure
                 var content = resource.readText()
+                content = content.replace(
+                    "var t,i=n.textContent,r=null==i?\"\":i;try{",
+                    "var t,i=n.textContent,r=null==i?\"\":i.trim();try{"
+                )
                 content = content.replace(
                     "Failed to parse hydration data: \"+e.message",
                     "Failed to parse hydration data: \"+e.message+\" | Error: \"+e+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
