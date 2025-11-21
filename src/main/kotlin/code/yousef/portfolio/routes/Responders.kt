@@ -14,6 +14,8 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.sessions.*
 
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
+
 suspend fun ApplicationCall.respondSummonPage(
     page: SummonPage,
     status: HttpStatusCode = HttpStatusCode.OK

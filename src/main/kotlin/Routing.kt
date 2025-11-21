@@ -70,7 +70,13 @@ fun Application.configureRouting(
         get("/summon-hydration.js") {
             val resource = this.javaClass.classLoader.getResource("static/summon-hydration.js")
             if (resource != null) {
-                call.respondBytes(resource.readBytes(), ContentType.Application.JavaScript)
+                var content = resource.readText()
+                // Patch to debug hydration error: log the raw content if parsing fails
+                content = content.replace(
+                    "Failed to parse hydration data: \"+e.message",
+                    "Failed to parse hydration data: \"+e.message+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
+                )
+                call.respondText(content, ContentType.Application.JavaScript)
             } else {
                 application.log.warn("summon-hydration.js not found in classpath")
                 call.respond(HttpStatusCode.NotFound)
@@ -88,7 +94,13 @@ fun Application.configureRouting(
         get("/summon-hydration.wasm.js") {
             val resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm.js")
             if (resource != null) {
-                call.respondBytes(resource.readBytes(), ContentType.Application.JavaScript)
+                // Also patch WASM glue if possible, though it might be different structure
+                var content = resource.readText()
+                content = content.replace(
+                    "Failed to parse hydration data: \"+e.message",
+                    "Failed to parse hydration data: \"+e.message+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
+                )
+                call.respondText(content, ContentType.Application.JavaScript)
             } else {
                 application.log.warn("summon-hydration.wasm.js not found in classpath")
                 call.respond(HttpStatusCode.NotFound)
