@@ -25,34 +25,20 @@ suspend fun ApplicationCall.respondSummonPage(
         val host = request.host()
         val links = resolveEnvironmentLinks(host)
         EnvironmentLinksRegistry.withLinks(links) {
-            // Manually render to intercept and clean up hydration data
-            val renderer = getPlatformRenderer()
-            val html = renderer.renderComposableRootWithHydration {
+            respondSummonHydrated(status) {
                 val session = sessions.get<AdminSession>()
                 val chrome =
                     session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
                 
                 // Render head elements
+                val renderer = getPlatformRenderer()
                 renderer.renderHeadElements(page.head)
 
                 // TODO: Use CompositionLocalProvider(LocalPageChrome provides chrome) when available
+                // For now, we just render the content as the chrome is not strictly used in the current composition tree
+                // or it relies on a different mechanism.
                 page.content()
             }
-
-            // Clean up whitespace in hydration data to prevent parsing errors
-            val marker = "id=\"summon-hydration-data\">"
-            val cleanedHtml = if (html.contains(marker)) {
-                val before = html.substringBefore(marker)
-                val afterMarker = html.substringAfter(marker)
-                val content = afterMarker.substringBefore("</script>")
-                val afterScript = afterMarker.substringAfter("</script>")
-                
-                before + marker + content.trim() + "</script>" + afterScript
-            } else {
-                html
-            }
-
-            this@respondSummonPage.respondText(cleanedHtml, ContentType.Text.Html, status)
         }
     }
 }
