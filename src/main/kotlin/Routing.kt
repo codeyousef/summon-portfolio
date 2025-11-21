@@ -74,7 +74,7 @@ fun Application.configureRouting(
                 // Patch to debug hydration error: log the raw content if parsing fails
                 content = content.replace(
                     "Failed to parse hydration data: \"+e.message",
-                    "Failed to parse hydration data: \"+e.message+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
+                    "Failed to parse hydration data: \"+e.message+\" | Error: \"+e+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
                 )
                 call.respondText(content, ContentType.Application.JavaScript)
             } else {
@@ -98,7 +98,7 @@ fun Application.configureRouting(
                 var content = resource.readText()
                 content = content.replace(
                     "Failed to parse hydration data: \"+e.message",
-                    "Failed to parse hydration data: \"+e.message+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
+                    "Failed to parse hydration data: \"+e.message+\" | Error: \"+e+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
                 )
                 call.respondText(content, ContentType.Application.JavaScript)
             } else {
