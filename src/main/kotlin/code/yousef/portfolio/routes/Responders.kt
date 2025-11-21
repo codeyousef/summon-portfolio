@@ -14,14 +14,6 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.sessions.*
 
-@Composable
-private fun FullPage(page: SummonPage) {
-    // ✅ Only render content - skip head elements to avoid separate callback context
-    page.content()
-    
-    // TODO: Head elements need to be rendered elsewhere or integrated into page.content()
-}
-
 suspend fun ApplicationCall.respondSummonPage(
     page: SummonPage,
     status: HttpStatusCode = HttpStatusCode.OK
@@ -34,11 +26,15 @@ suspend fun ApplicationCall.respondSummonPage(
                 val session = sessions.get<AdminSession>()
                 val chrome =
                     session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
-                val provider = LocalPageChrome.provides(chrome)
                 
-                // ✅ Use provider and render everything in single composable
-                provider.current
-                FullPage(page)
+                // Render head elements
+                val renderer = getPlatformRenderer()
+                renderer.renderHeadElements(page.head)
+
+                // TODO: Use CompositionLocalProvider(LocalPageChrome provides chrome) when available
+                // For now, we just render the content as the chrome is not strictly used in the current composition tree
+                // or it relies on a different mechanism.
+                page.content()
             }
         }
     }

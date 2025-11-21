@@ -76,6 +76,33 @@ class HydrationTest {
     }
     
     @Test
+    fun `should serve hydration assets at root paths`() = testApplication {
+        environment {
+            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+        }
+        application {
+            module()
+        }
+
+        val assets = listOf(
+            "/summon-hydration.js" to "application/javascript",
+            "/summon-hydration.wasm" to "application/wasm"
+        )
+
+        for ((path, expectedType) in assets) {
+            client.get(path).apply {
+                assertEquals(HttpStatusCode.OK, status, "Asset $path should be served at root")
+                val contentType = headers[HttpHeaders.ContentType]
+                assertTrue(
+                    contentType?.startsWith(expectedType) == true || 
+                    (expectedType == "application/javascript" && contentType?.startsWith("text/javascript") == true),
+                    "Content-Type for $path should be $expectedType, got: $contentType"
+                )
+            }
+        }
+    }
+    
+    @Test
     fun `should NOT serve obsolete polyfills`() = testApplication {
         environment {
             config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")

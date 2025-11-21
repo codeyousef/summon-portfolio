@@ -42,7 +42,7 @@ fun Application.configureRouting(
     val blogRenderer = BlogRenderer(contentService = contentService)
     val adminRenderer = AdminRenderer()
     val contactService = ContactService()
-    val hydrationBundle = environment.classLoader.getResource("static/summon-hydration.js")?.readBytes()
+    // hydrationBundle removed as it is now embedded in Summon Core
     val docsConfig = DocsConfig.fromEnv()
     val docsCache = DocsCache(docsConfig.cacheTtlSeconds)
     val docsService = DocsService(docsConfig, docsCache)
@@ -66,49 +66,32 @@ fun Application.configureRouting(
     routing {
         staticResources("/static", "static")
 
-        // Explicitly serve WASM files from static with correct MIME type
-        get("/static/{filename}.wasm") {
-            val filename = call.parameters["filename"]
-            // Try to find the exact file first
-            var resource = environment.classLoader.getResource("static/$filename.wasm")
-            
-            // If not found, try the standard name (fallback for hashed requests)
-            if (resource == null) {
-                resource = environment.classLoader.getResource("static/summon-hydration.wasm")
-            }
-            
+        // Serve hydration assets at root to match Summon's injected script tags
+        get("/summon-hydration.js") {
+            val resource = environment.classLoader.getResource("static/summon-hydration.js")
             if (resource != null) {
-                call.respondBytes(resource.readBytes(), ContentType("application", "wasm"))
+                call.respondBytes(resource.readBytes(), ContentType.Application.JavaScript)
             } else {
                 call.respond(HttpStatusCode.NotFound)
             }
         }
-
-        // Serve WASM file with correct MIME type (legacy/fallback)
         get("/summon-hydration.wasm") {
-            val wasmBytes = environment.classLoader.getResource("static/summon-hydration.wasm")?.readBytes()
-            if (wasmBytes != null) {
-                call.respondBytes(wasmBytes, ContentType("application", "wasm"))
+            val resource = environment.classLoader.getResource("static/summon-hydration.wasm")
+            if (resource != null) {
+                call.respondBytes(resource.readBytes(), ContentType.parse("application/wasm"))
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+        get("/summon-hydration.wasm.js") {
+            val resource = environment.classLoader.getResource("static/summon-hydration.wasm.js")
+            if (resource != null) {
+                call.respondBytes(resource.readBytes(), ContentType.Application.JavaScript)
             } else {
                 call.respond(HttpStatusCode.NotFound)
             }
         }
 
-        get("/summon-hydration.wasm.js") {
-            val wasmJsBytes = environment.classLoader.getResource("static/summon-hydration.wasm.js")?.readBytes()
-            if (wasmJsBytes != null) {
-                call.respondBytes(wasmJsBytes, ContentType.Application.JavaScript)
-            } else {
-                call.respond(HttpStatusCode.NotFound)
-            }
-        }
-        
-        hydrationBundle?.let { bundle ->
-            get("/summon-hydration.js") {
-                call.respondBytes(bundle, ContentType.Application.JavaScript)
-            }
-        }
-        
         // Summon callback endpoint for handling onClick and other interactive events
         post("/summon/callback") {
             val request = call.receive<CallbackRequest>()
