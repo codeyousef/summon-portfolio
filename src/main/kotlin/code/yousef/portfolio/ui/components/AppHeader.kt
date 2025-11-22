@@ -29,7 +29,7 @@ import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import codes.yousef.summon.modifier.ModifierExtras.onClick
 import codes.yousef.summon.runtime.remember
-import codes.yousef.summon.state.mutableStateOf
+import codes.yousef.summon.runtime.mutableStateOf
 
 private sealed interface NavTarget {
     data class Section(val id: String) : NavTarget
@@ -122,7 +122,9 @@ fun AppHeader(
             ScreenSize.LARGE to desktopContent,
             ScreenSize.XLARGE to desktopContent
         ),
-        defaultContent = desktopContent
+        defaultContent = desktopContent,
+        modifier = Modifier.width(100.percent),
+        initialScreenSize = ScreenSize.LARGE
     )
 }
 
