@@ -27,7 +27,8 @@ import codes.yousef.summon.modifier.LayoutModifiers.positionInset
 import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import codes.yousef.summon.modifier.action
-import codes.yousef.summon.modifier.AttributeModifiers.attribute
+import codes.yousef.summon.modifier.AttributeModifiers
+import codes.yousef.summon.modifier.ButtonType
 import codes.yousef.summon.runtime.remember
 import codes.yousef.summon.state.mutableStateOf
 
@@ -283,17 +284,18 @@ fun AppHeader(
                     modifier = Modifier()
                         .id("hamburger-btn")
                 ) {
+                    val hamburgerModifier = Modifier()
+                        .fontSize(1.5.rem)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .cursor(Cursor.Pointer)
+                        .action(UiAction.ToggleVisibility("mobile-menu"))
+
                     Button(
                         action = UiAction.ToggleVisibility("mobile-menu"),
                         onClick = null,
                         label = "☰",
-                        modifier = Modifier()
-                            .fontSize(1.5.rem)
-                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                            .cursor(Cursor.Pointer)
-                            .attribute("type", "button")
-                            .action(UiAction.ToggleVisibility("mobile-menu")),
+                        modifier = AttributeModifiers.run { hamburgerModifier.buttonType(ButtonType.Button) },
                         variant = ButtonVariant.SECONDARY,
                         disabled = false
                     )
