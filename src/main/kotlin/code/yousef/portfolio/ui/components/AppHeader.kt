@@ -123,8 +123,8 @@ fun AppHeader(
             ScreenSize.XLARGE to desktopContent
         ),
         defaultContent = desktopContent,
-        modifier = Modifier.width(100.percent),
-        initialScreenSize = ScreenSize.LARGE
+        modifier = Modifier().width(100.percent),
+        serverSideScreenSize = ScreenSize.LARGE
     )
 }
 
