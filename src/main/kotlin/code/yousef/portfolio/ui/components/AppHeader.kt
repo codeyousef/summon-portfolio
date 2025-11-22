@@ -96,7 +96,7 @@ fun AppHeader(
     val desktopContent = @Composable {
         DesktopHeader(
             locale = locale,
-            modifier = containerModifier,
+            modifier = Modifier().width(100.percent),
             forceNativeLinks = forceNativeLinks,
             nativeBaseUrl = nativeBaseUrl,
             docsBaseUrl = docsBaseUrl,
@@ -107,7 +107,7 @@ fun AppHeader(
     val mobileContent = @Composable {
         MobileHeader(
             locale = locale,
-            modifier = containerModifier,
+            modifier = Modifier().width(100.percent),
             forceNativeLinks = forceNativeLinks,
             nativeBaseUrl = nativeBaseUrl,
             docsBaseUrl = docsBaseUrl,
@@ -123,7 +123,7 @@ fun AppHeader(
             ScreenSize.XLARGE to desktopContent
         ),
         defaultContent = desktopContent,
-        modifier = Modifier().width(100.percent),
+        modifier = containerModifier,
         serverSideScreenSize = ScreenSize.LARGE
     )
 }
