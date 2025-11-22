@@ -7,17 +7,18 @@ import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
-import codes.yousef.summon.action.UiAction
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.input.Button
 import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.ResponsiveLayout
 import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.layout.ScreenSize
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -26,7 +27,7 @@ import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.LayoutModifiers.positionInset
 import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
-import codes.yousef.summon.modifier.action
+import codes.yousef.summon.modifier.ModifierExtras.onClick
 import codes.yousef.summon.runtime.remember
 import codes.yousef.summon.state.mutableStateOf
 
@@ -59,42 +60,6 @@ fun AppHeader(
     docsBaseUrl: String? = null,
     forcePortfolioAnchors: Boolean = false
 ) {
-    GlobalStyle(css = """
-        /* Desktop navigation - hide on mobile */
-        @media (max-width: 768px) {
-            #app-header-nav {
-                display: none !important;
-            }
-        }
-        @media (min-width: 769px) {
-            #app-header-nav {
-                display: block !important;
-            }
-        }
-        
-        /* Hamburger button - show only on mobile */
-        @media (max-width: 768px) {
-            #hamburger-btn {
-                display: block !important;
-            }
-        }
-        @media (min-width: 769px) {
-            #hamburger-btn {
-                display: none !important;
-            }
-        }
-        
-        /* Mobile menu panel - hide on desktop, visibility on mobile controlled by inline styles */
-        @media (min-width: 769px) {
-            #mobile-menu {
-                display: none !important;
-            }
-        }
-    """)
-    
-    val chrome = LocalPageChrome.current
-    val navItems = defaultNavItems
-    val docsHref = resolveDocsHref(docsBaseUrl)
     val paddingStart = if (locale.direction.equals("rtl", ignoreCase = true)) {
         "calc(${PortfolioTheme.Spacing.xl} + ${PortfolioTheme.Spacing.md})"
     } else {
@@ -107,16 +72,11 @@ fun AppHeader(
     }
     val containerPaddingStart = "calc(${PortfolioTheme.Spacing.md} + $paddingStart)"
     val containerPaddingEnd = "calc(${PortfolioTheme.Spacing.md} + $paddingEnd)"
-    
+
     val containerModifier = modifier
         .width(100.percent)
         .backgroundColor(PortfolioTheme.Colors.SURFACE)
         .padding(PortfolioTheme.Spacing.md)
-        .display(Display.Flex)
-        .alignItems(AlignItems.Center)
-        .justifyContent(JustifyContent.SpaceBetween)
-        .gap(PortfolioTheme.Spacing.lg)
-        .flexWrap(FlexWrap.NoWrap)
         .position(Position.Fixed)
         .top(0.px)
         .positionInset(left = "0", right = "0")
@@ -133,10 +93,61 @@ fun AppHeader(
             }
         }
 
-    Row(
-        modifier = containerModifier
-    ) {
+    val desktopContent = @Composable {
+        DesktopHeader(
+            locale = locale,
+            modifier = containerModifier,
+            forceNativeLinks = forceNativeLinks,
+            nativeBaseUrl = nativeBaseUrl,
+            docsBaseUrl = docsBaseUrl,
+            forcePortfolioAnchors = forcePortfolioAnchors
+        )
+    }
 
+    val mobileContent = @Composable {
+        MobileHeader(
+            locale = locale,
+            modifier = containerModifier,
+            forceNativeLinks = forceNativeLinks,
+            nativeBaseUrl = nativeBaseUrl,
+            docsBaseUrl = docsBaseUrl,
+            forcePortfolioAnchors = forcePortfolioAnchors
+        )
+    }
+
+    ResponsiveLayout(
+        content = mapOf(
+            ScreenSize.SMALL to mobileContent,
+            ScreenSize.MEDIUM to mobileContent,
+            ScreenSize.LARGE to desktopContent,
+            ScreenSize.XLARGE to desktopContent
+        ),
+        defaultContent = desktopContent
+    )
+}
+
+@Composable
+private fun DesktopHeader(
+    locale: PortfolioLocale,
+    modifier: Modifier,
+    forceNativeLinks: Boolean,
+    nativeBaseUrl: String?,
+    docsBaseUrl: String?,
+    forcePortfolioAnchors: Boolean
+) {
+    val chrome = LocalPageChrome.current
+    val navItems = defaultNavItems
+    val docsHref = resolveDocsHref(docsBaseUrl)
+
+    Row(
+        modifier = modifier
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+            .justifyContent(JustifyContent.SpaceBetween)
+            .gap(PortfolioTheme.Spacing.lg)
+            .flexWrap(FlexWrap.NoWrap)
+    ) {
+        // Logo
         Box(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -144,9 +155,8 @@ fun AppHeader(
                 .gap(PortfolioTheme.Spacing.md)
                 .flex(grow = 1, shrink = 1, basis = "220px")
         ) {
-
-        Text(
-            text = "YOUSEF",
+            Text(
+                text = "YOUSEF",
                 modifier = Modifier()
                     .fontSize(0.9.rem)
                     .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
@@ -154,218 +164,49 @@ fun AppHeader(
             )
         }
 
+        // Desktop Nav
         Box(
             modifier = Modifier()
                 .flex(grow = 1, shrink = 1, basis = "360px")
-        ) {
-            Box(
-                modifier = Modifier()
-                    .id("app-header-nav")
-            ) {
-                Row(
-                    modifier = Modifier()
-                        .display(Display.Flex)
-                        .alignItems(AlignItems.Center)
-                        .gap(PortfolioTheme.Spacing.md)
-                        .flex(grow = 1, shrink = 1, basis = "360px")
-                        .flexWrap(FlexWrap.Wrap)
-
-                ) {
-                    val baseNavModifier = Modifier()
-                        .textDecoration(TextDecoration.None)
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
-                        .fontSize(0.85.rem)
-                        .letterSpacing(0.08.rem)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(PortfolioTheme.Radii.pill)
-                        .opacity(0.9F)
-                    val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
-                    val linkMode = if (forceNativeLinks || forcePortfolioAnchors) {
-                        LinkNavigationMode.Native
-                    } else {
-                        LinkNavigationMode.Client
-                    }
-                    navItems.forEach { item ->
-                        val href =
-                            if (forceNativeLinks) {
-                                item.target.absoluteHref(locale, nativeBaseUrl)
-                            } else if (prefixOverride != null) {
-                                prefixOverride + item.target.href(locale)
-                            } else {
-                                item.target.href(locale)
-                            }
-                        val label = item.label.resolve(locale)
-                        navLink(
-                            label = label,
-                            href = href,
-                            modifier = baseNavModifier,
-                            dataAttributes = mapOf("nav" to label.lowercase()),
-                            navigationMode = linkMode
-                        )
-                    }
-                    AnchorLink(
-                        label = "Summon",
-                        href = docsHref,
-                        modifier = baseNavModifier,
-                        target = null,
-                        rel = null,
-                        title = null,
-                        id = null,
-                        ariaLabel = null,
-                        ariaDescribedBy = null,
-                        dataHref = null,
-                        dataAttributes = mapOf("nav" to "summon"),
-                        navigationMode = LinkNavigationMode.Native
-                    )
-                }
-            }
-        }
-
-        Box(
-            modifier = Modifier()
-                .flex(grow = 0, shrink = 1, basis = "240px")
         ) {
             Row(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .gap(PortfolioTheme.Spacing.md)
-                    .flex(grow = 0, shrink = 0, basis = "auto")
-                    .justifyContent(JustifyContent.FlexEnd)
-                    .flexWrap(FlexWrap.NoWrap)
-                    .id("app-header-actions")
-
+                    .flex(grow = 1, shrink = 1, basis = "360px")
+                    .flexWrap(FlexWrap.Wrap)
             ) {
-            if (chrome.isAdminSession) {
-                val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
-                navLink(
-                    label = "Admin",
-                    href = adminHref,
-                    modifier = Modifier()
-                        .textDecoration(TextDecoration.None)
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .fontSize(0.85.rem)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(PortfolioTheme.Radii.pill)
-                        .borderWidth(1)
-                        .borderStyle(BorderStyle.Solid)
-                        .borderColor(PortfolioTheme.Colors.BORDER),
-                    dataAttributes = mapOf("nav" to "admin"),
-                    navigationMode = LinkNavigationMode.Native
-                )
-                navLink(
-                    label = "Logout",
-                    href = "/admin/logout",
-                    modifier = Modifier()
-                        .textDecoration(TextDecoration.None)
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                        .fontSize(0.85.rem)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(PortfolioTheme.Radii.pill),
-                    dataAttributes = mapOf("nav" to "logout"),
-                    navigationMode = LinkNavigationMode.Native
-                )
-            }
-            val hireHref = when {
-                forceNativeLinks -> NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
-                forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
-                else -> NavTarget.Section("contact").href(locale)
-            }
-            val hireNavigation = if (forceNativeLinks || forcePortfolioAnchors) {
-                LinkNavigationMode.Native
-            } else {
-                LinkNavigationMode.Client
-            }
-                // Mobile hamburger toggle (hidden on desktop, visible on mobile)
-                Box(
-                    modifier = Modifier()
-                        .id("hamburger-btn")
-                ) {
-                    val hamburgerModifier = Modifier()
-                        .fontSize(1.5.rem)
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .cursor(Cursor.Pointer)
-                        .display(Display.Flex)
-                        .alignItems(AlignItems.Center)
-                        .justifyContent(JustifyContent.Center)
-                        .action(UiAction.ToggleVisibility("mobile-menu"))
-                        .role("button")
-                        .tabIndex(0)
-
-                    Box(modifier = hamburgerModifier) {
-                        Text(text = "☰")
-                    }
-                }
-            ButtonLink(
-                label = startProjectLabel.resolve(locale),
-                href = hireHref,
-                modifier = Modifier()
-                    .display(Display.InlineFlex)
-                    .alignItems(AlignItems.Center)
-                    .justifyContent(JustifyContent.Center)
-                    .backgroundColor(PortfolioTheme.Colors.ACCENT)
-                    .color("#ffffff")
-                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                    .borderRadius(PortfolioTheme.Radii.pill)
-                    .fontWeight(600)
-                    .textDecoration(TextDecoration.None)
-                    .whiteSpace(WhiteSpace.NoWrap),
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("nav" to "hire"),
-                navigationMode = hireNavigation
-            )
-            LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
-        }
-        }
-        // Collapsible mobile menu panel (always rendered, visibility controlled by state)
-        Box(
-            modifier = Modifier()
-                .display(Display.None)
-                .position(Position.Absolute)
-                .top("100%")
-                .positionInset(left = "0", right = "0")
-                .zIndex(50)
-                .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.BORDER)
-                .borderRadius(PortfolioTheme.Radii.lg)
-                .padding(PortfolioTheme.Spacing.md)
-                .id("mobile-menu")
-        ) {
                 val baseNavModifier = Modifier()
-                    .display(Display.Block)
                     .textDecoration(TextDecoration.None)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
-                    .fontSize(1.rem)
-                    .padding(PortfolioTheme.Spacing.sm)
-                    .borderRadius(PortfolioTheme.Radii.md)
-                    .whiteSpace(WhiteSpace.NoWrap)
+                    .fontSize(0.85.rem)
+                    .letterSpacing(0.08.rem)
+                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                    .borderRadius(PortfolioTheme.Radii.pill)
+                    .opacity(0.9F)
                 val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
-                val linkMode =
-                    if (forceNativeLinks || forcePortfolioAnchors) LinkNavigationMode.Native else LinkNavigationMode.Client
+                val linkMode = if (forceNativeLinks || forcePortfolioAnchors) {
+                    LinkNavigationMode.Native
+                } else {
+                    LinkNavigationMode.Client
+                }
                 navItems.forEach { item ->
-                    val href = if (forceNativeLinks) {
-                        item.target.absoluteHref(locale, nativeBaseUrl)
-                    } else if (prefixOverride != null) {
-                        prefixOverride + item.target.href(locale)
-                    } else {
-                        item.target.href(locale)
-                    }
+                    val href =
+                        if (forceNativeLinks) {
+                            item.target.absoluteHref(locale, nativeBaseUrl)
+                        } else if (prefixOverride != null) {
+                            prefixOverride + item.target.href(locale)
+                        } else {
+                            item.target.href(locale)
+                        }
+                    val label = item.label.resolve(locale)
                     navLink(
-                        label = item.label.resolve(locale),
+                        label = label,
                         href = href,
                         modifier = baseNavModifier,
-                        dataAttributes = mapOf("nav" to item.label.resolve(locale).lowercase()),
+                        dataAttributes = mapOf("nav" to label.lowercase()),
                         navigationMode = linkMode
                     )
                 }
@@ -383,6 +224,284 @@ fun AppHeader(
                     dataAttributes = mapOf("nav" to "summon"),
                     navigationMode = LinkNavigationMode.Native
                 )
+            }
+        }
+
+        // Actions
+        Box(
+            modifier = Modifier()
+                .flex(grow = 0, shrink = 1, basis = "240px")
+        ) {
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .flex(grow = 0, shrink = 0, basis = "auto")
+                    .justifyContent(JustifyContent.FlexEnd)
+                    .flexWrap(FlexWrap.NoWrap)
+            ) {
+                if (chrome.isAdminSession) {
+                    val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
+                    navLink(
+                        label = "Admin",
+                        href = adminHref,
+                        modifier = Modifier()
+                            .textDecoration(TextDecoration.None)
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            .fontSize(0.85.rem)
+                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                            .borderRadius(PortfolioTheme.Radii.pill)
+                            .borderWidth(1)
+                            .borderStyle(BorderStyle.Solid)
+                            .borderColor(PortfolioTheme.Colors.BORDER),
+                        dataAttributes = mapOf("nav" to "admin"),
+                        navigationMode = LinkNavigationMode.Native
+                    )
+                    navLink(
+                        label = "Logout",
+                        href = "/admin/logout",
+                        modifier = Modifier()
+                            .textDecoration(TextDecoration.None)
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            .fontSize(0.85.rem)
+                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                            .borderRadius(PortfolioTheme.Radii.pill),
+                        dataAttributes = mapOf("nav" to "logout"),
+                        navigationMode = LinkNavigationMode.Native
+                    )
+                }
+                val hireHref = when {
+                    forceNativeLinks -> NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
+                    forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
+                    else -> NavTarget.Section("contact").href(locale)
+                }
+                val hireNavigation = if (forceNativeLinks || forcePortfolioAnchors) {
+                    LinkNavigationMode.Native
+                } else {
+                    LinkNavigationMode.Client
+                }
+                ButtonLink(
+                    label = startProjectLabel.resolve(locale),
+                    href = hireHref,
+                    modifier = Modifier()
+                        .display(Display.InlineFlex)
+                        .alignItems(AlignItems.Center)
+                        .justifyContent(JustifyContent.Center)
+                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                        .color("#ffffff")
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .fontWeight(600)
+                        .textDecoration(TextDecoration.None)
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("nav" to "hire"),
+                    navigationMode = hireNavigation
+                )
+                LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MobileHeader(
+    locale: PortfolioLocale,
+    modifier: Modifier,
+    forceNativeLinks: Boolean,
+    nativeBaseUrl: String?,
+    docsBaseUrl: String?,
+    forcePortfolioAnchors: Boolean
+) {
+    val chrome = LocalPageChrome.current
+    val navItems = defaultNavItems
+    val docsHref = resolveDocsHref(docsBaseUrl)
+    val isOpen = remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier()
+                .width(100.percent)
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .justifyContent(JustifyContent.SpaceBetween)
+                .gap(PortfolioTheme.Spacing.lg)
+                .flexWrap(FlexWrap.NoWrap)
+        ) {
+            // Logo
+            Box(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .flex(grow = 1, shrink = 1, basis = "auto")
+            ) {
+                Text(
+                    text = "YOUSEF",
+                    modifier = Modifier()
+                        .fontSize(0.9.rem)
+                        .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
+                        .fontWeight(700)
+                )
+            }
+
+            // Actions (Hire, Hamburger, Locale)
+            Box(
+                modifier = Modifier()
+                    .flex(grow = 0, shrink = 1, basis = "auto")
+            ) {
+                Row(
+                    modifier = Modifier()
+                        .display(Display.Flex)
+                        .alignItems(AlignItems.Center)
+                        .gap(PortfolioTheme.Spacing.md)
+                        .flex(grow = 0, shrink = 0, basis = "auto")
+                        .justifyContent(JustifyContent.FlexEnd)
+                        .flexWrap(FlexWrap.NoWrap)
+                ) {
+                    val hireHref = when {
+                        forceNativeLinks -> NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
+                        forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
+                        else -> NavTarget.Section("contact").href(locale)
+                    }
+                    val hireNavigation = if (forceNativeLinks || forcePortfolioAnchors) {
+                        LinkNavigationMode.Native
+                    } else {
+                        LinkNavigationMode.Client
+                    }
+                    
+                    // Hamburger Button
+                    Box(
+                        modifier = Modifier()
+                            .fontSize(1.5.rem)
+                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                            .cursor(Cursor.Pointer)
+                            .display(Display.Flex)
+                            .alignItems(AlignItems.Center)
+                            .justifyContent(JustifyContent.Center)
+                            .role("button")
+                            .tabIndex(0)
+                            .onClick { isOpen.value = !isOpen.value }
+                    ) {
+                        Text(text = if (isOpen.value) "✕" else "☰")
+                    }
+
+                    ButtonLink(
+                        label = startProjectLabel.resolve(locale),
+                        href = hireHref,
+                        modifier = Modifier()
+                            .display(Display.InlineFlex)
+                            .alignItems(AlignItems.Center)
+                            .justifyContent(JustifyContent.Center)
+                            .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                            .color("#ffffff")
+                            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                            .borderRadius(PortfolioTheme.Radii.pill)
+                            .fontWeight(600)
+                            .textDecoration(TextDecoration.None)
+                            .whiteSpace(WhiteSpace.NoWrap),
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null,
+                        dataAttributes = mapOf("nav" to "hire"),
+                        navigationMode = hireNavigation
+                    )
+                    LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
+                }
+            }
+        }
+
+        // Mobile Menu Content
+        if (isOpen.value) {
+            Box(
+                modifier = Modifier()
+                    .width(100.percent)
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(PortfolioTheme.Colors.BORDER)
+                    .borderRadius(PortfolioTheme.Radii.lg)
+                    .padding(PortfolioTheme.Spacing.md)
+                    .marginTop(PortfolioTheme.Spacing.md)
+            ) {
+                val baseNavModifier = Modifier()
+                    .display(Display.Block)
+                    .textDecoration(TextDecoration.None)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
+                    .fontSize(1.rem)
+                    .padding(PortfolioTheme.Spacing.sm)
+                    .borderRadius(PortfolioTheme.Radii.md)
+                    .whiteSpace(WhiteSpace.NoWrap)
+                val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
+                val linkMode =
+                    if (forceNativeLinks || forcePortfolioAnchors) LinkNavigationMode.Native else LinkNavigationMode.Client
+                
+                Column(modifier = Modifier().gap(PortfolioTheme.Spacing.sm)) {
+                    navItems.forEach { item ->
+                        val href = if (forceNativeLinks) {
+                            item.target.absoluteHref(locale, nativeBaseUrl)
+                        } else if (prefixOverride != null) {
+                            prefixOverride + item.target.href(locale)
+                        } else {
+                            item.target.href(locale)
+                        }
+                        navLink(
+                            label = item.label.resolve(locale),
+                            href = href,
+                            modifier = baseNavModifier,
+                            dataAttributes = mapOf("nav" to item.label.resolve(locale).lowercase()),
+                            navigationMode = linkMode
+                        )
+                    }
+                    AnchorLink(
+                        label = "Summon",
+                        href = docsHref,
+                        modifier = baseNavModifier,
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null,
+                        dataAttributes = mapOf("nav" to "summon"),
+                        navigationMode = LinkNavigationMode.Native
+                    )
+                    
+                    if (chrome.isAdminSession) {
+                        val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
+                        navLink(
+                            label = "Admin",
+                            href = adminHref,
+                            modifier = baseNavModifier,
+                            dataAttributes = mapOf("nav" to "admin"),
+                            navigationMode = LinkNavigationMode.Native
+                        )
+                        navLink(
+                            label = "Logout",
+                            href = "/admin/logout",
+                            modifier = baseNavModifier,
+                            dataAttributes = mapOf("nav" to "logout"),
+                            navigationMode = LinkNavigationMode.Native
+                        )
+                    }
+                }
+            }
         }
     }
 }

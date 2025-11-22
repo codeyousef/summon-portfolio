@@ -60,3 +60,6 @@ docs/private/
 # Ignore local GCP service account keys
 gh-deployer.json
 *.key.json
+
+# Guides
+HAMBURGER_MENU_GUIDE.md
