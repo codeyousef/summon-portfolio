@@ -81,11 +81,35 @@ fun Application.configureRouting(
                     "c=r.timestamp;return new Mt(h,f,c instanceof qn?c:Y())",
                     "c=r.timestamp;return new Mt(h,f,c instanceof qn?c:{hashCode:function(){return 0},equals:function(){return!1},toString:function(){return\"\"+c}})"
                 )
-                // Patch to debug hydration error: log the raw content if parsing fails
-                content = content.replace(
-                    "Failed to parse hydration data: \"+e.message",
-                    "Failed to parse hydration data: \"+e.message+\" | Error: \"+e+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
-                )
+                
+                // Patch to intercept hamburger menu clicks client-side to prevent reload
+                val hamburgerPatch = """
+                    (function() {
+                        document.addEventListener('click', function(e) {
+                            var target = e.target;
+                            var btnContainer = document.getElementById('hamburger-btn');
+                            if (btnContainer && btnContainer.contains(target)) {
+                                var btn = target.closest('button');
+                                if (btn) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.stopImmediatePropagation();
+                                    var menu = document.getElementById('mobile-menu');
+                                    if (menu) {
+                                         var current = window.getComputedStyle(menu).display;
+                                         if (current === 'none') {
+                                             menu.style.display = 'block';
+                                         } else {
+                                             menu.style.display = 'none';
+                                         }
+                                    }
+                                }
+                            }
+                        }, true);
+                    })();
+                """.trimIndent()
+                content += "\n" + hamburgerPatch
+                
                 call.respondText(content, ContentType.Application.JavaScript)
             } else {
                 application.log.warn("summon-hydration.js not found in classpath")
@@ -110,10 +134,35 @@ fun Application.configureRouting(
                     "var t,i=n.textContent,r=null==i?\"\":i;try{",
                     "var t,i=n.textContent,r=null==i?\"\":i.trim();try{"
                 )
-                content = content.replace(
-                    "Failed to parse hydration data: \"+e.message",
-                    "Failed to parse hydration data: \"+e.message+\" | Error: \"+e+\" | Raw Data: \"+(document.getElementById(\"summon-hydration-data\") ? document.getElementById(\"summon-hydration-data\").textContent : \"ELEMENT NOT FOUND\")"
-                )
+                
+                // Patch to intercept hamburger menu clicks client-side to prevent reload
+                val hamburgerPatch = """
+                    (function() {
+                        document.addEventListener('click', function(e) {
+                            var target = e.target;
+                            var btnContainer = document.getElementById('hamburger-btn');
+                            if (btnContainer && btnContainer.contains(target)) {
+                                var btn = target.closest('button');
+                                if (btn) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.stopImmediatePropagation();
+                                    var menu = document.getElementById('mobile-menu');
+                                    if (menu) {
+                                         var current = window.getComputedStyle(menu).display;
+                                         if (current === 'none') {
+                                             menu.style.display = 'block';
+                                         } else {
+                                             menu.style.display = 'none';
+                                         }
+                                    }
+                                }
+                            }
+                        }, true);
+                    })();
+                """.trimIndent()
+                content += "\n" + hamburgerPatch
+
                 call.respondText(content, ContentType.Application.JavaScript)
             } else {
                 application.log.warn("summon-hydration.wasm.js not found in classpath")
