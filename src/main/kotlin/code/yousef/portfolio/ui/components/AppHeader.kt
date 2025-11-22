@@ -283,7 +283,7 @@ fun AppHeader(
                 ) {
                     Button(
                         action = UiAction.ToggleVisibility("mobile-menu"),
-                        onClick = {},
+                        onClick = null,
                         label = "☰",
                         modifier = Modifier()
                             .fontSize(1.5.rem)
