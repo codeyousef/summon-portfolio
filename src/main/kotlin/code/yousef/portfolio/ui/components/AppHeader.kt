@@ -282,6 +282,7 @@ fun AppHeader(
                         .id("hamburger-btn")
                 ) {
                     Button(
+                        action = UiAction.ToggleVisibility("mobile-menu"),
                         onClick = {},
                         label = "☰",
                         modifier = Modifier()
