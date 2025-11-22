@@ -149,20 +149,23 @@ fun Application.configureRouting(
         }
 
         // Summon callback endpoint for handling onClick and other interactive events
-        post("/summon/callback") {
-            val request = call.receive<CallbackRequest>()
-            val callbackId = request.callbackId
+        post("/summon/callback/{callbackId}") {
+            val callbackId = call.parameters["callbackId"]
+            if (callbackId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing callback ID"))
+                return@post
+            }
             
             try {
                 val executed = codes.yousef.summon.runtime.CallbackRegistry.executeCallback(callbackId)
                 if (executed) {
                     call.respond(HttpStatusCode.OK, mapOf("success" to true))
                 } else {
-                    log.warn("Callback not found: $callbackId")
+                    application.log.warn("Callback not found: $callbackId")
                     call.respond(HttpStatusCode.NotFound, mapOf("error" to "Callback not found"))
                 }
             } catch (e: Exception) {
-                log.error("Failed to execute callback $callbackId", e)
+                application.log.error("Failed to execute callback $callbackId", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
             }
         }
