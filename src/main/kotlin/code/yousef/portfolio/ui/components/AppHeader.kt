@@ -282,10 +282,7 @@ fun AppHeader(
                         .id("hamburger-btn")
                 ) {
                     Button(
-                        onClick = {
-                            // TODO: Use UiAction.ToggleVisibility("mobile-menu")
-                            // Currently waiting for API clarification on how to dispatch UiAction from onClick
-                        },
+                        onClick = {},
                         label = "☰",
                         modifier = Modifier()
                             .fontSize(1.5.rem)
