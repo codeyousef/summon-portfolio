@@ -27,8 +27,6 @@ import codes.yousef.summon.modifier.LayoutModifiers.positionInset
 import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import codes.yousef.summon.modifier.action
-import codes.yousef.summon.modifier.AttributeModifiers
-import codes.yousef.summon.modifier.ButtonType
 import codes.yousef.summon.runtime.remember
 import codes.yousef.summon.state.mutableStateOf
 
@@ -289,16 +287,16 @@ fun AppHeader(
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                         .cursor(Cursor.Pointer)
+                        .display(Display.Flex)
+                        .alignItems(AlignItems.Center)
+                        .justifyContent(JustifyContent.Center)
                         .action(UiAction.ToggleVisibility("mobile-menu"))
+                        .role("button")
+                        .tabIndex(0)
 
-                    Button(
-                        action = UiAction.ToggleVisibility("mobile-menu"),
-                        onClick = null,
-                        label = "☰",
-                        modifier = AttributeModifiers.run { hamburgerModifier.buttonType(ButtonType.Button) },
-                        variant = ButtonVariant.SECONDARY,
-                        disabled = false
-                    )
+                    Box(modifier = hamburgerModifier) {
+                        Text(text = "☰")
+                    }
                 }
             ButtonLink(
                 label = startProjectLabel.resolve(locale),
