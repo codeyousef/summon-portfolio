@@ -70,47 +70,7 @@ fun Application.configureRouting(
         get("/summon-hydration.js") {
             val resource = this.javaClass.classLoader.getResource("static/summon-hydration.js")
             if (resource != null) {
-                var content = resource.readText()
-                // Patch to trim hydration data before parsing
-                content = content.replace(
-                    "var t,i=n.textContent,r=null==i?\"\":i;try{",
-                    "var t,i=n.textContent,r=null==i?\"\":i.trim();try{"
-                )
-                // Patch to fix timestamp type mismatch (JSON number vs Kotlin Long/Instant)
-                content = content.replace(
-                    "c=r.timestamp;return new Mt(h,f,c instanceof qn?c:Y())",
-                    "c=r.timestamp;return new Mt(h,f,c instanceof qn?c:{hashCode:function(){return 0},equals:function(){return!1},toString:function(){return\"\"+c}})"
-                )
-                
-                // Patch to intercept hamburger menu clicks client-side to prevent reload
-                val hamburgerPatch = """
-                    (function() {
-                        document.addEventListener('click', function(e) {
-                            var target = e.target;
-                            var btnContainer = document.getElementById('hamburger-btn');
-                            if (btnContainer && btnContainer.contains(target)) {
-                                var btn = target.closest('button');
-                                if (btn) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    e.stopImmediatePropagation();
-                                    var menu = document.getElementById('mobile-menu');
-                                    if (menu) {
-                                         var current = window.getComputedStyle(menu).display;
-                                         if (current === 'none') {
-                                             menu.style.display = 'block';
-                                         } else {
-                                             menu.style.display = 'none';
-                                         }
-                                    }
-                                }
-                            }
-                        }, true);
-                    })();
-                """.trimIndent()
-                content += "\n" + hamburgerPatch
-                
-                call.respondText(content, ContentType.Application.JavaScript)
+                call.respondText(resource.readText(), ContentType.Application.JavaScript)
             } else {
                 application.log.warn("summon-hydration.js not found in classpath")
                 call.respond(HttpStatusCode.NotFound)
@@ -128,42 +88,7 @@ fun Application.configureRouting(
         get("/summon-hydration.wasm.js") {
             val resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm.js")
             if (resource != null) {
-                // Also patch WASM glue if possible, though it might be different structure
-                var content = resource.readText()
-                content = content.replace(
-                    "var t,i=n.textContent,r=null==i?\"\":i;try{",
-                    "var t,i=n.textContent,r=null==i?\"\":i.trim();try{"
-                )
-                
-                // Patch to intercept hamburger menu clicks client-side to prevent reload
-                val hamburgerPatch = """
-                    (function() {
-                        document.addEventListener('click', function(e) {
-                            var target = e.target;
-                            var btnContainer = document.getElementById('hamburger-btn');
-                            if (btnContainer && btnContainer.contains(target)) {
-                                var btn = target.closest('button');
-                                if (btn) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    e.stopImmediatePropagation();
-                                    var menu = document.getElementById('mobile-menu');
-                                    if (menu) {
-                                         var current = window.getComputedStyle(menu).display;
-                                         if (current === 'none') {
-                                             menu.style.display = 'block';
-                                         } else {
-                                             menu.style.display = 'none';
-                                         }
-                                    }
-                                }
-                            }
-                        }, true);
-                    })();
-                """.trimIndent()
-                content += "\n" + hamburgerPatch
-
-                call.respondText(content, ContentType.Application.JavaScript)
+                call.respondText(resource.readText(), ContentType.Application.JavaScript)
             } else {
                 application.log.warn("summon-hydration.wasm.js not found in classpath")
                 call.respond(HttpStatusCode.NotFound)

@@ -7,6 +7,7 @@ import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
+import codes.yousef.summon.action.UiAction
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.input.Button
@@ -105,9 +106,6 @@ fun AppHeader(
     }
     val containerPaddingStart = "calc(${PortfolioTheme.Spacing.md} + $paddingStart)"
     val containerPaddingEnd = "calc(${PortfolioTheme.Spacing.md} + $paddingEnd)"
-    
-    // SSR-safe state management with remember { mutableStateOf(...) }
-    val menuOpenState = remember { mutableStateOf(false) }
     
     val containerModifier = modifier
         .width(100.percent)
@@ -284,9 +282,9 @@ fun AppHeader(
                         .id("hamburger-btn")
                 ) {
                     Button(
-                        onClick = { 
-                            menuOpenState.value = !menuOpenState.value
-                            println("🔥 Hamburger clicked! New state: ${menuOpenState.value}")
+                        onClick = {
+                            // TODO: Use UiAction.ToggleVisibility("mobile-menu")
+                            // Currently waiting for API clarification on how to dispatch UiAction from onClick
                         },
                         label = "☰",
                         modifier = Modifier()
@@ -328,7 +326,7 @@ fun AppHeader(
         // Collapsible mobile menu panel (always rendered, visibility controlled by state)
         Box(
             modifier = Modifier()
-                .display(if (menuOpenState.value) Display.Block else Display.None)
+                .display(Display.None)
                 .position(Position.Absolute)
                 .top("100%")
                 .positionInset(left = "0", right = "0")
