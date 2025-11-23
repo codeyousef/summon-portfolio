@@ -385,8 +385,6 @@ private fun MobileHeader(
                     // Hamburger Button
                     Box(
                         modifier = Modifier()
-                            .fontSize(1.5.rem)
-                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                             .cursor(Cursor.Pointer)
                             .display(Display.Flex)
@@ -396,10 +394,16 @@ private fun MobileHeader(
                             .tabIndex(0)
                             .position(Position.Relative)
                             .zIndex(100)
+                            .style("user-select", "none")
                             .onClick { isOpen.value = !isOpen.value }
                     ) {
-                        MaterialIcon(
-                            name = if (isOpen.value) "close" else "menu"
+                        Text(
+                            text = if (isOpen.value) "close" else "menu",
+                            modifier = Modifier()
+                                .fontFamily("Material Icons")
+                                .fontSize(1.5.rem)
+                                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                                .style("line-height", "1")
                         )
                     }
 
