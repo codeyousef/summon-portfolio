@@ -389,8 +389,8 @@ private fun MobileHeader(
                     Box(
                         modifier = Modifier()
                             .cursor(Cursor.Pointer)
-                            .zIndex(100)
-                            .padding(PortfolioTheme.Spacing.sm)
+                            .style("z-index", "100")
+                            .padding("8px")
                             .onClick { isOpen.value = !isOpen.value }
                             .display(Display.Flex)
                             .alignItems(AlignItems.Center)
@@ -438,16 +438,13 @@ private fun MobileHeader(
 
         // Mobile Menu Content
         if (isOpen.value) {
-            Box(
+            Column(
                 modifier = Modifier()
                     .width(100.percent)
-                    .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .borderRadius(PortfolioTheme.Radii.lg)
-                    .padding(PortfolioTheme.Spacing.md)
-                    .marginTop(PortfolioTheme.Spacing.md)
+                    .padding("0", "16px", "16px", "16px")
+                    .gap("12px")
+                    .style("border-top", "1px solid #eee")
+                    .paddingTop("16px")
             ) {
                 val baseNavModifier = Modifier()
                     .display(Display.Block)
@@ -462,55 +459,53 @@ private fun MobileHeader(
                 val linkMode =
                     if (forceNativeLinks || forcePortfolioAnchors) LinkNavigationMode.Native else LinkNavigationMode.Client
                 
-                Column(modifier = Modifier().gap(PortfolioTheme.Spacing.sm)) {
-                    navItems.forEach { item ->
-                        val href = if (forceNativeLinks) {
-                            item.target.absoluteHref(locale, nativeBaseUrl)
-                        } else if (prefixOverride != null) {
-                            prefixOverride + item.target.href(locale)
-                        } else {
-                            item.target.href(locale)
-                        }
-                        navLink(
-                            label = item.label.resolve(locale),
-                            href = href,
-                            modifier = baseNavModifier,
-                            dataAttributes = mapOf("nav" to item.label.resolve(locale).lowercase()),
-                            navigationMode = linkMode
-                        )
+                navItems.forEach { item ->
+                    val href = if (forceNativeLinks) {
+                        item.target.absoluteHref(locale, nativeBaseUrl)
+                    } else if (prefixOverride != null) {
+                        prefixOverride + item.target.href(locale)
+                    } else {
+                        item.target.href(locale)
                     }
-                    AnchorLink(
-                        label = "Summon",
-                        href = docsHref,
+                    navLink(
+                        label = item.label.resolve(locale),
+                        href = href,
                         modifier = baseNavModifier,
-                        target = null,
-                        rel = null,
-                        title = null,
-                        id = null,
-                        ariaLabel = null,
-                        ariaDescribedBy = null,
-                        dataHref = null,
-                        dataAttributes = mapOf("nav" to "summon"),
+                        dataAttributes = mapOf("nav" to item.label.resolve(locale).lowercase()),
+                        navigationMode = linkMode
+                    )
+                }
+                AnchorLink(
+                    label = "Summon",
+                    href = docsHref,
+                    modifier = baseNavModifier,
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("nav" to "summon"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+                
+                if (chrome.isAdminSession) {
+                    val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
+                    navLink(
+                        label = "Admin",
+                        href = adminHref,
+                        modifier = baseNavModifier,
+                        dataAttributes = mapOf("nav" to "admin"),
                         navigationMode = LinkNavigationMode.Native
                     )
-                    
-                    if (chrome.isAdminSession) {
-                        val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
-                        navLink(
-                            label = "Admin",
-                            href = adminHref,
-                            modifier = baseNavModifier,
-                            dataAttributes = mapOf("nav" to "admin"),
-                            navigationMode = LinkNavigationMode.Native
-                        )
-                        navLink(
-                            label = "Logout",
-                            href = "/admin/logout",
-                            modifier = baseNavModifier,
-                            dataAttributes = mapOf("nav" to "logout"),
-                            navigationMode = LinkNavigationMode.Native
-                        )
-                    }
+                    navLink(
+                        label = "Logout",
+                        href = "/admin/logout",
+                        modifier = baseNavModifier,
+                        dataAttributes = mapOf("nav" to "logout"),
+                        navigationMode = LinkNavigationMode.Native
+                    )
                 }
             }
         }
