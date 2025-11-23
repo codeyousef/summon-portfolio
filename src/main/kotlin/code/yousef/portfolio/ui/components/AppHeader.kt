@@ -9,6 +9,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.display.MaterialIcon
 import codes.yousef.summon.components.input.Button
 import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
@@ -382,7 +383,8 @@ private fun MobileHeader(
                     }
                     
                     // Hamburger Button
-                    Box(
+                    MaterialIcon(
+                        name = if (isOpen.value) "close" else "menu",
                         modifier = Modifier()
                             .fontSize(1.5.rem)
                             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
@@ -394,11 +396,9 @@ private fun MobileHeader(
                             .role("button")
                             .tabIndex(0)
                             .position(Position.Relative)
-                            .zIndex(100)
-                            .onClick { isOpen.value = !isOpen.value }
-                    ) {
-                        Text(text = if (isOpen.value) "✕" else "☰")
-                    }
+                            .zIndex(100),
+                        onClick = { isOpen.value = !isOpen.value }
+                    )
 
                     ButtonLink(
                         label = startProjectLabel.resolve(locale),
