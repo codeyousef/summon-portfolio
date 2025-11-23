@@ -384,6 +384,9 @@ private fun MobileHeader(
                     .alignItems(AlignItems.Center)
                     .justifyContent(JustifyContent.Center)
                     .backgroundColor("transparent")
+                    .flex(grow = 0, shrink = 0, basis = "auto")
+                    .width("40px")
+                    .height("40px")
             ) {
                 MaterialIcon(
                     name = if (isOpen.value) "close" else "menu",
