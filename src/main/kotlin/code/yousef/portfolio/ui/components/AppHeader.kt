@@ -373,43 +373,23 @@ private fun MobileHeader(
                 )
             }
 
-            // Hamburger Button (Manual Implementation)
-            Box(
+            // Hamburger Button (Using Button component for stability)
+            Button(
+                label = if (isOpen.value) "✕" else "☰",
+                onClick = { isOpen.value = !isOpen.value },
                 modifier = Modifier()
-                    .cursor(Cursor.Pointer)
-                    .style("z-index", "100")
-                    .padding("8px")
-                    .attribute("role", "button")
-                    .attribute("tabindex", "0")
+                    .zIndex(100)
                     .attribute("type", "button")
-                    .onClick { isOpen.value = !isOpen.value }
-                    .display(Display.Flex)
-                    .alignItems(AlignItems.Center)
-                    .justifyContent(JustifyContent.Center)
                     .backgroundColor("transparent")
-                    .flex(grow = 0, shrink = 0, basis = "auto")
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    .fontSize("24px")
+                    .padding("0")
                     .width("40px")
                     .height("40px")
-            ) {
-                MaterialIcon(
-                    name = if (isOpen.value) "close" else "menu",
-                    modifier = Modifier()
-                        .fontSize("24px")
-                        .width("24px")
-                        .height("24px")
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .style("text-transform", "none")
-                        .style("line-height", "1")
-                        .display(Display.Block)
-                        .style("user-select", "none")
-                )
-                // Fallback text for visibility debugging
-                Text(
-                    text = "Menu",
-                    modifier = Modifier()
-                        .display(Display.None) // Hidden by default, but can be enabled if icon fails
-                )
-            }
+                    .borderWidth(0)
+                    .cursor(Cursor.Pointer),
+                variant = ButtonVariant.GHOST
+            )
         }
 
         // Mobile Menu Content
