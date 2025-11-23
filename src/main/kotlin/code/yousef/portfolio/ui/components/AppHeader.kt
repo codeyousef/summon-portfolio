@@ -9,7 +9,6 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.display.MaterialIcon
 import codes.yousef.summon.components.input.Button
 import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
@@ -383,22 +382,21 @@ private fun MobileHeader(
                     }
                     
                     // Hamburger Button
-                    MaterialIcon(
-                        name = if (isOpen.value) "close" else "menu",
+                    Button(
+                        label = if (isOpen.value) "close" else "menu",
+                        onClick = { isOpen.value = !isOpen.value },
                         modifier = Modifier()
+                            .fontFamily("Material Icons")
                             .fontSize(1.5.rem)
                             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                            .backgroundColor("transparent")
+                            .borderWidth(0)
                             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                             .cursor(Cursor.Pointer)
-                            .display(Display.Flex)
-                            .alignItems(AlignItems.Center)
-                            .justifyContent(JustifyContent.Center)
-                            .role("button")
-                            .tabIndex(0)
-                            .position(Position.Relative)
                             .zIndex(100)
-                            .style("user-select", "none"),
-                        onClick = { isOpen.value = !isOpen.value }
+                            .style("line-height", "1")
+                            .style("text-transform", "none")
+                            .minWidth(0.px)
                     )
 
                     ButtonLink(
