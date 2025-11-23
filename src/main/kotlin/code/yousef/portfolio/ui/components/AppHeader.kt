@@ -379,8 +379,10 @@ private fun MobileHeader(
                     .style("z-index", "100")
                     .padding("8px")
                     .attribute("role", "button")
-                    .onClick { event ->
-                        event.preventDefault()
+                    .onClick { 
+                        // event -> event.preventDefault() is not supported in this version of Summon
+                        // The onClick modifier in this version only accepts () -> Unit
+                        // We rely on the button role and type="button" to prevent default behavior
                         isOpen.value = !isOpen.value 
                     }
                     .display(Display.Flex)
