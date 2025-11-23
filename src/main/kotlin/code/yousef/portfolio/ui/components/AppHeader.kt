@@ -386,14 +386,26 @@ private fun MobileHeader(
                     }
                     
                     // Hamburger Button
-                    MaterialIcon(
-                        name = if (isOpen.value) "close" else "menu",
+                    Box(
                         modifier = Modifier()
                             .cursor(Cursor.Pointer)
-                            .fontSize("24px")
-                            .color(PortfolioTheme.Colors.TEXT_PRIMARY),
-                        onClick = { isOpen.value = !isOpen.value }
-                    )
+                            .zIndex(100)
+                            .padding(PortfolioTheme.Spacing.sm)
+                            .onClick { isOpen.value = !isOpen.value }
+                            .display(Display.Flex)
+                            .alignItems(AlignItems.Center)
+                            .justifyContent(JustifyContent.Center)
+                    ) {
+                        MaterialIcon(
+                            name = if (isOpen.value) "close" else "menu",
+                            modifier = Modifier()
+                                .fontSize("24px")
+                                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                                .style("text-transform", "none")
+                                .style("line-height", "1")
+                                .display(Display.Block)
+                        )
+                    }
 
                     ButtonLink(
                         label = startProjectLabel.resolve(locale),
