@@ -381,6 +381,7 @@ private fun MobileHeader(
                     .padding("8px")
                     .attribute("role", "button")
                     .attribute("tabindex", "0")
+                    .attribute("type", "button")
                     .onClick { isOpen.value = !isOpen.value }
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
@@ -401,6 +402,12 @@ private fun MobileHeader(
                         .style("line-height", "1")
                         .display(Display.Block)
                         .style("user-select", "none")
+                )
+                // Fallback text for visibility debugging
+                Text(
+                    text = "Menu",
+                    modifier = Modifier()
+                        .display(Display.None) // Hidden by default, but can be enabled if icon fails
                 )
             }
         }
