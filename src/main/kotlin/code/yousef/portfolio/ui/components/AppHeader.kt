@@ -27,6 +27,9 @@ import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.alignItems
 import codes.yousef.summon.modifier.LayoutModifiers.display
 import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.LayoutModifiers.height
+import codes.yousef.summon.modifier.LayoutModifiers.marginBottom
+import codes.yousef.summon.modifier.LayoutModifiers.marginTop
 import codes.yousef.summon.modifier.LayoutModifiers.justifyContent
 import codes.yousef.summon.modifier.LayoutModifiers.positionInset
 import codes.yousef.summon.modifier.LayoutModifiers.top
@@ -331,6 +334,18 @@ private fun MobileHeader(
     val docsHref = resolveDocsHref(docsBaseUrl)
     val isOpen = remember { mutableStateOf(false) }
 
+    // Pre-calculate hire link props
+    val hireHref = when {
+        forceNativeLinks -> NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
+        forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
+        else -> NavTarget.Section("contact").href(locale)
+    }
+    val hireNavigation = if (forceNativeLinks || forcePortfolioAnchors) {
+        LinkNavigationMode.Native
+    } else {
+        LinkNavigationMode.Client
+    }
+
     Column(
         modifier = modifier
     ) {
@@ -360,84 +375,31 @@ private fun MobileHeader(
                 )
             }
 
-            // Actions (Hire, Hamburger, Locale)
+            // Hamburger Button
             Box(
                 modifier = Modifier()
-                    .flex(grow = 0, shrink = 1, basis = "auto")
+                    .cursor(Cursor.Pointer)
+                    .style("z-index", "100")
+                    .padding("8px")
+                    .attribute("role", "button")
+                    .onClick { isOpen.value = !isOpen.value }
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .justifyContent(JustifyContent.Center)
+                    .backgroundColor("transparent")
             ) {
-                Row(
+                MaterialIcon(
+                    name = if (isOpen.value) "close" else "menu",
                     modifier = Modifier()
-                        .display(Display.Flex)
-                        .alignItems(AlignItems.Center)
-                        .gap(PortfolioTheme.Spacing.md)
-                        .flex(grow = 0, shrink = 0, basis = "auto")
-                        .justifyContent(JustifyContent.FlexEnd)
-                        .flexWrap(FlexWrap.NoWrap)
-                ) {
-                    val hireHref = when {
-                        forceNativeLinks -> NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
-                        forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
-                        else -> NavTarget.Section("contact").href(locale)
-                    }
-                    val hireNavigation = if (forceNativeLinks || forcePortfolioAnchors) {
-                        LinkNavigationMode.Native
-                    } else {
-                        LinkNavigationMode.Client
-                    }
-                    
-                    ButtonLink(
-                        label = startProjectLabel.resolve(locale),
-                        href = hireHref,
-                        modifier = Modifier()
-                            .display(Display.InlineFlex)
-                            .alignItems(AlignItems.Center)
-                            .justifyContent(JustifyContent.Center)
-                            .backgroundColor(PortfolioTheme.Colors.ACCENT)
-                            .color("#ffffff")
-                            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                            .borderRadius(PortfolioTheme.Radii.pill)
-                            .fontWeight(600)
-                            .textDecoration(TextDecoration.None)
-                            .whiteSpace(WhiteSpace.NoWrap),
-                        target = null,
-                        rel = null,
-                        title = null,
-                        id = null,
-                        ariaLabel = null,
-                        ariaDescribedBy = null,
-                        dataHref = null,
-                        dataAttributes = mapOf("nav" to "hire"),
-                        navigationMode = hireNavigation
-                    )
-                    LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
-
-                    // Hamburger Button
-                    Box(
-                        modifier = Modifier()
-                            .cursor(Cursor.Pointer)
-                            .style("z-index", "100")
-                            .padding("8px")
-                            .attribute("role", "button")
-                            .onClick { isOpen.value = !isOpen.value }
-                            .display(Display.Flex)
-                            .alignItems(AlignItems.Center)
-                            .justifyContent(JustifyContent.Center)
-                            .backgroundColor("transparent")
-                    ) {
-                        MaterialIcon(
-                            name = if (isOpen.value) "close" else "menu",
-                            modifier = Modifier()
-                                .fontSize("24px")
-                                .width("24px")
-                                .height("24px")
-                                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                                .style("text-transform", "none")
-                                .style("line-height", "1")
-                                .display(Display.Block)
-                                .style("user-select", "none")
-                        )
-                    }
-                }
+                        .fontSize("24px")
+                        .width("24px")
+                        .height("24px")
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .style("text-transform", "none")
+                        .style("line-height", "1")
+                        .display(Display.Block)
+                        .style("user-select", "none")
+                )
             }
         }
 
@@ -511,6 +473,39 @@ private fun MobileHeader(
                         dataAttributes = mapOf("nav" to "logout"),
                         navigationMode = LinkNavigationMode.Native
                     )
+                }
+
+                // Moved Actions
+                Box(modifier = Modifier().height("1px").backgroundColor(PortfolioTheme.Colors.BORDER).width(100.percent).marginTop(PortfolioTheme.Spacing.sm).marginBottom(PortfolioTheme.Spacing.sm)) {}
+
+                ButtonLink(
+                    label = startProjectLabel.resolve(locale),
+                    href = hireHref,
+                    modifier = Modifier()
+                        .display(Display.Flex)
+                        .width(100.percent)
+                        .alignItems(AlignItems.Center)
+                        .justifyContent(JustifyContent.Center)
+                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                        .color("#ffffff")
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .fontWeight(600)
+                        .textDecoration(TextDecoration.None)
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("nav" to "hire"),
+                    navigationMode = hireNavigation
+                )
+                
+                Box(modifier = Modifier().display(Display.Flex).justifyContent(JustifyContent.Center).paddingTop(PortfolioTheme.Spacing.sm)) {
+                    LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
                 }
             }
         }
