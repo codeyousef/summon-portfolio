@@ -382,23 +382,23 @@ private fun MobileHeader(
                     }
                     
                     // Hamburger Button
-                    Button(
-                        label = if (isOpen.value) "✕" else "☰",
-                        onClick = { isOpen.value = !isOpen.value },
+                    Box(
                         modifier = Modifier()
                             .fontSize(1.5.rem)
                             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                            .backgroundColor("transparent")
-                            .borderWidth(0)
                             .cursor(Cursor.Pointer)
                             .display(Display.Flex)
                             .alignItems(AlignItems.Center)
                             .justifyContent(JustifyContent.Center)
+                            .role("button")
+                            .tabIndex(0)
                             .position(Position.Relative)
-                            .zIndex(60),
-                        variant = ButtonVariant.SECONDARY
-                    )
+                            .zIndex(100)
+                            .onClick { isOpen.value = !isOpen.value }
+                    ) {
+                        Text(text = if (isOpen.value) "✕" else "☰")
+                    }
 
                     ButtonLink(
                         label = startProjectLabel.resolve(locale),
