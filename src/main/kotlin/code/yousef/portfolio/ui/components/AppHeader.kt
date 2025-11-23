@@ -383,8 +383,7 @@ private fun MobileHeader(
                     }
                     
                     // Hamburger Button
-                    MaterialIcon(
-                        name = if (isOpen.value) "close" else "menu",
+                    Box(
                         modifier = Modifier()
                             .fontSize(1.5.rem)
                             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
@@ -396,9 +395,13 @@ private fun MobileHeader(
                             .role("button")
                             .tabIndex(0)
                             .position(Position.Relative)
-                            .zIndex(100),
-                        onClick = { isOpen.value = !isOpen.value }
-                    )
+                            .zIndex(100)
+                            .onClick { isOpen.value = !isOpen.value }
+                    ) {
+                        MaterialIcon(
+                            name = if (isOpen.value) "close" else "menu"
+                        )
+                    }
 
                     ButtonLink(
                         label = startProjectLabel.resolve(locale),
