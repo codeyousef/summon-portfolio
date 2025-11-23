@@ -373,34 +373,28 @@ private fun MobileHeader(
             }
 
             // Hamburger Button
-            Box(
+            Button(
+                onClick = { isOpen.value = !isOpen.value },
+                label = if (isOpen.value) "✕" else "☰",
                 modifier = Modifier()
-                    .cursor(Cursor.Pointer)
-                    .style("z-index", "100")
-                    .padding("8px")
-                    .attribute("role", "button")
-                    .onClick { isOpen.value = !isOpen.value }
+                    .backgroundColor("transparent")
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    .fontSize("28px")
+                    .fontWeight(400)
+                    .borderWidth(0)
+                    .padding("0")
+                    .width("40px")
+                    .height("40px")
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .justifyContent(JustifyContent.Center)
-                    .backgroundColor("transparent")
-                    .flex(grow = 0, shrink = 0, basis = "auto")
-                    .width("40px")
-                    .height("40px")
-            ) {
-                MaterialIcon(
-                    name = if (isOpen.value) "close" else "menu",
-                    modifier = Modifier()
-                        .fontSize("24px")
-                        .width("24px")
-                        .height("24px")
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .style("text-transform", "none")
-                        .style("line-height", "1")
-                        .display(Display.Block)
-                        .style("user-select", "none")
-                )
-            }
+                    .cursor(Cursor.Pointer)
+                    .attribute("type", "button")
+                    .style("line-height", "1")
+                    .flex(grow = 0, shrink = 0, basis = "auto"),
+                variant = ButtonVariant.SECONDARY,
+                disabled = false
+            )
         }
 
         // Mobile Menu Content
