@@ -385,28 +385,6 @@ private fun MobileHeader(
                         LinkNavigationMode.Client
                     }
                     
-                    // Hamburger Button
-                    Box(
-                        modifier = Modifier()
-                            .cursor(Cursor.Pointer)
-                            .style("z-index", "100")
-                            .padding("8px")
-                            .onClick { isOpen.value = !isOpen.value }
-                            .display(Display.Flex)
-                            .alignItems(AlignItems.Center)
-                            .justifyContent(JustifyContent.Center)
-                    ) {
-                        MaterialIcon(
-                            name = if (isOpen.value) "close" else "menu",
-                            modifier = Modifier()
-                                .fontSize("24px")
-                                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                                .style("text-transform", "none")
-                                .style("line-height", "1")
-                                .display(Display.Block)
-                        )
-                    }
-
                     ButtonLink(
                         label = startProjectLabel.resolve(locale),
                         href = hireHref,
@@ -432,6 +410,33 @@ private fun MobileHeader(
                         navigationMode = hireNavigation
                     )
                     LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
+
+                    // Hamburger Button
+                    Box(
+                        modifier = Modifier()
+                            .cursor(Cursor.Pointer)
+                            .style("z-index", "100")
+                            .padding("8px")
+                            .attribute("role", "button")
+                            .onClick { isOpen.value = !isOpen.value }
+                            .display(Display.Flex)
+                            .alignItems(AlignItems.Center)
+                            .justifyContent(JustifyContent.Center)
+                            .backgroundColor("transparent")
+                    ) {
+                        MaterialIcon(
+                            name = if (isOpen.value) "close" else "menu",
+                            modifier = Modifier()
+                                .fontSize("24px")
+                                .width("24px")
+                                .height("24px")
+                                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                                .style("text-transform", "none")
+                                .style("line-height", "1")
+                                .display(Display.Block)
+                                .style("user-select", "none")
+                        )
+                    }
                 }
             }
         }
