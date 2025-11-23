@@ -374,6 +374,12 @@ private fun MobileHeader(
 
             // Hamburger Menu
             HamburgerMenu(
+                modifier = Modifier()
+                    .width("40px")
+                    .height("40px")
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    .zIndex(100)
+                    .attribute("type", "button"),
                 menuContent = {
                     Column(
                         modifier = Modifier()
