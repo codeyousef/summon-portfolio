@@ -395,6 +395,7 @@ private fun MobileHeader(
                             .display(Display.Flex)
                             .alignItems(AlignItems.Center)
                             .justifyContent(JustifyContent.Center)
+                            .position(Position.Relative)
                             .zIndex(60),
                         variant = ButtonVariant.SECONDARY
                     )
