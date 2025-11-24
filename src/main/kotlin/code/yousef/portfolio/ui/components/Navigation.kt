@@ -26,6 +26,9 @@ val defaultNavItems = listOf(
     NavItem(LocalizedText("Contact", "اتصل"), NavTarget.Section("contact"))
 )
 
+val projectsLabel = LocalizedText("Projects", "المشاريع")
+val startProjectLabel = LocalizedText("Start your project", "ابدأ مشروعك")
+
 fun NavTarget.href(locale: PortfolioLocale): String {
     val prefix = locale.pathPrefix()
     return when (this) {
