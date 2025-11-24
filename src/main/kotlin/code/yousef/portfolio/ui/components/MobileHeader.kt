@@ -87,6 +87,7 @@ fun MobileHeader(
                     .justifyContent(JustifyContent.Center)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .attribute("type", "button")
+                    .attribute("onclick", "event.preventDefault()")
                     .zIndex(100),
                 menuContent = {
                     Column(
