@@ -124,8 +124,10 @@ window.addEventListener('keydown', (e) => {
     const typingContext =
         activeTag === 'input' ||
         activeTag === 'textarea' ||
+        activeTag === 'button' ||
         targetTag === 'input' ||
         targetTag === 'textarea' ||
+        targetTag === 'button' ||
         active?.isContentEditable === true ||
         e.target?.isContentEditable === true;
 
@@ -150,7 +152,12 @@ const setCurrentYear = () => {
 
 const wireDataHrefLinks = () => {
     document.querySelectorAll('[data-href]').forEach((element) => {
+        // Ignore buttons to prevent conflict with interactive elements like HamburgerMenu
+        if (element.tagName === 'BUTTON') return;
+
         element.addEventListener('click', (event) => {
+            if (event.defaultPrevented) return;
+            
             const target = event.currentTarget;
             const rawHref = target.getAttribute('data-href') || target.getAttribute('href');
             if (!rawHref) return;
