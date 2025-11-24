@@ -381,7 +381,6 @@ private fun MobileHeader(
                     .alignItems(AlignItems.Center)
                     .justifyContent(JustifyContent.Center)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .attribute("type", "button")
                     .zIndex(100),
                 menuContent = {
                     Column(
