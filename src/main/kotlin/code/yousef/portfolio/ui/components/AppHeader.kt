@@ -375,6 +375,11 @@ private fun MobileHeader(
             // Hamburger Menu
             HamburgerMenu(
                 modifier = Modifier()
+                    .width("40px")
+                    .height("40px")
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .justifyContent(JustifyContent.Center)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .attribute("type", "button")
                     .zIndex(100),
