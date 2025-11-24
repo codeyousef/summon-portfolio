@@ -1,26 +1,20 @@
-@file:Suppress("FunctionName")
-
 package code.yousef.portfolio.ui.sections
 
 import code.yousef.portfolio.content.model.HeroContent
 import code.yousef.portfolio.content.model.HeroMetric
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.components.*
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.input.Button
-import codes.yousef.summon.components.input.ButtonVariant
+import codes.yousef.summon.components.navigation.ButtonLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.navigation.AnchorLink
-import codes.yousef.summon.components.navigation.ButtonLink
-import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.core.style.Color
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -32,7 +26,6 @@ import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.StylingModifiers.color
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import codes.yousef.summon.modifier.StylingModifiers.lineHeight
-import java.time.Year
 
 @Composable
 fun HeroSection(
@@ -169,69 +162,6 @@ private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
             emphasize = true
         )
     }
-}
-
-@Composable
-private fun LogoOrb() {
-    Box(
-        modifier = Modifier()
-            .width(38.px)
-            .height(38.px)
-            .borderRadius(14.px)
-            .backgroundLayers {
-                radialGradient {
-                    size("120%", "120%")
-                    position("30%", "20%")
-                    colorStop(PortfolioTheme.Colors.ACCENT_ALT, "0%")
-                    colorStop(PortfolioTheme.Colors.ACCENT, "35%")
-                    colorStop("#5e0f27", "60%")
-                    colorStop("#14070e", "100%")
-                }
-            }
-            .multipleShadows(
-                shadowConfig(0, 0, 20, 0, Color.hex("#00000099"), true),
-                shadowConfig(0, 10, 30, 0, Color.hex("#00000099"))
-            )
-            .position(Position.Relative)
-    ) {
-        Box(
-            modifier = Modifier()
-                .position(Position.Absolute)
-                .inset((-1).px)
-                .borderRadius(14.px)
-                .backgroundLayers {
-                    conicGradient {
-                        from("210deg")
-                        colorStop("#ffffff88")
-                        colorStop("#ffffff00", "40%")
-                        colorStop("#ffffff00", "70%")
-                        colorStop("#ffffff33")
-                    }
-                }
-                .filter { blur(0.5) }
-                .mixBlendMode(BlendMode.Overlay)
-        ) {}
-    }
-}
-
-@Composable
-private fun GlassPill(text: String, emphasize: Boolean = false, modifier: Modifier = Modifier()) {
-    Text(
-        text = text,
-        modifier = modifier
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .borderRadius(PortfolioTheme.Radii.pill)
-            .background(
-                if (emphasize) PortfolioTheme.Gradients.ACCENT else PortfolioTheme.Gradients.GLASS
-            )
-            .fontWeight(if (emphasize) 800 else 600)
-            .fontSize(0.85.rem)
-    )
 }
 
 @Composable
@@ -383,194 +313,6 @@ private fun HeroMockCard() {
                     "}"
                 )
             )
-        }
-    }
-}
-
-@Composable
-fun PortfolioFooter(locale: PortfolioLocale) {
-    val currentYear = Year.now().value
-    SectionWrap {
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.xs)
-        ) {
-            Text(text = "© $currentYear")
-            Text(text = "Yousef")
-        }
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.xxs)
-        ) {
-            Text(
-                text = "Built with",
-                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
-            )
-            Image(
-                src = "/static/logo.png",
-                alt = "Summon",
-                modifier = Modifier()
-                    .width(24.px)
-                    .height(24.px)
-                    .display(Display.InlineFlex)
-            )
-            AnchorLink(
-                label = "Summon",
-                href = summonMarketingUrl(),
-                modifier = Modifier()
-                    .textDecoration(TextDecoration.Underline)
-                    .color(PortfolioTheme.Colors.ACCENT_ALT),
-                navigationMode = LinkNavigationMode.Native,
-                dataAttributes = mapOf("footer-link" to "summon"),
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun PrimaryButton(text: String, href: String, modifier: Modifier = Modifier()) {
-    ButtonLink(
-        label = text,
-        href = href,
-        modifier = modifier
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.Center)
-            .height(52.px)
-            .background(PortfolioTheme.Gradients.ACCENT)
-            .multipleShadows(
-                shadowConfig(0, 10, 30, 0, Color.hex("#b0123561")),
-                shadowConfig(0, 1, 0, 0, Color.hex("#ffffff77"), true)
-            )
-            .color("#ffffff")
-            .padding("0", PortfolioTheme.Spacing.lg)
-            .borderRadius(PortfolioTheme.Radii.md)
-            .fontWeight(800)
-            .letterSpacing(0.3.px)
-            .lineHeight(1.0)
-            .whiteSpace(WhiteSpace.NoWrap),
-        target = null,
-        rel = null,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = mapOf("cta" to "hero-primary"),
-        navigationMode = LinkNavigationMode.Native
-    )
-}
-
-@Composable
-private fun GhostButton(text: String, href: String, modifier: Modifier = Modifier()) {
-    ButtonLink(
-        label = text,
-        href = href,
-        modifier = modifier
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .background(PortfolioTheme.Gradients.GLASS)
-            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            .padding("0", PortfolioTheme.Spacing.lg)
-            .height(52.px)
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.Center)
-            .borderRadius(PortfolioTheme.Radii.md)
-            .lineHeight(1.0)
-            .whiteSpace(WhiteSpace.NoWrap),
-        target = null,
-        rel = null,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = mapOf("cta" to "hero-secondary"),
-        navigationMode = LinkNavigationMode.Native
-    )
-}
-
-@Composable
-private fun GhostActionButton(text: String, onClick: () -> Unit) {
-    Button(
-        onClick = { onClick() },
-        label = text,
-        modifier = Modifier()
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .background(PortfolioTheme.Gradients.GLASS)
-            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            .padding("0", PortfolioTheme.Spacing.lg)
-            .height(52.px)
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.Center)
-            .borderRadius(PortfolioTheme.Radii.md)
-            .lineHeight(1.0)
-            .whiteSpace(WhiteSpace.NoWrap),
-        variant = ButtonVariant.SECONDARY,
-        disabled = false,
-        dataAttributes = mapOf("analytics" to "hero-services")
-    )
-}
-
-@Composable
-private fun CodeBlock(lines: List<String>, showCopyButton: Boolean = false) {
-    Column(
-        modifier = Modifier()
-            .backgroundColor("#0b0d12")
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor("#ffffff14")
-            .borderRadius(PortfolioTheme.Radii.md)
-            .padding(PortfolioTheme.Spacing.md)
-            .fontWeight(FontWeight.Medium)
-            .fontSize(14.px)
-            .lineHeight(1.6)
-            .fontFamily(PortfolioTheme.Typography.FONT_MONO)
-            .overflow(Overflow.Auto)
-    ) {
-        if (showCopyButton) {
-            Row(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .justifyContent(JustifyContent.FlexEnd)
-                    .marginBottom(PortfolioTheme.Spacing.sm)
-            ) {
-                Button(
-                    onClick = null,
-                    label = "Copy",
-                    modifier = Modifier()
-                        .borderWidth(1)
-                        .borderStyle(BorderStyle.Solid)
-                        .borderColor(PortfolioTheme.Colors.BORDER)
-                        .backgroundColor(PortfolioTheme.Gradients.GLASS)
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                        .borderRadius(PortfolioTheme.Radii.pill),
-                    variant = ButtonVariant.SECONDARY,
-                    disabled = false,
-                    dataAttributes = mapOf("copy" to "code")
-                )
-            }
-        }
-        lines.forEach { line ->
-            Text(line, modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
         }
     }
 }

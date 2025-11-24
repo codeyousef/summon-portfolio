@@ -36,23 +36,6 @@ import codes.yousef.summon.modifier.ModifierExtras.onClick
 import codes.yousef.summon.runtime.remember
 import codes.yousef.summon.runtime.mutableStateOf
 
-private sealed interface NavTarget {
-    data class Section(val id: String) : NavTarget
-    data class Page(val path: String) : NavTarget
-}
-
-private data class NavItem(
-    val label: LocalizedText,
-    val target: NavTarget
-)
-
-private val defaultNavItems = listOf(
-    NavItem(LocalizedText("About", "حول"), NavTarget.Section("hero")),
-    NavItem(LocalizedText("Services", "الخدمات"), NavTarget.Section("services")),
-    NavItem(LocalizedText("Blog", "المدونة"), NavTarget.Page("/blog")),
-    NavItem(LocalizedText("Contact", "اتصل"), NavTarget.Section("contact"))
-)
-
 private val projectsLabel = LocalizedText("Projects", "المشاريع")
 private val startProjectLabel = LocalizedText("Start your project", "ابدأ مشروعك")
 
@@ -495,119 +478,6 @@ private fun MobileHeader(
 }
 
 @Composable
-private fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, nativeBaseUrl: String?) {
-    Row(
-        modifier = Modifier()
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .gap(PortfolioTheme.Spacing.xs)
-            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .borderRadius(PortfolioTheme.Radii.pill)
-    ) {
-        LocaleToggleButton(
-            locale = PortfolioLocale.EN,
-            current = current,
-            forceNativeLinks = forceNativeLinks,
-            nativeBaseUrl = nativeBaseUrl
-        )
-        Text(
-            text = "|",
-            modifier = Modifier()
-                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .fontSize(0.75.rem)
-        )
-        LocaleToggleButton(
-            locale = PortfolioLocale.AR,
-            current = current,
-            forceNativeLinks = forceNativeLinks,
-            nativeBaseUrl = nativeBaseUrl
-        )
-    }
-}
-
-@Composable
-private fun LocaleToggleButton(
-    locale: PortfolioLocale,
-    current: PortfolioLocale,
-    forceNativeLinks: Boolean,
-    nativeBaseUrl: String?
-) {
-    val isActive = locale == current
-    val href = if (forceNativeLinks) {
-        val baseRoot = nativeBaseUrl?.trimEnd('/') ?: portfolioBaseUrl().trimEnd('/')
-        if (locale == PortfolioLocale.EN) baseRoot else "$baseRoot/${locale.code}"
-    } else {
-        if (locale == PortfolioLocale.EN) "/" else "/${locale.code}"
-    }
-    navLink(
-        label = locale.code.uppercase(),
-        href = href,
-        modifier = Modifier()
-            .textDecoration(TextDecoration.None)
-            .color(if (isActive) PortfolioTheme.Colors.BACKGROUND else PortfolioTheme.Colors.TEXT_SECONDARY)
-            .backgroundColor(if (isActive) PortfolioTheme.Colors.ACCENT_ALT else "transparent")
-            .fontSize(0.75.rem)
-            .fontWeight(600)
-            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .borderRadius(PortfolioTheme.Radii.pill)
-            .whiteSpace(WhiteSpace.NoWrap),
-        dataAttributes = mapOf("locale" to locale.code),
-        navigationMode = LinkNavigationMode.Native
-    )
-}
-
-private fun NavTarget.href(locale: PortfolioLocale): String {
-    val prefix = locale.pathPrefix()
-    return when (this) {
-        is NavTarget.Section -> {
-            val home = if (prefix.isEmpty()) "/" else prefix
-            "$home#${this.id}"
-        }
-
-        is NavTarget.Page -> if (prefix.isEmpty()) path else "$prefix${this.path}"
-    }
-}
-
-private fun NavTarget.absoluteHref(locale: PortfolioLocale, nativeBaseUrl: String?): String {
-    val defaultBase = portfolioBaseUrl().trimEnd('/')
-    val suppliedBase = nativeBaseUrl?.trimEnd('/')
-    val base = suppliedBase ?: when (locale) {
-        PortfolioLocale.EN -> defaultBase
-        else -> "$defaultBase/${locale.code}"
-    }
-    return when (this) {
-        is NavTarget.Section -> "$base#${this.id}"
-        is NavTarget.Page -> if (path.startsWith("http")) path else "$base${this.path}"
-    }
-}
-
-private fun navLink(
-    label: String,
-    href: String,
-    modifier: Modifier,
-    dataAttributes: Map<String, String>,
-    navigationMode: LinkNavigationMode
-) {
-    AnchorLink(
-        label = label,
-        href = href,
-        modifier = modifier,
-        target = null,
-        rel = null,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = dataAttributes,
-        navigationMode = navigationMode
-    )
-}
-
-@Composable
 private fun ProjectsDropdown(
     locale: PortfolioLocale,
     baseModifier: Modifier,
@@ -666,10 +536,4 @@ private fun ProjectsDropdown(
             }
         }
     }
-}
-
-private fun resolveDocsHref(override: String?): String {
-    val fallback = docsBaseUrl()
-    val resolved = override?.takeIf { it.isNotBlank() } ?: fallback
-    return resolved.trimEnd('/')
 }
