@@ -153,7 +153,7 @@ const setCurrentYear = () => {
 const wireDataHrefLinks = () => {
     document.querySelectorAll('[data-href]').forEach((element) => {
         // Ignore buttons to prevent conflict with interactive elements like HamburgerMenu
-        if (element.tagName === 'BUTTON') return;
+        if (element.tagName.toUpperCase() === 'BUTTON') return;
 
         element.addEventListener('click', (event) => {
             if (event.defaultPrevented) return;

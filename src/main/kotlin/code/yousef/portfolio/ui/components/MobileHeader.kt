@@ -20,6 +20,7 @@ import codes.yousef.summon.modifier.LayoutModifiers.alignItems
 import codes.yousef.summon.modifier.LayoutModifiers.display
 import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.LayoutModifiers.justifyContent
+import codes.yousef.summon.modifier.ModifierExtras.onClick
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
