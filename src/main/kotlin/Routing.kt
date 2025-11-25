@@ -13,7 +13,8 @@ import code.yousef.portfolio.routes.portfolioRoutes
 import code.yousef.portfolio.server.routes.docsRoutes
 import code.yousef.portfolio.ssr.*
 import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
-import codes.yousef.summon.runtime.CallbackRegistry
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.summonStaticAssets
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.summonCallbackHandler
 import codes.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -66,83 +67,11 @@ fun Application.configureRouting(
     routing {
         staticResources("/static", "static")
 
-        // Serve hydration assets at root to match Summon's injected script tags
-        get("/summon-hydration.js") {
-            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.js")
-            if (resource != null) {
-                call.respondText(resource.readText(), ContentType.Application.JavaScript)
-            } else {
-                application.log.warn("summon-hydration.js not found in classpath")
-                call.respond(HttpStatusCode.NotFound)
-            }
-        }
-        get("/summon-hydration.wasm") {
-            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm")
-            if (resource != null) {
-                call.respondBytes(resource.readBytes(), ContentType.parse("application/wasm"))
-            } else {
-                application.log.warn("summon-hydration.wasm not found in classpath")
-                call.respond(HttpStatusCode.NotFound)
-            }
-        }
-        get("/summon-hydration.wasm.js") {
-            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm.js")
-            if (resource != null) {
-                call.respondText(resource.readText(), ContentType.Application.JavaScript)
-            } else {
-                application.log.warn("summon-hydration.wasm.js not found in classpath")
-                call.respond(HttpStatusCode.NotFound)
-            }
-        }
-        get("/summon-hydration.js.map") {
-            val resource = this.javaClass.classLoader.getResource("static/summon-hydration.js.map")
-            if (resource != null) {
-                call.respondBytes(resource.readBytes(), ContentType.Application.Json)
-            } else {
-                call.respond(HttpStatusCode.NotFound)
-            }
-        }
+        // Summon: Serve hydration assets (JS, WASM) automatically from the library
+        summonStaticAssets()
 
-        // Handle hashed WASM requests from the generated JS (e.g. /static/4a17d3187937dc0243ef.wasm)
-        get("/static/{filename}.wasm") {
-            val filename = call.parameters["filename"]
-            val resourcePath = "static/$filename.wasm"
-            var resource = this.javaClass.classLoader.getResource(resourcePath)
-            
-            if (resource == null) {
-                // Fallback to the standard name
-                resource = this.javaClass.classLoader.getResource("static/summon-hydration.wasm")
-            }
-            
-            if (resource != null) {
-                call.respondBytes(resource.readBytes(), ContentType.parse("application/wasm"))
-            } else {
-                application.log.warn("WASM resource not found: $resourcePath (and fallback failed)")
-                call.respond(HttpStatusCode.NotFound)
-            }
-        }
-
-        // Summon callback endpoint for handling onClick and other interactive events
-        post("/summon/callback/{callbackId}") {
-            val callbackId = call.parameters["callbackId"]
-            if (callbackId == null) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing callback ID"))
-                return@post
-            }
-            
-            try {
-                val executed = codes.yousef.summon.runtime.CallbackRegistry.executeCallback(callbackId)
-                if (executed) {
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
-                } else {
-                    application.log.warn("Callback not found: $callbackId")
-                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Callback not found"))
-                }
-            } catch (e: Exception) {
-                application.log.error("Failed to execute callback $callbackId", e)
-                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
-            }
-        }
+        // Summon: Handle callback requests for interactive components
+        summonCallbackHandler()
 
         docsRoutes(
             docsService = docsService,
