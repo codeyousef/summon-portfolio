@@ -60,4 +60,38 @@ tasks {
         mergeServiceFiles()
         isZip64 = true
     }
+
+    register<Copy>("exportSummonAssets") {
+        group = "summon"
+        description = "Exports Summon hydration assets from the dependency jar"
+
+        val runtimeClasspath = configurations.getByName("runtimeClasspath")
+        // Find the summon jar (could be summon-jvm or just summon)
+        val summonJar = runtimeClasspath.files.find { it.name.contains("summon") && it.name.endsWith(".jar") }
+
+        if (summonJar != null) {
+            doFirst {
+                println("Found Summon jar: ${summonJar.absolutePath}")
+            }
+            from(zipTree(summonJar)) {
+                include("static/**")
+                include("META-INF/resources/static/**")
+            }
+            // Map META-INF/resources/static to static
+            eachFile {
+                if (path.startsWith("META-INF/resources/static")) {
+                    path = path.replace("META-INF/resources/static", "static")
+                }
+            }
+            includeEmptyDirs = false
+            into("src/main/resources")
+        } else {
+            doFirst {
+                logger.warn("Summon jar not found in runtime classpath")
+                runtimeClasspath.files.forEach { println("Candidate: ${it.name}") }
+            }
+        }
+        
+        finalizedBy(processResources)
+    }
 }
