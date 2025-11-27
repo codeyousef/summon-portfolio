@@ -16,7 +16,8 @@ class BlogRenderer(
         val posts = contentService.load().blogPosts
         return SummonPage(
             head = listHead(locale),
-            content = { BlogListPage(posts = posts, locale = locale) }
+            content = { BlogListPage(posts = posts, locale = locale) },
+            locale = locale
         )
     }
 
@@ -30,7 +31,8 @@ class BlogRenderer(
                 } else {
                     BlogNotFoundPage(locale = locale)
                 }
-            }
+            },
+            locale = locale
         )
         val status = if (post == null) HttpStatusCode.NotFound else HttpStatusCode.OK
         return RenderResult(page = page, status = status)

@@ -21,7 +21,8 @@ class PortfolioRenderer(
             ),
             content = {
                 PortfolioLandingPage(content = content, locale = locale, servicesModalOpen = servicesModalOpen)
-            }
+            },
+            locale = locale
         )
     }
 
@@ -39,7 +40,8 @@ class PortfolioRenderer(
                     locale = locale,
                     servicesModalOpen = servicesModalOpen
                 )
-            }
+            },
+            locale = locale
         )
     }
 
@@ -57,7 +59,8 @@ class PortfolioRenderer(
                     locale = locale,
                     servicesModalOpen = servicesModalOpen
                 )
-            }
+            },
+            locale = locale
         )
     }
 

@@ -25,7 +25,7 @@ suspend fun ApplicationCall.respondSummonPage(
         val host = request.host()
         val links = resolveEnvironmentLinks(host)
         EnvironmentLinksRegistry.withLinks(links) {
-            respondSummonHydrated(status) {
+            respondSummonHydrated(status, lang = page.locale.code, dir = page.locale.direction) {
                 val session = sessions.get<AdminSession>()
                 val chrome =
                     session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
