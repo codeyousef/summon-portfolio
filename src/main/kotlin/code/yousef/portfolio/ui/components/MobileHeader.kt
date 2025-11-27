@@ -41,11 +41,15 @@ fun MobileHeader(
 
     // Style the hamburger menu dropdown container
     GlobalStyle(css = """
-        [data-summon-menu-content] {
+        [id^="hamburger-menu-"] {
+            position: absolute !important;
             top: 100% !important;
+            left: 0 !important;
             margin-top: 8px !important;
             background-color: ${PortfolioTheme.Colors.SURFACE} !important;
             border-radius: 8px !important;
+            border: 1px solid ${PortfolioTheme.Colors.BORDER} !important;
+            z-index: 1000 !important;
         }
     """)
 
@@ -80,6 +84,7 @@ fun MobileHeader(
             HamburgerMenu(
                 modifier =
                     Modifier()
+                        .position(Position.Relative)
                         .width("40px")
                         .height("40px")
                         .display(Display.Flex)
