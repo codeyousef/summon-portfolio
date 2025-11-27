@@ -25,9 +25,12 @@ class MarkdownRendererTest {
 
     @Test
     fun `link rewriter should preserve heading ids`() {
-        val markdown = java.nio.file.Files.readString(
-            java.nio.file.Paths.get("docs/private/summon-docs/accessibility-and-seo.md")
-        )
+        val markdown = """
+            # Accessibility and SEO
+
+            ### Meta Tags
+            Some content about meta tags.
+        """.trimIndent()
 
         val rendered = renderer.render(markdown, "/accessibility-and-seo")
         val rewritten = LinkRewriter().rewriteHtml(

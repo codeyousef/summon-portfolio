@@ -14,12 +14,14 @@ import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.alignItems
 import codes.yousef.summon.modifier.LayoutModifiers.display
 import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.LayoutModifiers.justifyContent
+import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.ModifierExtras.onClick
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
@@ -87,7 +89,8 @@ fun MobileHeader(
                                 .borderColor(PortfolioTheme.Colors.BORDER)
                                 .borderRadius(PortfolioTheme.Radii.md)
                                 .minWidth("200px")
-                                .marginTop(PortfolioTheme.Spacing.sm)
+                                .position(Position.Relative)
+                                .top(50.px)
                                 .flex(grow = 1, shrink = 0, basis = "100%"), // Force full width
                     ) {
                         val baseNavModifier =
