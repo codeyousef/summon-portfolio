@@ -188,14 +188,15 @@ fun MobileHeader(
                             modifier =
                                 Modifier()
                                     .display(Display.Flex)
-                                    .width(100.percent)
+                                    .width(60.percent)
                                     .alignItems(AlignItems.Center)
                                     .justifyContent(JustifyContent.Center)
                                     .backgroundColor(PortfolioTheme.Colors.ACCENT)
                                     .color("#ffffff")
-                                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.md)
                                     .borderRadius(PortfolioTheme.Radii.pill)
                                     .fontWeight(600)
+                                    .fontSize(0.85.rem)
                                     .textDecoration(TextDecoration.None)
                                     .whiteSpace(WhiteSpace.NoWrap),
                             target = null,
