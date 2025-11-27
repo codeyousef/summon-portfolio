@@ -79,14 +79,15 @@ fun MobileHeader(
                         modifier =
                             Modifier()
                                 .width(100.percent)
-                                .padding("0", "16px", "16px", "16px")
+                                .padding("16px")
                                 .gap("12px")
+                                .backgroundColor(PortfolioTheme.Colors.SURFACE)
                                 .borderWidth(1)
                                 .borderStyle(BorderStyle.Solid)
-                                .borderColor("#eee")
-                                .paddingTop("16px")
+                                .borderColor(PortfolioTheme.Colors.BORDER)
+                                .borderRadius(PortfolioTheme.Radii.md)
                                 .minWidth("200px")
-                                .positionInset(right = "0", left = "auto")
+                                .marginTop(PortfolioTheme.Spacing.sm)
                                 .flex(grow = 1, shrink = 0, basis = "100%"), // Force full width
                     ) {
                         val baseNavModifier =
