@@ -8,6 +8,7 @@ import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.vh
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -23,7 +24,7 @@ fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
             .flexDirection(codes.yousef.summon.modifier.FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.sm)
             .flex(grow = 0, shrink = 0, basis = "260px")
-            .width("260px")
+            .width(260.px)
             .padding(PortfolioTheme.Spacing.md)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)

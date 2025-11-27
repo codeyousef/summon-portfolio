@@ -13,7 +13,7 @@ import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.modifier.LayoutModifiers.left
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -38,23 +38,6 @@ fun MobileHeader(
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
     val docsHref = resolveDocsHref(docsBaseUrl)
-
-    // Style the hamburger menu dropdown container
-    GlobalStyle(css = """
-        [id^="hamburger-menu-"] {
-            position: absolute !important;
-            top: 100% !important;
-            left: 0 !important;
-            margin-top: 8px !important;
-            background: #0a1628 !important;
-            background-color: #0a1628 !important;
-            border-radius: 8px !important;
-            border: 1px solid ${PortfolioTheme.Colors.BORDER} !important;
-            z-index: 1000 !important;
-            min-width: 280px !important;
-            width: max-content !important;
-        }
-    """)
 
     // Pre-calculate hire link props
     val hireHref =
@@ -88,21 +71,35 @@ fun MobileHeader(
                 modifier =
                     Modifier()
                         .position(Position.Relative)
-                        .width("40px")
-                        .height("40px")
+                        .width(40.px)
+                        .height(40.px)
                         .display(Display.Flex)
                         .alignItems(AlignItems.Center)
                         .justifyContent(JustifyContent.Center)
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .zIndex(100),
+                menuContainerModifier =
+                    Modifier()
+                        .position(Position.Absolute)
+                        .top(100.percent)
+                        .left(0.px)
+                        .marginTop(8.px)
+                        .backgroundColor("#0a1628")
+                        .borderRadius(8.px)
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER)
+                        .zIndex(1000)
+                        .minWidth(280.px)
+                        .width("max-content"),
                 menuContent = {
                     Column(
                         modifier =
                             Modifier()
                                 .width(100.percent)
-                                .padding("16px")
-                                .gap("12px")
-                                .minWidth("200px"),
+                                .padding(16.px)
+                                .gap(12.px)
+                                .minWidth(200.px),
                     ) {
                         val baseNavModifier =
                             Modifier()
@@ -172,9 +169,8 @@ fun MobileHeader(
                         Box(
                             modifier =
                                 Modifier()
-                                    .height(
-                                        "1px",
-                                    ).backgroundColor(
+                                    .height(1.px)
+                                    .backgroundColor(
                                         PortfolioTheme.Colors.BORDER,
                                     ).width(100.percent)
                                     .marginTop(PortfolioTheme.Spacing.sm)

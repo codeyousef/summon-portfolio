@@ -16,6 +16,7 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -60,7 +61,7 @@ fun DocsShell(
             Column(
                 modifier = Modifier()
                     .flex(grow = 1, shrink = 1, basis = "0%")
-                    .minWidth("0px")
+                    .minWidth(0.px)
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 Prose(html = html)

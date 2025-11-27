@@ -178,7 +178,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                     text = LandingCopy.heroPrimaryCta.resolve(locale),
                     href = contactHref,
                     modifier = Modifier()
-                        .minWidth("200px")
+                        .minWidth(200.px)
                         .whiteSpace(WhiteSpace.NoWrap),
                     navigationMode = LinkNavigationMode.Client
                 )
@@ -186,7 +186,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                     text = LandingCopy.heroSecondaryCta.resolve(locale),
                     href = summonMarketingUrl(),
                     modifier = Modifier()
-                        .minWidth("220px")
+                        .minWidth(220.px)
                         .whiteSpace(WhiteSpace.NoWrap)
                 )
             }

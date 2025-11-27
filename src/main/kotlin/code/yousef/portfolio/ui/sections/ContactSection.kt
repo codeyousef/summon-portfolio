@@ -12,6 +12,7 @@ import codes.yousef.summon.components.input.FormField
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -101,7 +102,7 @@ private fun ContactForm(
             .width(100.percent)
             .textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             .gap(PortfolioTheme.Spacing.md)
-            .minWidth("0px")
+            .minWidth(0.px)
     ) {
         // Labels via component props to avoid duplicates
         // Styled label + asterisk (avoid built-in label to control color and duplication)
