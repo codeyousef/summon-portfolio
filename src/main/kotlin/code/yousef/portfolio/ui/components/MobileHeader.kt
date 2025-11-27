@@ -13,6 +13,7 @@ import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -37,6 +38,16 @@ fun MobileHeader(
     val chrome = LocalPageChrome.current
     val navItems = defaultNavItems
     val docsHref = resolveDocsHref(docsBaseUrl)
+
+    // Style the hamburger menu dropdown container
+    GlobalStyle(css = """
+        [data-summon-menu-content] {
+            top: 100% !important;
+            margin-top: 8px !important;
+            background-color: ${PortfolioTheme.Colors.SURFACE} !important;
+            border-radius: 8px !important;
+        }
+    """)
 
     // Pre-calculate hire link props
     val hireHref =
@@ -83,15 +94,7 @@ fun MobileHeader(
                                 .width(100.percent)
                                 .padding("16px")
                                 .gap("12px")
-                                .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                                .borderWidth(1)
-                                .borderStyle(BorderStyle.Solid)
-                                .borderColor(PortfolioTheme.Colors.BORDER)
-                                .borderRadius(PortfolioTheme.Radii.md)
-                                .minWidth("200px")
-                                .position(Position.Relative)
-                                .top(50.px)
-                                .flex(grow = 1, shrink = 0, basis = "100%"), // Force full width
+                                .minWidth("200px"),
                     ) {
                         val baseNavModifier =
                             Modifier()
