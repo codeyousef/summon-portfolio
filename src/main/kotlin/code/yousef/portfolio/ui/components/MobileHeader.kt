@@ -46,10 +46,13 @@ fun MobileHeader(
             top: 100% !important;
             left: 0 !important;
             margin-top: 8px !important;
-            background-color: ${PortfolioTheme.Colors.SURFACE} !important;
+            background: #0a1628 !important;
+            background-color: #0a1628 !important;
             border-radius: 8px !important;
             border: 1px solid ${PortfolioTheme.Colors.BORDER} !important;
             z-index: 1000 !important;
+            min-width: 280px !important;
+            width: max-content !important;
         }
     """)
 
