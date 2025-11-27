@@ -80,6 +80,7 @@ fun ContactSection(
                 modifier = Modifier()
                     .flex(grow = 1, shrink = 1, basis = "360px")
                     .width("min(100%, 520px)")
+                    .paddingRight(PortfolioTheme.Spacing.md)
             )
         }
     }
