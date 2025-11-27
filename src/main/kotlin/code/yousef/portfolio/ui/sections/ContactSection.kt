@@ -81,7 +81,13 @@ fun ContactSection(
                 modifier = Modifier()
                     .flex(grow = 1, shrink = 1, basis = "360px")
                     .width("min(100%, 520px)")
-                    .paddingRight(PortfolioTheme.Spacing.xl)
+                    .let { base ->
+                        if (locale.direction == "rtl") {
+                            base.paddingLeft(PortfolioTheme.Spacing.xl)
+                        } else {
+                            base.paddingRight(PortfolioTheme.Spacing.xl)
+                        }
+                    }
             )
         }
     }
