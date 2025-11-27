@@ -17,7 +17,7 @@ import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
-fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
+fun DocsSidebar(tree: DocsNavTree, currentPath: String, basePath: String = "") {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -52,7 +52,7 @@ fun DocsSidebar(tree: DocsNavTree, currentPath: String) {
                     val active = normalize(currentPath) == normalize(node.path)
                     DocsSidebarLink(
                         label = node.title,
-                        href = node.path,
+                        href = basePath + node.path,
                         active = active,
                         dataLabel = node.title.lowercase()
                     )

@@ -31,7 +31,8 @@ class DocsRouter(
         meta: MarkdownMeta,
         toc: List<TocEntry>,
         sidebar: DocsNavTree,
-        neighbors: NeighborLinks
+        neighbors: NeighborLinks,
+        basePath: String = ""
     ): SummonPage {
         val seo = seoExtractor.build(requestPath, meta)
         val navBase = resolveNavBase(origin)
@@ -45,7 +46,8 @@ class DocsRouter(
                         toc = toc,
                         sidebar = sidebar,
                         meta = meta,
-                        neighbors = neighbors
+                        neighbors = neighbors,
+                        basePath = basePath
                     )
                 }
             }

@@ -25,6 +25,7 @@ fun Route.docsRoutes(
     config: DocsConfig,
     docsCatalog: DocsCatalog,
     pathResolver: (ApplicationCall) -> String = { it.request.path() },
+    basePath: String = "",
     registerPageRoutes: Boolean = true,
     registerInfrastructure: Boolean = true
 ) {
@@ -79,7 +80,8 @@ fun Route.docsRoutes(
             meta = rendered.meta,
             toc = rendered.toc,
             sidebar = navTree,
-            neighbors = neighbors
+            neighbors = neighbors,
+            basePath = basePath
         )
 
         fetchedDocument.etag?.let { response.headers.append(HttpHeaders.ETag, it, false) }

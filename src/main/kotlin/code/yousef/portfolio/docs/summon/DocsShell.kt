@@ -30,7 +30,8 @@ fun DocsShell(
     toc: List<TocEntry>,
     sidebar: DocsNavTree,
     meta: MarkdownMeta,
-    neighbors: NeighborLinks
+    neighbors: NeighborLinks,
+    basePath: String = ""
 ) {
     Column(
         modifier = Modifier()
@@ -57,7 +58,7 @@ fun DocsShell(
                 .flexWrap(FlexWrap.Wrap)
                 .width("100%")
         ) {
-            DocsSidebar(tree = sidebar, currentPath = requestPath)
+            DocsSidebar(tree = sidebar, currentPath = requestPath, basePath = basePath)
             Column(
                 modifier = Modifier()
                     .flex(grow = 1, shrink = 1, basis = "0%")
@@ -65,7 +66,7 @@ fun DocsShell(
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 Prose(html = html)
-                NeighborRow(neighbors)
+                NeighborRow(neighbors, basePath)
             }
             Toc(entries = toc)
         }
@@ -74,7 +75,7 @@ fun DocsShell(
 }
 
 @Composable
-private fun NeighborRow(neighbors: NeighborLinks) {
+private fun NeighborRow(neighbors: NeighborLinks, basePath: String) {
     if (neighbors.previous == null && neighbors.next == null) return
     Row(
         modifier = Modifier()
@@ -83,10 +84,10 @@ private fun NeighborRow(neighbors: NeighborLinks) {
             .gap(PortfolioTheme.Spacing.md)
     ) {
         neighbors.previous?.let { link ->
-            DocsNeighborLink(label = "← ${link.title}", href = link.path, slot = "prev")
+            DocsNeighborLink(label = "← ${link.title}", href = basePath + link.path, slot = "prev")
         }
         neighbors.next?.let { link ->
-            DocsNeighborLink(label = "${link.title} →", href = link.path, slot = "next")
+            DocsNeighborLink(label = "${link.title} →", href = basePath + link.path, slot = "next")
         }
     }
 }

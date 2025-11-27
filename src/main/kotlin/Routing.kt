@@ -139,6 +139,7 @@ fun Application.configureRouting(
                                 val raw = call.request.path()
                                 raw.removePrefix("/docs").ifBlank { "/" }
                             },
+                            basePath = "/docs",
                             registerInfrastructure = false
                         )
                     }
@@ -164,6 +165,7 @@ fun Application.configureRouting(
                     val stripped = raw.removePrefix("/summon")
                     stripped.ifBlank { "/" }
                 },
+                basePath = "/summon",
                 registerInfrastructure = false
             )
         }
