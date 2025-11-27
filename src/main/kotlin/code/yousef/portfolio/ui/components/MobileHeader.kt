@@ -63,26 +63,7 @@ fun MobileHeader(
                     .gap(PortfolioTheme.Spacing.lg)
                     .flexWrap(FlexWrap.Wrap), // Allow wrapping so menu content can break to new line if needed
         ) {
-            // Logo
-            Box(
-                modifier =
-                    Modifier()
-                        .display(Display.Flex)
-                        .alignItems(AlignItems.Center)
-                        .gap(PortfolioTheme.Spacing.md)
-                        .flex(grow = 1, shrink = 1, basis = "auto"),
-            ) {
-                Text(
-                    text = "YOUSEF",
-                    modifier =
-                        Modifier()
-                            .fontSize(0.9.rem)
-                            .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
-                            .fontWeight(700),
-                )
-            }
-
-            // Hamburger Menu
+            // Hamburger Menu (on the left)
             HamburgerMenu(
                 modifier =
                     Modifier()
@@ -100,9 +81,12 @@ fun MobileHeader(
                                 .width(100.percent)
                                 .padding("0", "16px", "16px", "16px")
                                 .gap("12px")
-                                .style("border-top", "1px solid #eee")
+                                .borderWidth(1)
+                                .borderStyle(BorderStyle.Solid)
+                                .borderColor("#eee")
                                 .paddingTop("16px")
-                                .style("min-width", "200px")
+                                .minWidth("200px")
+                                .positionInset(right = "0", left = "auto")
                                 .flex(grow = 1, shrink = 0, basis = "100%"), // Force full width
                     ) {
                         val baseNavModifier =
@@ -223,6 +207,25 @@ fun MobileHeader(
                     }
                 },
             )
+
+            // Logo
+            Box(
+                modifier =
+                    Modifier()
+                        .display(Display.Flex)
+                        .alignItems(AlignItems.Center)
+                        .gap(PortfolioTheme.Spacing.md)
+                        .flex(grow = 1, shrink = 1, basis = "auto"),
+            ) {
+                Text(
+                    text = "YOUSEF",
+                    modifier =
+                        Modifier()
+                            .fontSize(0.9.rem)
+                            .letterSpacing(PortfolioTheme.Typography.HERO_TRACKING)
+                            .fontWeight(700),
+                )
+            }
         }
     }
 }
