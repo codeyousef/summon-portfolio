@@ -44,7 +44,7 @@ dependencies {
     implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1")
     implementation("org.jsoup:jsoup:1.18.1")
 
-    implementation("codes.yousef:summon:0.5.4.0")
+    implementation("codes.yousef:summon:0.5.4.1")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)
