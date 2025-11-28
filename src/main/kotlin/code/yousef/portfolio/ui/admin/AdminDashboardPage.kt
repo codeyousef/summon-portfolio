@@ -5,6 +5,7 @@ import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.ProjectCategory
 import code.yousef.portfolio.content.model.Service
+import code.yousef.portfolio.content.model.Testimonial
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
@@ -34,11 +35,12 @@ data class AdminDashboardContent(
     val projects: List<Project>,
     val services: List<Service>,
     val blogPosts: List<BlogPost>,
+    val testimonials: List<Testimonial>,
     val contacts: List<ContactSubmission>
 )
 
 enum class AdminSectionPage {
-    PROJECTS, SERVICES, BLOG, CONTACTS;
+    PROJECTS, SERVICES, BLOG, TESTIMONIALS, CONTACTS;
 
     fun pathSegment(): String = name.lowercase()
 
@@ -46,6 +48,7 @@ enum class AdminSectionPage {
         PROJECTS -> "Projects"
         SERVICES -> "Services"
         BLOG -> "Blog"
+        TESTIMONIALS -> "Testimonials"
         CONTACTS -> "Contacts"
     }
 }
@@ -101,6 +104,22 @@ fun AdminDashboardPage(
                         AdminBlogForm(adminBasePath, null)
                         content.blogPosts.sortedByDescending { it.publishedAt }.forEach { post ->
                             AdminBlogForm(adminBasePath, post)
+                        }
+                    }
+                }
+            }
+        }
+
+        AdminSectionPage.TESTIMONIALS -> {
+            {
+                AdminSection(id = "admin-testimonials") {
+                    AdminCard(
+                        title = "Testimonials (${content.testimonials.size})",
+                        description = "Manage client testimonials displayed on the homepage."
+                    ) {
+                        AdminTestimonialForm(adminBasePath, null)
+                        content.testimonials.sortedBy { it.order }.forEach { testimonial ->
+                            AdminTestimonialForm(adminBasePath, testimonial)
                         }
                     }
                 }
@@ -550,6 +569,84 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
 }
 
 @Composable
+private fun AdminTestimonialForm(basePath: String, testimonial: Testimonial?) {
+    val isEditing = testimonial != null
+    val summary = if (isEditing) {
+        "✏️ Edit ${testimonial!!.summaryLabel("Testimonial")}"
+    } else {
+        "➕ Create Testimonial"
+    }
+
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+        Form(
+            action = adminAction(basePath, "testimonials/upsert"),
+            hiddenFields = testimonial?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
+        ) {
+            FormTextArea(
+                name = "quote_en",
+                label = "Quote (EN)",
+                defaultValue = testimonial?.quote?.en.orEmpty(),
+                required = true
+            )
+            FormTextArea(
+                name = "quote_ar",
+                label = "Quote (AR)",
+                defaultValue = testimonial?.quote?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "author",
+                label = "Author Name",
+                defaultValue = testimonial?.author.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "role_en",
+                label = "Role (EN)",
+                defaultValue = testimonial?.role?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "role_ar",
+                label = "Role (AR)",
+                defaultValue = testimonial?.role?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "company_en",
+                label = "Company (EN)",
+                defaultValue = testimonial?.company?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "company_ar",
+                label = "Company (AR)",
+                defaultValue = testimonial?.company?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "order",
+                label = "Order",
+                defaultValue = (testimonial?.order ?: 0).toString()
+            )
+            FormCheckbox(
+                name = "featured",
+                label = "Featured testimonial",
+                checked = testimonial?.featured == true
+            )
+            FormButton(
+                text = if (isEditing) "Save Testimonial" else "Create Testimonial"
+            )
+        }
+        testimonial?.let {
+            DeleteEntityForm(
+                basePath = basePath,
+                actionSuffix = "testimonials/delete",
+                id = it.id,
+                label = "Delete ${it.summaryLabel("Testimonial")}"
+            )
+        }
+    }
+}
+
+@Composable
 private fun DeleteEntityForm(
     basePath: String,
     actionSuffix: String,
@@ -655,6 +752,9 @@ private fun Service.summaryLabel(fallback: String): String =
 
 private fun BlogPost.summaryLabel(fallback: String): String =
     title.en.orFallback(slug).orFallback(fallback)
+
+private fun Testimonial.summaryLabel(fallback: String): String =
+    author.orFallback(id).orFallback(fallback)
 
 private fun String?.orFallback(fallback: String): String =
     if (this.isNullOrBlank()) fallback else this

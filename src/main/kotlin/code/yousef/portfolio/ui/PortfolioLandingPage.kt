@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui
 
 import code.yousef.portfolio.content.PortfolioContent
+import code.yousef.portfolio.content.model.Testimonial
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
@@ -123,7 +124,9 @@ fun PortfolioLandingPage(
             CaseStudySection(projects = content.projects, locale = locale)
         }
         ProcessSection(locale)
-        TestimonialSection(locale)
+        if (content.testimonials.isNotEmpty()) {
+            TestimonialSection(testimonials = content.testimonials, locale = locale)
+        }
         ContactCtaSection(locale)
         PortfolioFooter(locale = locale)
         ServicesOverlay(
@@ -482,7 +485,7 @@ private fun ProcessSection(locale: PortfolioLocale) {
 }
 
 @Composable
-private fun TestimonialSection(locale: PortfolioLocale) {
+private fun TestimonialSection(testimonials: List<Testimonial>, locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("testimonial")) {
         SectionHeading(
             locale = locale,
@@ -495,7 +498,7 @@ private fun TestimonialSection(locale: PortfolioLocale) {
                 .gridTemplateColumns("repeat(auto-fit, minmax(260px, 1fr))")
                 .gap(PortfolioTheme.Spacing.md)
         ) {
-            testimonials.forEach { testimonial ->
+            testimonials.sortedBy { it.order }.forEach { testimonial ->
                 Column(
                     modifier = Modifier()
                         .borderWidth(1)
@@ -791,33 +794,6 @@ private val processSteps = listOf(
     )
 )
 
-private data class Testimonial(
-    val quote: LocalizedText,
-    val author: String,
-    val role: LocalizedText,
-    val company: LocalizedText
-)
-
-private val testimonials = listOf(
-    Testimonial(
-        quote = LocalizedText(
-            en = "“Yousef rebuilt our marketing site and internal dashboard in six weeks. Page speed doubled and the UI finally matches our brand.”",
-            ar = "\"أعاد يوسف بناء موقعنا ولوحة التحكم الداخلية خلال ستة أسابيع. تضاعفت سرعة التصفح وأصبحت الواجهة تعكس هويتنا.\""
-        ),
-        author = "Laila A.",
-        role = LocalizedText("Head of Product", "رئيسة المنتج"),
-        company = LocalizedText("Verve Studio", "Verve Studio")
-    ),
-    Testimonial(
-        quote = LocalizedText(
-            en = "“He handled everything — architecture, %SUMMON% components, deployment. Launch day was the calmest we’ve had.”",
-            ar = "تولى كل شيء — الهيكلة ومكوّنات Summon والنشر. كان يوم الإطلاق الأكثر هدوءًا لنا."
-        ),
-        author = "Marcus R.",
-        role = LocalizedText("COO", "المدير التشغيلي"),
-        company = LocalizedText("Atlas Billing", "Atlas Billing")
-    )
-)
 
 @Composable
 private fun StructuredDataSnippet() {

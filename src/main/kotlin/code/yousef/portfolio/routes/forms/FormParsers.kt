@@ -4,6 +4,7 @@ import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.ProjectCategory
 import code.yousef.portfolio.content.model.Service
+import code.yousef.portfolio.content.model.Testimonial
 import code.yousef.portfolio.i18n.LocalizedText
 import io.ktor.http.Parameters
 import java.time.LocalDate
@@ -83,6 +84,26 @@ fun Parameters.toBlogPost(): BlogPost? {
         featured = featured,
         author = author,
         tags = tags
+    )
+}
+
+fun Parameters.toTestimonial(): Testimonial? {
+    val id = this["id"].orEmpty().ifBlank { UUID.randomUUID().toString() }
+    val quote = localizedText("quote") ?: return null
+    val author = this["author"]?.trim().orEmpty()
+    if (author.isBlank()) return null
+    val role = localizedText("role") ?: return null
+    val company = localizedText("company") ?: return null
+    val featured = this["featured"].isOn()
+    val order = this["order"].orZero()
+    return Testimonial(
+        id = id,
+        quote = quote,
+        author = author,
+        role = role,
+        company = company,
+        featured = featured,
+        order = order
     )
 }
 
