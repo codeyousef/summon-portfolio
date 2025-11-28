@@ -96,12 +96,16 @@ fun Application.configureRouting(
             .forEach { (hostName, port) ->
                 val mountSummonForHost: Route.() -> Unit = {
                     get("/") {
-                        val page = summonLandingRenderer.landingPage()
-                        SummonRenderLock.withLock {
-                            call.respondSummonHydrated {
-                                val renderer = getPlatformRenderer()
-                                renderer.renderHeadElements(page.head)
-                                page.content()
+                        val host = call.request.host()
+                        val links = resolveEnvironmentLinks(host)
+                        EnvironmentLinksRegistry.withLinks(links) {
+                            val page = summonLandingRenderer.landingPage()
+                            SummonRenderLock.withLock {
+                                call.respondSummonHydrated {
+                                    val renderer = getPlatformRenderer()
+                                    renderer.renderHeadElements(page.head)
+                                    page.content()
+                                }
                             }
                         }
                     }

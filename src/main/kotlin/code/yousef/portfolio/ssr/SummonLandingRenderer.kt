@@ -9,8 +9,8 @@ class SummonLandingRenderer {
         head = headBlock(),
         content = {
             SummonLandingPage(
-                docsUrl = docsUrl(),
-                apiReferenceUrl = apiReferenceUrl()
+                docsUrl = docsBaseUrl(),
+                apiReferenceUrl = "${docsBaseUrl().trimEnd('/')}/api-reference"
             )
         }
     )
@@ -35,15 +35,5 @@ class SummonLandingRenderer {
         head.meta("twitter:description", null, description, null, null)
         head.link("canonical", marketingUrl, null, null, null, null)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
-    }
-
-    private fun docsUrl(): String {
-        val override = System.getenv("SUMMON_DOCS_URL")?.takeIf { it.isNotBlank() }
-        return (override ?: "/docs").trimEnd('/')
-    }
-
-    private fun apiReferenceUrl(): String {
-        val override = System.getenv("SUMMON_API_REFERENCE_URL")?.takeIf { it.isNotBlank() }
-        return override ?: "/api-reference"
     }
 }
