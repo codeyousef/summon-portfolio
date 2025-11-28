@@ -50,6 +50,14 @@ fun Route.docsRoutes(
         }
 
         if (entry == null) {
+            // Check if this is a section index (like /api-reference) and redirect to first child
+            val firstChild = navTree.sections
+                .firstOrNull { normalize(it.path) == normalize(requestPath) }
+                ?.children?.firstOrNull()?.path
+            if (firstChild != null) {
+                respondRedirect(basePath + firstChild)
+                return
+            }
             val page = docsRouter.notFound(requestPath, navTree, origin)
             respondDocsPage(page, HttpStatusCode.NotFound)
             return
@@ -181,3 +189,6 @@ private fun removeSuffixIgnoreCase(value: String, suffix: String): String {
         value
     }
 }
+
+private fun normalize(path: String): String =
+    if (path.isBlank()) "/" else path.trim().trimEnd('/')
