@@ -102,20 +102,26 @@ fun PortfolioLandingPage(
         ) {}
         HeroBand(locale)
         WhatIBuildSection(locale)
-        ServicesSection(
-            services = content.services,
-            locale = locale,
-            onRequestServices = openServicesModal,
-            modifier = Modifier().id("services")
-        )
+        if (content.services.isNotEmpty()) {
+            ServicesSection(
+                services = content.services,
+                locale = locale,
+                onRequestServices = openServicesModal,
+                modifier = Modifier().id("services")
+            )
+        }
         WhyWorkWithMeSection(locale)
         FeaturedProjectSection(locale, projectName = summonProjectTitle)
-        BlogTeaserSection(
-            posts = content.blogPosts,
-            locale = locale,
-            modifier = Modifier().id("blog")
-        )
-        CaseStudySection(projects = content.projects, locale = locale)
+        if (content.blogPosts.isNotEmpty()) {
+            BlogTeaserSection(
+                posts = content.blogPosts,
+                locale = locale,
+                modifier = Modifier().id("blog")
+            )
+        }
+        if (content.projects.isNotEmpty()) {
+            CaseStudySection(projects = content.projects, locale = locale)
+        }
         ProcessSection(locale)
         TestimonialSection(locale)
         ContactCtaSection(locale)
