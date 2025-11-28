@@ -31,8 +31,8 @@ fun Toc(entries: List<TocEntry>) {
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.md)
-            .flex(grow = 0, shrink = 0, basis = "180px")
-            .width(180.px)
+            .flex(grow = 0, shrink = 0, basis = "160px")
+            .width(160.px)
             .position(Position.Sticky)
             .top(PortfolioTheme.Spacing.lg)
     ) {

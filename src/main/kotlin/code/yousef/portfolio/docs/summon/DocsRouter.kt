@@ -167,7 +167,7 @@ private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Com
                 .width(100.percent)
         ) {
             DocsNavbar(navBaseUrl, docsBaseUrl)
-            SectionWrap(maxWidthPx = 1440) {
+            SectionWrap(maxWidthPx = 1500) {
                 content()
             }
         }
