@@ -10,6 +10,11 @@ import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -155,9 +160,84 @@ private fun DocsNotFoundContent(navJson: String) {
 @Composable
 private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Composable () -> Unit) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
-        // No AppHeader for docs; focus the content and nav only
-        SectionWrap(maxWidthPx = 1400) {
-            content()
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .width(100.percent)
+        ) {
+            DocsNavbar(navBaseUrl, docsBaseUrl)
+            SectionWrap(maxWidthPx = 1440) {
+                content()
+            }
         }
     }
+}
+
+@Composable
+private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String) {
+    val docsPath = "/docs"
+    val apiReferencePath = "/docs/api-reference"
+    Row(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+            .justifyContent(JustifyContent.SpaceBetween)
+            .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
+            .borderWidth(1, BorderSide.Bottom)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
+    ) {
+        AnchorLink(
+            label = "Summon",
+            href = navBaseUrl,
+            modifier = Modifier()
+                .fontWeight(700)
+                .fontSize(1.25.rem)
+                .color(PortfolioTheme.Colors.ACCENT_ALT),
+            navigationMode = LinkNavigationMode.Native,
+            target = null,
+            rel = null,
+            title = null,
+            id = null,
+            ariaLabel = null,
+            ariaDescribedBy = null,
+            dataHref = null,
+            dataAttributes = emptyMap()
+        )
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.lg)
+        ) {
+            DocsNavLink(label = "Documentation", href = docsPath)
+            DocsNavLink(label = "API Reference", href = apiReferencePath)
+        }
+    }
+}
+
+@Composable
+private fun DocsNavLink(label: String, href: String) {
+    AnchorLink(
+        label = label,
+        href = href,
+        modifier = Modifier()
+            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+            .hover(
+                Modifier()
+                    .color(PortfolioTheme.Colors.ACCENT_ALT)
+            ),
+        navigationMode = LinkNavigationMode.Native,
+        target = null,
+        rel = null,
+        title = null,
+        id = null,
+        ariaLabel = null,
+        ariaDescribedBy = null,
+        dataHref = null,
+        dataAttributes = emptyMap()
+    )
 }
