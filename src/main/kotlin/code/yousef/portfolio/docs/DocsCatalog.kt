@@ -39,6 +39,14 @@ class DocsCatalog(
 
     fun find(slug: String): DocEntry? = snapshot.slugMap[slug]
 
+    fun firstEntryStartingWith(prefix: String): DocEntry? {
+        if (prefix.isBlank()) return null
+        val normalizedPrefix = prefix.lowercase().trimEnd('/') + "/"
+        return snapshot.entries.firstOrNull {
+            it.slug.lowercase().startsWith(normalizedPrefix)
+        }
+    }
+
     fun navTree(): DocsNavTree = snapshot.navTree
 
     fun neighbors(slug: String): NeighborLinks {

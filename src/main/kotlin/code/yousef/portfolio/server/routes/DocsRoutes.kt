@@ -51,11 +51,19 @@ fun Route.docsRoutes(
 
         if (entry == null) {
             // Check if this is a section index (like /api-reference) and redirect to first child
+            val normalizedRequest = normalize(requestPath).lowercase()
             val firstChild = navTree.sections
-                .firstOrNull { normalize(it.path) == normalize(requestPath) }
+                .firstOrNull { normalize(it.path).lowercase() == normalizedRequest }
                 ?.children?.firstOrNull()?.path
             if (firstChild != null) {
                 respondRedirect(basePath + firstChild)
+                return
+            }
+            // Also check by slug for entries that start with this path
+            val firstMatchingEntry = docsCatalog.firstEntryStartingWith(slug)
+            if (firstMatchingEntry != null) {
+                val redirectPath = if (firstMatchingEntry.slug == DocsCatalog.SLUG_ROOT) "/" else "/${firstMatchingEntry.slug}"
+                respondRedirect(basePath + redirectPath)
                 return
             }
             val page = docsRouter.notFound(requestPath, navTree, origin)
