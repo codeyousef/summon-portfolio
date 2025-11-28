@@ -71,6 +71,13 @@ fun Route.docsRoutes(
             return
         }
 
+        // If entry exists but has children (it's a directory index), redirect to first child
+        val firstChildEntry = docsCatalog.firstEntryStartingWith(slug)
+        if (firstChildEntry != null && firstChildEntry.slug != slug) {
+            respondRedirect(basePath + "/${firstChildEntry.slug}")
+            return
+        }
+
         val canonicalPath = canonicalPathForSlug(entry.slug)
         val fetchedDocument = try {
             docsService.fetchDocument(entry.repoPath, branch)
