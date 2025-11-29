@@ -684,7 +684,7 @@ private fun AdminFormDisclosure(
     defaultOpen: Boolean,
     content: @Composable () -> Unit
 ) {
-    val openState = codes.yousef.summon.runtime.rememberMutableStateOf(defaultOpen)
+    // All forms expanded - toggle disabled until Summon hydration is fixed
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -704,8 +704,7 @@ private fun AdminFormDisclosure(
                 .padding(PortfolioTheme.Spacing.md)
                 .borderBottomWidth(1)
                 .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.BORDER)
-                .cursor(Cursor.Pointer),
+                .borderColor(PortfolioTheme.Colors.BORDER),
         ) {
             Text(
                 text = summary,
@@ -713,26 +712,15 @@ private fun AdminFormDisclosure(
                     .fontWeight(600)
                     .letterSpacing("0.02em")
             )
-            codes.yousef.summon.components.input.Button(
-                onClick = { openState.value = !openState.value },
-                label = if (openState.value) "−" else "+",
-                modifier = Modifier()
-                    .width(38.px)
-                    .height(32.px),
-                variant = codes.yousef.summon.components.input.ButtonVariant.SECONDARY,
-                disabled = false
-            )
         }
-        if (openState.value) {
-            Column(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .flexDirection(FlexDirection.Column)
-                    .gap(PortfolioTheme.Spacing.md)
-                    .padding(PortfolioTheme.Spacing.lg)
-                    .paddingRight("80px")
-            ) { content() }
-        }
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.md)
+                .padding(PortfolioTheme.Spacing.lg)
+                .paddingRight("80px")
+        ) { content() }
     }
 }
 
