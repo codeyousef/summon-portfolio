@@ -24,6 +24,7 @@ import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.ModifierExtras.onClick
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import codes.yousef.summon.runtime.LocalPlatformRenderer
@@ -684,7 +685,7 @@ private fun AdminFormDisclosure(
     defaultOpen: Boolean,
     content: @Composable () -> Unit
 ) {
-    // All forms expanded - toggle disabled until Summon hydration is fixed
+    val openState = codes.yousef.summon.runtime.rememberMutableStateOf(defaultOpen)
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -704,7 +705,9 @@ private fun AdminFormDisclosure(
                 .padding(PortfolioTheme.Spacing.md)
                 .borderBottomWidth(1)
                 .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.BORDER),
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .cursor(Cursor.Pointer)
+                .onClick { openState.value = !openState.value },
         ) {
             Text(
                 text = summary,
@@ -712,15 +715,23 @@ private fun AdminFormDisclosure(
                     .fontWeight(600)
                     .letterSpacing("0.02em")
             )
+            Text(
+                text = if (openState.value) "−" else "+",
+                modifier = Modifier()
+                    .fontSize(1.5.rem)
+                    .fontWeight(600)
+            )
         }
-        Column(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .flexDirection(FlexDirection.Column)
-                .gap(PortfolioTheme.Spacing.md)
-                .padding(PortfolioTheme.Spacing.lg)
-                .paddingRight("80px")
-        ) { content() }
+        if (openState.value) {
+            Column(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .padding(PortfolioTheme.Spacing.lg)
+                    .paddingRight("80px")
+            ) { content() }
+        }
     }
 }
 
