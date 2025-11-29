@@ -4,11 +4,13 @@ import code.yousef.portfolio.content.model.Service
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.components.TruncatedText
 import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -24,6 +26,21 @@ fun ServicesSection(
     onRequestServices: () -> Unit,
     modifier: Modifier = Modifier()
 ) {
+    // Responsive grid styles
+    GlobalStyle(
+        """
+        .services-bento-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+        }
+        @media (max-width: 768px) {
+            .services-bento-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        """
+    )
+
     ContentSection(modifier = modifier) {
         Column(
             modifier = Modifier()
@@ -46,9 +63,8 @@ fun ServicesSection(
 
             Row(
                 modifier = Modifier()
-                    .display(Display.Grid)
-                    .gridTemplateColumns("repeat(auto-fit, minmax(220px, 1fr))")
                     .gap(PortfolioTheme.Spacing.md)
+                    .className("services-bento-grid")
             ) {
                 services.forEach { service ->
                     ServiceCard(service = service, locale = locale)
@@ -99,6 +115,7 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
             .boxShadow(PortfolioTheme.Shadows.LOW)
+            .height("100%") // Equal height cards
     ) {
         Text(
             text = service.title.resolve(locale),
@@ -106,8 +123,9 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
                 .fontSize(1.2.rem)
                 .fontWeight(600)
         )
-        Text(
+        TruncatedText(
             text = service.description.resolve(locale),
+            maxLines = 3,
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .lineHeight(1.6)

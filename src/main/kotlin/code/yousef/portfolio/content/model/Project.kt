@@ -20,5 +20,6 @@ data class Project(
     val category: ProjectCategory,
     val featured: Boolean = false,
     val order: Int = 0,
-    val technologies: List<String> = emptyList()
+    val technologies: List<String> = emptyList(),
+    val imageUrl: String? = null
 )

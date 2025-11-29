@@ -24,16 +24,12 @@ class HydrationTest {
             assertTrue(headers[HttpHeaders.ContentType]?.startsWith("text/html") == true, "Should be HTML")
             
             val body = bodyAsText()
-            
+
             // Verify Summon hydration script is present
             assertTrue(body.contains("summon-hydration.js"), "Should contain summon-hydration.js script tag")
-            
-            // Verify WASM preload is present (Summon 0.4.9.2 standard)
-            assertTrue(body.contains("summon-hydration.wasm"), "Should contain summon-hydration.wasm reference")
-            
-            // Verify root element exists (usually <div id="root"> or similar, depending on Summon)
-            // Based on previous context, Summon usually hydrates into a container.
-            // I'll check for the generic structure if specific ID isn't known, but usually it's standard.
+
+            // Note: In Summon 0.5+, the WASM is loaded dynamically by the JS loader,
+            // not preloaded in HTML. The hydration script handles WASM loading internally.
         }
     }
 
