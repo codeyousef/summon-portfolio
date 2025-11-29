@@ -15,7 +15,6 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.theme.ColorHelpers.textColor
 
 @Composable
 fun AdminLoginPage(
@@ -38,11 +37,11 @@ fun AdminLoginPage(
         Form(
             action = "/admin/login",
             hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList(),
-            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
         ) {
             FormField(
                 label = {
-                    Text("Username", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                    Text("Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
                 },
                 isRequired = true
             ) {
@@ -51,13 +50,13 @@ fun AdminLoginPage(
                     label = "",
                     defaultValue = "",
                     modifier = Modifier()
-                        .textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
                 )
             }
             FormField(
                 label = {
-                    Text("Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                    Text("Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
                 },
                 isRequired = true
             ) {
@@ -66,8 +65,8 @@ fun AdminLoginPage(
                     label = "",
                     defaultValue = "",
                     modifier = Modifier()
-                        .textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
                 )
             }
             FormButton(
@@ -90,7 +89,7 @@ fun AdminChangePasswordPage(
         Form(action = "/admin/change-password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) {
             FormField(
                 label = {
-                    Text("New Username", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                    Text("New Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
                 },
                 isRequired = true
             ) {
@@ -100,12 +99,12 @@ fun AdminChangePasswordPage(
                     defaultValue = currentUsername,
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                        .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
                 )
             }
             FormField(
                 label = {
-                    Text("New Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                    Text("New Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
                 },
                 isRequired = true
             ) {
@@ -115,7 +114,7 @@ fun AdminChangePasswordPage(
                     defaultValue = "",
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                        .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
                 )
             }
             FormField(
@@ -130,7 +129,7 @@ fun AdminChangePasswordPage(
                     defaultValue = "",
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
+                        .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
                 )
             }
             FormButton(
