@@ -50,7 +50,9 @@ fun AdminLoginPage(
                     name = "username",
                     label = "",
                     defaultValue = "",
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier()
+                        .textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
                 )
             }
             FormField(
@@ -63,7 +65,9 @@ fun AdminLoginPage(
                     name = "password",
                     label = "",
                     defaultValue = "",
-                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier()
+                        .textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
                 )
             }
             FormButton(
@@ -94,7 +98,9 @@ fun AdminChangePasswordPage(
                     name = "username",
                     label = "",
                     defaultValue = currentUsername,
-                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
                 )
             }
             FormField(
@@ -107,7 +113,9 @@ fun AdminChangePasswordPage(
                     name = "password",
                     label = "",
                     defaultValue = "",
-                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
                 )
             }
             FormField(
@@ -120,7 +128,9 @@ fun AdminChangePasswordPage(
                     name = "confirm",
                     label = "",
                     defaultValue = "",
-                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
                 )
             }
             FormButton(
