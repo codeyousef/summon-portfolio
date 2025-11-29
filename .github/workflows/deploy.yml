@@ -2,11 +2,11 @@ name: Deploy to Cloud Run (dev/prod)
 
 on:
   push:
-    branches: [ dev, main ]
+    branches: [ dev, master ]
 
 # Non-secret constants (edit if you ever rename stuff)
 env:
-  SERVICE_BASE: portfolio                 # => main: portfolio, dev: portfolio-dev
+  SERVICE_BASE: portfolio                 # => master: portfolio, dev: portfolio-dev
   CONTAINER_REPO: portfolio-registry      # Artifact Registry repo
   GCP_PROJECT_ID: portfolio-476219        # <-- your project ID (not name)
   GCP_REGION: us-central1                 # region
@@ -37,7 +37,7 @@ jobs:
         id: svc
         shell: bash
         run: |
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+          if [ "${GITHUB_REF_NAME}" = "master" ]; then
             echo "name=${SERVICE_BASE}" >> "$GITHUB_OUTPUT"
           else
             echo "name=${SERVICE_BASE}-${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
