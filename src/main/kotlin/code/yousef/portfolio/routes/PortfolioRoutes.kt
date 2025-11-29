@@ -470,10 +470,8 @@ private suspend fun ApplicationCall.receiveContactRequest(): ContactRequest? {
         contentType == ContentType.Application.FormUrlEncoded -> {
             val params = receiveParameters()
             ContactRequest(
-                name = params["name"].orEmpty(),
-                email = params["email"],
-                whatsapp = params["whatsapp"],
-                requirements = params["requirements"].orEmpty()
+                contact = params["contact"].orEmpty(),
+                message = params["message"].orEmpty()
             )
         }
 

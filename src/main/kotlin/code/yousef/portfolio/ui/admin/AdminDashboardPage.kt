@@ -146,20 +146,11 @@ fun AdminDashboardPage(
                                     .borderRadius(PortfolioTheme.Radii.md)
                             ) {
                                 Text(
-                                    text = submission.name,
+                                    text = submission.contact,
                                     modifier = Modifier().fontWeight(600)
                                 )
-                                listOfNotNull(
-                                    submission.email?.let { "Email: $it" },
-                                    submission.whatsapp?.let { "WhatsApp: $it" }
-                                ).forEach { line ->
-                                    Text(
-                                        text = line,
-                                        modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                    )
-                                }
                                 Text(
-                                    text = submission.requirements,
+                                    text = submission.message,
                                     modifier = Modifier()
                                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                         .lineHeight(1.5)

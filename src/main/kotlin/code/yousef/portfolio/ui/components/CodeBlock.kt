@@ -56,7 +56,12 @@ fun CodeBlock(lines: List<String>, showCopyButton: Boolean = false) {
             }
         }
         lines.forEach { line ->
-            Text(line, modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+            Text(
+                text = line,
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    .whiteSpace(WhiteSpace.Pre)
+            )
         }
     }
 }

@@ -185,8 +185,8 @@ private object ContactFooterCopy {
         ar = "لديك مشروع في ذهنك؟ راسلني أو احجز مكالمة."
     )
     val contactLabel = LocalizedText(
-        en = "Email or WhatsApp Number",
-        ar = "البريد الإلكتروني أو رقم واتساب"
+        en = "Email or WhatsApp",
+        ar = "البريد الإلكتروني أو واتساب"
     )
     val contactPlaceholder = LocalizedText(
         en = "you@example.com or +1 234 567 8900",
