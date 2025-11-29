@@ -46,10 +46,8 @@ data class BlogPostDto(
 @Serializable
 data class ContactSubmissionDto(
     val id: String,
-    val name: String,
-    val email: String?,
-    val whatsapp: String,
-    val requirements: String,
+    val contact: String,
+    val message: String,
     val createdAt: String
 )
 
@@ -92,9 +90,7 @@ fun BlogPost.toDto(locale: PortfolioLocale): BlogPostDto =
 fun ContactSubmission.toDto(): ContactSubmissionDto =
     ContactSubmissionDto(
         id = id,
-        name = name,
-        email = email,
-        whatsapp = whatsapp,
-        requirements = requirements,
+        contact = contact,
+        message = message,
         createdAt = createdAt.toString()
     )

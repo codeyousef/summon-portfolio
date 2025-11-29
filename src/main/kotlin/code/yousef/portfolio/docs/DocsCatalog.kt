@@ -39,6 +39,14 @@ class DocsCatalog(
 
     fun find(slug: String): DocEntry? = snapshot.slugMap[slug]
 
+    fun firstEntryStartingWith(prefix: String): DocEntry? {
+        if (prefix.isBlank()) return null
+        val normalizedPrefix = prefix.lowercase().trimEnd('/') + "/"
+        return snapshot.entries.firstOrNull {
+            it.slug.lowercase().startsWith(normalizedPrefix)
+        }
+    }
+
     fun navTree(): DocsNavTree = snapshot.navTree
 
     fun neighbors(slug: String): NeighborLinks {
@@ -216,22 +224,47 @@ class DocsCatalog(
         if (entries.isEmpty()) {
             return DocsNavTree(emptyList())
         }
-        val children = entries.map { entry ->
-            DocsNavNode(
-                title = entry.title,
-                path = if (entry.slug == SLUG_ROOT) "/" else "/${entry.slug}",
-                children = emptyList()
+        val (apiEntries, docEntries) = entries.partition { doc -> doc.slug.startsWith("api-reference") && doc.slug.isNotBlank() }
+        val toNodes: (List<DocEntry>) -> List<DocsNavNode> = { items ->
+            items.map { entry ->
+                DocsNavNode(
+                    title = entry.title,
+                    path = if (entry.slug == SLUG_ROOT) "/" else "/${entry.slug}",
+                    children = emptyList()
+                )
+            }
+        }
+
+        val sections = mutableListOf<DocsNavNode>()
+
+        val effectiveDocs = docEntries.ifEmpty { if (apiEntries.isEmpty()) entries else docEntries }
+        val docChildren = toNodes(effectiveDocs)
+        if (docChildren.isNotEmpty()) {
+            sections += DocsNavNode(
+                title = "Documentation",
+                path = "/",
+                children = docChildren
             )
         }
-        return DocsNavTree(
-            sections = listOf(
-                DocsNavNode(
-                    title = "Documentation",
-                    path = "/",
-                    children = children
-                )
+
+        val apiChildren = toNodes(apiEntries)
+        if (apiChildren.isNotEmpty()) {
+            sections += DocsNavNode(
+                title = "API Reference",
+                path = "/api-reference",
+                children = apiChildren
             )
-        )
+        }
+
+        if (sections.isEmpty()) {
+            sections += DocsNavNode(
+                title = "Documentation",
+                path = "/",
+                children = docChildren
+            )
+        }
+
+        return DocsNavTree(sections)
     }
 
     companion object {

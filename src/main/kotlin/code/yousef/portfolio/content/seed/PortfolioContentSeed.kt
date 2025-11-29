@@ -69,8 +69,8 @@ object PortfolioContentSeed {
             layerName = LocalizedText("THE FRAMEWORK", "الإطار"),
             title = LocalizedText("Summon", "سمون"),
             description = LocalizedText(
-                en = "The language provides structure. With Summon, that structure becomes tangible UI components—the building blocks of modern applications.",
-                ar = "توفر اللغة البنية. مع سمون، تصبح هذه البنية مكونات واجهة مستخدم ملموسة — اللبنات الأساسية للتطبيقات الحديثة."
+                en = "The language provides structure. With %SUMMON%, that structure becomes tangible UI components—the building blocks of modern applications.",
+                ar = "توفر اللغة البنية. مع %SUMMON%، تصبح هذه البنية مكونات واجهة مستخدم ملموسة — اللبنات الأساسية للتطبيقات الحديثة."
             ),
             category = ProjectCategory.WEB,
             featured = true,
@@ -142,7 +142,7 @@ object PortfolioContentSeed {
             ),
             publishedAt = LocalDate.of(2024, 1, 1),
             featured = true,
-            author = "Yousef Baitalmal",
+            author = "Yousef",
             tags = listOf("engineering", "introduction", "coding")
         )
     )

@@ -4,20 +4,21 @@ import code.yousef.portfolio.content.model.Service
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.components.TruncatedText
 import code.yousef.portfolio.ui.foundation.ContentSection
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.input.Button
-import code.yousef.summon.components.input.ButtonVariant
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.LayoutModifiers.gridTemplateColumns
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 
 @Composable
 fun ServicesSection(
@@ -26,12 +27,33 @@ fun ServicesSection(
     onRequestServices: () -> Unit,
     modifier: Modifier = Modifier()
 ) {
+    // Responsive grid styles
+    GlobalStyle(
+        """
+        .services-bento-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: ${PortfolioTheme.Spacing.md};
+            width: 100%;
+        }
+        @media (max-width: 900px) {
+            .services-bento-grid {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: ${PortfolioTheme.Spacing.md} !important;
+            }
+        }
+        """
+    )
+
     ContentSection(modifier = modifier) {
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
                 .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.md)
+                .width("100%")
+                .overflow(Overflow.Hidden)
         ) {
             Text(
                 text = ServicesCopy.title.resolve(locale),
@@ -46,11 +68,9 @@ fun ServicesSection(
                     .lineHeight(1.8)
             )
 
-            Row(
+            Box(
                 modifier = Modifier()
-                    .display(Display.Grid)
-                    .gridTemplateColumns("repeat(auto-fit, minmax(220px, 1fr))")
-                    .gap(PortfolioTheme.Spacing.md)
+                    .className("services-bento-grid")
             ) {
                 services.forEach { service ->
                     ServiceCard(service = service, locale = locale)
@@ -62,17 +82,25 @@ fun ServicesSection(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.Center)
             ) {
-                Button(
-                    onClick = { onRequestServices() },
+                // Use a real link to /services for proper navigation
+                codes.yousef.summon.components.navigation.ButtonLink(
                     label = ServicesCopy.openModal.resolve(locale),
+                    href = "/services",
                     modifier = Modifier()
                         .backgroundColor(PortfolioTheme.Colors.ACCENT)
                         .color("#ffffff")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.xl)
                         .borderRadius(PortfolioTheme.Radii.pill)
                         .fontWeight(600),
-                    variant = ButtonVariant.PRIMARY,
-                    disabled = false
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = mapOf("cta" to "view-featured-services"),
+                    navigationMode = codes.yousef.summon.components.navigation.LinkNavigationMode.Native
                 )
             }
         }
@@ -93,6 +121,7 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
             .boxShadow(PortfolioTheme.Shadows.LOW)
+            .height("100%") // Equal height cards
     ) {
         Text(
             text = service.title.resolve(locale),
@@ -100,8 +129,9 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
                 .fontSize(1.2.rem)
                 .fontWeight(600)
         )
-        Text(
+        TruncatedText(
             text = service.description.resolve(locale),
+            maxLines = 3,
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .lineHeight(1.6)

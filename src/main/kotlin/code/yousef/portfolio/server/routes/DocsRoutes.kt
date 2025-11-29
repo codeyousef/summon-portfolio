@@ -3,8 +3,9 @@ package code.yousef.portfolio.server.routes
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.ssr.SummonPage
-import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
-import code.yousef.summon.runtime.getPlatformRenderer
+import code.yousef.portfolio.ssr.SummonRenderLock
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
+import codes.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -22,10 +23,14 @@ fun Route.docsRoutes(
     docsRouter: DocsRouter,
     webhookHandler: WebhookHandler,
     config: DocsConfig,
-    docsCatalog: DocsCatalog
+    docsCatalog: DocsCatalog,
+    pathResolver: (ApplicationCall) -> String = { it.request.path() },
+    basePath: String = "",
+    registerPageRoutes: Boolean = true,
+    registerInfrastructure: Boolean = true
 ) {
     suspend fun ApplicationCall.renderDocsPage() {
-        val requestPath = request.path().ifBlank { "/" }
+        val requestPath = pathResolver(this).ifBlank { "/" }
         val (branch, pathPart) = extractBranch(requestPath, config)
         val slug = normalizeSlug(pathPart)
         var navTree = docsCatalog.navTree()
@@ -45,8 +50,31 @@ fun Route.docsRoutes(
         }
 
         if (entry == null) {
+            // Check if this is a section index (like /api-reference) and redirect to first child
+            val normalizedRequest = normalize(requestPath).lowercase()
+            val firstChild = navTree.sections
+                .firstOrNull { normalize(it.path).lowercase() == normalizedRequest }
+                ?.children?.firstOrNull()?.path
+            if (firstChild != null) {
+                respondRedirect(basePath + firstChild)
+                return
+            }
+            // Also check by slug for entries that start with this path
+            val firstMatchingEntry = docsCatalog.firstEntryStartingWith(slug)
+            if (firstMatchingEntry != null) {
+                val redirectPath = if (firstMatchingEntry.slug == DocsCatalog.SLUG_ROOT) "/" else "/${firstMatchingEntry.slug}"
+                respondRedirect(basePath + redirectPath)
+                return
+            }
             val page = docsRouter.notFound(requestPath, navTree, origin)
             respondDocsPage(page, HttpStatusCode.NotFound)
+            return
+        }
+
+        // If entry exists but has children (it's a directory index), redirect to first child
+        val firstChildEntry = docsCatalog.firstEntryStartingWith(slug)
+        if (firstChildEntry != null && firstChildEntry.slug != slug) {
+            respondRedirect(basePath + "/${firstChildEntry.slug}")
             return
         }
 
@@ -75,7 +103,8 @@ fun Route.docsRoutes(
             meta = rendered.meta,
             toc = rendered.toc,
             sidebar = navTree,
-            neighbors = neighbors
+            neighbors = neighbors,
+            basePath = basePath
         )
 
         fetchedDocument.etag?.let { response.headers.append(HttpHeaders.ETag, it, false) }
@@ -89,37 +118,41 @@ fun Route.docsRoutes(
         respondDocsPage(page)
     }
 
-    get("/__asset/{assetPath...}") {
-        val pathSegments = call.parameters.getAll("assetPath") ?: emptyList()
-        val branch = call.request.queryParameters["ref"] ?: config.defaultBranch
-        val assetPath = pathSegments.joinToString("/").trim('/')
-        if (assetPath.isBlank()) {
-            call.respond(HttpStatusCode.BadRequest, "Missing asset path")
-            return@get
+    if (registerInfrastructure) {
+        get("/__asset/{assetPath...}") {
+            val pathSegments = call.parameters.getAll("assetPath") ?: emptyList()
+            val branch = call.request.queryParameters["ref"] ?: config.defaultBranch
+            val assetPath = pathSegments.joinToString("/").trim('/')
+            if (assetPath.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, "Missing asset path")
+                return@get
+            }
+            val repoPath = "${config.normalizedDocsRoot}/$assetPath"
+            runCatching { docsService.fetchAsset(repoPath, branch) }
+                .onSuccess { asset ->
+                    val contentType = asset.contentType?.let(ContentType::parse) ?: ContentType.Application.OctetStream
+                    call.response.headers.append(HttpHeaders.CacheControl, "public, max-age=86400", false)
+                    asset.etag?.let { call.response.headers.append(HttpHeaders.ETag, it, false) }
+                    call.respondBytes(asset.bytes, contentType)
+                }
+                .onFailure {
+                    call.respond(HttpStatusCode.NotFound, "Asset not found")
+                }
         }
-        val repoPath = "${config.normalizedDocsRoot}/$assetPath"
-        runCatching { docsService.fetchAsset(repoPath, branch) }
-            .onSuccess { asset ->
-                val contentType = asset.contentType?.let(ContentType::parse) ?: ContentType.Application.OctetStream
-                call.response.headers.append(HttpHeaders.CacheControl, "public, max-age=86400", false)
-                asset.etag?.let { call.response.headers.append(HttpHeaders.ETag, it, false) }
-                call.respondBytes(asset.bytes, contentType)
-            }
-            .onFailure {
-                call.respond(HttpStatusCode.NotFound, "Asset not found")
-            }
+
+        post("/__hooks/github") {
+            webhookHandler.handle(call)
+        }
     }
 
-    post("/__hooks/github") {
-        webhookHandler.handle(call)
-    }
+    if (registerPageRoutes) {
+        get("/") {
+            call.renderDocsPage()
+        }
 
-    get("/") {
-        call.renderDocsPage()
-    }
-
-    get("{...}") {
-        call.renderDocsPage()
+        get("{...}") {
+            call.renderDocsPage()
+        }
     }
 }
 
@@ -137,10 +170,12 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondDocsPage(
     page: SummonPage,
     status: HttpStatusCode = HttpStatusCode.OK
 ) {
-    respondSummonHydrated(status) {
-        val renderer = getPlatformRenderer()
-        renderer.renderHeadElements(page.head)
-        page.content()
+    SummonRenderLock.withLock {
+        respondSummonHydrated(status) {
+            val renderer = getPlatformRenderer()
+            renderer.renderHeadElements(page.head)
+            page.content()
+        }
     }
 }
 
@@ -169,3 +204,6 @@ private fun removeSuffixIgnoreCase(value: String, suffix: String): String {
         value
     }
 }
+
+private fun normalize(path: String): String =
+    if (path.isBlank()) "/" else path.trim().trimEnd('/')

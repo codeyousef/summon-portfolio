@@ -1,26 +1,29 @@
 package code.yousef.portfolio.theme
 
-import code.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.px
 
 object PortfolioTheme {
     object Colors {
-        const val BACKGROUND = "#0a0b0d"
-        const val BACKGROUND_ALT = "#0f0f14"
-        const val SURFACE = "rgba(255, 255, 255, 0.06)"
-        const val SURFACE_STRONG = "rgba(255, 255, 255, 0.12)"
-        const val GLASS = "rgba(255, 255, 255, 0.08)"
-        const val BORDER = "#ffffff18"
-        const val BORDER_STRONG = "#ffffff24"
-        const val TEXT_PRIMARY = "#eaeaf0"
-        const val TEXT_SECONDARY = "#a7a7b3"
-        const val ACCENT = "#b01235"
-        const val ACCENT_ALT = "#ff3b6a"
+        const val BACKGROUND = "#001a2c"
+        const val BACKGROUND_ALT = "#05294a"
+        const val SURFACE = "rgba(255,255,255,0.04)"
+        const val SURFACE_STRONG = "rgba(255,255,255,0.08)"
+        const val GLASS = "rgba(255,255,255,0.06)"
+        const val BORDER = "rgba(255,255,255,0.08)"
+        const val BORDER_STRONG = "rgba(255,255,255,0.18)"
+        const val TEXT_PRIMARY = "#ffffff"
+        const val TEXT_SECONDARY = "#a9b8d4"
+        const val ACCENT = "#ff4668"
+        const val ACCENT_ALT = "#ff89b0"
+        const val ACCENT_HOVER = "#ff5f7f"
+        const val LINK_HOVER = "#6ad7ff"
         const val SUCCESS = "#3dd598"
         const val WARNING = "#fbbf24"
         const val DANGER = "#ff4d4d"
     }
 
     object Spacing {
+        val xxs = 2.px
         val xs = 4.px
         val sm = 8.px
         val md = 16.px
@@ -51,16 +54,19 @@ object PortfolioTheme {
     }
 
     object Typography {
-        const val FONT_SANS = "\"Space Grotesk\", \"Inter\", system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+        const val FONT_SANS = "\"Inter\", \"SF Pro Display\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        const val FONT_SERIF = "\"Playfair Display\", \"Times New Roman\", serif"
         const val FONT_MONO = "\"JetBrains Mono\", \"Fira Code\", ui-monospace, SFMono-Regular, Menlo, monospace"
         const val HERO_TRACKING = "-0.025em"
     }
 
     object Gradients {
         const val HERO =
-            "radial-gradient(1200px 900px at 25% 12%, #15161c 0%, ${Colors.BACKGROUND} 55%), ${Colors.BACKGROUND_ALT}"
-        const val ACCENT = "linear-gradient(180deg, ${Colors.ACCENT_ALT}, ${Colors.ACCENT})"
-        const val CARD = "linear-gradient(180deg, #111318, #0f1116)"
-        const val GLASS = "linear-gradient(180deg, #ffffff10, #ffffff06)"
+            "radial-gradient(circle at 20% 30%, rgba(255,70,104,0.2) 0%, transparent 60%)," +
+                "radial-gradient(circle at 80% 70%, rgba(106,215,255,0.15) 0%, transparent 60%)," +
+                "linear-gradient(180deg, #001a2c 0%, #05294a 100%)"
+        const val ACCENT = "linear-gradient(120deg, ${Colors.ACCENT}, ${Colors.ACCENT_ALT})"
+        const val CARD = "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))"
+        const val GLASS = "linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))"
     }
 }

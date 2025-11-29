@@ -12,6 +12,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.routes.forms.toBlogPost
 import code.yousef.portfolio.routes.forms.toProject
 import code.yousef.portfolio.routes.forms.toService
+import code.yousef.portfolio.routes.forms.toTestimonial
 import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
@@ -19,9 +20,6 @@ import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
 import code.yousef.portfolio.ui.admin.AdminSectionPage
-import code.yousef.portfolio.ui.foundation.LocalPageChrome
-import code.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
-import code.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -214,6 +212,7 @@ fun Route.portfolioRoutes(
             projects = content.projects,
             services = content.services,
             blogPosts = content.blogPosts,
+            testimonials = content.testimonials,
             contacts = contactService.list(),
             section = section
         )
@@ -250,6 +249,7 @@ fun Route.portfolioRoutes(
                 projects = content.projects,
                 services = content.services,
                 blogPosts = content.blogPosts,
+                testimonials = content.testimonials,
                 contacts = contactService.list(),
                 section = section
             )
@@ -279,6 +279,14 @@ fun Route.portfolioRoutes(
     post("/admin/blog/delete") {
         call.requireAdminSession() ?: return@post
         call.handleBlogDelete(adminContentService, "/admin/${AdminSectionPage.BLOG.pathSegment()}")
+    }
+    post("/admin/testimonials/upsert") {
+        call.requireAdminSession() ?: return@post
+        call.handleTestimonialUpsert(adminContentService, "/admin/${AdminSectionPage.TESTIMONIALS.pathSegment()}")
+    }
+    post("/admin/testimonials/delete") {
+        call.requireAdminSession() ?: return@post
+        call.handleTestimonialDelete(adminContentService, "/admin/${AdminSectionPage.TESTIMONIALS.pathSegment()}")
     }
     get("/{locale}") {
         val rawLocale = call.parameters["locale"]?.lowercase()
@@ -366,6 +374,30 @@ fun Route.portfolioRoutes(
             )
         }
     }
+    post("/{locale}/admin/testimonials/upsert") {
+        call.requireAdminSession() ?: return@post
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleTestimonialUpsert(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.TESTIMONIALS)
+            )
+        }
+    }
+    post("/{locale}/admin/testimonials/delete") {
+        call.requireAdminSession() ?: return@post
+        val locale = call.parameters["locale"]?.lowercase()?.let { PortfolioLocale.exact(it) }
+        if (locale == null) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.handleTestimonialDelete(
+                adminContentService,
+                locale.adminRedirectPath(AdminSectionPage.TESTIMONIALS)
+            )
+        }
+    }
     get("/{locale}/admin/logout") {
         call.sessions.clear<AdminSession>()
         call.respondRedirect("/admin/login")
@@ -438,10 +470,8 @@ private suspend fun ApplicationCall.receiveContactRequest(): ContactRequest? {
         contentType == ContentType.Application.FormUrlEncoded -> {
             val params = receiveParameters()
             ContactRequest(
-                name = params["name"].orEmpty(),
-                email = params["email"],
-                whatsapp = params["whatsapp"].orEmpty(),
-                requirements = params["requirements"].orEmpty()
+                contact = params["contact"].orEmpty(),
+                message = params["message"].orEmpty()
             )
         }
 
@@ -459,6 +489,7 @@ private fun String?.toAdminSection(): AdminSectionPage =
     when (this?.lowercase()) {
         "services" -> AdminSectionPage.SERVICES
         "blog" -> AdminSectionPage.BLOG
+        "testimonials" -> AdminSectionPage.TESTIMONIALS
         "contacts" -> AdminSectionPage.CONTACTS
         else -> AdminSectionPage.PROJECTS
     }
@@ -595,15 +626,30 @@ private suspend fun ApplicationCall.handleBlogDelete(
     }
 }
 
-private suspend fun ApplicationCall.respondSummonPage(page: SummonPage, status: HttpStatusCode = HttpStatusCode.OK) {
-    respondSummonHydrated(status) {
-        val renderer = getPlatformRenderer()
-        renderer.renderHeadElements(page.head)
-        val session = sessions.get<AdminSession>()
-        val chrome =
-            session?.let { page.chrome.copy(isAdminSession = true, adminUsername = it.username) } ?: page.chrome
-        val provider = LocalPageChrome.provides(chrome)
-        provider.current
-        page.content()
+private suspend fun ApplicationCall.handleTestimonialUpsert(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val testimonial = params.toTestimonial()
+    if (testimonial == null) {
+        respondRedirect("$redirectTarget?error=testimonial")
+    } else {
+        adminContentService.saveTestimonial(testimonial)
+        respondRedirect("$redirectTarget?success=testimonial")
+    }
+}
+
+private suspend fun ApplicationCall.handleTestimonialDelete(
+    adminContentService: AdminContentService,
+    redirectTarget: String
+) {
+    val params = receiveParameters()
+    val id = params["id"].orEmpty()
+    if (id.isBlank()) {
+        respondRedirect("$redirectTarget?error=testimonial-delete")
+    } else {
+        adminContentService.deleteTestimonial(id)
+        respondRedirect("$redirectTarget?success=testimonial-delete")
     }
 }

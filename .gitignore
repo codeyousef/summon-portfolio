@@ -47,6 +47,20 @@ storage/admin-credentials.json
 
 ### Old Portfolio (Next.js) ###
 old-portfolio/*
-/docs/private/summon-docs/*
-/docs/private/
-/AGENTS.md
+
+### Documentation ###
+docs/private/
+
+### Dot Folders ###
+.kotlin/
+.idea/
+.vscode/
+.gradle/
+
+# Ignore local GCP service account keys
+gh-deployer.json
+*.key.json
+
+# Guides
+HAMBURGER_MENU_GUIDE.md
+hamburger.md

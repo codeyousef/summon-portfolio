@@ -1,0 +1,123 @@
+package code.yousef.portfolio.e2e
+
+import code.yousef.module
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.server.config.*
+import io.ktor.server.testing.*
+import kotlin.test.*
+
+class HydrationTest {
+
+    @Test
+    fun `should serve landing page with correct hydration tags`() = testApplication {
+        environment {
+            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+        }
+        application {
+            module()
+        }
+
+        client.get("/").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertTrue(headers[HttpHeaders.ContentType]?.startsWith("text/html") == true, "Should be HTML")
+            
+            val body = bodyAsText()
+
+            // Verify Summon hydration script is present
+            assertTrue(body.contains("summon-hydration.js"), "Should contain summon-hydration.js script tag")
+
+            // Note: In Summon 0.5+, the WASM is loaded dynamically by the JS loader,
+            // not preloaded in HTML. The hydration script handles WASM loading internally.
+        }
+    }
+
+    @Test
+    fun `should serve WASM binary with correct MIME type`() = testApplication {
+        environment {
+            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+        }
+        application {
+            module()
+        }
+
+        // The path might be /static/summon-hydration.wasm or just /summon-hydration.wasm depending on routing
+        // Based on previous file listings, it's in src/main/resources/static, so likely /static/
+        
+        client.get("/static/summon-hydration.wasm").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertEquals("application/wasm", headers[HttpHeaders.ContentType])
+        }
+    }
+
+    @Test
+    fun `should serve hydration JS with correct MIME type`() = testApplication {
+        environment {
+            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+        }
+        application {
+            module()
+        }
+
+        client.get("/static/summon-hydration.js").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            // Ktor might serve as application/javascript or text/javascript
+            val contentType = headers[HttpHeaders.ContentType]
+            assertTrue(
+                contentType?.startsWith("application/javascript") == true || contentType?.startsWith("text/javascript") == true,
+                "Content-Type should be javascript, got: $contentType"
+            )
+        }
+    }
+    
+    @Test
+    fun `should serve hydration assets at root paths`() = testApplication {
+        environment {
+            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+        }
+        application {
+            module()
+        }
+
+        val assets = listOf(
+            "/summon-hydration.js" to "application/javascript",
+            "/summon-hydration.wasm" to "application/wasm"
+        )
+
+        for ((path, expectedType) in assets) {
+            client.get(path).apply {
+                assertEquals(HttpStatusCode.OK, status, "Asset $path should be served at root")
+                val contentType = headers[HttpHeaders.ContentType]
+                assertTrue(
+                    contentType?.startsWith(expectedType) == true || 
+                    (expectedType == "application/javascript" && contentType?.startsWith("text/javascript") == true),
+                    "Content-Type for $path should be $expectedType, got: $contentType"
+                )
+            }
+        }
+    }
+    
+    @Test
+    fun `should NOT serve obsolete polyfills`() = testApplication {
+        environment {
+            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+        }
+        application {
+            module()
+        }
+
+        // These files were removed and should return 404
+        val obsoleteFiles = listOf(
+            "/static/process-polyfill.js",
+            "/static/wasm-polyfill.js",
+            "/static/initialize-summon.js"
+        )
+
+        for (file in obsoleteFiles) {
+            client.get(file).apply {
+                assertEquals(HttpStatusCode.NotFound, status, "File $file should not exist")
+            }
+        }
+    }
+}

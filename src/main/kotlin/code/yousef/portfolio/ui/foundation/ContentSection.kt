@@ -1,14 +1,14 @@
 package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.core.style.Color
-import code.yousef.summon.extensions.percent
-import code.yousef.summon.extensions.px
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.core.style.Color
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
 
 @Composable
 fun ContentSection(
@@ -16,11 +16,26 @@ fun ContentSection(
     surface: Boolean = true,
     content: () -> Unit
 ) {
+    GlobalStyle(css = """
+        /* Consistent mobile padding */
+        @media (max-width: 768px) {
+            [data-content-section="wrapper"] {
+                padding: ${PortfolioTheme.Spacing.xs} !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+            }
+            [data-content-section="inner"] {
+                padding: ${PortfolioTheme.Spacing.md} !important;
+            }
+        }
+    """)
+    
     val wrapperModifier = modifier
         .maxWidth(1200.px)
-        .width(100.percent)
+        .width("min(100%, calc(100vw - ${PortfolioTheme.Spacing.sm}))")
         .marginHorizontalAutoZero()
         .padding(PortfolioTheme.Spacing.xl)
+        .dataAttribute("content-section", "wrapper")
 
     Box(modifier = wrapperModifier) {
         Column(
@@ -32,6 +47,7 @@ fun ContentSection(
                 .borderRadius(PortfolioTheme.Radii.lg)
                 .padding(PortfolioTheme.Spacing.xl)
                 .gap(PortfolioTheme.Spacing.lg)
+                .backdropBlur(20.px)
                 .multipleShadows(
                     shadowConfig(
                         0,
@@ -41,6 +57,7 @@ fun ContentSection(
                         Color.hex("#02041873")
                     )
                 )
+                .dataAttribute("content-section", "inner")
         ) {
             content()
         }

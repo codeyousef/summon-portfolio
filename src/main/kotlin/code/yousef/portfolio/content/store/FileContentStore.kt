@@ -5,6 +5,7 @@ import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.HeroContent
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.Service
+import code.yousef.portfolio.content.model.Testimonial
 import code.yousef.portfolio.content.seed.PortfolioContentSeed
 import java.nio.file.Files
 import java.nio.file.Path
@@ -23,10 +24,11 @@ data class ContentSnapshot(
     val hero: HeroContent = PortfolioContentSeed.hero,
     val projects: List<Project> = PortfolioContentSeed.projects,
     val services: List<Service> = PortfolioContentSeed.services,
-    val blogPosts: List<BlogPost> = PortfolioContentSeed.blogPosts
+    val blogPosts: List<BlogPost> = PortfolioContentSeed.blogPosts,
+    val testimonials: List<Testimonial> = emptyList()
 ) {
     fun toPortfolioContent(): PortfolioContent =
-        PortfolioContent(hero = hero, projects = projects, services = services, blogPosts = blogPosts)
+        PortfolioContent(hero = hero, projects = projects, services = services, blogPosts = blogPosts, testimonials = testimonials)
 }
 
 class FileContentStore(
@@ -78,6 +80,17 @@ class FileContentStore(
 
     fun deleteBlogPost(id: String) = mutate { snap ->
         snap.copy(blogPosts = snap.blogPosts.filterNot { it.id == id })
+    }
+
+    fun upsertTestimonial(testimonial: Testimonial) = mutate { snap ->
+        snap.copy(
+            testimonials = (snap.testimonials.filterNot { it.id == testimonial.id } + testimonial)
+                .sortedBy { it.order }
+        )
+    }
+
+    fun deleteTestimonial(id: String) = mutate { snap ->
+        snap.copy(testimonials = snap.testimonials.filterNot { it.id == id })
     }
 
     private fun mutate(transform: (ContentSnapshot) -> ContentSnapshot) {

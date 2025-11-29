@@ -3,14 +3,19 @@ package code.yousef.portfolio.ui.admin
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.forms.*
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.extensions.px
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.forms.Form
+import codes.yousef.summon.components.forms.FormButton
+import codes.yousef.summon.components.forms.FormHiddenField
+import codes.yousef.summon.components.forms.FormTextField
+import codes.yousef.summon.components.input.FormField
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.theme.ColorHelpers.textColor
 
 @Composable
 fun AdminLoginPage(
@@ -27,31 +32,42 @@ fun AdminLoginPage(
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 .fontSize("0.85rem")
-                .textAlign("center")
+                .textAlign(TextAlign.Center)
                 .margin("0 0 8px 0")
         )
         Form(
             action = "/admin/login",
-            hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList()
+            hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList(),
+            modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
         ) {
-            FormTextField(
-                name = "username",
-                label = "Username",
-                required = true,
-                placeholder = "admin",
-                fullWidth = true
-            )
-            FormTextField(
-                name = "password",
-                label = "Password",
-                required = true,
-                type = FormTextFieldType.PASSWORD,
-                fullWidth = true
-            )
+            FormField(
+                label = {
+                    Text("Username", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
+            ) {
+                FormTextField(
+                    name = "username",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            }
+            FormField(
+                label = {
+                    Text("Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
+            ) {
+                FormTextField(
+                    name = "password",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            }
             FormButton(
-                text = "Sign In",
-                tone = FormButtonTone.ACCENT,
-                fullWidth = true
+                text = "Sign In"
             )
         }
     }
@@ -67,32 +83,48 @@ fun AdminChangePasswordPage(
         subtitle = "Please set a new username and password before continuing.",
         errorMessage = errorMessage
     ) {
-        Form(action = "/admin/change-password") {
-            FormTextField(
-                name = "username",
-                label = "New Username",
-                required = true,
-                defaultValue = currentUsername,
-                fullWidth = true
-            )
-            FormTextField(
-                name = "password",
-                label = "New Password",
-                required = true,
-                type = FormTextFieldType.PASSWORD,
-                fullWidth = true
-            )
-            FormTextField(
-                name = "confirm",
-                label = "Confirm Password",
-                required = true,
-                type = FormTextFieldType.PASSWORD,
-                fullWidth = true
-            )
+        Form(action = "/admin/change-password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) {
+            FormField(
+                label = {
+                    Text("New Username", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
+            ) {
+                FormTextField(
+                    name = "username",
+                    label = "",
+                    defaultValue = currentUsername,
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            }
+            FormField(
+                label = {
+                    Text("New Password", modifier = Modifier().textColor(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
+            ) {
+                FormTextField(
+                    name = "password",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            }
+            FormField(
+                label = {
+                    Text("Confirm Password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
+                },
+                isRequired = true
+            ) {
+                FormTextField(
+                    name = "confirm",
+                    label = "",
+                    defaultValue = "",
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            }
             FormButton(
-                text = "Save Credentials",
-                tone = FormButtonTone.ACCENT,
-                fullWidth = true
+                text = "Save Credentials"
             )
         }
     }
@@ -128,7 +160,7 @@ private fun AdminAuthScaffold(
                     .boxShadow(PortfolioTheme.Shadows.MEDIUM)
                     .backdropBlur(24.px)
             ) {
-                FormStyleSheet()
+                // Form styles handled via modifiers
                 Column(
                     modifier = Modifier()
                         .display(Display.Flex)
@@ -139,13 +171,13 @@ private fun AdminAuthScaffold(
                         text = title,
                         modifier = Modifier()
                             .fontSize("1.5rem")
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                     )
                     Text(
                         text = subtitle,
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                     )
                 }
                 if (!errorMessage.isNullOrBlank()) {
@@ -153,7 +185,7 @@ private fun AdminAuthScaffold(
                         text = errorMessage,
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.DANGER)
-                            .textAlign("center")
+                            .textAlign(TextAlign.Center)
                             .padding(PortfolioTheme.Spacing.sm)
                             .backgroundColor("rgba(255,77,77,0.12)")
                             .borderRadius(PortfolioTheme.Radii.md)

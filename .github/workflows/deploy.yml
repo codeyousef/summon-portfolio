@@ -1,0 +1,79 @@
+name: Deploy to Cloud Run (dev/prod)
+
+on:
+  push:
+    branches: [ dev, main ]
+
+# Non-secret constants (edit if you ever rename stuff)
+env:
+  SERVICE_BASE: portfolio                 # => main: portfolio, dev: portfolio-dev
+  CONTAINER_REPO: portfolio-registry      # Artifact Registry repo
+  GCP_PROJECT_ID: portfolio-476219        # <-- your project ID (not name)
+  GCP_REGION: us-central1                 # region
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auth to Google Cloud (service-account JSON)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      # Compute the service name without using expressions in env
+      - name: Compute service name
+        id: svc
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "name=${SERVICE_BASE}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${SERVICE_BASE}-${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Robust Docker auth to Artifact Registry (no configure-docker args)
+      - name: Docker auth for Artifact Registry
+        shell: bash
+        run: |
+          HOST="${GCP_REGION}-docker.pkg.dev"
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "https://${HOST}"
+
+      # Build and push image with Docker (no Cloud Build, no GCS bucket)
+      - name: Build & Push
+        id: bp
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${{ steps.svc.outputs.name }}:${GITHUB_SHA}"
+          echo "IMAGE=${IMAGE}"
+          docker build -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloud Run
+        shell: bash
+        run: |
+          gcloud run deploy "${{ steps.svc.outputs.name }}" \
+            --image "${{ steps.bp.outputs.image }}" \
+            --region "${GCP_REGION}" \
+            --allow-unauthenticated \
+            --port 8080
+
+      - name: Show Service URL
+        shell: bash
+        run: |
+          gcloud run services describe "${{ steps.svc.outputs.name }}" \
+            --region "${GCP_REGION}" \
+            --format='value(status.url)'

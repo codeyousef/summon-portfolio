@@ -4,20 +4,22 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.forms.*
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.extensions.percent
-import code.yousef.summon.extensions.px
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.flexWrap
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.modifier.StylingModifiers.lineHeight
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Paragraph
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.forms.*
+import codes.yousef.summon.components.input.FormField
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.lineHeight
+import codes.yousef.summon.theme.ColorHelpers.textColor
 
 @Composable
 fun ContactSection(
@@ -26,10 +28,26 @@ fun ContactSection(
 ) {
     val actionPath = if (locale == PortfolioLocale.EN) "/api/contact" else "/${locale.code}/api/contact"
     ContentSection(modifier = modifier) {
+        Column(
+            modifier = Modifier()
+                .gap(PortfolioTheme.Spacing.xs)
+        ) {
+            Paragraph(
+                text = ContactCopy.lead.resolve(locale),
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .lineHeight(1.6)
+            )
+            Paragraph(
+                text = ContactCopy.contactMethods.resolve(locale),
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .lineHeight(1.4)
+            )
+        }
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
-                .flexDirection(FlexDirection.Row)
                 .flexWrap(FlexWrap.Wrap)
                 .alignItems(AlignItems.Stretch)
                 .gap(PortfolioTheme.Spacing.xl)
@@ -38,7 +56,7 @@ fun ContactSection(
             Column(
                 modifier = Modifier()
                     .flex(grow = 1, shrink = 1, basis = "320px")
-                    .maxWidth(420.px)
+                    .width("min(100%, 420px)")
                     .display(Display.Flex)
                     .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
@@ -47,7 +65,7 @@ fun ContactSection(
                     text = ContactCopy.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.5.rem)
-                        .fontWeight(700)
+                        .fontWeight("700")
                 )
                 Text(
                     text = ContactCopy.subtitle.resolve(locale),
@@ -61,9 +79,15 @@ fun ContactSection(
                 locale = locale,
                 action = actionPath,
                 modifier = Modifier()
-                    .flex(grow = 2, shrink = 1, basis = "640px")
-                    .width(100.percent)
-                    .maxWidth(100.percent)
+                    .flex(grow = 1, shrink = 1, basis = "360px")
+                    .width("min(100%, 520px)")
+                    .let { base ->
+                        if (locale.direction == "rtl") {
+                            base.paddingLeft(PortfolioTheme.Spacing.xl)
+                        } else {
+                            base.paddingRight(PortfolioTheme.Spacing.xl)
+                        }
+                    }
             )
         }
     }
@@ -75,63 +99,95 @@ private fun ContactForm(
     action: String,
     modifier: Modifier = Modifier()
 ) {
-    val optionalLabel = ContactCopy.optional.resolve(locale)
-    FormStyleSheet()
     Form(
         action = action,
+        method = FormMethod.Post,
         modifier = modifier
             .display(Display.Flex)
             .flexDirection(FlexDirection.Column)
             .width(100.percent)
+            .textColor(PortfolioTheme.Colors.TEXT_PRIMARY)
             .gap(PortfolioTheme.Spacing.md)
-            .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
-            .borderWidth(1)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-            .borderRadius(PortfolioTheme.Radii.lg)
-            .padding(PortfolioTheme.Spacing.lg)
-            .backdropBlur(18.px)
+            .minWidth(0.px)
     ) {
-        FormTextField(
-            name = "name",
-            label = ContactCopy.name.resolve(locale),
-            required = true,
-            placeholder = ContactCopy.name.resolve(locale),
-            autoComplete = "name",
-            optionalLabel = optionalLabel,
-            fullWidth = true
-        )
-        FormTextField(
-            name = "email",
-            label = ContactCopy.email.resolve(locale),
-            type = FormTextFieldType.EMAIL,
-            placeholder = ContactCopy.email.resolve(locale),
-            autoComplete = "email",
-            optionalLabel = optionalLabel,
-            fullWidth = true
-        )
-        FormTextField(
-            name = "whatsapp",
-            label = ContactCopy.whatsapp.resolve(locale),
-            placeholder = ContactCopy.whatsapp.resolve(locale),
-            autoComplete = "tel",
-            inputMode = "tel",
-            optionalLabel = optionalLabel,
-            fullWidth = true
-        )
-        FormTextArea(
-            name = "requirements",
-            label = ContactCopy.requirements.resolve(locale),
-            required = true,
-            placeholder = ContactCopy.requirements.resolve(locale),
-            minHeight = "180px",
-            optionalLabel = optionalLabel,
-            fullWidth = true
-        )
+        // Labels via component props to avoid duplicates
+        // Styled label + asterisk (avoid built-in label to control color and duplication)
+        Row(modifier = Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap(PortfolioTheme.Spacing.xs)) {
+//            Text(
+//                text = ContactCopy.name.resolve(locale),
+//                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+//            )
+        }
+        FormField(
+            label = {
+                Text(
+                    ContactCopy.name.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
+            isRequired = true
+        ) {
+            FormTextField(
+                name = "name",
+                label = "",
+                defaultValue = "",
+                placeholder = ContactCopy.name.resolve(locale),
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+        }
+        FormField(
+            label = {
+                Text(
+                    ContactCopy.email.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
+            isRequired = false
+        ) {
+            FormTextField(
+                name = "email",
+                label = "",
+                defaultValue = "",
+                placeholder = ContactCopy.email.resolve(locale),
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+        }
+        FormField(
+            label = {
+                Text(
+                    ContactCopy.whatsapp.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
+            isRequired = false
+        ) {
+            FormTextField(
+                name = "whatsapp",
+                label = "",
+                defaultValue = "",
+                placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+        }
+        FormField(
+            label = {
+                Text(
+                    ContactCopy.requirements.resolve(locale),
+                    modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                )
+            },
+            isRequired = true
+        ) {
+            FormTextArea(
+                name = "requirements",
+                label = "",
+                defaultValue = "",
+                required = true,
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            )
+        }
         FormButton(
-            text = ContactCopy.submit.resolve(locale),
-            tone = FormButtonTone.ACCENT,
-            fullWidth = true
+            text = ContactCopy.submit.resolve(locale)
         )
     }
 }
@@ -142,10 +198,19 @@ private object ContactCopy {
         en = "Tell me what you’re building. I’ll reply with a focused plan (and timelines) you can immediately act on.",
         ar = "أخبرني بما تعمل عليه وسأعود إليك بخطة واضحة وجدول زمني يمكن البدء به فورًا."
     )
+    val lead = LocalizedText(
+        en = "Average response time: under 24h. Share a sentence or two about your project and I’ll follow up with a plan.",
+        ar = "متوسط وقت الرد أقل من 24 ساعة. شارك سطرًا أو سطرين عن مشروعك وسأتواصل معك بخطة واضحة."
+    )
+    val contactMethods = LocalizedText(
+        en = "Prefer WhatsApp or email? Use whichever is fastest — just include at least one so I can reply.",
+        ar = "يمكنك استخدام البريد الإلكتروني أو رقم واتساب — فقط اذكر أحدهما على الأقل حتى أتمكن من الرد."
+    )
     val formTitle = LocalizedText("Project details", "تفاصيل المشروع")
     val name = LocalizedText("Name", "الاسم")
     val email = LocalizedText("Email", "البريد الإلكتروني")
-    val whatsapp = LocalizedText("WhatsApp / Signal", "واتساب / سيجنال")
+    val whatsapp = LocalizedText("WhatsApp", "رقم واتساب")
+    val whatsappPlaceholder = LocalizedText("+966 565 123 4567", "+966 5X XXX XXXX")
     val requirements = LocalizedText("What are we building?", "ماذا سنبني؟")
     val optional = LocalizedText("Optional", "اختياري")
     val submit = LocalizedText("Send request", "أرسل الطلب")

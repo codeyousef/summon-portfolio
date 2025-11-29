@@ -5,7 +5,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
 import code.yousef.portfolio.ui.services.ServicesPage
-import code.yousef.summon.seo.HeadScope
+import codes.yousef.summon.seo.HeadScope
 
 class PortfolioRenderer(
     private val contentService: PortfolioContentService = PortfolioContentService.default()
@@ -16,12 +16,13 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = locale,
-                pageTitle = "Yousef Baitalmal · Portfolio",
+                pageTitle = "Yousef · Portfolio",
                 description = "Systems, frameworks, and immersive experiences crafted from first principles."
             ),
             content = {
                 PortfolioLandingPage(content = content, locale = locale, servicesModalOpen = servicesModalOpen)
-            }
+            },
+            locale = locale
         )
     }
 
@@ -30,7 +31,7 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = locale,
-                pageTitle = "Projects · Yousef Baitalmal",
+                pageTitle = "Projects · Yousef",
                 description = "Featured language, framework, and experience builds from the studio."
             ),
             content = {
@@ -39,7 +40,8 @@ class PortfolioRenderer(
                     locale = locale,
                     servicesModalOpen = servicesModalOpen
                 )
-            }
+            },
+            locale = locale
         )
     }
 
@@ -48,7 +50,7 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = locale,
-                pageTitle = "Services · Yousef Baitalmal",
+                pageTitle = "Services · Yousef",
                 description = "Engagements across systems engineering, framework design, and interactive experiences."
             ),
             content = {
@@ -57,7 +59,8 @@ class PortfolioRenderer(
                     locale = locale,
                     servicesModalOpen = servicesModalOpen
                 )
-            }
+            },
+            locale = locale
         )
     }
 
@@ -68,30 +71,33 @@ class PortfolioRenderer(
     ): (HeadScope) -> Unit = { head ->
         val canonical = canonicalUrl(locale)
         head.title(pageTitle)
-        head.meta("description", description, null, null, null)
-        head.meta(null, pageTitle, "og:title", null, null)
-        head.meta(
-            null,
-            description,
-            "og:description",
-            null,
-            null
-        )
-        head.meta(null, "website", "og:type", null, null)
-        head.meta(null, canonical, "og:url", null, null)
-        head.meta(null, locale.code, "og:locale", null, null)
-        head.meta("twitter:card", "summary_large_image", null, null, null)
-        head.meta("twitter:title", pageTitle, null, null, null)
-        head.meta("twitter:description", description, null, null, null)
+        // Standard name=description
+        head.meta("description", null, description, null, null)
+        // OpenGraph: property attributes
+        head.meta(null, "og:title", pageTitle, null, null)
+        head.meta(null, "og:description", description, null, null)
+        head.meta(null, "og:type", "website", null, null)
+        head.meta(null, "og:url", canonical, null, null)
+        head.meta(null, "og:locale", if (locale == PortfolioLocale.EN) "en_US" else locale.code, null, null)
+        // Twitter: name attributes
+        head.meta("twitter:card", null, "summary_large_image", null, null)
+        head.meta("twitter:title", null, pageTitle, null, null)
+        head.meta("twitter:description", null, description, null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.EN), "en", null, null, null)
         head.link("alternate", canonicalUrl(PortfolioLocale.AR), "ar", null, null, null)
-        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+        // Material Icons
+        head.link("stylesheet", "https://fonts.googleapis.com/icon?family=Material+Icons", null, null, null, null)
+        // Hydration script also loads synchronously to ensure polyfill is applied
+        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+        // Non-critical cleanup script (async)
+        head.script("/static/textarea-cleanup.js", "textarea-cleanup", "application/javascript", true, false, null)
+        // (Structured data currently omitted until HeadScope gains inline support)
     }
 
     private fun canonicalUrl(locale: PortfolioLocale): String =
         when (locale) {
-            PortfolioLocale.EN -> SITE_URL
-            else -> "$SITE_URL/${locale.code}"
+            PortfolioLocale.EN -> portfolioBaseUrl()
+            else -> "${portfolioBaseUrl().trimEnd('/')}/${locale.code}"
         }
 }

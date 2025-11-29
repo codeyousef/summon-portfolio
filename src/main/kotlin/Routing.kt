@@ -1,5 +1,7 @@
 package code.yousef
 
+import code.yousef.config.AppConfig
+import code.yousef.firestore.PortfolioMetaService
 import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.contact.ContactService
@@ -9,21 +11,27 @@ import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.routes.portfolioRoutes
 import code.yousef.portfolio.server.routes.docsRoutes
-import code.yousef.portfolio.ssr.AdminRenderer
-import code.yousef.portfolio.ssr.BlogRenderer
-import code.yousef.portfolio.ssr.PortfolioRenderer
-import code.yousef.portfolio.ssr.SITE_URL
+import code.yousef.portfolio.ssr.*
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummonHydrated
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.summonStaticAssets
+import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.summonCallbackHandler
+import codes.yousef.summon.runtime.getPlatformRenderer
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.*
 import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
 
-fun Application.configureRouting() {
+fun Application.configureRouting(
+    appConfig: AppConfig,
+    portfolioMetaService: PortfolioMetaService
+) {
     val bootInstant = Instant.now()
     val contentStore = FileContentStore.fromEnvironment()
     val contentService = PortfolioContentService.default(contentStore)
@@ -35,7 +43,7 @@ fun Application.configureRouting() {
     val blogRenderer = BlogRenderer(contentService = contentService)
     val adminRenderer = AdminRenderer()
     val contactService = ContactService()
-    val hydrationBundle = environment.classLoader.getResource("static/summon-hydration.js")?.readBytes()
+    // hydrationBundle removed as it is now embedded in Summon Core
     val docsConfig = DocsConfig.fromEnv()
     val docsCache = DocsCache(docsConfig.cacheTtlSeconds)
     val docsService = DocsService(docsConfig, docsCache)
@@ -44,55 +52,152 @@ fun Application.configureRouting() {
     val linkRewriter = LinkRewriter()
     val seoExtractor = SeoExtractor(docsConfig)
     val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
+    val summonLandingRenderer = SummonLandingRenderer()
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
-    val docsHosts = (System.getenv("DOCS_HOSTS") ?: "summon.yousef.codes,summon.localhost,docs.localhost")
+    val summonLandingHosts =
+        (System.getenv("SUMMON_LANDING_HOSTS") ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.uat.yousef.codes")
+        .split(",")
+        .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+    val docsHosts = (System.getenv("DOCS_HOSTS")
+        ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.localhost,docs.localhost,summon.site")
         .split(",")
         .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
-    val configuredPort = environment.config.propertyOrNull("ktor.deployment.port")?.getString()?.toIntOrNull()
-        ?: System.getenv("PORT")?.toIntOrNull()
-        ?: 8080
+    val configuredPort = appConfig.port
 
     routing {
         staticResources("/static", "static")
-        hydrationBundle?.let { bundle ->
-            get("/summon-hydration.js") {
-                call.respondBytes(bundle, ContentType.Application.JavaScript)
-            }
-        }
 
+        // Summon: Serve hydration assets (JS, WASM) automatically from the library
+        summonStaticAssets()
+
+        // Summon: Handle callback requests for interactive components
+        summonCallbackHandler()
+
+        docsRoutes(
+            docsService = docsService,
+            markdownRenderer = markdownRenderer,
+            linkRewriter = linkRewriter,
+            docsRouter = docsRouter,
+            webhookHandler = webhookHandler,
+            config = docsConfig,
+            docsCatalog = docsCatalog,
+            registerPageRoutes = false,
+            registerInfrastructure = true
+        )
+
+        // Mount Summon landing on summon.* hosts at '/'
+        summonLandingHosts
+            .flatMap { rawHost ->
+                val parts = rawHost.split(":", limit = 2)
+                val host = parts[0]
+                val port = parts.getOrNull(1)?.toIntOrNull()
+                if (port != null) listOf(host to port) else listOf(host to null, host to configuredPort)
+            }
+            .forEach { (hostName, port) ->
+                val mountSummonForHost: Route.() -> Unit = {
+                    get("/") {
+                        val host = call.request.host()
+                        val links = resolveEnvironmentLinks(host)
+                        EnvironmentLinksRegistry.withLinks(links) {
+                            val page = summonLandingRenderer.landingPage()
+                            SummonRenderLock.withLock {
+                                call.respondSummonHydrated {
+                                    val renderer = getPlatformRenderer()
+                                    renderer.renderHeadElements(page.head)
+                                    page.content()
+                                }
+                            }
+                        }
+                    }
+                }
+                if (port != null) {
+                    host(hostName, port) { mountSummonForHost() }
+                } else {
+                    host(hostName) { mountSummonForHost() }
+                }
+            }
+
+        // Keep docs mounted under /docs on all hosts and under /summon on portfolio host
         docsHosts
             .flatMap { rawHost ->
                 val parts = rawHost.split(":", limit = 2)
                 val host = parts[0]
                 val port = parts.getOrNull(1)?.toIntOrNull()
-                if (port != null) listOf(host to port)
-                else listOf(host to null, host to configuredPort)
+                if (port != null) listOf(host to port) else listOf(host to null, host to configuredPort)
             }
             .forEach { (hostName, port) ->
-                fun Route.mountDocsRoutes() {
-                    get("/health") {
-                        call.respondHealth(bootInstant)
+                val mountDocsForHost: Route.() -> Unit = {
+                    get("/health") { call.respondHealth(bootInstant) }
+                    get("/healthz") { call.respondHealthz(appConfig, bootInstant) }
+                    // Serve docs at /docs on docs hosts
+                    route("/docs") {
+                        docsRoutes(
+                            docsService = docsService,
+                            markdownRenderer = markdownRenderer,
+                            linkRewriter = linkRewriter,
+                            docsRouter = docsRouter,
+                            webhookHandler = webhookHandler,
+                            config = docsConfig,
+                            docsCatalog = docsCatalog,
+                            pathResolver = { call ->
+                                val raw = call.request.path()
+                                raw.removePrefix("/docs").ifBlank { "/" }
+                            },
+                            basePath = "/docs",
+                            registerInfrastructure = false
+                        )
                     }
-                    docsRoutes(
-                        docsService = docsService,
-                        markdownRenderer = markdownRenderer,
-                        linkRewriter = linkRewriter,
-                        docsRouter = docsRouter,
-                        webhookHandler = webhookHandler,
-                        config = docsConfig,
-                        docsCatalog = docsCatalog
-                    )
                 }
                 if (port != null) {
-                    host(hostName, port) {
-                        mountDocsRoutes()
-                    }
+                    host(hostName, port) { mountDocsForHost() }
                 } else {
-                    host(hostName) {
-                        mountDocsRoutes()
-                    }
+                    host(hostName) { mountDocsForHost() }
                 }
             }
+
+        route("/summon") {
+            docsRoutes(
+                docsService = docsService,
+                markdownRenderer = markdownRenderer,
+                linkRewriter = linkRewriter,
+                docsRouter = docsRouter,
+                webhookHandler = webhookHandler,
+                config = docsConfig,
+                docsCatalog = docsCatalog,
+                pathResolver = { call ->
+                    val raw = call.request.path()
+                    val stripped = raw.removePrefix("/summon")
+                    stripped.ifBlank { "/" }
+                },
+                basePath = "/summon",
+                registerInfrastructure = false
+            )
+        }
+
+        // Redirect portfolio-hosted /docs and /api-reference paths to the public docs site
+        route("/docs") {
+            get {
+                call.respondRedirect(docsBaseUrl(), permanent = false)
+            }
+            get("{path...}") {
+                val segs = call.parameters.getAll("path") ?: emptyList()
+                val suffix = segs.joinToString("/").trim('/')
+                val target = if (suffix.isBlank()) docsBaseUrl() else "${docsBaseUrl().trimEnd('/')}/$suffix"
+                call.respondRedirect(target, permanent = false)
+            }
+        }
+        route("/api-reference") {
+            get {
+                call.respondRedirect("${docsBaseUrl().trimEnd('/')}/api-reference", permanent = false)
+            }
+            get("{path...}") {
+                val segs = call.parameters.getAll("path") ?: emptyList()
+                val suffix = segs.joinToString("/").trim('/')
+                val base = "${docsBaseUrl().trimEnd('/')}/api-reference"
+                val target = if (suffix.isBlank()) base else "$base/$suffix"
+                call.respondRedirect(target, permanent = false)
+            }
+        }
 
         route("/") {
             portfolioRoutes(
@@ -105,22 +210,48 @@ fun Application.configureRouting() {
                 adminAuthService = adminAuthService
             )
         }
+        get("/healthz") {
+            call.respondHealthz(appConfig, bootInstant)
+        }
         get("/health") {
             call.respondHealth(bootInstant)
+        }
+        get("/db-test") {
+            val response = runCatching {
+                val now = System.currentTimeMillis()
+                portfolioMetaService.touchHello(now)
+                val data = portfolioMetaService.fetchHello()
+                DbTestResponse(
+                    ok = true,
+                    exists = data != null,
+                    data = data?.let(::toJsonElement) ?: JsonNull,
+                    error = null
+                )
+            }.getOrElse { cause ->
+                log.error("db-test failed", cause)
+                val message = cause.message ?: cause::class.simpleName ?: "Internal server error"
+                return@get call.respond(
+                    HttpStatusCode.InternalServerError,
+                    DbTestResponse(ok = false, exists = false, data = JsonNull, error = message)
+                )
+            }
+            call.respond(response)
         }
         get("/sitemap.xml") {
             val sitemap = generateSitemapXml(contentService)
             call.respondText(sitemap, ContentType.Application.Xml)
         }
+
     }
 }
 
 private fun generateSitemapXml(contentService: PortfolioContentService): String {
+    val base = portfolioBaseUrl().trimEnd('/')
     val urls = mutableSetOf(
-        "$SITE_URL/",
-        "$SITE_URL/blog",
-        "$SITE_URL/ar",
-        "$SITE_URL/ar/blog"
+        "$base/",
+        "$base/blog",
+        "$base/ar",
+        "$base/ar/blog"
     )
     contentService.load().blogPosts.forEach { post ->
         urls += "https://portfolio.summon.local/blog/${post.slug}"
@@ -139,9 +270,58 @@ private fun generateSitemapXml(contentService: PortfolioContentService): String 
 }
 
 @Serializable
+private data class CallbackRequest(val callbackId: String)
+
+@Serializable
 private data class HealthStatus(val status: String, val uptimeSeconds: Long)
+
+@Serializable
+private data class HealthzResponse(
+    val ok: Boolean,
+    val projectId: String,
+    val emulator: Boolean,
+    val uptimeSeconds: Long
+)
+
+@Serializable
+private data class DbTestResponse(
+    val ok: Boolean,
+    val exists: Boolean,
+    val data: JsonElement,
+    val error: String?
+)
 
 private suspend fun ApplicationCall.respondHealth(bootInstant: Instant) {
     val uptime = Duration.between(bootInstant, Instant.now()).seconds
     respond(HealthStatus(status = "ok", uptimeSeconds = uptime))
+}
+
+private suspend fun ApplicationCall.respondHealthz(appConfig: AppConfig, bootInstant: Instant) {
+    val uptime = Duration.between(bootInstant, Instant.now()).seconds
+    respond(
+        HealthzResponse(
+            ok = true,
+            projectId = appConfig.projectId,
+            emulator = appConfig.emulatorHost != null,
+            uptimeSeconds = uptime
+        )
+    )
+}
+
+private fun toJsonElement(value: Any?): JsonElement = when (value) {
+    null -> JsonNull
+    is String -> JsonPrimitive(value)
+    is Number -> JsonPrimitive(value)
+    is Boolean -> JsonPrimitive(value)
+    is Map<*, *> -> buildJsonObject {
+        value.forEach { (key, inner) ->
+            if (key is String) {
+                put(key, toJsonElement(inner))
+            }
+        }
+    }
+    is Iterable<*> -> buildJsonArray {
+        value.forEach { add(toJsonElement(it)) }
+    }
+    else -> JsonPrimitive(value.toString())
 }

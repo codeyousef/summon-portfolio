@@ -1,37 +1,40 @@
 package code.yousef.portfolio.docs.summon.components
 
 import code.yousef.portfolio.docs.TocEntry
+import code.yousef.portfolio.docs.summon.safeFragmentHref
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.LinkNavigationMode
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.LayoutModifiers.top
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
 fun Toc(entries: List<TocEntry>) {
     if (entries.isEmpty()) return
     Column(
         modifier = Modifier()
-            .attribute("class", "docs-toc")
             .display(Display.Flex)
-            .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+            .flexDirection(codes.yousef.summon.modifier.FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.sm)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
-            .borderStyle("solid")
+            .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.md)
-            .flex(grow = 0, shrink = 0, basis = "220px")
-            .width("220px")
-            .style("position", "sticky")
-            .style("top", PortfolioTheme.Spacing.lg)
+            .flex(grow = 0, shrink = 0, basis = "160px")
+            .width(160.px)
+            .position(Position.Sticky)
+            .top(PortfolioTheme.Spacing.lg)
     ) {
         Text(
             text = "On this page",
@@ -40,28 +43,43 @@ fun Toc(entries: List<TocEntry>) {
                 .fontWeight(600)
         )
         entries.forEach { entry ->
-            AnchorLink(
-                label = entry.text,
-                href = "#${entry.anchor}",
-                modifier = Modifier()
-                    .display(Display.Block)
-                    .padding(PortfolioTheme.Spacing.xs)
-                    .paddingLeft(
-                        if (entry.level == 3) PortfolioTheme.Spacing.md else PortfolioTheme.Spacing.sm
-                    )
-                    .textDecoration("none")
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                    .fontSize(0.95.rem),
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("toc-entry" to entry.anchor),
-                navigationMode = LinkNavigationMode.Client
-            )
+            DocsTocLink(entry)
         }
+    }
+}
+
+@Composable
+private fun DocsTocLink(entry: TocEntry) {
+    val spacerWidth = if (entry.level == 3) PortfolioTheme.Spacing.md else "0px"
+    Row(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+    ) {
+        if (spacerWidth != "0px") {
+            Box(
+                modifier = Modifier()
+                    .width(spacerWidth)
+                    .height(1.px)
+            ) {}
+        }
+        AnchorLink(
+            label = entry.text,
+            href = safeFragmentHref(entry.anchor),
+            modifier = Modifier()
+                .display(Display.Block)
+                .padding(PortfolioTheme.Spacing.xs)
+                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                .visited(Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)),
+            navigationMode = LinkNavigationMode.Native,
+            dataAttributes = mapOf("toc-entry" to entry.anchor),
+            target = null,
+            rel = null,
+            title = null,
+            id = null,
+            ariaLabel = null,
+            ariaDescribedBy = null,
+            dataHref = null
+        )
     }
 }

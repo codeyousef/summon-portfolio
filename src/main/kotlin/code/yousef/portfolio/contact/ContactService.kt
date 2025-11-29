@@ -10,10 +10,8 @@ class ContactService(
         request.validate()?.let { return Result.Error(it) }
         val submission = ContactSubmission(
             id = UUID.randomUUID().toString(),
-            name = request.name.trim(),
-            email = request.email?.trim().takeIf { !it.isNullOrBlank() },
-            whatsapp = request.whatsapp.trim(),
-            requirements = request.requirements.trim(),
+            contact = request.contact.trim(),
+            message = request.message.trim(),
             createdAt = Instant.now()
         )
         repository.save(submission)
@@ -23,10 +21,8 @@ class ContactService(
     fun list(): List<ContactSubmission> = repository.list()
 
     private fun ContactRequest.validate(): String? {
-        if (name.isBlank()) return "Name is required"
-        if (whatsapp.isBlank()) return "WhatsApp number is required"
-        if (requirements.isBlank()) return "Requirements are required"
-        if (!email.isNullOrBlank() && !email.contains("@")) return "Invalid email"
+        if (contact.isBlank()) return "Contact info is required"
+        if (message.isBlank()) return "Message is required"
         return null
     }
 

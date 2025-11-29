@@ -5,19 +5,22 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.HYDRATION_SCRIPT_PATH
 import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.foundation.RawHtml
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.seo.HeadScope
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.seo.HeadScope
 import kotlinx.serialization.json.Json
 import java.net.URI
 
@@ -33,21 +36,23 @@ class DocsRouter(
         meta: MarkdownMeta,
         toc: List<TocEntry>,
         sidebar: DocsNavTree,
-        neighbors: NeighborLinks
+        neighbors: NeighborLinks,
+        basePath: String = ""
     ): SummonPage {
         val seo = seoExtractor.build(requestPath, meta)
         val navBase = resolveNavBase(origin)
         return SummonPage(
             head = headBlock(seo.title, seo.description, seo.canonicalUrl),
             content = {
-                DocsPageFrame(navBase) {
+                DocsPageFrame(navBase, origin) {
                     DocsShell(
                         requestPath = requestPath,
                         html = html,
                         toc = toc,
                         sidebar = sidebar,
                         meta = meta,
-                        neighbors = neighbors
+                        neighbors = neighbors,
+                        basePath = basePath
                     )
                 }
             }
@@ -61,7 +66,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock("Not found", "This page could not be located.", canonical),
             content = {
-                DocsPageFrame(navBase) {
+                DocsPageFrame(navBase, origin) {
                     DocsNotFoundContent(navJson)
                 }
             }
@@ -70,16 +75,16 @@ class DocsRouter(
 
     private fun headBlock(title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
         head.title("$title · Summon Docs")
-        head.meta("description", description, null, null, null)
-        head.meta(null, title, "og:title", null, null)
-        head.meta(null, description, "og:description", null, null)
-        head.meta(null, canonical, "og:url", null, null)
-        head.meta(null, "article", "og:type", null, null)
-        head.meta("twitter:card", "summary_large_image", null, null, null)
-        head.meta("twitter:title", title, null, null, null)
-        head.meta("twitter:description", description, null, null, null)
+        head.meta("description", null, description, null, null)
+        head.meta(null, "og:title", title, null, null)
+        head.meta(null, "og:description", description, null, null)
+        head.meta(null, "og:url", canonical, null, null)
+        head.meta(null, "og:type", "article", null, null)
+        head.meta("twitter:card", null, "summary_large_image", null, null)
+        head.meta("twitter:title", null, title, null, null)
+        head.meta("twitter:description", null, description, null, null)
         head.link("canonical", canonical, null, null, null, null)
-        head.script(HYDRATION_SCRIPT_PATH, "application/javascript", "summon-hydration-runtime", false, true, null)
+        head.script(HYDRATION_SCRIPT_PATH, null, "application/javascript", false, true, null)
     }
 
     private fun resolveNavBase(origin: String): String {
@@ -109,7 +114,7 @@ private fun DocsNotFoundContent(navJson: String) {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection(code.yousef.summon.modifier.FlexDirection.Column)
+            .flexDirection(codes.yousef.summon.modifier.FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.md)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
@@ -129,54 +134,110 @@ private fun DocsNotFoundContent(navJson: String) {
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
-        RawHtml(
-            """
-            <div class="docs-search">
-              <input id="docs-search-input" type="search" placeholder="Search docs..." />
-              <ul id="docs-search-results"></ul>
-            </div>
-            <script>
-              (function(){
-                const nav = $navJson;
-                const entries = [];
-                nav.sections?.forEach(section => {
-                  section.children?.forEach(child => entries.push(child));
-                });
-                const input = document.getElementById('docs-search-input');
-                const results = document.getElementById('docs-search-results');
-                if (!input || !results) return;
-                input.addEventListener('input', () => {
-                  const q = input.value.toLowerCase();
-                  results.innerHTML = '';
-                  if (!q) return;
-                  entries.filter(e => e.title.toLowerCase().includes(q)).slice(0,7).forEach(match => {
-                    const li = document.createElement('li');
-                    const link = document.createElement('a');
-                    link.href = match.path;
-                    link.textContent = match.title;
-                    li.appendChild(link);
-                    results.appendChild(li);
-                  });
-                });
-              })();
-            </script>
-            """.trimIndent()
-        )
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.sm)
+                .padding(PortfolioTheme.Spacing.md)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.lg)
+        ) {
+            Text(
+                text = "Search coming soon",
+                modifier = Modifier().fontWeight(700)
+            )
+            Text(
+                text = "Browse sections or use your browser search.",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
+            )
+        }
     }
 }
 
 @Composable
-private fun DocsPageFrame(navBaseUrl: String, content: @Composable () -> Unit) {
+private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Composable () -> Unit) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
-        SectionWrap {
-            AppHeader(
-                locale = PortfolioLocale.EN,
-                forceNativeLinks = true,
-                nativeBaseUrl = navBaseUrl
-            )
-        }
-        SectionWrap {
-            content()
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .width(100.percent)
+        ) {
+            DocsNavbar(navBaseUrl, docsBaseUrl)
+            SectionWrap(maxWidthPx = 1500) {
+                content()
+            }
         }
     }
+}
+
+@Composable
+private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String) {
+    val docsPath = "/docs"
+    val apiReferencePath = "/docs/api-reference"
+    Row(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+            .justifyContent(JustifyContent.SpaceBetween)
+            .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
+            .borderWidth(1, BorderSide.Bottom)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
+    ) {
+        AnchorLink(
+            label = "Summon",
+            href = navBaseUrl,
+            modifier = Modifier()
+                .fontWeight(700)
+                .fontSize(1.25.rem)
+                .color(PortfolioTheme.Colors.ACCENT_ALT),
+            navigationMode = LinkNavigationMode.Native,
+            target = null,
+            rel = null,
+            title = null,
+            id = null,
+            ariaLabel = null,
+            ariaDescribedBy = null,
+            dataHref = null,
+            dataAttributes = emptyMap()
+        )
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.lg)
+        ) {
+            DocsNavLink(label = "Documentation", href = docsPath)
+            DocsNavLink(label = "API Reference", href = apiReferencePath)
+        }
+    }
+}
+
+@Composable
+private fun DocsNavLink(label: String, href: String) {
+    AnchorLink(
+        label = label,
+        href = href,
+        modifier = Modifier()
+            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+            .hover(
+                Modifier()
+                    .color(PortfolioTheme.Colors.ACCENT_ALT)
+            ),
+        navigationMode = LinkNavigationMode.Native,
+        target = null,
+        rel = null,
+        title = null,
+        id = null,
+        ariaLabel = null,
+        ariaDescribedBy = null,
+        dataHref = null,
+        dataAttributes = emptyMap()
+    )
 }

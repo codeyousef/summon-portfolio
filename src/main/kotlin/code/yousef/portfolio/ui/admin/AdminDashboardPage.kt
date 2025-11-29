@@ -5,28 +5,29 @@ import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.ProjectCategory
 import code.yousef.portfolio.content.model.Service
+import code.yousef.portfolio.content.model.Testimonial
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.forms.*
-import code.yousef.summon.components.foundation.RawHtml
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.components.navigation.LinkNavigationMode
-import code.yousef.summon.extensions.px
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
-import code.yousef.summon.modifier.StylingModifiers.lineHeight
-import code.yousef.summon.runtime.LocalPlatformRenderer
-import code.yousef.summon.runtime.PlatformRenderer
-import code.yousef.summon.runtime.setPlatformRenderer
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.forms.*
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.modifier.StylingModifiers.lineHeight
+import codes.yousef.summon.runtime.LocalPlatformRenderer
+import codes.yousef.summon.runtime.PlatformRenderer
+import codes.yousef.summon.runtime.setPlatformRenderer
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
@@ -34,11 +35,12 @@ data class AdminDashboardContent(
     val projects: List<Project>,
     val services: List<Service>,
     val blogPosts: List<BlogPost>,
+    val testimonials: List<Testimonial>,
     val contacts: List<ContactSubmission>
 )
 
 enum class AdminSectionPage {
-    PROJECTS, SERVICES, BLOG, CONTACTS;
+    PROJECTS, SERVICES, BLOG, TESTIMONIALS, CONTACTS;
 
     fun pathSegment(): String = name.lowercase()
 
@@ -46,6 +48,7 @@ enum class AdminSectionPage {
         PROJECTS -> "Projects"
         SERVICES -> "Services"
         BLOG -> "Blog"
+        TESTIMONIALS -> "Testimonials"
         CONTACTS -> "Contacts"
     }
 }
@@ -74,6 +77,7 @@ fun AdminDashboardPage(
                 }
             }
         }
+
         AdminSectionPage.SERVICES -> {
             {
                 AdminSection(id = "admin-services") {
@@ -89,6 +93,7 @@ fun AdminDashboardPage(
                 }
             }
         }
+
         AdminSectionPage.BLOG -> {
             {
                 AdminSection(id = "admin-blog") {
@@ -104,6 +109,23 @@ fun AdminDashboardPage(
                 }
             }
         }
+
+        AdminSectionPage.TESTIMONIALS -> {
+            {
+                AdminSection(id = "admin-testimonials") {
+                    AdminCard(
+                        title = "Testimonials (${content.testimonials.size})",
+                        description = "Manage client testimonials displayed on the homepage."
+                    ) {
+                        AdminTestimonialForm(adminBasePath, null)
+                        content.testimonials.sortedBy { it.order }.forEach { testimonial ->
+                            AdminTestimonialForm(adminBasePath, testimonial)
+                        }
+                    }
+                }
+            }
+        }
+
         AdminSectionPage.CONTACTS -> {
             {
                 AdminSection(id = "admin-contacts") {
@@ -124,17 +146,11 @@ fun AdminDashboardPage(
                                     .borderRadius(PortfolioTheme.Radii.md)
                             ) {
                                 Text(
-                                    text = "${submission.name} · ${submission.whatsapp}",
+                                    text = submission.contact,
                                     modifier = Modifier().fontWeight(600)
                                 )
-                                submission.email?.let {
-                                    Text(
-                                        text = it,
-                                        modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                    )
-                                }
                                 Text(
-                                    text = submission.requirements,
+                                    text = submission.message,
                                     modifier = Modifier()
                                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                         .lineHeight(1.5)
@@ -159,6 +175,7 @@ fun AdminDashboardPage(
                 .display(Display.Flex)
                 .gap(PortfolioTheme.Spacing.xl)
                 .alignItems(AlignItems.Stretch)
+                .margin(PortfolioTheme.Spacing.xxl, "0", "0", "0")
         ) {
             AdminSidebar(locale = locale, basePath = adminBasePath, activeSection = activeSection)
             Column(
@@ -168,8 +185,7 @@ fun AdminDashboardPage(
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 AppHeader(locale = locale)
-                FormStyleSheet()
-                AdminFormCss()
+                // Form styles handled via modifiers
                 activeContent()
             }
         }
@@ -234,9 +250,9 @@ private fun AdminSidebar(
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .style("height", "100%")
-            .style("min-height", "calc(100vh - 160px)")
-            .style("align-self", "stretch")
+            .height(100.percent)
+            .minHeight("calc(100vh - 160px)")
+            .alignSelf(AlignSelf.Stretch)
     ) {
         navItems.forEach { section ->
             val isActive = section == activeSection
@@ -252,7 +268,7 @@ private fun AdminSidebar(
                     href = target,
                     modifier = Modifier()
                         .textDecoration("none")
-                        .style("text-align", "center")
+                        .textAlign(TextAlign.Center)
                         .color(
                             if (isActive) PortfolioTheme.Colors.TEXT_PRIMARY else PortfolioTheme.Colors.TEXT_SECONDARY
                         )
@@ -308,8 +324,7 @@ private fun AdminProjectForm(basePath: String, project: Project?) {
                 name = "slug",
                 label = "Slug",
                 defaultValue = project?.slug.orEmpty(),
-                required = true,
-                helperText = "Used in URLs"
+                required = true
             )
             FormTextField(
                 name = "layerLabel_en",
@@ -348,34 +363,28 @@ private fun AdminProjectForm(basePath: String, project: Project?) {
                 name = "description_en",
                 label = "Description (EN)",
                 defaultValue = project?.description?.en.orEmpty(),
-                required = true,
-                minHeight = "140px"
+                required = true
             )
             FormTextArea(
                 name = "description_ar",
                 label = "Description (AR)",
-                defaultValue = project?.description?.ar.orEmpty(),
-                minHeight = "140px"
+                defaultValue = project?.description?.ar.orEmpty()
             )
             FormSelect(
                 name = "category",
                 label = "Category",
                 options = options,
-                selectedValue = project?.category?.name,
-                fullWidth = true
+                selectedValue = project?.category?.name
             )
             FormTextField(
                 name = "order",
                 label = "Order",
-                defaultValue = (project?.order ?: 0).toString(),
-                type = FormTextFieldType.NUMBER,
-                helperText = "Lower numbers appear first."
+                defaultValue = (project?.order ?: 0).toString()
             )
             FormTextField(
                 name = "technologies",
                 label = "Technologies (comma separated)",
-                defaultValue = project?.technologies?.joinToString(", ").orEmpty(),
-                fullWidth = true
+                defaultValue = project?.technologies?.joinToString(", ").orEmpty()
             )
             FormCheckbox(
                 name = "featured",
@@ -384,9 +393,7 @@ private fun AdminProjectForm(basePath: String, project: Project?) {
                 description = "Surface this project in the hero slider"
             )
             FormButton(
-                text = if (isEditing) "Save Project" else "Create Project",
-                tone = FormButtonTone.ACCENT,
-                fullWidth = false
+                text = if (isEditing) "Save Project" else "Create Project"
             )
         }
         project?.let {
@@ -429,20 +436,17 @@ private fun AdminServiceForm(basePath: String, service: Service?) {
                 name = "description_en",
                 label = "Description (EN)",
                 defaultValue = service?.description?.en.orEmpty(),
-                required = true,
-                minHeight = "140px"
+                required = true
             )
             FormTextArea(
                 name = "description_ar",
                 label = "Description (AR)",
-                defaultValue = service?.description?.ar.orEmpty(),
-                minHeight = "140px"
+                defaultValue = service?.description?.ar.orEmpty()
             )
             FormTextField(
                 name = "order",
                 label = "Order",
-                defaultValue = (service?.order ?: 0).toString(),
-                type = FormTextFieldType.NUMBER
+                defaultValue = (service?.order ?: 0).toString()
             )
             FormCheckbox(
                 name = "featured",
@@ -450,8 +454,7 @@ private fun AdminServiceForm(basePath: String, service: Service?) {
                 checked = service?.featured == true
             )
             FormButton(
-                text = if (isEditing) "Save Service" else "Create Service",
-                tone = FormButtonTone.ACCENT
+                text = if (isEditing) "Save Service" else "Create Service"
             )
         }
         service?.let {
@@ -483,8 +486,7 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
                 name = "slug",
                 label = "Slug",
                 defaultValue = post?.slug.orEmpty(),
-                required = true,
-                helperText = "Used in /blog/{slug}"
+                required = true
             )
             FormTextField(
                 name = "title_en",
@@ -501,33 +503,30 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
                 name = "excerpt_en",
                 label = "Excerpt (EN)",
                 defaultValue = post?.excerpt?.en.orEmpty(),
-                required = true,
-                minHeight = "120px"
+                required = true
             )
             FormTextArea(
                 name = "excerpt_ar",
                 label = "Excerpt (AR)",
-                defaultValue = post?.excerpt?.ar.orEmpty(),
-                minHeight = "120px"
+                defaultValue = post?.excerpt?.ar.orEmpty()
             )
-            MarkdownEditorField(
+            FormTextArea(
                 name = "content_en",
                 label = "Content (EN)",
                 defaultValue = post?.content?.en.orEmpty(),
                 required = true
             )
-            MarkdownEditorField(
+            FormTextArea(
                 name = "content_ar",
                 label = "Content (AR)",
                 defaultValue = post?.content?.ar.orEmpty(),
-                showPreview = false
+                required = false
             )
             FormTextField(
                 name = "published_at",
                 label = "Published Date",
                 defaultValue = post?.publishedAt?.toString().orEmpty(),
-                required = true,
-                type = FormTextFieldType.DATE
+                required = true
             )
             FormTextField(
                 name = "author",
@@ -538,8 +537,7 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
             FormTextField(
                 name = "tags",
                 label = "Tags (comma separated)",
-                defaultValue = post?.tags?.joinToString(", ").orEmpty(),
-                fullWidth = true
+                defaultValue = post?.tags?.joinToString(", ").orEmpty()
             )
             FormCheckbox(
                 name = "featured",
@@ -547,8 +545,7 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
                 checked = post?.featured == true
             )
             FormButton(
-                text = if (isEditing) "Save Post" else "Publish Post",
-                tone = FormButtonTone.ACCENT
+                text = if (isEditing) "Save Post" else "Publish Post"
             )
         }
         post?.let {
@@ -557,6 +554,84 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
                 actionSuffix = "blog/delete",
                 id = it.id,
                 label = "Delete ${it.summaryLabel("Post")}"
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdminTestimonialForm(basePath: String, testimonial: Testimonial?) {
+    val isEditing = testimonial != null
+    val summary = if (isEditing) {
+        "✏️ Edit ${testimonial!!.summaryLabel("Testimonial")}"
+    } else {
+        "➕ Create Testimonial"
+    }
+
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+        Form(
+            action = adminAction(basePath, "testimonials/upsert"),
+            hiddenFields = testimonial?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
+        ) {
+            FormTextArea(
+                name = "quote_en",
+                label = "Quote (EN)",
+                defaultValue = testimonial?.quote?.en.orEmpty(),
+                required = true
+            )
+            FormTextArea(
+                name = "quote_ar",
+                label = "Quote (AR)",
+                defaultValue = testimonial?.quote?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "author",
+                label = "Author Name",
+                defaultValue = testimonial?.author.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "role_en",
+                label = "Role (EN)",
+                defaultValue = testimonial?.role?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "role_ar",
+                label = "Role (AR)",
+                defaultValue = testimonial?.role?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "company_en",
+                label = "Company (EN)",
+                defaultValue = testimonial?.company?.en.orEmpty(),
+                required = true
+            )
+            FormTextField(
+                name = "company_ar",
+                label = "Company (AR)",
+                defaultValue = testimonial?.company?.ar.orEmpty()
+            )
+            FormTextField(
+                name = "order",
+                label = "Order",
+                defaultValue = (testimonial?.order ?: 0).toString()
+            )
+            FormCheckbox(
+                name = "featured",
+                label = "Featured testimonial",
+                checked = testimonial?.featured == true
+            )
+            FormButton(
+                text = if (isEditing) "Save Testimonial" else "Create Testimonial"
+            )
+        }
+        testimonial?.let {
+            DeleteEntityForm(
+                basePath = basePath,
+                actionSuffix = "testimonials/delete",
+                id = it.id,
+                label = "Delete ${it.summaryLabel("Testimonial")}"
             )
         }
     }
@@ -574,8 +649,7 @@ private fun DeleteEntityForm(
         hiddenFields = listOf(FormHiddenField("id", id))
     ) {
         FormButton(
-            text = label,
-            tone = FormButtonTone.DANGER
+            text = label
         )
     }
 }
@@ -586,74 +660,61 @@ private fun AdminFormDisclosure(
     defaultOpen: Boolean,
     content: @Composable () -> Unit
 ) {
-    val openAttr = if (defaultOpen) "open" else ""
-    val innerHtml = renderFragmentHtml(content)
-    RawHtml(
-        """
-        <details class="summon-admin-form" $openAttr>
-          <summary>${summary.htmlEscape()}</summary>
-          <div class="summon-admin-form-body">
-            $innerHtml
-          </div>
-        </details>
-        """.trimIndent(),
-        sanitize = false
-    )
+    val openState = codes.yousef.summon.runtime.rememberMutableStateOf(defaultOpen)
+    Column(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
+            .gap(PortfolioTheme.Spacing.md)
+            .background(PortfolioTheme.Gradients.GLASS)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
+            .borderRadius(PortfolioTheme.Radii.lg)
+    ) {
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .justifyContent(JustifyContent.SpaceBetween)
+                .padding(PortfolioTheme.Spacing.md)
+                .borderBottomWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .cursor(Cursor.Pointer),
+        ) {
+            Text(
+                text = summary,
+                modifier = Modifier()
+                    .fontWeight(600)
+                    .letterSpacing("0.02em")
+            )
+            codes.yousef.summon.components.input.Button(
+                onClick = { openState.value = !openState.value },
+                label = if (openState.value) "–" else "+",
+                modifier = Modifier()
+                    .width(38.px)
+                    .height(32.px),
+                variant = codes.yousef.summon.components.input.ButtonVariant.SECONDARY,
+                disabled = false
+            )
+        }
+        if (openState.value) {
+            Column(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .padding(PortfolioTheme.Spacing.lg)
+            ) { content() }
+        }
+    }
 }
 
 @Composable
-private fun AdminFormCss() {
-    RawHtml(
-        """
-        <style>
-  details.summon-admin-form {
-    margin-top: 12px;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 24px;
-    background: rgba(12,14,20,0.65);
-    backdrop-filter: blur(24px);
-    overflow: hidden;
-    box-shadow: 0 24px 70px rgba(0,0,0,0.45);
-  }
-  details.summon-admin-form summary {
-    cursor: pointer;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 18px 28px;
-    list-style: none;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  details.summon-admin-form summary::-webkit-details-marker {
-    display: none;
-  }
-  details.summon-admin-form summary::after {
-    content: "▾";
-    font-size: 0.95rem;
-    transition: transform 160ms ease;
-    color: rgba(255,255,255,0.65);
-  }
-  details.summon-admin-form[open] summary::after {
-    transform: rotate(180deg);
-  }
-  details.summon-admin-form[open] summary {
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-  .summon-admin-form-body {
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    background: linear-gradient(135deg, rgba(19,22,33,0.9), rgba(9,10,14,0.92));
-    border-top: 1px solid rgba(255,255,255,0.05);
-  }
-        </style>
-        """.trimIndent()
-    )
+private fun AdminFormCss() { /* removed */
 }
+
 
 private fun renderFragmentHtml(content: @Composable () -> Unit): String {
     val previousRenderer = runCatching { LocalPlatformRenderer.current }.getOrNull()
@@ -682,6 +743,9 @@ private fun Service.summaryLabel(fallback: String): String =
 
 private fun BlogPost.summaryLabel(fallback: String): String =
     title.en.orFallback(slug).orFallback(fallback)
+
+private fun Testimonial.summaryLabel(fallback: String): String =
+    author.orFallback(id).orFallback(fallback)
 
 private fun String?.orFallback(fallback: String): String =
     if (this.isNullOrBlank()) fallback else this

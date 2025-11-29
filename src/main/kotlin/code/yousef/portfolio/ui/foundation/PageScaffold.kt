@@ -2,16 +2,18 @@ package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.foundation.Canvas
-import code.yousef.summon.components.foundation.ScriptTag
-import code.yousef.summon.components.layout.Box
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.extensions.percent
-import code.yousef.summon.extensions.px
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.LayoutModifiers.minHeight
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.foundation.Canvas
+import codes.yousef.summon.components.foundation.ScriptTag
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.LayoutModifiers.minHeight
+import codes.yousef.summon.runtime.LocalPlatformRenderer
 
 @Composable
 fun PageScaffold(
@@ -20,67 +22,90 @@ fun PageScaffold(
     enableAuroraEffects: Boolean = true,
     content: () -> Unit
 ) {
+    InjectFontAssets()
+
+    // Global mobile styles
+    GlobalStyle(
+        """
+        @media (max-width: 768px) {
+            [data-page-content="true"] {
+                padding: ${PortfolioTheme.Spacing.sm} !important;
+                padding-left: ${PortfolioTheme.Spacing.sm} !important;
+                padding-right: ${PortfolioTheme.Spacing.sm} !important;
+            }
+        }
+        """
+    )
+
     val scaffoldModifier = modifier
         .minHeight("100vh")
         .backgroundColor(PortfolioTheme.Colors.BACKGROUND)
         .backgroundLayers {
             radialGradient {
-                size("1300px", "900px")
-                position("22%", "4%")              // replaces the CSS “at 22% 4%”
-                colorStop("rgba(255,59,106,0.48)", "0%")
-                colorStop("rgba(15,17,23,0.02)", "65%")
+                position("20% 30%")
+                colorStop("rgba(255,70,104,0.2)", "0%")
+                colorStop("transparent", "60%")
             }
             radialGradient {
-                size("1000px", "780px")
-                position("78%", "-8%")
-                colorStop("rgba(46,130,220,0.42)", "0%")
-                colorStop("rgba(8,9,12,0.05)", "55%")
+                position("80% 70%")
+                colorStop("rgba(106,215,255,0.15)", "0%")
+                colorStop("transparent", "60%")
             }
-            radialGradient {
-                size("2200px", "1500px")
-                position("40%", "-40%")
-                colorStop("rgba(226,68,122,0.3)", "0%")
-                colorStop("rgba(10,11,13,0)", "70%")
-            }
-            radialGradient {
-                size("1200px", "900px")
-                position("25%", "12%")
-                colorStop("#15161c", "0%")
-                colorStop(PortfolioTheme.Colors.BACKGROUND.toString(), "55%")
+            linearGradient {
+                direction("180deg")
+                colorStop("#001a2c", "0%")
+                colorStop("#05294a", "100%")
             }
         }
         .backgroundColor(PortfolioTheme.Colors.BACKGROUND_ALT)
-        .backgroundBlendModes(
-            BlendMode.Screen,
-            BlendMode.Screen,
-            BlendMode.Screen,
-            BlendMode.Normal,
-            BlendMode.Normal
-        )
         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
         .fontFamily(PortfolioTheme.Typography.FONT_SANS)
         .position(Position.Relative)
-        .overflow(Overflow.Hidden)
-        .attribute("lang", locale.code)
-        .attribute("dir", locale.direction)
+        .overflow(Overflow.Visible)
+
 
     Box(modifier = scaffoldModifier) {
         if (enableAuroraEffects) {
             WebGlCanvas()
             GrainLayer()
         }
-        Column(
-            modifier = Modifier()
-                .position(Position.Relative)
-                .zIndex(2)
-                .padding(PortfolioTheme.Spacing.xl)
-                .gap(PortfolioTheme.Spacing.xl)
-        ) {
+        val columnModifier = Modifier()
+            .position(Position.Relative)
+            .zIndex(2)
+            .padding(PortfolioTheme.Spacing.xl)
+            .gap(PortfolioTheme.Spacing.xl)
+            .dataAttribute("page-content", "true")
+            .let { base ->
+                val extra = PortfolioTheme.Spacing.md
+                if (locale.direction.equals("rtl", ignoreCase = true)) {
+                    base.paddingLeft("calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                } else {
+                    base.paddingRight("calc(${PortfolioTheme.Spacing.xl} + $extra)")
+                }
+            }
+        Column(modifier = columnModifier) {
             content()
         }
         if (enableAuroraEffects) {
             WebGlScript()
         }
+    }
+}
+
+@Composable
+private fun InjectFontAssets() {
+    val renderer = runCatching { LocalPlatformRenderer.current }.getOrNull() ?: return
+    renderer.renderHeadElements {
+        link("preconnect", "https://fonts.googleapis.com", null, null, null, null)
+        link("preconnect", "https://fonts.gstatic.com", null, null, null, "anonymous")
+        link(
+            "stylesheet",
+            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
+            null,
+            null,
+            null,
+            null
+        )
     }
 }
 
@@ -92,7 +117,7 @@ private fun WebGlCanvas() {
             .position(Position.Fixed)
             .inset("0")
             .width(100.percent)
-            .height(3000.px)
+            .height(3500.px)
             .pointerEvents(PointerEvents.None)
             .zIndex(0)
     )

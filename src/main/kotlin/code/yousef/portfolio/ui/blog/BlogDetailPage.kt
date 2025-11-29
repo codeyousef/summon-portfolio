@@ -4,18 +4,23 @@ import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.ContentSection
-import code.yousef.summon.annotation.Composable
-import code.yousef.summon.components.display.Text
-import code.yousef.summon.components.layout.Column
-import code.yousef.summon.components.layout.Row
-import code.yousef.summon.components.navigation.AnchorLink
-import code.yousef.summon.extensions.rem
-import code.yousef.summon.modifier.*
-import code.yousef.summon.modifier.LayoutModifiers.flexDirection
-import code.yousef.summon.modifier.LayoutModifiers.flexWrap
-import code.yousef.summon.modifier.LayoutModifiers.gap
-import code.yousef.summon.modifier.StylingModifiers.fontWeight
+import code.yousef.portfolio.ui.foundation.PageScaffold
+import code.yousef.portfolio.ui.sections.ContactSection
+import code.yousef.portfolio.ui.sections.PortfolioFooter
+import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.modifier.*
+import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
+import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
+import codes.yousef.summon.modifier.LayoutModifiers.gap
+import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -24,125 +29,137 @@ fun BlogDetailPage(
     locale: PortfolioLocale
 ) {
     val formatter = detailDateFormatter(locale)
-    ContentSection(surface = false) {
-        Column(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .flexDirection(FlexDirection.Column)
-                .gap(PortfolioTheme.Spacing.lg)
-
-        ) {
+    PageScaffold(locale = locale) {
+        AppHeader(locale = locale)
+        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        ContentSection(surface = false) {
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .flexDirection(FlexDirection.Column)
-                    .gap(PortfolioTheme.Spacing.xs)
+                    .gap(PortfolioTheme.Spacing.lg)
+
             ) {
-                Text(
-                    text = post.title.resolve(locale),
-                    modifier = Modifier()
-                        .fontSize(3.rem)
-                        .fontWeight(700)
-                )
-                Row(
+                Column(
                     modifier = Modifier()
                         .display(Display.Flex)
-                        .gap(PortfolioTheme.Spacing.sm)
-                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .flexDirection(FlexDirection.Column)
+                        .gap(PortfolioTheme.Spacing.xs)
                 ) {
-                    Text(formatter.format(post.publishedAt))
-                    Text("•")
-                    Text(BlogDetailCopy.byLabel.resolve(locale) + " " + post.author)
-                    if (post.featured) {
+                    Text(
+                        text = post.title.resolve(locale),
+                        modifier = Modifier()
+                            .fontSize(3.rem)
+                            .fontWeight(700)
+                    )
+                    Row(
+                        modifier = Modifier()
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.sm)
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    ) {
+                        Text(formatter.format(post.publishedAt))
                         Text("•")
-                        Text(BlogDetailCopy.featured.resolve(locale))
+                        Text(BlogDetailCopy.byLabel.resolve(locale) + " " + post.author)
+                        if (post.featured) {
+                            Text("•")
+                            Text(BlogDetailCopy.featured.resolve(locale))
+                        }
+                    }
+                    Row(
+                        modifier = Modifier()
+                            .display(Display.Flex)
+                            .gap(PortfolioTheme.Spacing.xs)
+                            .flexWrap(FlexWrap.Wrap)
+                    ) {
+                        post.tags.forEach { tag ->
+                            Text(
+                                text = tag,
+                                modifier = Modifier()
+                                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                                    .borderWidth(1)
+                                    .borderStyle(BorderStyle.Solid)
+                                    .borderColor(PortfolioTheme.Colors.BORDER)
+                                    .borderRadius(PortfolioTheme.Radii.pill)
+                                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                                    .fontSize(0.75.rem)
+                            )
+                        }
                     }
                 }
-                Row(
+
+                val paragraphs = post.content.resolve(locale).split("\n\n")
+                Column(
                     modifier = Modifier()
                         .display(Display.Flex)
-                        .gap(PortfolioTheme.Spacing.xs)
-                        .flexWrap(FlexWrap.Wrap)
+                        .flexDirection(FlexDirection.Column)
+                        .gap(PortfolioTheme.Spacing.md)
                 ) {
-                    post.tags.forEach { tag ->
+                    paragraphs.forEach { paragraph ->
                         Text(
-                            text = tag,
+                            text = paragraph.trim(),
                             modifier = Modifier()
-                                .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                                .borderWidth(1)
-                                .borderStyle(BorderStyle.Solid)
-                                .borderColor(PortfolioTheme.Colors.BORDER)
-                                .borderRadius(PortfolioTheme.Radii.pill)
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .fontSize(0.75.rem)
+                                .lineHeight(1.8)
                         )
                     }
                 }
-            }
 
-            val paragraphs = post.content.resolve(locale).split("\n\n")
-            Column(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .flexDirection(FlexDirection.Column)
-                    .gap(PortfolioTheme.Spacing.md)
-            ) {
-                paragraphs.forEach { paragraph ->
-                    Text(
-                        text = paragraph.trim(),
-                        modifier = Modifier()
-                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .lineHeight(1.8)
-                    )
-                }
+                val backLabel = BlogDetailCopy.back.resolve(locale)
+                AnchorLink(
+                    href = blogListHref(locale),
+                    label = backLabel,
+                    dataAttributes = mapOf("blog-link" to "back"),
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.ACCENT_ALT)
+                        .fontWeight(600),
+                    dataHref = null
+                )
             }
-
-            val backLabel = BlogDetailCopy.back.resolve(locale)
-            AnchorLink(
-                href = blogListHref(locale),
-                label = backLabel,
-                dataAttributes = mapOf("blog-link" to "back"),
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .fontWeight(600),
-                dataHref = null
-            )
         }
+        ContactSection(locale = locale)
+        PortfolioFooter(locale = locale)
     }
 }
 
 @Composable
 fun BlogNotFoundPage(locale: PortfolioLocale) {
-    ContentSection(surface = false) {
-        Column(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .flexDirection(FlexDirection.Column)
-                .gap(PortfolioTheme.Spacing.md)
-                .textAlign(TextAlign.Center)
-        ) {
-            Text(
-                text = BlogDetailCopy.notFoundTitle.resolve(locale),
+    PageScaffold(locale = locale) {
+        AppHeader(locale = locale)
+        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        ContentSection(surface = false) {
+            Column(
                 modifier = Modifier()
-                    .fontSize(2.rem)
-                    .fontWeight(700)
-            )
-            Text(
-                text = BlogDetailCopy.notFoundBody.resolve(locale),
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-            )
-            val backLabel = BlogDetailCopy.back.resolve(locale)
-            AnchorLink(
-                href = blogListHref(locale),
-                label = backLabel,
-                dataAttributes = mapOf("blog-link" to "not-found-back"),
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.ACCENT_ALT)
-                    .fontWeight(600),
-                dataHref = null
-            )
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .textAlign(TextAlign.Center)
+            ) {
+                Text(
+                    text = BlogDetailCopy.notFoundTitle.resolve(locale),
+                    modifier = Modifier()
+                        .fontSize(2.rem)
+                        .fontWeight(700)
+                )
+                Text(
+                    text = BlogDetailCopy.notFoundBody.resolve(locale),
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                )
+                val backLabel = BlogDetailCopy.back.resolve(locale)
+                AnchorLink(
+                    href = blogListHref(locale),
+                    label = backLabel,
+                    dataAttributes = mapOf("blog-link" to "not-found-back"),
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.ACCENT_ALT)
+                        .fontWeight(600),
+                    dataHref = null
+                )
+            }
         }
+        ContactSection(locale = locale)
+        PortfolioFooter(locale = locale)
     }
 }
 
