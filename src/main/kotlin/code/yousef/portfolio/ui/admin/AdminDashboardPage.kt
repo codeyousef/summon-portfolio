@@ -24,8 +24,11 @@ import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.ModifierExtras.onClick
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.runtime.mutableStateOf
+import codes.yousef.summon.runtime.remember
+import codes.yousef.summon.components.input.Button
+import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import codes.yousef.summon.runtime.LocalPlatformRenderer
 import codes.yousef.summon.runtime.PlatformRenderer
@@ -685,7 +688,7 @@ private fun AdminFormDisclosure(
     defaultOpen: Boolean,
     content: @Composable () -> Unit
 ) {
-    val openState = codes.yousef.summon.runtime.rememberMutableStateOf(defaultOpen)
+    val openState = remember { mutableStateOf(defaultOpen) }
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -706,8 +709,6 @@ private fun AdminFormDisclosure(
                 .borderBottomWidth(1)
                 .borderStyle(BorderStyle.Solid)
                 .borderColor(PortfolioTheme.Colors.BORDER)
-                .cursor(Cursor.Pointer)
-                .onClick { openState.value = !openState.value },
         ) {
             Text(
                 text = summary,
@@ -715,11 +716,17 @@ private fun AdminFormDisclosure(
                     .fontWeight(600)
                     .letterSpacing("0.02em")
             )
-            Text(
-                text = if (openState.value) "−" else "+",
+            Button(
+                onClick = { openState.value = !openState.value },
+                label = if (openState.value) "−" else "+",
                 modifier = Modifier()
                     .fontSize(1.5.rem)
                     .fontWeight(600)
+                    .backgroundColor("transparent")
+                    .borderWidth(0)
+                    .cursor(Cursor.Pointer)
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY),
+                variant = ButtonVariant.SECONDARY
             )
         }
         if (openState.value) {
