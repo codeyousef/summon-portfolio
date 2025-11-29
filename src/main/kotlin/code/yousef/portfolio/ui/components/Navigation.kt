@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.NavigationStrings
 import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
@@ -20,14 +21,14 @@ data class NavItem(
 )
 
 val defaultNavItems = listOf(
-    NavItem(LocalizedText("About", "حول"), NavTarget.Section("hero")),
-    NavItem(LocalizedText("Services", "الخدمات"), NavTarget.Section("services")),
-    NavItem(LocalizedText("Blog", "المدونة"), NavTarget.Page("/blog")),
-    NavItem(LocalizedText("Contact", "اتصل"), NavTarget.Section("contact"))
+    NavItem(NavigationStrings.about, NavTarget.Section("hero")),
+    NavItem(NavigationStrings.services, NavTarget.Section("services")),
+    NavItem(NavigationStrings.blog, NavTarget.Page("/blog")),
+    NavItem(NavigationStrings.contact, NavTarget.Section("contact"))
 )
 
-val projectsLabel = LocalizedText("Projects", "المشاريع")
-val startProjectLabel = LocalizedText("Start your project", "ابدأ مشروعك")
+val projectsLabel = NavigationStrings.projects
+val startProjectLabel = NavigationStrings.startProject
 
 fun NavTarget.href(locale: PortfolioLocale): String {
     val prefix = locale.pathPrefix()

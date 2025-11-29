@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ui.sections
 
 import code.yousef.portfolio.content.model.BlogPost
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.BlogStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.blog.blogDetailHref
 import code.yousef.portfolio.ui.blog.blogListHref
@@ -39,13 +39,13 @@ fun BlogTeaserSection(
                 .gap(PortfolioTheme.Spacing.md)
         ) {
             Text(
-                text = BlogCopy.title.resolve(locale),
+                text = BlogStrings.Teaser.title.resolve(locale),
                 modifier = Modifier()
                     .fontSize(2.5.rem)
                     .fontWeight(700)
             )
             Text(
-                text = BlogCopy.subtitle.resolve(locale),
+                text = BlogStrings.Teaser.subtitle.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.8)
@@ -89,7 +89,7 @@ fun BlogTeaserSection(
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .lineHeight(1.7)
                         )
-                        val readMoreLabel = BlogCopy.readMore.resolve(locale)
+                        val readMoreLabel = BlogStrings.Teaser.readMore.resolve(locale)
                         AnchorLink(
                             href = detailHref,
                             label = readMoreLabel,
@@ -108,7 +108,7 @@ fun BlogTeaserSection(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.FlexEnd)
             ) {
-                val viewAllLabel = BlogCopy.viewAll.resolve(locale)
+                val viewAllLabel = BlogStrings.Teaser.viewAll.resolve(locale)
                 AnchorLink(
                     href = blogListHref(locale),
                     label = viewAllLabel,
@@ -123,12 +123,3 @@ fun BlogTeaserSection(
     }
 }
 
-private object BlogCopy {
-    val title = LocalizedText("Latest Writing", "أحدث المقالات")
-    val subtitle = LocalizedText(
-        en = "Deep dives on systems design, tools, and creative engineering. New essays ship as soon as they're battle-tested.",
-        ar = "مقالات متعمقة حول تصميم الأنظمة والأدوات والهندسة الإبداعية."
-    )
-    val readMore = LocalizedText("Read more →", "اقرأ المزيد ←")
-    val viewAll = LocalizedText("View all posts", "عرض جميع المقالات")
-}

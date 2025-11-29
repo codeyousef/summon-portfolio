@@ -1,7 +1,7 @@
 package code.yousef.portfolio.ui.sections
 
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.ContactStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
@@ -33,13 +33,13 @@ fun ContactSection(
                 .gap(PortfolioTheme.Spacing.xs)
         ) {
             Paragraph(
-                text = ContactCopy.lead.resolve(locale),
+                text = ContactStrings.lead.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.6)
             )
             Paragraph(
-                text = ContactCopy.contactMethods.resolve(locale),
+                text = ContactStrings.contactMethods.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.4)
@@ -62,13 +62,13 @@ fun ContactSection(
                     .gap(PortfolioTheme.Spacing.md)
             ) {
                 Text(
-                    text = ContactCopy.title.resolve(locale),
+                    text = ContactStrings.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.5.rem)
                         .fontWeight("700")
                 )
                 Text(
-                    text = ContactCopy.subtitle.resolve(locale),
+                    text = ContactStrings.subtitle.resolve(locale),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .lineHeight(1.8)
@@ -121,7 +121,7 @@ private fun ContactForm(
         FormField(
             label = {
                 Text(
-                    ContactCopy.name.resolve(locale),
+                    ContactStrings.name.resolve(locale),
                     modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
@@ -131,14 +131,14 @@ private fun ContactForm(
                 name = "name",
                 label = "",
                 defaultValue = "",
-                placeholder = ContactCopy.name.resolve(locale),
+                placeholder = ContactStrings.name.resolve(locale),
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
         FormField(
             label = {
                 Text(
-                    ContactCopy.email.resolve(locale),
+                    ContactStrings.email.resolve(locale),
                     modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
@@ -148,14 +148,14 @@ private fun ContactForm(
                 name = "email",
                 label = "",
                 defaultValue = "",
-                placeholder = ContactCopy.email.resolve(locale),
+                placeholder = ContactStrings.email.resolve(locale),
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
         FormField(
             label = {
                 Text(
-                    ContactCopy.whatsapp.resolve(locale),
+                    ContactStrings.whatsapp.resolve(locale),
                     modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
@@ -165,14 +165,14 @@ private fun ContactForm(
                 name = "whatsapp",
                 label = "",
                 defaultValue = "",
-                placeholder = ContactCopy.whatsappPlaceholder.resolve(locale),
+                placeholder = ContactStrings.whatsappPlaceholder.resolve(locale),
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
         FormField(
             label = {
                 Text(
-                    ContactCopy.requirements.resolve(locale),
+                    ContactStrings.requirements.resolve(locale),
                     modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
@@ -187,37 +187,8 @@ private fun ContactForm(
             )
         }
         FormButton(
-            text = ContactCopy.submit.resolve(locale)
+            text = ContactStrings.submit.resolve(locale)
         )
     }
 }
 
-private object ContactCopy {
-    val title = LocalizedText("Collaborate", "تعاون")
-    val subtitle = LocalizedText(
-        en = "Tell me what you’re building. I’ll reply with a focused plan (and timelines) you can immediately act on.",
-        ar = "أخبرني بما تعمل عليه وسأعود إليك بخطة واضحة وجدول زمني يمكن البدء به فورًا."
-    )
-    val lead = LocalizedText(
-        en = "Average response time: under 24h. Share a sentence or two about your project and I’ll follow up with a plan.",
-        ar = "متوسط وقت الرد أقل من 24 ساعة. شارك سطرًا أو سطرين عن مشروعك وسأتواصل معك بخطة واضحة."
-    )
-    val contactMethods = LocalizedText(
-        en = "Prefer WhatsApp or email? Use whichever is fastest — just include at least one so I can reply.",
-        ar = "يمكنك استخدام البريد الإلكتروني أو رقم واتساب — فقط اذكر أحدهما على الأقل حتى أتمكن من الرد."
-    )
-    val formTitle = LocalizedText("Project details", "تفاصيل المشروع")
-    val name = LocalizedText("Name", "الاسم")
-    val email = LocalizedText("Email", "البريد الإلكتروني")
-    val whatsapp = LocalizedText("WhatsApp", "رقم واتساب")
-    val whatsappPlaceholder = LocalizedText("+966 565 123 4567", "+966 5X XXX XXXX")
-    val requirements = LocalizedText("What are we building?", "ماذا سنبني؟")
-    val optional = LocalizedText("Optional", "اختياري")
-    val submit = LocalizedText("Send request", "أرسل الطلب")
-    val submitting = LocalizedText("Sending...", "جاري الإرسال...")
-    val success = LocalizedText("Thanks! I’ll reply soon.", "شكرًا! سأتواصل معك قريبًا.")
-    val failure = LocalizedText("Something went wrong. Please try again.", "حدث خطأ. حاول مرة أخرى.")
-    val errorName = LocalizedText("Name is required", "الاسم مطلوب")
-    val errorEmail = LocalizedText("Please enter a valid email", "يرجى إدخال بريد صحيح")
-    val errorRequirements = LocalizedText("Share a bit about your project", "شارك تفاصيل حول مشروعك")
-}

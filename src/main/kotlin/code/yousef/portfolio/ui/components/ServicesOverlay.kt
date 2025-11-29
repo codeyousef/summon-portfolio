@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.content.model.Service
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.ServicesStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
@@ -53,14 +53,14 @@ fun ServicesOverlay(
                     .alignItems(AlignItems.Center)
             ) {
                 Text(
-                    text = ServicesOverlayCopy.title.resolve(locale),
+                    text = ServicesStrings.Overlay.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.5.rem)
                         .fontWeight(700)
                 )
                 Button(
                     onClick = { onClose() },
-                    label = ServicesOverlayCopy.close.resolve(locale),
+                    label = ServicesStrings.Overlay.close.resolve(locale),
                     modifier = Modifier()
                         .backgroundColor("transparent")
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
@@ -72,7 +72,7 @@ fun ServicesOverlay(
             }
 
             Text(
-                text = ServicesOverlayCopy.subtitle.resolve(locale),
+                text = ServicesStrings.Overlay.subtitle.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.8)
@@ -118,7 +118,7 @@ fun ServicesOverlay(
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.FlexEnd)
             ) {
-                val ctaLabel = ServicesOverlayCopy.cta.resolve(locale)
+                val ctaLabel = ServicesStrings.Overlay.cta.resolve(locale)
                 ButtonLink(
                     label = ctaLabel,
                     href = contactHref,
@@ -145,12 +145,3 @@ fun ServicesOverlay(
     }
 }
 
-private object ServicesOverlayCopy {
-    val title = LocalizedText("Services", "الخدمات")
-    val subtitle = LocalizedText(
-        en = "I help teams build foundational, high-performance products—covering research, architecture, and craft.",
-        ar = "أساعد الفرق على بناء منتجات عالية الأداء عبر البحث والبنية والصقل."
-    )
-    val close = LocalizedText("Close", "إغلاق")
-    val cta = LocalizedText("Contact me", "تواصل معي")
-}

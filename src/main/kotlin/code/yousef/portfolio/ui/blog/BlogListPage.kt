@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ui.blog
 
 import code.yousef.portfolio.content.model.BlogPost
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.BlogStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.ContentSection
@@ -46,13 +46,13 @@ fun BlogListPage(
                         .gap(PortfolioTheme.Spacing.sm)
                 ) {
                     Text(
-                        text = BlogListCopy.title.resolve(locale),
+                        text = BlogStrings.List.title.resolve(locale),
                         modifier = Modifier()
                             .fontSize(3.rem)
                             .fontWeight(700)
                     )
                     Text(
-                        text = BlogListCopy.subtitle.resolve(locale),
+                        text = BlogStrings.List.subtitle.resolve(locale),
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                             .lineHeight(1.8)
@@ -92,7 +92,7 @@ fun BlogListPage(
                             ) {
                                 Text(formatter.format(post.publishedAt))
                                 Text("•")
-                                Text(BlogListCopy.byLabel.resolve(locale) + " " + post.author)
+                                Text(BlogStrings.List.byLabel.resolve(locale) + " " + post.author)
                             }
                             Text(
                                 text = post.excerpt.resolve(locale),
@@ -100,7 +100,7 @@ fun BlogListPage(
                                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                     .lineHeight(1.7)
                             )
-                            val readMoreLabel = BlogListCopy.readMore.resolve(locale)
+                            val readMoreLabel = BlogStrings.List.readMore.resolve(locale)
                             AnchorLink(
                                 href = blogDetailHref(locale, post.slug),
                                 label = readMoreLabel,
@@ -120,15 +120,6 @@ fun BlogListPage(
     }
 }
 
-private object BlogListCopy {
-    val title = LocalizedText("Thoughts & Writing", "أفكار وكتابات")
-    val subtitle = LocalizedText(
-        en = "Deep dives on systems, frameworks, and creative engineering.",
-        ar = "مقالات متعمقة حول الأنظمة والأطر والهندسة الإبداعية."
-    )
-    val readMore = LocalizedText("Read more →", "اقرأ المزيد ←")
-    val byLabel = LocalizedText("By", "بواسطة")
-}
 
 fun blogDetailHref(locale: PortfolioLocale, slug: String): String =
     if (locale == PortfolioLocale.EN) "/blog/$slug" else "/${locale.code}/blog/$slug"
