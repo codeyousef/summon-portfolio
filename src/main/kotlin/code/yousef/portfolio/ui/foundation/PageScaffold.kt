@@ -7,6 +7,7 @@ import codes.yousef.summon.components.foundation.Canvas
 import codes.yousef.summon.components.foundation.ScriptTag
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
@@ -22,6 +23,17 @@ fun PageScaffold(
     content: () -> Unit
 ) {
     InjectFontAssets()
+
+    // Global mobile styles
+    GlobalStyle(
+        """
+        @media (max-width: 768px) {
+            [data-page-content="true"] {
+                padding: ${PortfolioTheme.Spacing.sm} !important;
+            }
+        }
+        """
+    )
 
     val scaffoldModifier = modifier
         .minHeight("100vh")
@@ -60,6 +72,7 @@ fun PageScaffold(
             .zIndex(2)
             .padding(PortfolioTheme.Spacing.xl)
             .gap(PortfolioTheme.Spacing.xl)
+            .dataAttribute("page-content", "true")
             .let { base ->
                 val extra = PortfolioTheme.Spacing.md
                 if (locale.direction.equals("rtl", ignoreCase = true)) {

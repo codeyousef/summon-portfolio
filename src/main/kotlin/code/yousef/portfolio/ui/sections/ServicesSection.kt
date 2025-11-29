@@ -8,6 +8,7 @@ import code.yousef.portfolio.ui.components.TruncatedText
 import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.styles.GlobalStyle
@@ -32,8 +33,10 @@ fun ServicesSection(
         .services-bento-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
+            gap: ${PortfolioTheme.Spacing.md};
+            width: 100%;
         }
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .services-bento-grid {
                 grid-template-columns: 1fr !important;
             }
@@ -47,6 +50,8 @@ fun ServicesSection(
                 .display(Display.Flex)
                 .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.md)
+                .width("100%")
+                .overflow(Overflow.Hidden)
         ) {
             Text(
                 text = ServicesCopy.title.resolve(locale),
@@ -61,9 +66,8 @@ fun ServicesSection(
                     .lineHeight(1.8)
             )
 
-            Row(
+            Box(
                 modifier = Modifier()
-                    .gap(PortfolioTheme.Spacing.md)
                     .className("services-bento-grid")
             ) {
                 services.forEach { service ->
