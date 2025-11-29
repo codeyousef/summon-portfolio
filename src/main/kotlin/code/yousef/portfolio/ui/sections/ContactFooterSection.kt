@@ -19,6 +19,7 @@ import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.i18n.paddingEnd
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
 import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
@@ -98,6 +99,7 @@ fun ContactFooterSection(
                 modifier = Modifier()
                     .flex(grow = 1, shrink = 1, basis = "320px")
                     .width("min(100%, 480px)")
+                    .paddingEnd(PortfolioTheme.Spacing.xl)
             )
         }
     }
