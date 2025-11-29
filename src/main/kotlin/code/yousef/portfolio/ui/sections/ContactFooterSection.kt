@@ -19,7 +19,6 @@ import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
-import codes.yousef.summon.i18n.paddingEnd
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
 import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
@@ -93,13 +92,20 @@ fun ContactFooterSection(
             }
 
             // Right side: Compact form
+            val formModifier = Modifier()
+                .flex(grow = 1, shrink = 1, basis = "320px")
+                .width("min(100%, 480px)")
+                .let { base ->
+                    if (locale.direction == "rtl") {
+                        base.paddingLeft(PortfolioTheme.Spacing.xl)
+                    } else {
+                        base.paddingRight(PortfolioTheme.Spacing.xl)
+                    }
+                }
             CompactContactForm(
                 locale = locale,
                 action = actionPath,
-                modifier = Modifier()
-                    .flex(grow = 1, shrink = 1, basis = "320px")
-                    .width("min(100%, 480px)")
-                    .paddingEnd(PortfolioTheme.Spacing.xl)
+                modifier = formModifier
             )
         }
     }
