@@ -1,12 +1,12 @@
-name: Deploy to Cloud Run (dev/uat/prod)
+name: Deploy to Cloud Run (dev/prod)
 
 on:
   push:
-    branches: [ dev, uat, main ]
+    branches: [ dev, main ]
 
 # Non-secret constants (edit if you ever rename stuff)
 env:
-  SERVICE_BASE: portfolio                 # => main: portfolio, dev: portfolio-dev, uat: portfolio-uat
+  SERVICE_BASE: portfolio                 # => main: portfolio, dev: portfolio-dev
   CONTAINER_REPO: portfolio-registry      # Artifact Registry repo
   GCP_PROJECT_ID: portfolio-476219        # <-- your project ID (not name)
   GCP_REGION: us-central1                 # region
