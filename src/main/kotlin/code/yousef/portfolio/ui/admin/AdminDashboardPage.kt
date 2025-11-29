@@ -21,6 +21,7 @@ import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
@@ -170,6 +171,18 @@ fun AdminDashboardPage(
     }
 
     PageScaffold(locale = locale) {
+        // Global styles for admin form labels
+        GlobalStyle(
+            """
+            label {
+                color: ${PortfolioTheme.Colors.TEXT_PRIMARY} !important;
+            }
+            input, textarea, select {
+                padding: ${PortfolioTheme.Spacing.md} ${PortfolioTheme.Spacing.lg} !important;
+                color: ${PortfolioTheme.Colors.TEXT_PRIMARY} !important;
+            }
+            """
+        )
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
