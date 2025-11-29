@@ -30,6 +30,8 @@ fun PageScaffold(
         @media (max-width: 768px) {
             [data-page-content="true"] {
                 padding: ${PortfolioTheme.Spacing.sm} !important;
+                padding-left: ${PortfolioTheme.Spacing.sm} !important;
+                padding-right: ${PortfolioTheme.Spacing.sm} !important;
             }
         }
         """

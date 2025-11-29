@@ -17,14 +17,15 @@ fun ContentSection(
     content: () -> Unit
 ) {
     GlobalStyle(css = """
-        /* Consistent mobile padding matching SectionWrap */
+        /* Consistent mobile padding */
         @media (max-width: 768px) {
             [data-content-section="wrapper"] {
-                padding: ${PortfolioTheme.Spacing.sm} !important;
-                width: calc(100vw - ${PortfolioTheme.Spacing.xs}) !important;
+                padding: ${PortfolioTheme.Spacing.xs} !important;
+                width: 100% !important;
+                max-width: 100vw !important;
             }
             [data-content-section="inner"] {
-                padding: ${PortfolioTheme.Spacing.sm} !important;
+                padding: ${PortfolioTheme.Spacing.md} !important;
             }
         }
     """)

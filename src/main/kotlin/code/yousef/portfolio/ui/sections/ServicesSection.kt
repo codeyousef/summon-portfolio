@@ -38,7 +38,9 @@ fun ServicesSection(
         }
         @media (max-width: 900px) {
             .services-bento-grid {
-                grid-template-columns: 1fr !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: ${PortfolioTheme.Spacing.md} !important;
             }
         }
         """

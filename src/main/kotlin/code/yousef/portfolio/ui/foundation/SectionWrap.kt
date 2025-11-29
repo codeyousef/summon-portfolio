@@ -22,8 +22,9 @@ fun SectionWrap(
         /* Consistent mobile padding for all sections */
         @media (max-width: 768px) {
             [data-section-wrap="true"] {
-                padding: ${PortfolioTheme.Spacing.sm} !important;
-                width: calc(100vw - ${PortfolioTheme.Spacing.xs}) !important;
+                padding: ${PortfolioTheme.Spacing.md} !important;
+                width: 100% !important;
+                max-width: 100vw !important;
             }
         }
     """)
