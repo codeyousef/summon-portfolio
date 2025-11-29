@@ -171,7 +171,7 @@ fun AdminDashboardPage(
     }
 
     PageScaffold(locale = locale) {
-        // Global styles for admin form labels
+        // Global styles for admin form labels and inputs
         GlobalStyle(
             """
             label {
@@ -179,7 +179,18 @@ fun AdminDashboardPage(
             }
             input, textarea, select {
                 padding: ${PortfolioTheme.Spacing.md} ${PortfolioTheme.Spacing.lg} !important;
+                padding-right: ${PortfolioTheme.Spacing.xxl} !important;
                 color: ${PortfolioTheme.Colors.TEXT_PRIMARY} !important;
+            }
+            form {
+                padding-right: ${PortfolioTheme.Spacing.xl} !important;
+            }
+            details > summary {
+                cursor: pointer;
+                list-style: none;
+            }
+            details > summary::-webkit-details-marker {
+                display: none;
             }
             """
         )
@@ -704,7 +715,7 @@ private fun AdminFormDisclosure(
             )
             codes.yousef.summon.components.input.Button(
                 onClick = { openState.value = !openState.value },
-                label = if (openState.value) "–" else "+",
+                label = if (openState.value) "−" else "+",
                 modifier = Modifier()
                     .width(38.px)
                     .height(32.px),
@@ -719,6 +730,7 @@ private fun AdminFormDisclosure(
                     .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
                     .padding(PortfolioTheme.Spacing.lg)
+                    .paddingRight(PortfolioTheme.Spacing.xxl)
             ) { content() }
         }
     }
