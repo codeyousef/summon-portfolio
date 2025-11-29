@@ -1,7 +1,7 @@
 package code.yousef.portfolio.ui.sections
 
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.ContactStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
@@ -52,13 +52,13 @@ fun ContactFooterSection(
                     .gap(PortfolioTheme.Spacing.md)
             ) {
                 Text(
-                    text = ContactFooterCopy.title.resolve(locale),
+                    text = ContactStrings.Footer.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.rem)
                         .fontWeight(700)
                 )
                 Text(
-                    text = ContactFooterCopy.subtitle.resolve(locale),
+                    text = ContactStrings.Footer.subtitle.resolve(locale),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .lineHeight(1.6)
@@ -71,7 +71,7 @@ fun ContactFooterSection(
                         .gap(PortfolioTheme.Spacing.xs)
                 ) {
                     AnchorLink(
-                        label = ContactFooterCopy.bookingLink.resolve(locale),
+                        label = ContactStrings.Footer.bookingLink.resolve(locale),
                         href = "https://app.usemotion.com/meet/motion.duckling867/meeting",
                         modifier = Modifier()
                             .color(PortfolioTheme.Colors.ACCENT)
@@ -132,7 +132,7 @@ private fun CompactContactForm(
         FormField(
             label = {
                 Text(
-                    ContactFooterCopy.contactLabel.resolve(locale),
+                    ContactStrings.Footer.contactLabel.resolve(locale),
                     modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
@@ -142,7 +142,7 @@ private fun CompactContactForm(
                 name = "contact",
                 label = "",
                 defaultValue = "",
-                placeholder = ContactFooterCopy.contactPlaceholder.resolve(locale),
+                placeholder = ContactStrings.Footer.contactPlaceholder.resolve(locale),
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
@@ -151,7 +151,7 @@ private fun CompactContactForm(
         FormField(
             label = {
                 Text(
-                    ContactFooterCopy.messageLabel.resolve(locale),
+                    ContactStrings.Footer.messageLabel.resolve(locale),
                     modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             },
@@ -170,38 +170,8 @@ private fun CompactContactForm(
 
         // Submit button
         FormButton(
-            text = ContactFooterCopy.submit.resolve(locale)
+            text = ContactStrings.Footer.submit.resolve(locale)
         )
     }
 }
 
-private object ContactFooterCopy {
-    val title = LocalizedText(
-        en = "Let's Build Something",
-        ar = "لنبنِ شيئًا معًا"
-    )
-    val subtitle = LocalizedText(
-        en = "Have a project in mind? Drop me a message or book a call.",
-        ar = "لديك مشروع في ذهنك؟ راسلني أو احجز مكالمة."
-    )
-    val contactLabel = LocalizedText(
-        en = "Email or WhatsApp",
-        ar = "البريد الإلكتروني أو واتساب"
-    )
-    val contactPlaceholder = LocalizedText(
-        en = "you@example.com or +1 234 567 8900",
-        ar = "you@example.com أو +966 5X XXX XXXX"
-    )
-    val messageLabel = LocalizedText(
-        en = "How can I help?",
-        ar = "كيف يمكنني مساعدتك؟"
-    )
-    val submit = LocalizedText(
-        en = "Get in Touch",
-        ar = "تواصل معي"
-    )
-    val bookingLink = LocalizedText(
-        en = "Skip the back-and-forth. Book a discovery call →",
-        ar = "تجنب المراسلات. احجز مكالمة تعريفية ←"
-    )
-}

@@ -1,7 +1,7 @@
 package code.yousef.portfolio.ui.sections
 
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.CaseStudyStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.CodeBlock
 import code.yousef.portfolio.ui.components.SplitView
@@ -39,13 +39,13 @@ fun CaseStudySection(
                     .gap(PortfolioTheme.Spacing.sm)
             ) {
                 Text(
-                    text = CaseStudyCopy.title.resolve(locale),
+                    text = CaseStudyStrings.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.5.rem)
                         .fontWeight(700)
                 )
                 Text(
-                    text = CaseStudyCopy.body.resolve(locale),
+                    text = CaseStudyStrings.body.resolve(locale),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .lineHeight(1.8)
@@ -93,7 +93,7 @@ fun CaseStudySection(
                                     .padding(24.px)
                             ) {
                                 Text(
-                                    text = CaseStudyCopy.cardTitle.resolve(locale),
+                                    text = CaseStudyStrings.cardTitle.resolve(locale),
                                     modifier = Modifier()
                                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                                         .fontWeight(600)
@@ -107,17 +107,3 @@ fun CaseStudySection(
     }
 }
 
-private object CaseStudyCopy {
-    val title = LocalizedText(
-        en = "Engineering Case Study: Summon",
-        ar = "دراسة حالة هندسية: Summon"
-    )
-    val body = LocalizedText(
-        en = "Summon is a Kotlin/Wasm UI framework I built from scratch. It enables writing reactive web applications entirely in Kotlin, with a familiar Compose-like API. The code on the left renders the component you see on the right — no JavaScript, no HTML templates, just pure Kotlin.",
-        ar = "Summon هو إطار عمل Kotlin/Wasm للواجهات بنيته من الصفر. يتيح كتابة تطبيقات ويب تفاعلية بالكامل بـ Kotlin، مع واجهة برمجة مشابهة لـ Compose. الكود على اليسار يُنشئ المكون الذي تراه على اليمين — بدون JavaScript، بدون قوالب HTML، فقط Kotlin نقي."
-    )
-    val cardTitle = LocalizedText(
-        en = "Hello, Summon!",
-        ar = "مرحبًا، Summon!"
-    )
-}

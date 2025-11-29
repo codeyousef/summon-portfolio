@@ -2,8 +2,8 @@ package code.yousef.portfolio.ui.sections
 
 import code.yousef.portfolio.content.model.HeroContent
 import code.yousef.portfolio.content.model.HeroMetric
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.HeroStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.*
 import code.yousef.portfolio.ui.foundation.SectionWrap
@@ -99,15 +99,6 @@ fun HeroSection(
     }
 }
 
-private val availabilityText = LocalizedText(
-    en = "Open for select 2025 collaborations",
-    ar = "متاح لمشاريع مختارة في 2025"
-)
-
-private val baseLocationText = LocalizedText(
-    en = "Based in Dubai · Working globally",
-    ar = "مقيم في دبي · أعمل عالميًا"
-)
 
 @Composable
 private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
@@ -150,7 +141,7 @@ private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
                         .fontSize(0.85.rem)
                 )
                 Text(
-                    text = baseLocationText.resolve(locale),
+                    text = HeroStrings.baseLocation.resolve(locale),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .fontSize(0.8.rem)
@@ -158,7 +149,7 @@ private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
             }
         }
         GlassPill(
-            text = availabilityText.resolve(locale),
+            text = HeroStrings.availability.resolve(locale),
             emphasize = true
         )
     }

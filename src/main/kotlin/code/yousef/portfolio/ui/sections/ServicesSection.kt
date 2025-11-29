@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ui.sections
 
 import code.yousef.portfolio.content.model.Service
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.ServicesStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.TruncatedText
 import code.yousef.portfolio.ui.foundation.ContentSection
@@ -56,13 +56,13 @@ fun ServicesSection(
                 .overflow(Overflow.Hidden)
         ) {
             Text(
-                text = ServicesCopy.title.resolve(locale),
+                text = ServicesStrings.title.resolve(locale),
                 modifier = Modifier()
                     .fontSize(2.5.rem)
                     .fontWeight(700)
             )
             Text(
-                text = ServicesCopy.subtitle.resolve(locale),
+                text = ServicesStrings.subtitle.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.8)
@@ -84,7 +84,7 @@ fun ServicesSection(
             ) {
                 // Use a real link to /services for proper navigation
                 codes.yousef.summon.components.navigation.ButtonLink(
-                    label = ServicesCopy.openModal.resolve(locale),
+                    label = ServicesStrings.viewFeatured.resolve(locale),
                     href = "/services",
                     modifier = Modifier()
                         .backgroundColor(PortfolioTheme.Colors.ACCENT)
@@ -139,11 +139,3 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
     }
 }
 
-private object ServicesCopy {
-    val title = LocalizedText("Services", "الخدمات")
-    val subtitle = LocalizedText(
-        en = "Bridging imagination with implementation. Each engagement spans research, architecture, and product polish.",
-        ar = "أجسر الخيال بالتنفيذ — من البحث إلى البنية إلى الصقل النهائي."
-    )
-    val openModal = LocalizedText("View featured services", "عرض الخدمات المميزة")
-}

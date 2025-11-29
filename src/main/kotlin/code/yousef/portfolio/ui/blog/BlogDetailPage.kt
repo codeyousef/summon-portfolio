@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ui.blog
 
 import code.yousef.portfolio.content.model.BlogPost
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.BlogStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.ContentSection
@@ -60,10 +60,10 @@ fun BlogDetailPage(
                     ) {
                         Text(formatter.format(post.publishedAt))
                         Text("•")
-                        Text(BlogDetailCopy.byLabel.resolve(locale) + " " + post.author)
+                        Text(BlogStrings.Detail.byLabel.resolve(locale) + " " + post.author)
                         if (post.featured) {
                             Text("•")
-                            Text(BlogDetailCopy.featured.resolve(locale))
+                            Text(BlogStrings.Detail.featured.resolve(locale))
                         }
                     }
                     Row(
@@ -105,7 +105,7 @@ fun BlogDetailPage(
                     }
                 }
 
-                val backLabel = BlogDetailCopy.back.resolve(locale)
+                val backLabel = BlogStrings.Detail.back.resolve(locale)
                 AnchorLink(
                     href = blogListHref(locale),
                     label = backLabel,
@@ -136,20 +136,20 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
                     .textAlign(TextAlign.Center)
             ) {
                 Text(
-                    text = BlogDetailCopy.notFoundTitle.resolve(locale),
+                    text = BlogStrings.Detail.notFoundTitle.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.rem)
                         .fontWeight(700)
                 )
                 Text(
-                    text = BlogDetailCopy.notFoundBody.resolve(locale),
+                    text = BlogStrings.Detail.notFoundBody.resolve(locale),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 )
-                val backLabel = BlogDetailCopy.back.resolve(locale)
+                val notFoundBackLabel = BlogStrings.Detail.back.resolve(locale)
                 AnchorLink(
                     href = blogListHref(locale),
-                    label = backLabel,
+                    label = notFoundBackLabel,
                     dataAttributes = mapOf("blog-link" to "not-found-back"),
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.ACCENT_ALT)
@@ -163,13 +163,6 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
     }
 }
 
-private object BlogDetailCopy {
-    val byLabel = LocalizedText("By", "بواسطة")
-    val featured = LocalizedText("Featured", "مميز")
-    val back = LocalizedText("← Back to Blog", "← العودة إلى المدونة")
-    val notFoundTitle = LocalizedText("Post not found", "المقال غير موجود")
-    val notFoundBody = LocalizedText("Check other posts for more insights.", "اطلع على مقالات أخرى للمزيد من الأفكار.")
-}
 
 private fun detailDateFormatter(locale: PortfolioLocale): DateTimeFormatter =
     if (locale == PortfolioLocale.AR)

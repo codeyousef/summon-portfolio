@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ui.sections
 
 import code.yousef.portfolio.content.model.Project
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.ProjectsStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AspectRatioBox
 import code.yousef.portfolio.ui.components.GlassPill
@@ -38,7 +38,7 @@ fun SelectedWorksSection(
         ) {
             // Section header
             Text(
-                text = SelectedWorksCopy.title.resolve(locale),
+                text = ProjectsStrings.selectedWorkTitle.resolve(locale),
                 modifier = Modifier()
                     .fontSize(2.5.rem)
                     .fontWeight(700)
@@ -161,9 +161,3 @@ private fun GradientPlaceholder(label: String) {
     }
 }
 
-private object SelectedWorksCopy {
-    val title = LocalizedText(
-        en = "Selected Work",
-        ar = "أعمال مختارة"
-    )
-}

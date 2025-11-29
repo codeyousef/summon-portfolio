@@ -1,8 +1,8 @@
 package code.yousef.portfolio.ui
 
 import code.yousef.portfolio.content.PortfolioContent
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.HeroStrings
 import code.yousef.portfolio.i18n.pathPrefix
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
@@ -35,18 +35,6 @@ import codes.yousef.summon.runtime.LocalPlatformRenderer
 import codes.yousef.summon.runtime.rememberMutableStateOf
 
 
-private object LandingCopy {
-    val heroTitle = LocalizedText(
-        en = "Senior Full-Stack Engineer & System Architect.",
-        ar = "مهندس برمجيات كامل ومعماري أنظمة."
-    )
-    val heroBody = LocalizedText(
-        en = "Specializing in Kotlin Multiplatform and Custom Framework Development. I build scalable, cross-platform applications from a single codebase.",
-        ar = "متخصص في Kotlin Multiplatform وتطوير أطر العمل المخصصة. أبني تطبيقات قابلة للتوسع ومتعددة المنصات من قاعدة كود واحدة."
-    )
-    val heroPrimaryCta = LocalizedText("View Selected Work", "عرض الأعمال المختارة")
-    val heroSecondaryCta = LocalizedText("Book a Discovery Call", "احجز جلسة تعريف")
-}
 
 @Composable
 fun PortfolioLandingPage(
@@ -105,7 +93,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
             Text(
-                text = LandingCopy.heroTitle.resolve(locale),
+                text = HeroStrings.title.resolve(locale),
                 modifier = Modifier()
                     .fontSize(cssClamp(42.px, 6.vw, 76.px))
                     .fontWeight(900)
@@ -122,7 +110,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                     .letterSpacing("-0.02em")
             )
             Text(
-                text = LandingCopy.heroBody.resolve(locale),
+                text = HeroStrings.body.resolve(locale),
                 modifier = Modifier()
                     .color("rgba(255,255,255,0.88)")
                     .fontSize(1.25.rem)
@@ -139,7 +127,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                 val home = if (prefix.isEmpty()) "/" else prefix
                 val projectsHref = "$home#projects"
                 PrimaryCtaButton(
-                    text = LandingCopy.heroPrimaryCta.resolve(locale),
+                    text = HeroStrings.primaryCta.resolve(locale),
                     href = projectsHref,
                     modifier = Modifier()
                         .minWidth(200.px)
@@ -147,7 +135,7 @@ private fun HeroBand(locale: PortfolioLocale) {
                     navigationMode = LinkNavigationMode.Client
                 )
                 SecondaryCtaButton(
-                    text = LandingCopy.heroSecondaryCta.resolve(locale),
+                    text = HeroStrings.secondaryCta.resolve(locale),
                     href = "https://app.usemotion.com/meet/motion.duckling867/meeting",
                     modifier = Modifier()
                         .minWidth(220.px)

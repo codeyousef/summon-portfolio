@@ -1,0 +1,12 @@
+package code.yousef.portfolio.i18n.strings
+
+import code.yousef.portfolio.i18n.LocalizedText
+
+object NavigationStrings {
+    val about = LocalizedText("About", "حول")
+    val services = LocalizedText("Services", "الخدمات")
+    val blog = LocalizedText("Blog", "المدونة")
+    val contact = LocalizedText("Contact", "اتصل")
+    val projects = LocalizedText("Projects", "المشاريع")
+    val startProject = LocalizedText("Start your project", "ابدأ مشروعك")
+}
