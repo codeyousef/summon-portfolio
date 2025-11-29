@@ -179,11 +179,11 @@ fun AdminDashboardPage(
             }
             input, textarea, select {
                 padding: ${PortfolioTheme.Spacing.md} ${PortfolioTheme.Spacing.lg} !important;
-                padding-right: ${PortfolioTheme.Spacing.xxl} !important;
+                padding-right: 80px !important;
                 color: ${PortfolioTheme.Colors.TEXT_PRIMARY} !important;
             }
             form {
-                padding-right: ${PortfolioTheme.Spacing.xl} !important;
+                padding-right: 64px !important;
             }
             details > summary {
                 cursor: pointer;
@@ -730,7 +730,7 @@ private fun AdminFormDisclosure(
                     .flexDirection(FlexDirection.Column)
                     .gap(PortfolioTheme.Spacing.md)
                     .padding(PortfolioTheme.Spacing.lg)
-                    .paddingRight(PortfolioTheme.Spacing.xxl)
+                    .paddingRight("80px")
             ) { content() }
         }
     }
