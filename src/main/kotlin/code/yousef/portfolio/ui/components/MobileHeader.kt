@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.portfolioBaseUrl
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
@@ -134,7 +135,7 @@ fun MobileHeader(
                         }
                         AnchorLink(
                             label = "Summon",
-                            href = docsHref,
+                            href = summonMarketingUrl(),
                             modifier = baseNavModifier,
                             target = null,
                             rel = null,

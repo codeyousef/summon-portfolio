@@ -4,6 +4,7 @@ import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.HYDRATION_SCRIPT_PATH
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
@@ -191,7 +192,7 @@ private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String) {
     ) {
         AnchorLink(
             label = "Summon",
-            href = navBaseUrl,
+            href = summonMarketingUrl(),
             modifier = Modifier()
                 .fontWeight(700)
                 .fontSize(1.25.rem)
