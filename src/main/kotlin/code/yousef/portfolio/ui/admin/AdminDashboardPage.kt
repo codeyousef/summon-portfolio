@@ -688,7 +688,7 @@ private fun AdminFormDisclosure(
     defaultOpen: Boolean,
     content: @Composable () -> Unit
 ) {
-    val openState = remember { mutableStateOf(defaultOpen) }
+    val isOpen = remember { mutableStateOf(defaultOpen) }
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -717,19 +717,15 @@ private fun AdminFormDisclosure(
                     .letterSpacing("0.02em")
             )
             Button(
-                onClick = { openState.value = !openState.value },
-                label = if (openState.value) "−" else "+",
+                onClick = { isOpen.value = !isOpen.value },
+                label = if (isOpen.value) "Collapse" else "Expand",
+                variant = ButtonVariant.GHOST,
                 modifier = Modifier()
-                    .fontSize(1.5.rem)
-                    .fontWeight(600)
-                    .backgroundColor("transparent")
-                    .borderWidth(0)
-                    .cursor(Cursor.Pointer)
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY),
-                variant = ButtonVariant.SECONDARY
+                    .fontSize(1.rem)
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
             )
         }
-        if (openState.value) {
+        if (isOpen.value) {
             Column(
                 modifier = Modifier()
                     .display(Display.Flex)
