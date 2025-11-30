@@ -180,7 +180,7 @@ fun AdminDashboardPage(
             input, textarea, select {
                 padding: ${PortfolioTheme.Spacing.md} ${PortfolioTheme.Spacing.lg} !important;
                 padding-right: 80px !important;
-                color: ${PortfolioTheme.Colors.TEXT_PRIMARY} !important;
+                color: #000000 !important;
             }
             form {
                 padding-right: 64px !important;
