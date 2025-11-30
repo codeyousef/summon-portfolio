@@ -81,7 +81,7 @@ fun ServicesSection(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.Center)
-                    .marginTop(PortfolioTheme.Spacing.xxl)
+                    .marginTop("64px")
             ) {
                 // Use a real link to /services for proper navigation
                 codes.yousef.summon.components.navigation.ButtonLink(
