@@ -12,6 +12,7 @@ import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -81,7 +82,7 @@ fun ServicesSection(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .justifyContent(JustifyContent.Center)
-                    .marginTop("64px")
+                    .marginTop(64.px)
             ) {
                 // Use a real link to /services for proper navigation
                 codes.yousef.summon.components.navigation.ButtonLink(
