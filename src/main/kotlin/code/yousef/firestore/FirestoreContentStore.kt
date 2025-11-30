@@ -199,7 +199,8 @@ class FirestoreContentStore(private val firestore: Firestore) {
                 featured = data["featured"] as? Boolean ?: false,
                 order = (data["order"] as? Number)?.toInt() ?: 0,
                 technologies = (data["technologies"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
-                imageUrl = data["imageUrl"] as? String
+                imageUrl = data["imageUrl"] as? String,
+                githubUrl = data["githubUrl"] as? String
             )
         } catch (e: Exception) {
             null
@@ -315,7 +316,8 @@ class FirestoreContentStore(private val firestore: Firestore) {
         "featured" to featured,
         "order" to order,
         "technologies" to technologies,
-        "imageUrl" to imageUrl
+        "imageUrl" to imageUrl,
+        "githubUrl" to githubUrl
     )
 
     private fun Service.toMap(): Map<String, Any?> = mapOf(

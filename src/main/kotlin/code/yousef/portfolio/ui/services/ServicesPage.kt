@@ -6,7 +6,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
-import code.yousef.portfolio.ui.sections.ContactSection
+import code.yousef.portfolio.ui.sections.ContactFooterSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Paragraph
@@ -42,7 +42,7 @@ fun ServicesPage(
             services = content.services,
             locale = locale
         )
-        ContactSection(locale = locale, modifier = Modifier())
+        ContactFooterSection(locale = locale, modifier = Modifier().id("contact"))
         PortfolioFooter(locale = locale)
     }
 }

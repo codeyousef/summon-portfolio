@@ -204,13 +204,14 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             )
         }
 
-        if (project.technologies.isNotEmpty()) {
-            Row(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .flexWrap(FlexWrap.Wrap)
-                    .gap(PortfolioTheme.Spacing.xs)
-            ) {
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexWrap(FlexWrap.Wrap)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.sm)
+        ) {
+            if (project.technologies.isNotEmpty()) {
                 project.technologies.forEach { tech ->
                     Text(
                         text = tech,
@@ -224,6 +225,29 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
                             .fontSize(0.75.rem)
                     )
                 }
+            }
+            if (project.githubUrl != null) {
+                AnchorLink(
+                    label = "GitHub",
+                    href = project.githubUrl,
+                    modifier = Modifier()
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                        .color("#ffffff")
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .fontSize(0.75.rem)
+                        .fontWeight(600)
+                        .textDecoration(TextDecoration.None),
+                    navigationMode = LinkNavigationMode.Native,
+                    target = "_blank",
+                    rel = "noopener noreferrer",
+                    title = null,
+                    id = null,
+                    ariaLabel = "View ${project.title.en} on GitHub",
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = emptyMap()
+                )
             }
         }
     }
