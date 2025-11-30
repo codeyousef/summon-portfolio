@@ -25,10 +25,6 @@ import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.gap
 import codes.yousef.summon.modifier.StylingModifiers.fontWeight
-import codes.yousef.summon.runtime.mutableStateOf
-import codes.yousef.summon.runtime.remember
-import codes.yousef.summon.components.input.Button
-import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import codes.yousef.summon.runtime.LocalPlatformRenderer
 import codes.yousef.summon.runtime.PlatformRenderer
@@ -189,13 +185,6 @@ fun AdminDashboardPage(
             form {
                 padding-right: 64px !important;
             }
-            details > summary {
-                cursor: pointer;
-                list-style: none;
-            }
-            details > summary::-webkit-details-marker {
-                display: none;
-            }
             """
         )
         Row(
@@ -343,7 +332,7 @@ private fun AdminProjectForm(basePath: String, project: Project?) {
         )
     }
 
-    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing, id = "project-${project?.id ?: "new"}") {
         Form(
             action = adminAction(basePath, "projects/upsert"),
             hiddenFields = project?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
@@ -444,7 +433,7 @@ private fun AdminServiceForm(basePath: String, service: Service?) {
         "➕ Create Service"
     }
 
-    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing, id = "service-${service?.id ?: "new"}") {
         Form(
             action = adminAction(basePath, "services/upsert"),
             hiddenFields = service?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
@@ -505,7 +494,7 @@ private fun AdminBlogForm(basePath: String, post: BlogPost?) {
         "➕ Create Blog Post"
     }
 
-    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing, id = "blog-${post?.id ?: "new"}") {
         Form(
             action = adminAction(basePath, "blog/upsert"),
             hiddenFields = post?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
@@ -596,7 +585,7 @@ private fun AdminTestimonialForm(basePath: String, testimonial: Testimonial?) {
         "➕ Create Testimonial"
     }
 
-    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing) {
+    AdminFormDisclosure(summary = summary, defaultOpen = !isEditing, id = "testimonial-${testimonial?.id ?: "new"}") {
         Form(
             action = adminAction(basePath, "testimonials/upsert"),
             hiddenFields = testimonial?.id?.let { listOf(FormHiddenField("id", it)) } ?: emptyList()
@@ -686,9 +675,11 @@ private fun DeleteEntityForm(
 private fun AdminFormDisclosure(
     summary: String,
     defaultOpen: Boolean,
+    id: String,
     content: @Composable () -> Unit
 ) {
-    val isOpen = remember { mutableStateOf(defaultOpen) }
+    val contentId = "disclosure-content-$id"
+
     Column(
         modifier = Modifier()
             .display(Display.Flex)
@@ -716,25 +707,29 @@ private fun AdminFormDisclosure(
                     .fontWeight(600)
                     .letterSpacing("0.02em")
             )
-            Button(
-                onClick = { isOpen.value = !isOpen.value },
-                label = if (isOpen.value) "Collapse" else "Expand",
-                variant = ButtonVariant.GHOST,
+            // Use Box with data-action for immediate toggle without hydration
+            Box(
                 modifier = Modifier()
-                    .fontSize(1.rem)
+                    .cursor(Cursor.Pointer)
+                    .padding(PortfolioTheme.Spacing.sm)
+                    .fontSize(1.5.rem)
+                    .fontWeight(600)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            )
+                    .dataAttribute("action", """{"type":"toggle","targetId":"$contentId"}""")
+            ) {
+                Text(if (defaultOpen) "−" else "+")
+            }
         }
-        if (isOpen.value) {
-            Column(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .flexDirection(FlexDirection.Column)
-                    .gap(PortfolioTheme.Spacing.md)
-                    .padding(PortfolioTheme.Spacing.lg)
-                    .paddingRight("80px")
-            ) { content() }
-        }
+        // Content with ID for toggle targeting
+        Column(
+            modifier = Modifier()
+                .id(contentId)
+                .display(if (defaultOpen) Display.Flex else Display.None)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.md)
+                .padding(PortfolioTheme.Spacing.lg)
+                .paddingRight("80px")
+        ) { content() }
     }
 }
 
