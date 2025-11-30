@@ -15,6 +15,8 @@ import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -124,17 +126,39 @@ private fun ProjectTextContent(
                 .lineHeight(1.8)
         )
 
-        // Technologies
-        if (project.technologies.isNotEmpty()) {
-            Row(
-                modifier = Modifier()
-                    .display(Display.Flex)
-                    .flexWrap(FlexWrap.Wrap)
-                    .gap(PortfolioTheme.Spacing.xs)
-            ) {
-                project.technologies.forEach { tech ->
-                    GlassPill(text = tech)
-                }
+        // Technologies and GitHub link
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexWrap(FlexWrap.Wrap)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.xs)
+        ) {
+            project.technologies.forEach { tech ->
+                GlassPill(text = tech)
+            }
+            if (project.githubUrl != null) {
+                AnchorLink(
+                    label = "GitHub",
+                    href = project.githubUrl,
+                    modifier = Modifier()
+                        .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                        .color("#ffffff")
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .fontSize(0.75.rem)
+                        .fontWeight(600)
+                        .textDecoration(TextDecoration.None),
+                    navigationMode = LinkNavigationMode.Native,
+                    target = "_blank",
+                    rel = "noopener noreferrer",
+                    title = null,
+                    id = null,
+                    ariaLabel = "View ${project.title.en} on GitHub",
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = emptyMap()
+                )
             }
         }
     }
