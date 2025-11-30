@@ -11,7 +11,6 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.display.RichText
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
 import codes.yousef.summon.components.layout.Box
@@ -188,8 +187,6 @@ fun AdminDashboardPage(
             }
             """
         )
-        // Custom toggle handler that works regardless of hydration state
-        AdminToggleScript()
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -739,66 +736,6 @@ private fun AdminFormDisclosure(
 @Composable
 private fun AdminFormCss() { /* removed */
 }
-
-/**
- * Inline script for handling data-action toggles that works regardless of hydration state.
- * This overrides the default summon behavior which skips data-action when hydration is active.
- */
-@Composable
-private fun AdminToggleScript() {
-    RichText(
-        """<script>
-(function() {
-    function handleDataAction(actionJson, triggerElement) {
-        try {
-            var action = JSON.parse(actionJson);
-            if (action.type === 'toggle' && action.targetId) {
-                var target = document.getElementById(action.targetId);
-                if (target) {
-                    var currentDisplay = getComputedStyle(target).display;
-                    var isHidden = currentDisplay === 'none';
-                    target.style.display = isHidden ? 'flex' : 'none';
-
-                    if (triggerElement) {
-                        triggerElement.setAttribute('aria-expanded', isHidden.toString());
-
-                        var iconSpan = triggerElement.querySelector('span');
-                        if (iconSpan) {
-                            iconSpan.textContent = isHidden ? '−' : '+';
-                        }
-                    }
-                    return true;
-                }
-            }
-        } catch (e) {
-            console.error('[Admin] Error parsing data-action:', e);
-        }
-        return false;
-    }
-
-    document.addEventListener('click', function(e) {
-        var t = e.target;
-        while (t && !t.getAttribute('data-action')) {
-            t = t.parentElement;
-        }
-
-        if (t) {
-            var actionJson = t.getAttribute('data-action');
-            if (actionJson) {
-                if (handleDataAction(actionJson, t)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return;
-                }
-            }
-        }
-    }, true);
-})();
-</script>""",
-        modifier = Modifier()
-    )
-}
-
 
 private fun renderFragmentHtml(content: @Composable () -> Unit): String {
     val previousRenderer = runCatching { LocalPlatformRenderer.current }.getOrNull()
