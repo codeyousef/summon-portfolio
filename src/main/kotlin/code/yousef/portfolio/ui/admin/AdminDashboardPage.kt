@@ -403,6 +403,11 @@ private fun AdminProjectForm(basePath: String, project: Project?) {
                 label = "Technologies (comma separated)",
                 defaultValue = project?.technologies?.joinToString(", ").orEmpty()
             )
+            FormTextField(
+                name = "githubUrl",
+                label = "GitHub URL",
+                defaultValue = project?.githubUrl.orEmpty()
+            )
             FormCheckbox(
                 name = "featured",
                 label = "Featured on landing page",

@@ -29,6 +29,7 @@ fun Parameters.toProject(): Project? {
         ?.split(",")
         ?.mapNotNull { it.trim().takeIf(String::isNotEmpty) }
         ?: emptyList()
+    val githubUrl = this["githubUrl"]?.trim()?.takeIf { it.isNotEmpty() }
     return Project(
         id = id,
         slug = slug,
@@ -39,7 +40,8 @@ fun Parameters.toProject(): Project? {
         category = category,
         featured = featured,
         order = order,
-        technologies = technologies
+        technologies = technologies,
+        githubUrl = githubUrl
     )
 }
 
