@@ -1,12 +1,13 @@
 package code.yousef
 
 import code.yousef.config.AppConfig
+import code.yousef.firestore.FirestoreContentStore
 import code.yousef.firestore.PortfolioMetaService
 import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.content.PortfolioContentService
-import code.yousef.portfolio.content.store.FileContentStore
+import com.google.cloud.firestore.Firestore
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.routes.portfolioRoutes
@@ -30,11 +31,12 @@ import java.time.Instant
 
 fun Application.configureRouting(
     appConfig: AppConfig,
-    portfolioMetaService: PortfolioMetaService
+    portfolioMetaService: PortfolioMetaService,
+    firestore: Firestore
 ) {
     val bootInstant = Instant.now()
-    val contentStore = FileContentStore.fromEnvironment()
-    val contentService = PortfolioContentService.default(contentStore)
+    val contentStore = FirestoreContentStore(firestore)
+    val contentService = PortfolioContentService(contentStore)
     val adminContentService = AdminContentService(contentStore)
     val adminAuthService = AdminAuthService(
         credentialsPath = Paths.get("storage/admin-credentials.json")

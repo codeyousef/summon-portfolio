@@ -1,12 +1,12 @@
 package code.yousef.portfolio.admin
 
+import code.yousef.firestore.FirestoreContentStore
 import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.Service
 import code.yousef.portfolio.content.model.Testimonial
-import code.yousef.portfolio.content.store.FileContentStore
 
-class AdminContentService(private val store: FileContentStore) {
+class AdminContentService(private val store: FirestoreContentStore) {
     fun saveProject(project: Project) = store.upsertProject(project)
 
     fun deleteProject(id: String) = store.deleteProject(id)
