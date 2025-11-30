@@ -10,7 +10,7 @@ import codes.yousef.summon.seo.HeadScope
 import io.ktor.http.*
 
 class BlogRenderer(
-    private val contentService: PortfolioContentService = PortfolioContentService.default()
+    private val contentService: PortfolioContentService
 ) {
     fun renderList(locale: PortfolioLocale): SummonPage {
         val posts = contentService.load().blogPosts

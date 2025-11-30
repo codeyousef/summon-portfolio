@@ -1,36 +1,21 @@
 package code.yousef.portfolio.content
 
+import code.yousef.firestore.FirestoreContentStore
 import code.yousef.portfolio.content.repo.*
-import code.yousef.portfolio.content.seed.PortfolioContentSeed
-import code.yousef.portfolio.content.store.FileContentStore
-import code.yousef.portfolio.content.store.StoreBlogRepository
-import code.yousef.portfolio.content.store.StoreProjectRepository
-import code.yousef.portfolio.content.store.StoreServiceRepository
 
 class PortfolioContentService(
-    private val heroProvider: () -> HeroProviderResult,
-    private val projectRepository: ProjectRepository,
-    private val serviceRepository: ServiceRepository,
-    private val blogRepository: BlogRepository
+    private val store: FirestoreContentStore
 ) {
 
-    data class HeroProviderResult(val hero: code.yousef.portfolio.content.model.HeroContent)
+    fun load(): PortfolioContent = store.loadPortfolioContent()
 
-    fun load(): PortfolioContent =
-        PortfolioContent(
-            hero = heroProvider().hero,
-            projects = projectRepository.list(),
-            services = serviceRepository.list(),
-            blogPosts = blogRepository.list()
-        )
+    fun listProjects() = store.listProjects()
 
-    companion object {
-        fun default(store: FileContentStore = FileContentStore.fromEnvironment()): PortfolioContentService =
-            PortfolioContentService(
-                heroProvider = { HeroProviderResult(store.snapshot().hero) },
-                projectRepository = StoreProjectRepository(store),
-                serviceRepository = StoreServiceRepository(store),
-                blogRepository = StoreBlogRepository(store)
-            )
+    fun listServices() = store.listServices()
+
+    fun listBlogPosts() = store.listBlogPosts()
+
+    fun findBlogPostBySlug(slug: String) = store.listBlogPosts().firstOrNull {
+        it.slug.equals(slug, ignoreCase = true)
     }
 }

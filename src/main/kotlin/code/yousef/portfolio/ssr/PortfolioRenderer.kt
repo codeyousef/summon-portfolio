@@ -8,7 +8,7 @@ import code.yousef.portfolio.ui.services.ServicesPage
 import codes.yousef.summon.seo.HeadScope
 
 class PortfolioRenderer(
-    private val contentService: PortfolioContentService = PortfolioContentService.default()
+    private val contentService: PortfolioContentService
 ) {
 
     fun landingPage(locale: PortfolioLocale, servicesModalOpen: Boolean = false): SummonPage {

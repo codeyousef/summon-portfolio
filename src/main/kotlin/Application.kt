@@ -93,7 +93,7 @@ fun Application.module() {
             }
         }
     }
-    configureRouting(appConfig, portfolioMetaService)
+    configureRouting(appConfig, portfolioMetaService, firestore)
 }
 
 @Serializable
