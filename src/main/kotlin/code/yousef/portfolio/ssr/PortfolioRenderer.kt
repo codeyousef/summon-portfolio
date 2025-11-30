@@ -16,7 +16,7 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = locale,
-                pageTitle = "Yousef · Portfolio",
+                pageTitle = "Yousef",
                 description = "Systems, frameworks, and immersive experiences crafted from first principles."
             ),
             content = {
@@ -31,7 +31,7 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = locale,
-                pageTitle = "Projects · Yousef",
+                pageTitle = "Projects | Yousef",
                 description = "Featured language, framework, and experience builds from the studio."
             ),
             content = {
@@ -50,7 +50,7 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = locale,
-                pageTitle = "Services · Yousef",
+                pageTitle = "Services | Yousef",
                 description = "Engagements across systems engineering, framework design, and interactive experiences."
             ),
             content = {

@@ -74,7 +74,7 @@ fun ServiceDetailsList(
                             ariaDescribedBy = null,
                             dataHref = null,
                             dataAttributes = mapOf("cta" to "service-proposal"),
-                            navigationMode = LinkNavigationMode.Client
+                            navigationMode = LinkNavigationMode.Native
                         )
                     }
                 }

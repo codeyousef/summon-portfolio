@@ -7,6 +7,9 @@ import code.yousef.portfolio.ui.foundation.ContentSection
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
@@ -39,6 +42,32 @@ fun AboutMeSection(
                     .lineHeight(1.8)
                     .fontSize(1.1.rem)
             )
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .marginTop(PortfolioTheme.Spacing.sm)
+            ) {
+                AnchorLink(
+                    label = "X (Twitter)",
+                    href = "https://x.com/deepissuemassaj",
+                    modifier = Modifier()
+                        .color(PortfolioTheme.Colors.ACCENT)
+                        .fontWeight(600)
+                        .textDecoration(TextDecoration.Underline)
+                        .style("text-underline-offset", "4px"),
+                    target = "_blank",
+                    rel = "noopener noreferrer",
+                    navigationMode = LinkNavigationMode.Native,
+                    title = null,
+                    id = null,
+                    ariaLabel = "Follow on X (Twitter)",
+                    ariaDescribedBy = null,
+                    dataHref = null,
+                    dataAttributes = emptyMap()
+                )
+            }
         }
     }
 }

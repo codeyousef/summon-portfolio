@@ -21,5 +21,6 @@ data class Project(
     val featured: Boolean = false,
     val order: Int = 0,
     val technologies: List<String> = emptyList(),
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val githubUrl: String? = null
 )
