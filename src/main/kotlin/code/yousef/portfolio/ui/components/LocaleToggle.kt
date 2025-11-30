@@ -24,6 +24,7 @@ fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, nativeBase
             .alignItems(AlignItems.Center)
             .gap(PortfolioTheme.Spacing.xs)
             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+            .marginRight(PortfolioTheme.Spacing.lg)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
