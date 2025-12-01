@@ -42,12 +42,12 @@ fun PostHogAnalytics() {
     
     renderer.renderHeadElements {
         script(
-            null,                    // src - inline script, no external source
-            "posthog-analytics",     // id
-            "text/javascript",       // type
-            false,                   // async
-            false,                   // defer
-            postHogScript            // text content
+            src = null,              // no external source, inline script
+            content = postHogScript, // inline script content
+            type = "text/javascript",
+            async = false,
+            defer = false,
+            crossorigin = null
         )
     }
 }
