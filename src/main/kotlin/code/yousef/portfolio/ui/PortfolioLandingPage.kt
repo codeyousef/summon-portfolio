@@ -244,14 +244,13 @@ private fun StructuredDataSnippet() {
         }
     """.trimIndent()
     renderer.renderHeadElements {
-        // Correct argument order: src, id, type, async, defer, text
         script(
-            null,
-            "portfolio-structured-data",
-            "application/ld+json",
-            false,
-            false,
-            schema
+            src = null,
+            content = schema,
+            type = "application/ld+json",
+            async = false,
+            defer = false,
+            crossorigin = null
         )
     }
 }
