@@ -76,6 +76,7 @@ class DocsRouter(
 
     private fun headBlock(title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
         head.title("$title · Summon Docs")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("description", null, description, null, null)
         head.meta(null, "og:title", title, null, null)
         head.meta(null, "og:description", description, null, null)

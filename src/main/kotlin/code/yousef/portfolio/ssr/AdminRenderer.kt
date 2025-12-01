@@ -30,6 +30,7 @@ class AdminRenderer {
         return SummonPage(
             head = { head ->
                 head.title("Admin · Summon Portfolio")
+                head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
                 head.meta("robots", "noindex", null, null, null)
             },
             content = {

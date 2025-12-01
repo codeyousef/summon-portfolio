@@ -46,6 +46,7 @@ class BlogRenderer(
     private fun listHead(locale: PortfolioLocale): (HeadScope) -> Unit = { head ->
         val canonical = blogCanonical(locale)
         head.title("Articles · Yousef")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta(
             "description",
             null,
@@ -84,6 +85,7 @@ class BlogRenderer(
         val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef"
         val description = post?.excerpt?.resolve(locale) ?: "The requested article could not be located."
         head.title(title)
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         // Standard description
         head.meta("description", null, description, null, null)
         // OpenGraph

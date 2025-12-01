@@ -71,6 +71,7 @@ class PortfolioRenderer(
     ): (HeadScope) -> Unit = { head ->
         val canonical = canonicalUrl(locale)
         head.title(pageTitle)
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         // Standard name=description
         head.meta("description", null, description, null, null)
         // OpenGraph: property attributes

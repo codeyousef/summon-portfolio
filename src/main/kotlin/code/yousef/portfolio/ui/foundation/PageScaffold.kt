@@ -23,6 +23,7 @@ fun PageScaffold(
     content: () -> Unit
 ) {
     InjectFontAssets()
+    PostHogAnalytics()
 
     // Global mobile styles
     GlobalStyle(

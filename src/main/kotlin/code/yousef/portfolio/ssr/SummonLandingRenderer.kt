@@ -21,6 +21,7 @@ class SummonLandingRenderer {
         val description =
             "Summon is a Kotlin Multiplatform frontend framework for shipping high-performance interfaces across web, mobile, and desktop."
         head.title(title)
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         // Standard description
         head.meta("description", null, description, null, null)
         // OpenGraph
