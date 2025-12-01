@@ -25,9 +25,18 @@ fun PageScaffold(
     InjectFontAssets()
     PostHogAnalytics()
 
-    // Global mobile styles
+    // Global styles to prevent zoom and horizontal overflow on mobile
     GlobalStyle(
         """
+        html, body {
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
         @media (max-width: 768px) {
             [data-page-content="true"] {
                 padding: ${PortfolioTheme.Spacing.sm} !important;
@@ -129,7 +138,7 @@ private fun GrainLayer() {
     Box(
         modifier = Modifier()
             .position(Position.Fixed)
-            .inset("-20vmax")
+            .inset("0")
             .opacity(0.06F)
             .pointerEvents(PointerEvents.None)
             .mixBlendMode(BlendMode.Multiply)
