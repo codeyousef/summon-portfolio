@@ -17,9 +17,9 @@ class MateriaLandingRenderer {
 
     private fun headBlock(): (HeadScope) -> Unit = { head ->
         val marketingUrl = materiaMarketingUrl()
-        val title = "Materia · Material Design 3 for Summon"
+        val title = "Materia · Kotlin Multiplatform 3D Graphics Library"
         val description =
-            "Materia is a Material Design 3 component library for the Summon framework. Build beautiful, accessible UIs with Kotlin Multiplatform."
+            "Kotlin Multiplatform 3D graphics library with WebGPU/Vulkan backends. Write 3D apps once, deploy on JVM, Web, Android, iOS & Native with type-safe math, scene graph, materials & more."
         head.title(title)
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         // Standard description
