@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui.summon
 
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.PageScaffold
@@ -35,6 +36,7 @@ fun SummonLandingPage(
         SummonHero(docsUrl, apiReferenceUrl)
         SummonFeatureGrid()
         SummonRuntimeCallout(docsUrl)
+        MateriaPromoCallout()
         SummonCtaFooter(docsUrl, apiReferenceUrl)
         PortfolioFooter(locale = PortfolioLocale.EN)
     }
@@ -267,6 +269,57 @@ fun PricingCard(plan: Plan) {
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun MateriaPromoCallout() {
+    SectionWrap {
+        Column(
+            modifier = Modifier()
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.lg)
+                .padding(PortfolioTheme.Spacing.lg)
+                .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                .gap(PortfolioTheme.Spacing.sm)
+        ) {
+            Text(
+                text = "Looking for UI components?",
+                modifier = Modifier()
+                    .fontWeight(700)
+                    .fontSize(1.2.rem)
+            )
+            Paragraph(
+                text = "Check out Materia — a Material Design 3 component library built for Summon. Get beautiful, accessible buttons, cards, dialogs, and more out of the box.",
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .lineHeight(1.6)
+            )
+            ButtonLink(
+                label = "Explore Materia →",
+                href = materiaMarketingUrl(),
+                modifier = Modifier()
+                    .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                    .color("#ffffff")
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                    .borderRadius(PortfolioTheme.Radii.md)
+                    .fontWeight(700)
+                    .textDecoration(TextDecoration.None)
+                    .whiteSpace(WhiteSpace.NoWrap)
+                    .marginTop(PortfolioTheme.Spacing.sm),
+                navigationMode = LinkNavigationMode.Native,
+                dataAttributes = mapOf("summon-cta" to "materia-promo"),
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null
+            )
         }
     }
 }

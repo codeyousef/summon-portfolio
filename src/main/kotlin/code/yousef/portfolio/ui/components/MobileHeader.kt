@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
@@ -145,6 +146,20 @@ fun MobileHeader(
                             ariaDescribedBy = null,
                             dataHref = null,
                             dataAttributes = mapOf("nav" to "summon"),
+                            navigationMode = LinkNavigationMode.Native,
+                        )
+                        AnchorLink(
+                            label = "Materia",
+                            href = materiaMarketingUrl(),
+                            modifier = baseNavModifier,
+                            target = null,
+                            rel = null,
+                            title = null,
+                            id = null,
+                            ariaLabel = null,
+                            ariaDescribedBy = null,
+                            dataHref = null,
+                            dataAttributes = mapOf("nav" to "materia"),
                             navigationMode = LinkNavigationMode.Native,
                         )
 
