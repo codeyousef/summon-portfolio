@@ -46,6 +46,8 @@ fun Application.configureRouting(
     val adminRenderer = AdminRenderer()
     val contactService = ContactService()
     // hydrationBundle removed as it is now embedded in Summon Core
+    
+    // Summon docs services
     val docsConfig = DocsConfig.fromEnv()
     val docsCache = DocsCache(docsConfig.cacheTtlSeconds)
     val docsService = DocsService(docsConfig, docsCache)
@@ -56,14 +58,31 @@ fun Application.configureRouting(
     val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio)
     val summonLandingRenderer = SummonLandingRenderer()
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
+    
+    // Materia docs services
+    val materiaDocsConfig = DocsConfig.materiaFromEnv()
+    val materiaDocsCache = DocsCache(materiaDocsConfig.cacheTtlSeconds)
+    val materiaDocsService = DocsService(materiaDocsConfig, materiaDocsCache)
+    val materiaDocsCatalog = DocsCatalog(materiaDocsConfig)
+    val materiaSeoExtractor = SeoExtractor(materiaDocsConfig)
+    val materiaDocsRouter = DocsRouter(materiaSeoExtractor, materiaDocsConfig.publicOriginPortfolio)
+    val materiaWebhookHandler = WebhookHandler(materiaDocsService, materiaDocsCache, materiaDocsConfig, materiaDocsCatalog)
+    
     val summonLandingHosts =
-        (System.getenv("SUMMON_LANDING_HOSTS") ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.uat.yousef.codes")
+        (System.getenv("SUMMON_LANDING_HOSTS") ?: "summon.yousef.codes,summon.dev.yousef.codes")
         .split(",")
         .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
     val docsHosts = (System.getenv("DOCS_HOSTS")
         ?: "summon.yousef.codes,summon.dev.yousef.codes,summon.localhost,docs.localhost,summon.site")
         .split(",")
         .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
+    
+    // Materia docs hosts (materia.yousef.codes and variants)
+    val materiaDocsHosts = (System.getenv("MATERIA_DOCS_HOSTS")
+        ?: "materia.yousef.codes,materia.dev.yousef.codes,materia.localhost")
+        .split(",")
+        .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
+    
     val configuredPort = appConfig.port
 
     routing {
@@ -157,6 +176,44 @@ fun Application.configureRouting(
                 }
             }
 
+        // Mount Materia docs on material.* hosts at /docs
+        materiaDocsHosts
+            .flatMap { rawHost ->
+                val parts = rawHost.split(":", limit = 2)
+                val host = parts[0]
+                val port = parts.getOrNull(1)?.toIntOrNull()
+                if (port != null) listOf(host to port) else listOf(host to null, host to configuredPort)
+            }
+            .forEach { (hostName, port) ->
+                val mountMateriaDocsForHost: Route.() -> Unit = {
+                    get("/health") { call.respondHealth(bootInstant) }
+                    get("/healthz") { call.respondHealthz(appConfig, bootInstant) }
+                    // Serve Materia docs at /docs on material.* hosts
+                    route("/docs") {
+                        docsRoutes(
+                            docsService = materiaDocsService,
+                            markdownRenderer = markdownRenderer,
+                            linkRewriter = linkRewriter,
+                            docsRouter = materiaDocsRouter,
+                            webhookHandler = materiaWebhookHandler,
+                            config = materiaDocsConfig,
+                            docsCatalog = materiaDocsCatalog,
+                            pathResolver = { call ->
+                                val raw = call.request.path()
+                                raw.removePrefix("/docs").ifBlank { "/" }
+                            },
+                            basePath = "/docs",
+                            registerInfrastructure = false
+                        )
+                    }
+                }
+                if (port != null) {
+                    host(hostName, port) { mountMateriaDocsForHost() }
+                } else {
+                    host(hostName) { mountMateriaDocsForHost() }
+                }
+            }
+
         route("/summon") {
             docsRoutes(
                 docsService = docsService,
@@ -174,6 +231,31 @@ fun Application.configureRouting(
                 basePath = "/summon",
                 registerInfrastructure = false
             )
+        }
+
+        // Materia docs accessible on portfolio at /materia
+        route("/materia") {
+            docsRoutes(
+                docsService = materiaDocsService,
+                markdownRenderer = markdownRenderer,
+                linkRewriter = linkRewriter,
+                docsRouter = materiaDocsRouter,
+                webhookHandler = materiaWebhookHandler,
+                config = materiaDocsConfig,
+                docsCatalog = materiaDocsCatalog,
+                pathResolver = { call ->
+                    val raw = call.request.path()
+                    val stripped = raw.removePrefix("/materia")
+                    stripped.ifBlank { "/" }
+                },
+                basePath = "/materia",
+                registerInfrastructure = false
+            )
+        }
+
+        // Materia webhook endpoint (separate from Summon)
+        post("/__hooks/github/materia") {
+            materiaWebhookHandler.handle(call)
         }
 
         // Redirect portfolio-hosted /docs and /api-reference paths to the public docs site
