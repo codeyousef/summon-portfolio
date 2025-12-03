@@ -55,7 +55,7 @@ fun Application.configureRouting(
     val markdownRenderer = MarkdownRenderer()
     val linkRewriter = LinkRewriter()
     val seoExtractor = SeoExtractor(docsConfig)
-    val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio, DocsBranding.summon(summonMarketingUrl()))
+    val docsRouter = DocsRouter(seoExtractor, docsConfig.publicOriginPortfolio, DocsBranding.summon())
     val summonLandingRenderer = SummonLandingRenderer()
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
     
@@ -65,7 +65,7 @@ fun Application.configureRouting(
     val materiaDocsService = DocsService(materiaDocsConfig, materiaDocsCache)
     val materiaDocsCatalog = DocsCatalog(materiaDocsConfig)
     val materiaSeoExtractor = SeoExtractor(materiaDocsConfig)
-    val materiaDocsRouter = DocsRouter(materiaSeoExtractor, materiaDocsConfig.publicOriginPortfolio, DocsBranding.materia(materiaMarketingUrl()))
+    val materiaDocsRouter = DocsRouter(materiaSeoExtractor, materiaDocsConfig.publicOriginPortfolio, DocsBranding.materia())
     val materiaLandingRenderer = MateriaLandingRenderer()
     val materiaWebhookHandler = WebhookHandler(materiaDocsService, materiaDocsCache, materiaDocsConfig, materiaDocsCatalog)
     

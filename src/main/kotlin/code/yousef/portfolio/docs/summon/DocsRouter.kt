@@ -30,7 +30,7 @@ import java.net.URI
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
     private val portfolioOrigin: String,
-    private val branding: DocsBranding = DocsBranding.summon(summonMarketingUrl()),
+    private val branding: DocsBranding = DocsBranding.summon(),
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     fun render(
