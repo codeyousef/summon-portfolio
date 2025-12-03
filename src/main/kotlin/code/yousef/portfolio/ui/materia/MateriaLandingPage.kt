@@ -64,8 +64,8 @@ private fun MateriaHero(docsUrl: String, apiReferenceUrl: String) {
                     src = "/static/materia-logo.png",
                     alt = "Materia",
                     modifier = Modifier()
-                        .width(cssClamp(48.px, 10.vw, 96.px))
-                        .height(cssClamp(48.px, 10.vw, 96.px))
+                        .width(cssClamp(64.px, 12.vw, 128.px))
+                        .height(cssClamp(64.px, 12.vw, 128.px))
                 )
                 Text(
                     text = "Materia",
@@ -77,7 +77,7 @@ private fun MateriaHero(docsUrl: String, apiReferenceUrl: String) {
                 )
             }
             Paragraph(
-                text = "A Material Design 3 component library for Summon. Build beautiful, accessible UIs with Kotlin Multiplatform.",
+                text = "Kotlin Multiplatform 3D graphics library with WebGPU/Vulkan backends. Write 3D apps once, deploy on JVM, Web, Android, iOS & Native.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(1.3.rem)
@@ -133,7 +133,7 @@ private fun MateriaHero(docsUrl: String, apiReferenceUrl: String) {
                 )
             }
             Paragraph(
-                text = "Materia brings Material Design 3 components to the Summon framework, with full theming support, accessibility built-in, and seamless integration across all platforms.",
+                text = "Materia provides Three.js-equivalent capabilities for Kotlin with type-safe math, scene graph, materials, lighting, and more—all with seamless multiplatform deployment.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
@@ -145,16 +145,16 @@ private data class Feature(val title: String, val description: String)
 
 private val materiaFeatures = listOf(
     Feature(
-        title = "Material Design 3",
-        description = "Full implementation of Google's latest design system with dynamic color, updated components, and modern aesthetics."
+        title = "WebGPU & Vulkan",
+        description = "Modern graphics backends with automatic fallback. High-performance rendering across all platforms."
     ),
     Feature(
-        title = "Accessible by default",
-        description = "Every component ships with proper ARIA attributes, keyboard navigation, and screen reader support."
+        title = "Type-safe 3D Math",
+        description = "Vectors, matrices, quaternions, and transforms with full Kotlin type safety and operator overloading."
     ),
     Feature(
-        title = "Theming system",
-        description = "Customize colors, typography, and shapes with a powerful theming API that works across all platforms."
+        title = "Scene Graph & Materials",
+        description = "Hierarchical scene management, PBR materials, lighting systems, and camera controls out of the box."
     )
 )
 
@@ -209,19 +209,19 @@ private fun MateriaComponentCallout(docsUrl: String) {
                     .gap(PortfolioTheme.Spacing.sm)
             ) {
                 Text(
-                    text = "Rich component library",
+                    text = "Full 3D toolkit",
                     modifier = Modifier()
                         .fontWeight(700)
                         .fontSize(1.2.rem)
                 )
                 Paragraph(
-                    text = "Materia includes buttons, cards, dialogs, navigation, forms, and more—all following Material Design 3 specifications.",
+                    text = "Materia includes meshes, geometries, textures, shaders, lights, cameras, and post-processing effects—everything you need for 3D graphics.",
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .lineHeight(1.6)
                 )
                 Paragraph(
-                    text = "Explore the full component catalog in the docs.",
+                    text = "Explore the full API and examples in the docs.",
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 )
@@ -253,32 +253,32 @@ private fun MateriaComponentCallout(docsUrl: String) {
                     .backgroundColor(PortfolioTheme.Colors.SURFACE)
             ) {
                 val snippet = """
-@Composable
-fun ProfileCard(user: User) {
-  Card(
-    modifier = Modifier()
-      .fillMaxWidth()
-  ) {
-    Column(
-      modifier = Modifier()
-        .padding(16.px)
-        .gap(12.px)
-    ) {
-      Text(
-        user.name,
-        style = MaterialTheme.typography.headlineSmall
-      )
-      Text(
-        user.email,
-        style = MaterialTheme.typography.bodyMedium
-      )
-      FilledButton(
-        onClick = { /* ... */ },
-        label = "View Profile"
-      )
-    }
-  }
+// Create scene and camera
+val scene = Scene()
+val camera = PerspectiveCamera(
+    fov = 75f,
+    aspect = 16f / 9f,
+    near = 0.1f,
+    far = 1000f
+).apply {
+    position.set(0f, 2f, 5f)
+    lookAt(Vector3.ZERO)
 }
+
+// Create geometry and material
+val geometry = BoxGeometry(1f, 1f, 1f)
+val material = MeshStandardMaterial(
+    color = Color(0f, 1f, 0f),
+    metalness = 0.3f,
+    roughness = 0.4f
+)
+
+// Create mesh and add to scene
+val cube = Mesh(geometry, material)
+scene.add(cube)
+
+// Render
+renderer.render(scene, camera)
                 """.trimIndent()
                 Text(
                     text = snippet,
@@ -308,13 +308,13 @@ private fun SummonPromoCallout() {
                 .gap(PortfolioTheme.Spacing.sm)
         ) {
             Text(
-                text = "Interested in web development with Kotlin?",
+                text = "Building web apps with Kotlin?",
                 modifier = Modifier()
                     .fontWeight(700)
                     .fontSize(1.2.rem)
             )
             Paragraph(
-                text = "Check out Summon — the Kotlin Multiplatform frontend framework that powers Materia. Build high-performance apps across JVM, JS, and WASM with a single codebase.",
+                text = "Check out Summon — a Kotlin Multiplatform frontend framework for high-performance apps across JVM, JS, and WASM with a single codebase.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.6)
@@ -381,8 +381,11 @@ private fun MateriaCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .backgroundColor("transparent")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                        .borderRadius(PortfolioTheme.Radii.md),
+                        .borderRadius(PortfolioTheme.Radii.md)
+                        .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
                     dataAttributes = mapOf("materia-cta" to "docs-footer"),
                     target = null,
@@ -400,8 +403,11 @@ private fun MateriaCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .backgroundColor("transparent")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                        .borderRadius(PortfolioTheme.Radii.md),
+                        .borderRadius(PortfolioTheme.Radii.md)
+                        .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
                     dataAttributes = mapOf("materia-cta" to "api-footer"),
                     target = null,
@@ -419,8 +425,11 @@ private fun MateriaCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .backgroundColor("transparent")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                        .borderRadius(PortfolioTheme.Radii.md),
+                        .borderRadius(PortfolioTheme.Radii.md)
+                        .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
                     dataAttributes = mapOf("materia-cta" to "x-follow"),
                     target = "_blank",

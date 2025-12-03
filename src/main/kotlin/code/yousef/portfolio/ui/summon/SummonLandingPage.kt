@@ -66,8 +66,8 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                     src = "/static/summon-logo.png",
                     alt = "Summon",
                     modifier = Modifier()
-                        .width(cssClamp(48.px, 10.vw, 96.px))
-                        .height(cssClamp(48.px, 10.vw, 96.px))
+                        .width(cssClamp(64.px, 12.vw, 128.px))
+                        .height(cssClamp(64.px, 12.vw, 128.px))
                 )
                 Text(
                     text = "Summon",
@@ -306,13 +306,13 @@ private fun MateriaPromoCallout() {
                 .gap(PortfolioTheme.Spacing.sm)
         ) {
             Text(
-                text = "Looking for UI components?",
+                text = "Need 3D graphics?",
                 modifier = Modifier()
                     .fontWeight(700)
                     .fontSize(1.2.rem)
             )
             Paragraph(
-                text = "Check out Materia — a Material Design 3 component library built for Summon. Get beautiful, accessible buttons, cards, dialogs, and more out of the box.",
+                text = "Check out Materia — a Kotlin Multiplatform 3D graphics library with WebGPU/Vulkan backends. Build 3D apps once, deploy everywhere.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.6)
@@ -379,8 +379,11 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .backgroundColor("transparent")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                        .borderRadius(PortfolioTheme.Radii.md),
+                        .borderRadius(PortfolioTheme.Radii.md)
+                        .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
                     dataAttributes = mapOf("summon-cta" to "docs-footer"),
                     target = null,
@@ -398,8 +401,11 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .backgroundColor("transparent")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                        .borderRadius(PortfolioTheme.Radii.md),
+                        .borderRadius(PortfolioTheme.Radii.md)
+                        .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
                     dataAttributes = mapOf("summon-cta" to "api-footer"),
                     target = null,
@@ -417,8 +423,11 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
+                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .backgroundColor("transparent")
                         .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                        .borderRadius(PortfolioTheme.Radii.md),
+                        .borderRadius(PortfolioTheme.Radii.md)
+                        .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
                     dataAttributes = mapOf("summon-cta" to "x-follow"),
                     target = "_blank",
