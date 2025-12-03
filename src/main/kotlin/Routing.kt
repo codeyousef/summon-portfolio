@@ -66,6 +66,7 @@ fun Application.configureRouting(
     val materiaDocsCatalog = DocsCatalog(materiaDocsConfig)
     val materiaSeoExtractor = SeoExtractor(materiaDocsConfig)
     val materiaDocsRouter = DocsRouter(materiaSeoExtractor, materiaDocsConfig.publicOriginPortfolio)
+    val materiaLandingRenderer = MateriaLandingRenderer()
     val materiaWebhookHandler = WebhookHandler(materiaDocsService, materiaDocsCache, materiaDocsConfig, materiaDocsCatalog)
     
     val summonLandingHosts =
@@ -188,9 +189,20 @@ fun Application.configureRouting(
                 val mountMateriaDocsForHost: Route.() -> Unit = {
                     get("/health") { call.respondHealth(bootInstant) }
                     get("/healthz") { call.respondHealthz(appConfig, bootInstant) }
-                    // Redirect root to /docs
+                    // Serve Materia landing page at /
                     get("/") {
-                        call.respondRedirect("/docs", permanent = false)
+                        val host = call.request.host()
+                        val links = resolveEnvironmentLinks(host)
+                        EnvironmentLinksRegistry.withLinks(links) {
+                            val page = materiaLandingRenderer.landingPage()
+                            SummonRenderLock.withLock {
+                                call.respondSummonHydrated {
+                                    val renderer = getPlatformRenderer()
+                                    renderer.renderHeadElements(page.head)
+                                    page.content()
+                                }
+                            }
+                        }
                     }
                     // Serve Materia docs at /docs on materia.* hosts
                     route("/docs") {
