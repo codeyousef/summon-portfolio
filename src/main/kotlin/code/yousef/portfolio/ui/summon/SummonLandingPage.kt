@@ -4,6 +4,8 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.LandingBranding
+import code.yousef.portfolio.ui.components.LandingNavbar
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.PortfolioFooter
@@ -33,7 +35,9 @@ fun SummonLandingPage(
     apiReferenceUrl: String
 ) {
     PageScaffold(locale = PortfolioLocale.EN) {
-
+        LandingNavbar(
+            branding = LandingBranding.summon(docsUrl, apiReferenceUrl)
+        )
         SummonHero(docsUrl, apiReferenceUrl)
         SummonFeatureGrid()
         SummonRuntimeCallout(docsUrl)
@@ -62,8 +66,8 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                     src = "/static/summon-logo.png",
                     alt = "Summon",
                     modifier = Modifier()
-                        .width(64.px)
-                        .height(64.px)
+                        .width(cssClamp(48.px, 10.vw, 96.px))
+                        .height(cssClamp(48.px, 10.vw, 96.px))
                 )
                 Text(
                     text = "Summon",
