@@ -10,6 +10,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
@@ -193,23 +194,38 @@ private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBr
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
-        AnchorLink(
-            label = branding.name,
-            href = branding.homeUrl,
+        Row(
             modifier = Modifier()
-                .fontWeight(700)
-                .fontSize(1.25.rem)
-                .color(branding.accentColor),
-            navigationMode = LinkNavigationMode.Native,
-            target = null,
-            rel = null,
-            title = null,
-            id = null,
-            ariaLabel = null,
-            ariaDescribedBy = null,
-            dataHref = null,
-            dataAttributes = emptyMap()
-        )
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.sm)
+        ) {
+            Image(
+                src = branding.logoPath,
+                alt = branding.name,
+                modifier = Modifier()
+                    .width(28.px)
+                    .height(28.px)
+            )
+            AnchorLink(
+                label = branding.name,
+                href = branding.homeUrl,
+                modifier = Modifier()
+                    .fontWeight(700)
+                    .fontSize(1.25.rem)
+                    .color(branding.accentColor)
+                    .textDecoration(TextDecoration.None),
+                navigationMode = LinkNavigationMode.Native,
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = emptyMap()
+            )
+        }
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
