@@ -42,7 +42,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
             Image(
-                src = "/static/logo.png",
+                src = "/static/summon-logo.png",
                 alt = "Summon",
                 modifier = Modifier()
                     .width(24.px)

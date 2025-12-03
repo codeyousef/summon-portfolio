@@ -8,6 +8,7 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
@@ -51,14 +52,28 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                 .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
-            Text(
-                text = "Summon",
+            Row(
                 modifier = Modifier()
-                    .fontSize(cssClamp(48.px, 8.vw, 96.px))
-                    .fontWeight(900)
-                    .letterSpacing("-0.02em")
-                    .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
-            )
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+            ) {
+                Image(
+                    src = "/static/summon-logo.png",
+                    alt = "Summon",
+                    modifier = Modifier()
+                        .width(64.px)
+                        .height(64.px)
+                )
+                Text(
+                    text = "Summon",
+                    modifier = Modifier()
+                        .fontSize(cssClamp(48.px, 8.vw, 96.px))
+                        .fontWeight(900)
+                        .letterSpacing("-0.02em")
+                        .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
+                )
+            }
             Paragraph(
                 text = "A Kotlin Multiplatform frontend framework for high-performance apps across JVM, JS, and WASM.",
                 modifier = Modifier()
@@ -388,6 +403,25 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                     title = null,
                     id = null,
                     ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null
+                )
+                ButtonLink(
+                    label = "Follow on X →",
+                    href = "https://x.com/DeepIssueMassaj",
+                    modifier = Modifier()
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER)
+                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                        .borderRadius(PortfolioTheme.Radii.md),
+                    navigationMode = LinkNavigationMode.Native,
+                    dataAttributes = mapOf("summon-cta" to "x-follow"),
+                    target = "_blank",
+                    rel = "noopener noreferrer",
+                    title = null,
+                    id = null,
+                    ariaLabel = "Follow on X (Twitter)",
                     ariaDescribedBy = null,
                     dataHref = null
                 )

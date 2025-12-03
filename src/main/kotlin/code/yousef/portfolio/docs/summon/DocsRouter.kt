@@ -4,6 +4,7 @@ import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.HYDRATION_SCRIPT_PATH
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
@@ -28,6 +29,7 @@ import java.net.URI
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
     private val portfolioOrigin: String,
+    private val branding: DocsBranding = DocsBranding.summon(summonMarketingUrl()),
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     fun render(
@@ -45,7 +47,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock(seo.title, seo.description, seo.canonicalUrl),
             content = {
-                DocsPageFrame(navBase, origin) {
+                DocsPageFrame(navBase, origin, branding) {
                     DocsShell(
                         requestPath = requestPath,
                         html = html,
@@ -67,7 +69,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock("Not found", "This page could not be located.", canonical),
             content = {
-                DocsPageFrame(navBase, origin) {
+                DocsPageFrame(navBase, origin, branding) {
                     DocsNotFoundContent(navJson)
                 }
             }
@@ -75,7 +77,7 @@ class DocsRouter(
     }
 
     private fun headBlock(title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
-        head.title("$title · Summon Docs")
+        head.title("$title · ${branding.docsTitle}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("description", null, description, null, null)
         head.meta(null, "og:title", title, null, null)
@@ -160,7 +162,7 @@ private fun DocsNotFoundContent(navJson: String) {
 }
 
 @Composable
-private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Composable () -> Unit) {
+private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, content: @Composable () -> Unit) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         Column(
             modifier = Modifier()
@@ -168,7 +170,7 @@ private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Com
                 .flexDirection(FlexDirection.Column)
                 .width(100.percent)
         ) {
-            DocsNavbar(navBaseUrl, docsBaseUrl)
+            DocsNavbar(navBaseUrl, docsBaseUrl, branding)
             SectionWrap(maxWidthPx = 1500) {
                 content()
             }
@@ -177,7 +179,7 @@ private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, content: @Com
 }
 
 @Composable
-private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String) {
+private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding) {
     val docsPath = "/docs"
     val apiReferencePath = "/docs/api-reference"
     Row(
@@ -192,12 +194,12 @@ private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String) {
             .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
         AnchorLink(
-            label = "Summon",
-            href = summonMarketingUrl(),
+            label = branding.name,
+            href = branding.homeUrl,
             modifier = Modifier()
                 .fontWeight(700)
                 .fontSize(1.25.rem)
-                .color(PortfolioTheme.Colors.ACCENT_ALT),
+                .color(branding.accentColor),
             navigationMode = LinkNavigationMode.Native,
             target = null,
             rel = null,
@@ -214,14 +216,14 @@ private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String) {
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
-            DocsNavLink(label = "Documentation", href = docsPath)
-            DocsNavLink(label = "API Reference", href = apiReferencePath)
+            DocsNavLink(label = "Documentation", href = docsPath, accentColor = branding.accentColor)
+            DocsNavLink(label = "API Reference", href = apiReferencePath, accentColor = branding.accentColor)
         }
     }
 }
 
 @Composable
-private fun DocsNavLink(label: String, href: String) {
+private fun DocsNavLink(label: String, href: String, accentColor: String = PortfolioTheme.Colors.ACCENT_ALT) {
     AnchorLink(
         label = label,
         href = href,
@@ -230,7 +232,7 @@ private fun DocsNavLink(label: String, href: String) {
             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
             .hover(
                 Modifier()
-                    .color(PortfolioTheme.Colors.ACCENT_ALT)
+                    .color(accentColor)
             ),
         navigationMode = LinkNavigationMode.Native,
         target = null,

@@ -8,6 +8,7 @@ import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.input.Button
 import codes.yousef.summon.components.input.ButtonVariant
@@ -16,6 +17,7 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.alignItems
@@ -110,34 +112,64 @@ fun DesktopHeader(
                         navigationMode = linkMode
                     )
                 }
-                AnchorLink(
-                    label = "Summon",
-                    href = summonMarketingUrl(),
-                    modifier = baseNavModifier,
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("nav" to "summon"),
-                    navigationMode = LinkNavigationMode.Native
-                )
-                AnchorLink(
-                    label = "Materia",
-                    href = materiaMarketingUrl(),
-                    modifier = baseNavModifier,
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("nav" to "materia"),
-                    navigationMode = LinkNavigationMode.Native
-                )
+                // Summon link with logo
+                Row(
+                    modifier = Modifier()
+                        .display(Display.InlineFlex)
+                        .alignItems(AlignItems.Center)
+                        .gap(4.px)
+                ) {
+                    Image(
+                        src = "/static/summon-logo.png",
+                        alt = "",
+                        modifier = Modifier()
+                            .width(16.px)
+                            .height(16.px)
+                    )
+                    AnchorLink(
+                        label = "Summon",
+                        href = summonMarketingUrl(),
+                        modifier = baseNavModifier,
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null,
+                        dataAttributes = mapOf("nav" to "summon"),
+                        navigationMode = LinkNavigationMode.Native
+                    )
+                }
+                // Materia link with logo
+                Row(
+                    modifier = Modifier()
+                        .display(Display.InlineFlex)
+                        .alignItems(AlignItems.Center)
+                        .gap(4.px)
+                ) {
+                    Image(
+                        src = "/static/materia-logo.png",
+                        alt = "",
+                        modifier = Modifier()
+                            .width(16.px)
+                            .height(16.px)
+                    )
+                    AnchorLink(
+                        label = "Materia",
+                        href = materiaMarketingUrl(),
+                        modifier = baseNavModifier,
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null,
+                        dataAttributes = mapOf("nav" to "materia"),
+                        navigationMode = LinkNavigationMode.Native
+                    )
+                }
             }
         }
 
