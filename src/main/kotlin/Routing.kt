@@ -176,7 +176,7 @@ fun Application.configureRouting(
                 }
             }
 
-        // Mount Materia docs on material.* hosts at /docs
+        // Mount Materia docs on materia.* hosts at /docs
         materiaDocsHosts
             .flatMap { rawHost ->
                 val parts = rawHost.split(":", limit = 2)
@@ -188,7 +188,11 @@ fun Application.configureRouting(
                 val mountMateriaDocsForHost: Route.() -> Unit = {
                     get("/health") { call.respondHealth(bootInstant) }
                     get("/healthz") { call.respondHealthz(appConfig, bootInstant) }
-                    // Serve Materia docs at /docs on material.* hosts
+                    // Redirect root to /docs
+                    get("/") {
+                        call.respondRedirect("/docs", permanent = false)
+                    }
+                    // Serve Materia docs at /docs on materia.* hosts
                     route("/docs") {
                         docsRoutes(
                             docsService = materiaDocsService,
