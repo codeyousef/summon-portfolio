@@ -1,11 +1,13 @@
 package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
@@ -133,20 +135,64 @@ fun MobileHeader(
                                 navigationMode = linkMode,
                             )
                         }
-                        AnchorLink(
-                            label = "Summon",
-                            href = summonMarketingUrl(),
-                            modifier = baseNavModifier,
-                            target = null,
-                            rel = null,
-                            title = null,
-                            id = null,
-                            ariaLabel = null,
-                            ariaDescribedBy = null,
-                            dataHref = null,
-                            dataAttributes = mapOf("nav" to "summon"),
-                            navigationMode = LinkNavigationMode.Native,
-                        )
+                        // Summon link with logo
+                        Row(
+                            modifier = Modifier()
+                                .display(Display.Flex)
+                                .alignItems(AlignItems.Center)
+                                .gap(8.px)
+                        ) {
+                            Image(
+                                src = "/static/summon-logo.png",
+                                alt = "",
+                                modifier = Modifier()
+                                    .width(20.px)
+                                    .height(20.px)
+                            )
+                            AnchorLink(
+                                label = "Summon",
+                                href = summonMarketingUrl(),
+                                modifier = baseNavModifier,
+                                target = null,
+                                rel = null,
+                                title = null,
+                                id = null,
+                                ariaLabel = null,
+                                ariaDescribedBy = null,
+                                dataHref = null,
+                                dataAttributes = mapOf("nav" to "summon"),
+                                navigationMode = LinkNavigationMode.Native,
+                            )
+                        }
+                        // Materia link with logo
+                        Row(
+                            modifier = Modifier()
+                                .display(Display.Flex)
+                                .alignItems(AlignItems.Center)
+                                .gap(8.px)
+                        ) {
+                            Image(
+                                src = "/static/materia-logo.png",
+                                alt = "",
+                                modifier = Modifier()
+                                    .width(20.px)
+                                    .height(20.px)
+                            )
+                            AnchorLink(
+                                label = "Materia",
+                                href = materiaMarketingUrl(),
+                                modifier = baseNavModifier,
+                                target = null,
+                                rel = null,
+                                title = null,
+                                id = null,
+                                ariaLabel = null,
+                                ariaDescribedBy = null,
+                                dataHref = null,
+                                dataAttributes = mapOf("nav" to "materia"),
+                                navigationMode = LinkNavigationMode.Native,
+                            )
+                        }
 
                         if (chrome.isAdminSession) {
                             val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"

@@ -10,6 +10,7 @@ import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.components.layout.Box
@@ -148,10 +149,42 @@ private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
                 )
             }
         }
-        GlassPill(
-            text = HeroStrings.availability.resolve(locale),
-            emphasize = true
-        )
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.sm)
+        ) {
+            AnchorLink(
+                label = "𝕏",
+                href = "https://x.com/DeepIssueMassaj",
+                modifier = Modifier()
+                    .display(Display.InlineFlex)
+                    .alignItems(AlignItems.Center)
+                    .justifyContent(JustifyContent.Center)
+                    .width(36.px)
+                    .height(36.px)
+                    .borderRadius(PortfolioTheme.Radii.pill)
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
+                    .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                    .textDecoration(TextDecoration.None)
+                    .fontSize(1.1.rem)
+                    .fontWeight(700),
+                target = "_blank",
+                rel = "noopener noreferrer",
+                title = "Follow on X",
+                id = null,
+                ariaLabel = "Follow on X (Twitter)",
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = mapOf("social" to "x"),
+                navigationMode = LinkNavigationMode.Native
+            )
+            GlassPill(
+                text = HeroStrings.availability.resolve(locale),
+                emphasize = true
+            )
+        }
     }
 }
 

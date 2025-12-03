@@ -1,9 +1,8 @@
-package code.yousef.portfolio.ui.summon
+package code.yousef.portfolio.ui.materia
 
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.ssr.materiaMarketingUrl
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.components.LandingBranding
 import code.yousef.portfolio.ui.components.LandingNavbar
 import code.yousef.portfolio.ui.foundation.PageScaffold
@@ -13,7 +12,6 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.ButtonLink
@@ -30,25 +28,25 @@ import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import java.net.URI
 
 @Composable
-fun SummonLandingPage(
+fun MateriaLandingPage(
     docsUrl: String,
     apiReferenceUrl: String
 ) {
     PageScaffold(locale = PortfolioLocale.EN) {
         LandingNavbar(
-            branding = LandingBranding.summon(docsUrl, apiReferenceUrl)
+            branding = LandingBranding.materia(docsUrl, apiReferenceUrl)
         )
-        SummonHero(docsUrl, apiReferenceUrl)
-        SummonFeatureGrid()
-        SummonRuntimeCallout(docsUrl)
-        MateriaPromoCallout()
-        SummonCtaFooter(docsUrl, apiReferenceUrl)
+        MateriaHero(docsUrl, apiReferenceUrl)
+        MateriaFeatureGrid()
+        MateriaComponentCallout(docsUrl)
+        SummonPromoCallout()
+        MateriaCtaFooter(docsUrl, apiReferenceUrl)
         PortfolioFooter(locale = PortfolioLocale.EN)
     }
 }
 
 @Composable
-private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
+private fun MateriaHero(docsUrl: String, apiReferenceUrl: String) {
     SectionWrap {
         Column(
             modifier = Modifier()
@@ -63,14 +61,14 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                     .gap(PortfolioTheme.Spacing.md)
             ) {
                 Image(
-                    src = "/static/summon-logo.png",
-                    alt = "Summon",
+                    src = "/static/materia-logo.png",
+                    alt = "Materia",
                     modifier = Modifier()
                         .width(cssClamp(64.px, 12.vw, 128.px))
                         .height(cssClamp(64.px, 12.vw, 128.px))
                 )
                 Text(
-                    text = "Summon",
+                    text = "Materia",
                     modifier = Modifier()
                         .fontSize(cssClamp(48.px, 8.vw, 96.px))
                         .fontWeight(900)
@@ -79,7 +77,7 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                 )
             }
             Paragraph(
-                text = "A Kotlin Multiplatform frontend framework for high-performance apps across JVM, JS, and WASM.",
+                text = "Kotlin Multiplatform 3D graphics library with WebGPU/Vulkan backends. Write 3D apps once, deploy on JVM, Web, Android, iOS & Native.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(1.3.rem)
@@ -102,7 +100,7 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                         .fontWeight(700)
                         .whiteSpace(WhiteSpace.NoWrap),
                     navigationMode = LinkNavigationMode.Native,
-                    dataAttributes = mapOf("summon-cta" to "docs"),
+                    dataAttributes = mapOf("materia-cta" to "docs"),
                     target = null,
                     rel = null,
                     title = null,
@@ -124,7 +122,7 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                         .borderRadius(PortfolioTheme.Radii.md)
                         .whiteSpace(WhiteSpace.NoWrap),
                     navigationMode = LinkNavigationMode.Native,
-                    dataAttributes = mapOf("summon-cta" to "api"),
+                    dataAttributes = mapOf("materia-cta" to "api"),
                     target = null,
                     rel = null,
                     title = null,
@@ -135,7 +133,7 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
                 )
             }
             Paragraph(
-                text = "Summon ships a single composition model across JVM, JS, and WASM so your components, modifiers, and routing behave identically on every runtime.",
+                text = "Materia provides Three.js-equivalent capabilities for Kotlin with type-safe math, scene graph, materials, lighting, and more—all with seamless multiplatform deployment.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
             )
@@ -145,23 +143,23 @@ private fun SummonHero(docsUrl: String, apiReferenceUrl: String) {
 
 private data class Feature(val title: String, val description: String)
 
-private val summonFeatures = listOf(
+private val materiaFeatures = listOf(
     Feature(
-        title = "One codebase",
-        description = "Compose UI once and deploy across browsers, WASM surfaces, and JVM servers without branching logic."
+        title = "WebGPU & Vulkan",
+        description = "Modern graphics backends with automatic fallback. High-performance rendering across all platforms."
     ),
     Feature(
-        title = "First-class SSR",
-        description = "Summon renders on the server, streams HTML instantly, and hydrates without flicker."
+        title = "Type-safe 3D Math",
+        description = "Vectors, matrices, quaternions, and transforms with full Kotlin type safety and operator overloading."
     ),
     Feature(
-        title = "Modifier-driven styling",
-        description = "Apply fluent modifiers for layout, motion, and accessibility—they translate to clean CSS automatically."
+        title = "Scene Graph & Materials",
+        description = "Hierarchical scene management, PBR materials, lighting systems, and camera controls out of the box."
     )
 )
 
 @Composable
-private fun SummonFeatureGrid() {
+private fun MateriaFeatureGrid() {
     SectionWrap {
         Row(
             modifier = Modifier()
@@ -169,7 +167,7 @@ private fun SummonFeatureGrid() {
                 .gap(PortfolioTheme.Spacing.md)
                 .flexWrap(FlexWrap.Wrap)
         ) {
-            summonFeatures.forEach { feature ->
+            materiaFeatures.forEach { feature ->
                 Column(
                     modifier = Modifier()
                         .flex(grow = 1, shrink = 1, basis = "280px")
@@ -197,7 +195,7 @@ private fun SummonFeatureGrid() {
 }
 
 @Composable
-private fun SummonRuntimeCallout(docsUrl: String) {
+private fun MateriaComponentCallout(docsUrl: String) {
     SectionWrap {
         Row(
             modifier = Modifier()
@@ -211,19 +209,19 @@ private fun SummonRuntimeCallout(docsUrl: String) {
                     .gap(PortfolioTheme.Spacing.sm)
             ) {
                 Text(
-                    text = "Runtime-aware components",
+                    text = "Full 3D toolkit",
                     modifier = Modifier()
                         .fontWeight(700)
                         .fontSize(1.2.rem)
                 )
                 Paragraph(
-                    text = "Summon ships platform renderers that understand modifiers, hydration hooks, and accessibility attributes so your components remain declarative.",
+                    text = "Materia includes meshes, geometries, textures, shaders, lights, cameras, and post-processing effects—everything you need for 3D graphics.",
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .lineHeight(1.6)
                 )
                 Paragraph(
-                    text = "Explore hydration, routing, and SSR APIs in the docs.",
+                    text = "Explore the full API and examples in the docs.",
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                 )
@@ -234,7 +232,7 @@ private fun SummonRuntimeCallout(docsUrl: String) {
                         .textDecoration(TextDecoration.None)
                         .color(PortfolioTheme.Colors.ACCENT_ALT),
                     navigationMode = LinkNavigationMode.Native,
-                    dataAttributes = mapOf("summon-cta" to "docs-secondary"),
+                    dataAttributes = mapOf("materia-cta" to "docs-secondary"),
                     target = null,
                     rel = null,
                     title = null,
@@ -255,28 +253,32 @@ private fun SummonRuntimeCallout(docsUrl: String) {
                     .backgroundColor(PortfolioTheme.Colors.SURFACE)
             ) {
                 val snippet = """
-@Component
-fun PricingCard(plan: Plan) {
-  Column(
-    modifier = Modifier()
-      .borderRadius(24.px)
-      .padding(24.px)
-      .backgroundColor(PortfolioTheme.Colors.SURFACE)
-  ) {
-    Text(plan.name)
-    Text(
-      plan.price,
-      modifier = Modifier()
-        .fontSize(2.rem)
-        .fontWeight(700)
-    )
-    ButtonLink(
-      label = "Deploy",
-      href = plan.url,
-      navigationMode = LinkNavigationMode.Native
-    )
-  }
+// Create scene and camera
+val scene = Scene()
+val camera = PerspectiveCamera(
+    fov = 75f,
+    aspect = 16f / 9f,
+    near = 0.1f,
+    far = 1000f
+).apply {
+    position.set(0f, 2f, 5f)
+    lookAt(Vector3.ZERO)
 }
+
+// Create geometry and material
+val geometry = BoxGeometry(1f, 1f, 1f)
+val material = MeshStandardMaterial(
+    color = Color(0f, 1f, 0f),
+    metalness = 0.3f,
+    roughness = 0.4f
+)
+
+// Create mesh and add to scene
+val cube = Mesh(geometry, material)
+scene.add(cube)
+
+// Render
+renderer.render(scene, camera)
                 """.trimIndent()
                 Text(
                     text = snippet,
@@ -293,7 +295,7 @@ fun PricingCard(plan: Plan) {
 }
 
 @Composable
-private fun MateriaPromoCallout() {
+private fun SummonPromoCallout() {
     SectionWrap {
         Column(
             modifier = Modifier()
@@ -306,20 +308,20 @@ private fun MateriaPromoCallout() {
                 .gap(PortfolioTheme.Spacing.sm)
         ) {
             Text(
-                text = "Need 3D graphics?",
+                text = "Building web apps with Kotlin?",
                 modifier = Modifier()
                     .fontWeight(700)
                     .fontSize(1.2.rem)
             )
             Paragraph(
-                text = "Check out Materia — a Kotlin Multiplatform 3D graphics library with WebGPU/Vulkan backends. Build 3D apps once, deploy everywhere.",
+                text = "Check out Summon — a Kotlin Multiplatform frontend framework for high-performance apps across JVM, JS, and WASM with a single codebase.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.6)
             )
             ButtonLink(
-                label = "Explore Materia →",
-                href = materiaMarketingUrl(),
+                label = "Explore Summon →",
+                href = summonMarketingUrl(),
                 modifier = Modifier()
                     .backgroundColor(PortfolioTheme.Colors.ACCENT)
                     .color("#ffffff")
@@ -330,7 +332,7 @@ private fun MateriaPromoCallout() {
                     .whiteSpace(WhiteSpace.NoWrap)
                     .marginTop(PortfolioTheme.Spacing.sm),
                 navigationMode = LinkNavigationMode.Native,
-                dataAttributes = mapOf("summon-cta" to "materia-promo"),
+                dataAttributes = mapOf("materia-cta" to "summon-promo"),
                 target = null,
                 rel = null,
                 title = null,
@@ -344,7 +346,7 @@ private fun MateriaPromoCallout() {
 }
 
 @Composable
-private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
+private fun MateriaCtaFooter(docsUrl: String, apiReferenceUrl: String) {
     val docsLabel = humanReadableLabel(docsUrl, "/docs")
     val apiLabel = humanReadableLabel(apiReferenceUrl, "/api-reference")
     SectionWrap {
@@ -356,7 +358,7 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                 .alignItems(AlignItems.FlexStart)
         ) {
             Text(
-                text = "Build with Summon today",
+                text = "Build with Materia today",
                 modifier = Modifier()
                     .fontWeight(700)
                     .fontSize(1.4.rem)
@@ -385,7 +387,7 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderRadius(PortfolioTheme.Radii.md)
                         .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
-                    dataAttributes = mapOf("summon-cta" to "docs-footer"),
+                    dataAttributes = mapOf("materia-cta" to "docs-footer"),
                     target = null,
                     rel = null,
                     title = null,
@@ -407,7 +409,7 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderRadius(PortfolioTheme.Radii.md)
                         .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
-                    dataAttributes = mapOf("summon-cta" to "api-footer"),
+                    dataAttributes = mapOf("materia-cta" to "api-footer"),
                     target = null,
                     rel = null,
                     title = null,
@@ -429,7 +431,7 @@ private fun SummonCtaFooter(docsUrl: String, apiReferenceUrl: String) {
                         .borderRadius(PortfolioTheme.Radii.md)
                         .textDecoration(TextDecoration.None),
                     navigationMode = LinkNavigationMode.Native,
-                    dataAttributes = mapOf("summon-cta" to "x-follow"),
+                    dataAttributes = mapOf("materia-cta" to "x-follow"),
                     target = "_blank",
                     rel = "noopener noreferrer",
                     title = null,
