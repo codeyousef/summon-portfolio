@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Embedding Galaxy - Materia Demo</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b1020;
+            color: #fff;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #app-root {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        /* Hide the default overlay info for embedded view */
+        #embedding-galaxy-overlay {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+<div id="app-root"></div>
+<script src="embedding-galaxy.js"></script>
+</body>
+</html>
