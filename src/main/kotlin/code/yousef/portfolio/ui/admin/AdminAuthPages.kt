@@ -9,6 +9,7 @@ import codes.yousef.summon.components.forms.Form
 import codes.yousef.summon.components.forms.FormButton
 import codes.yousef.summon.components.forms.FormHiddenField
 import codes.yousef.summon.components.forms.FormTextField
+import codes.yousef.summon.components.forms.FormTextFieldType
 import codes.yousef.summon.components.input.FormField
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
@@ -64,6 +65,7 @@ fun AdminLoginPage(
                     name = "password",
                     label = "",
                     defaultValue = "",
+                    type = FormTextFieldType.Password,
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
@@ -112,6 +114,7 @@ fun AdminChangePasswordPage(
                     name = "password",
                     label = "",
                     defaultValue = "",
+                    type = FormTextFieldType.Password,
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
@@ -127,6 +130,7 @@ fun AdminChangePasswordPage(
                     name = "confirm",
                     label = "",
                     defaultValue = "",
+                    type = FormTextFieldType.Password,
                     modifier = Modifier()
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
