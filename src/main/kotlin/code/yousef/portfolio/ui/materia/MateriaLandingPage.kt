@@ -11,14 +11,11 @@ import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Paragraph
-import codes.yousef.summon.components.display.RichText
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.extensions.vw
@@ -40,7 +37,6 @@ fun MateriaLandingPage(
             branding = LandingBranding.materia(docsUrl, apiReferenceUrl)
         )
         MateriaHero(docsUrl, apiReferenceUrl)
-        MateriaLiveDemo()
         MateriaFeatureGrid()
         MateriaComponentCallout(docsUrl)
         SummonPromoCallout()
@@ -140,60 +136,6 @@ private fun MateriaHero(docsUrl: String, apiReferenceUrl: String) {
                 text = "Materia provides Three.js-equivalent capabilities for Kotlin with type-safe math, scene graph, materials, lighting, and more—all with seamless multiplatform deployment.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-            )
-        }
-    }
-}
-
-@Composable
-private fun MateriaLiveDemo() {
-    SectionWrap {
-        Column(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .flexDirection(FlexDirection.Column)
-                .gap(PortfolioTheme.Spacing.md)
-        ) {
-            Text(
-                text = "See it in action",
-                modifier = Modifier()
-                    .fontWeight(700)
-                    .fontSize(1.4.rem)
-            )
-            Paragraph(
-                text = "This interactive 3D visualization is built entirely with Materia and Kotlin—running live in your browser via WebGPU.",
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-            )
-            // Container for the Materia demo - uses iframe to sandbox the fullscreen demo
-            Box(
-                modifier = Modifier()
-                    .width(100.percent)
-                    .height(450.px)
-                    .borderRadius(PortfolioTheme.Radii.lg)
-                    .overflow(Overflow.Hidden)
-                    .position(Position.Relative)
-                    .backgroundColor("#0b1020")
-            ) {
-                // Render iframe using RichText for raw HTML output
-                RichText(
-                    """<iframe 
-                        src="/static/materia-demos/embedding-galaxy.html" 
-                        style="width: 100%; height: 100%; border: none;" 
-                        loading="lazy"
-                        title="Embedding Galaxy - Materia 3D Demo"
-                    ></iframe>""".trimIndent(),
-                    modifier = Modifier()
-                        .width(100.percent)
-                        .height(100.percent)
-                )
-            }
-            Paragraph(
-                text = "Embedding Galaxy — a particle visualization demonstrating Materia's WebGPU renderer, scene graph, and animation system. Drag to rotate, scroll to zoom.",
-                modifier = Modifier()
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                    .fontSize(0.9.rem)
-                    .fontStyle(FontStyle.Italic)
             )
         }
     }
