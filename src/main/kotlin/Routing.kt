@@ -38,9 +38,14 @@ fun Application.configureRouting(
     val contentStore = FirestoreContentStore(firestore)
     val contentService = PortfolioContentService(contentStore)
     val adminContentService = AdminContentService(contentStore)
-    val adminAuthService = AdminAuthService(
-        credentialsPath = Paths.get("storage/admin-credentials.json")
-    )
+    
+    // Use environment variable for credentials path, or fall back to relative path
+    // The relative path is resolved from the project root (where gradlew is run)
+    val credentialsPath = System.getenv("ADMIN_CREDENTIALS_PATH")
+        ?.let { Paths.get(it) }
+        ?: Paths.get("storage/admin-credentials.json").toAbsolutePath()
+    
+    val adminAuthService = AdminAuthService(credentialsPath = credentialsPath)
     val portfolioRenderer = PortfolioRenderer(contentService = contentService)
     val blogRenderer = BlogRenderer(contentService = contentService)
     val adminRenderer = AdminRenderer()

@@ -2,6 +2,7 @@ package code.yousef.portfolio.admin.auth
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -18,27 +19,38 @@ class AdminAuthService(
         ignoreUnknownKeys = true
     }
 ) {
+    private val log = LoggerFactory.getLogger(AdminAuthService::class.java)
     private val secureRandom = SecureRandom()
 
     @Volatile
     private var cachedCredentials: StoredCredentials = initialize()
 
     private fun initialize(): StoredCredentials {
+        log.info("Initializing AdminAuthService with credentials path: ${credentialsPath.toAbsolutePath()}")
         credentialsPath.parent?.let { parent ->
             if (!parent.exists()) {
+                log.info("Creating parent directory: ${parent.toAbsolutePath()}")
                 parent.createDirectories()
             }
         }
         return if (credentialsPath.exists()) {
+            log.info("Found existing credentials file at: ${credentialsPath.toAbsolutePath()}")
             runCatching {
-                json.decodeFromString<StoredCredentials>(credentialsPath.readText())
-            }.getOrElse { createDefaultCredentials() }
+                val creds = json.decodeFromString<StoredCredentials>(credentialsPath.readText())
+                log.info("Loaded credentials for user '${creds.username}', mustChange=${creds.mustChange}")
+                creds
+            }.getOrElse { e ->
+                log.error("Failed to parse credentials file, creating defaults", e)
+                createDefaultCredentials()
+            }
         } else {
+            log.warn("No credentials file found at ${credentialsPath.toAbsolutePath()}, creating defaults")
             createDefaultCredentials()
         }
     }
 
     private fun createDefaultCredentials(): StoredCredentials {
+        log.warn("Creating DEFAULT admin credentials (admin/admin) - user must change password on first login")
         val salt = generateSalt()
         val default = StoredCredentials(
             username = "admin",
@@ -54,8 +66,10 @@ class AdminAuthService(
         val creds = cachedCredentials
         val attemptedHash = hashPassword(password, creds.salt)
         return if (creds.username == username && creds.passwordHash == attemptedHash) {
+            log.info("Successful authentication for user '${username}', mustChangePassword=${creds.mustChange}")
             AuthResult.Success(creds.mustChange)
         } else {
+            log.warn("Failed authentication attempt for user '${username}'")
             AuthResult.Invalid
         }
     }
@@ -65,6 +79,7 @@ class AdminAuthService(
     fun currentUsername(): String = cachedCredentials.username
 
     fun updateCredentials(username: String, password: String) {
+        log.info("Updating credentials for user '${username}'")
         val salt = generateSalt()
         val updated = StoredCredentials(
             username = username,
@@ -74,6 +89,7 @@ class AdminAuthService(
         )
         cachedCredentials = updated
         persist(updated)
+        log.info("Credentials updated and persisted successfully to ${credentialsPath.toAbsolutePath()}")
     }
 
     private fun persist(credentials: StoredCredentials) {
