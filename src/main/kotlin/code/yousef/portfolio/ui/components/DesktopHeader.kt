@@ -207,120 +207,40 @@ fun DesktopHeader(
 }
 
 /**
- * Projects dropdown navigation showing Summon, Materia, and Sigil libraries.
- * Uses a simple hover-based approach with relative positioning.
+ * Projects navigation showing Summon, Materia, and Sigil libraries inline.
  */
 @Composable
 private fun ProjectsDropdownNav(baseNavModifier: Modifier) {
-    val isOpen = remember { mutableStateOf(false) }
-    
-    Box(
-        modifier = Modifier()
-            .position(Position.Relative)
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .attribute("data-dropdown", "projects")
-    ) {
-        // Dropdown trigger - clicking toggles the menu
-        Button(
-            onClick = { isOpen.value = !isOpen.value },
-            label = "Projects ▾",
-            modifier = baseNavModifier
-                .backgroundColor("transparent")
-                .borderWidth(0)
-                .cursor(Cursor.Pointer),
-            variant = ButtonVariant.SECONDARY,
-            disabled = false
-        )
-        
-        // Dropdown menu - conditionally rendered
-        if (isOpen.value) {
-            Box(
-                modifier = Modifier()
-                    .position(Position.Absolute)
-                    .top(100.percent)
-                    .left(0.px)
-                    .marginTop(4.px)
-                    .backgroundColor("#0a1628")
-                    .borderRadius(8.px)
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(PortfolioTheme.Colors.BORDER)
-                    .zIndex(1000)
-                    .minWidth(200.px)
-                    .padding(8.px)
-            ) {
-                Column(
-                    modifier = Modifier()
-                        .gap(4.px)
-                ) {
-                    // Summon
-                    ProjectDropdownItem(
-                        label = "Summon",
-                        description = "Frontend Framework",
-                        logoPath = "/static/summon-logo.png",
-                        href = summonMarketingUrl()
-                    )
-                    // Materia
-                    ProjectDropdownItem(
-                        label = "Materia",
-                        description = "3D Graphics Library",
-                        logoPath = "/static/materia-logo.png",
-                        href = materiaMarketingUrl()
-                    )
-                    // Sigil
-                    ProjectDropdownItem(
-                        label = "Sigil",
-                        description = "Declarative 3D for Compose",
-                        logoPath = "/static/sigil-logo.png",
-                        href = sigilMarketingUrl()
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProjectDropdownItem(
-    label: String,
-    description: String,
-    logoPath: String,
-    href: String
-) {
+    // Show projects inline with a label
     Row(
         modifier = Modifier()
-            .display(Display.Flex)
+            .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
-            .gap(10.px)
-            .padding(8.px, 12.px)
-            .borderRadius(6.px)
-            .hover(
-                Modifier()
-                    .backgroundColor("rgba(255,255,255,0.05)")
-            )
+            .gap(4.px)
     ) {
-        Image(
-            src = logoPath,
-            alt = label,
-            modifier = Modifier()
-                .width(24.px)
-                .height(24.px)
+        Text(
+            text = "Projects:",
+            modifier = baseNavModifier
+                .opacity(0.7F)
         )
-        Column(
+        // Summon
+        Row(
             modifier = Modifier()
-                .gap(2.px)
-                .flex(grow = 1, shrink = 1, basis = "auto")
+                .display(Display.InlineFlex)
+                .alignItems(AlignItems.Center)
+                .gap(4.px)
         ) {
-            AnchorLink(
-                label = label,
-                href = href,
+            Image(
+                src = "/static/summon-logo.png",
+                alt = "",
                 modifier = Modifier()
-                    .fontWeight(600)
-                    .fontSize(0.9.rem)
-                    .textDecoration(TextDecoration.None)
-                    .color(PortfolioTheme.Colors.TEXT_PRIMARY),
-                navigationMode = LinkNavigationMode.Native,
+                    .width(16.px)
+                    .height(16.px)
+            )
+            AnchorLink(
+                label = "Summon",
+                href = summonMarketingUrl(),
+                modifier = baseNavModifier,
                 target = null,
                 rel = null,
                 title = null,
@@ -328,75 +248,65 @@ private fun ProjectDropdownItem(
                 ariaLabel = null,
                 ariaDescribedBy = null,
                 dataHref = null,
-                dataAttributes = mapOf("nav" to "project-${label.lowercase()}")
-            )
-            Text(
-                text = description,
-                modifier = Modifier()
-                    .fontSize(0.75.rem)
-                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                dataAttributes = mapOf("nav" to "summon"),
+                navigationMode = LinkNavigationMode.Native
             )
         }
-    }
-}
-
-@Composable
-private fun ProjectsDropdown(
-    locale: PortfolioLocale,
-    baseModifier: Modifier,
-    docsHref: String,
-    projectsNavigationMode: LinkNavigationMode
-) {
-    val open = remember { mutableStateOf(false) }
-    Box(
-        modifier = Modifier()
-            .position(Position.Relative)
-    ) {
-        Button(
-            onClick = { open.value = !open.value },
-            label = projectsLabel.resolve(locale),
-            modifier = baseModifier,
-            variant = ButtonVariant.SECONDARY,
-            disabled = false
-        )
-        if (open.value) {
-            Box(
+        // Materia
+        Row(
+            modifier = Modifier()
+                .display(Display.InlineFlex)
+                .alignItems(AlignItems.Center)
+                .gap(4.px)
+        ) {
+            Image(
+                src = "/static/materia-logo.png",
+                alt = "",
                 modifier = Modifier()
-                    .position(Position.Absolute)
-            ) {
-                AnchorLink(
-                    label = LocalizedText("Portfolio Projects", "المشاريع").resolve(locale),
-                    href = NavTarget.Page("/projects").href(locale),
-                    modifier = baseModifier
-                        .display(Display.Block)
-                        .whiteSpace(WhiteSpace.NoWrap),
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("nav" to "projects-portfolio"),
-                    navigationMode = projectsNavigationMode
-                )
-                AnchorLink(
-                    label = LocalizedText("Summon", "Summon").resolve(locale),
-                    href = docsHref,
-                    modifier = baseModifier
-                        .display(Display.Block)
-                        .whiteSpace(WhiteSpace.NoWrap),
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("nav" to "projects-summon"),
-                    navigationMode = LinkNavigationMode.Native
-                )
-            }
+                    .width(16.px)
+                    .height(16.px)
+            )
+            AnchorLink(
+                label = "Materia",
+                href = materiaMarketingUrl(),
+                modifier = baseNavModifier,
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = mapOf("nav" to "materia"),
+                navigationMode = LinkNavigationMode.Native
+            )
+        }
+        // Sigil
+        Row(
+            modifier = Modifier()
+                .display(Display.InlineFlex)
+                .alignItems(AlignItems.Center)
+                .gap(4.px)
+        ) {
+            Text(
+                text = "🔮",
+                modifier = Modifier()
+                    .fontSize(0.9.rem)
+            )
+            AnchorLink(
+                label = "Sigil",
+                href = sigilMarketingUrl(),
+                modifier = baseNavModifier,
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = mapOf("nav" to "sigil"),
+                navigationMode = LinkNavigationMode.Native
+            )
         }
     }
 }

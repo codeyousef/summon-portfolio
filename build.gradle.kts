@@ -49,6 +49,7 @@ dependencies {
 
     implementation("codes.yousef:summon:0.5.6.2")
     implementation("codes.yousef:materia-jvm:0.3.2.0")
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.0.0")
     implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.0.0")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 

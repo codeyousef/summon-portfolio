@@ -34,74 +34,75 @@ data class AuroraPalette(
 /**
  * Predefined aurora color palettes using IQ's palette formula.
  * Users can cycle through these with keyboard (1-7) or click.
+ * Palettes focus on reds, blues, and purples (no greens).
  */
 object AuroraPalettes {
-    /** Classic rainbow-ish aurora */
-    val CLASSIC = AuroraPalette(
-        name = "Classic",
-        a = Triple(0.5f, 0.5f, 0.5f),
-        b = Triple(0.5f, 0.5f, 0.5f),
-        c = Triple(1.0f, 1.0f, 1.0f),
-        d = Triple(0.0f, 0.33f, 0.67f)
+    /** Deep cosmic - blues and purples */
+    val COSMIC = AuroraPalette(
+        name = "Cosmic",
+        a = Triple(0.3f, 0.1f, 0.5f),
+        b = Triple(0.4f, 0.2f, 0.4f),
+        c = Triple(1.0f, 0.8f, 1.0f),
+        d = Triple(0.0f, 0.1f, 0.5f)
     )
     
-    /** Northern lights - deep blues and greens */
-    val NORTHERN = AuroraPalette(
-        name = "Northern",
-        a = Triple(0.2f, 0.3f, 0.5f),
-        b = Triple(0.3f, 0.3f, 0.3f),
-        c = Triple(1.0f, 1.0f, 1.0f),
-        d = Triple(0.0f, 0.10f, 0.20f)
+    /** Crimson night - deep reds and magentas */
+    val CRIMSON = AuroraPalette(
+        name = "Crimson",
+        a = Triple(0.5f, 0.1f, 0.3f),
+        b = Triple(0.4f, 0.1f, 0.3f),
+        c = Triple(1.0f, 0.5f, 0.8f),
+        d = Triple(0.0f, 0.0f, 0.2f)
     )
     
-    /** Teal aurora */
-    val TEAL = AuroraPalette(
-        name = "Teal",
-        a = Triple(0.1f, 0.5f, 0.4f),
-        b = Triple(0.3f, 0.4f, 0.3f),
-        c = Triple(0.8f, 1.0f, 0.9f),
-        d = Triple(0.0f, 0.25f, 0.50f)
+    /** Electric blue - vibrant blues */
+    val ELECTRIC = AuroraPalette(
+        name = "Electric",
+        a = Triple(0.1f, 0.2f, 0.5f),
+        b = Triple(0.2f, 0.3f, 0.5f),
+        c = Triple(0.8f, 1.0f, 1.0f),
+        d = Triple(0.0f, 0.15f, 0.35f)
     )
     
-    /** Sunset - warm oranges and golds */
-    val SUNSET = AuroraPalette(
-        name = "Sunset",
-        a = Triple(0.5f, 0.3f, 0.2f),
-        b = Triple(0.5f, 0.3f, 0.3f),
-        c = Triple(1.0f, 0.7f, 0.4f),
-        d = Triple(0.0f, 0.15f, 0.20f)
-    )
-    
-    /** Neon - vibrant purples and yellows */
-    val NEON = AuroraPalette(
-        name = "Neon",
-        a = Triple(0.5f, 0.1f, 0.5f),
-        b = Triple(0.5f, 0.4f, 0.5f),
-        c = Triple(1.0f, 1.0f, 0.5f),
-        d = Triple(0.80f, 0.90f, 0.30f)
-    )
-    
-    /** Forest - earthy greens */
-    val FOREST = AuroraPalette(
-        name = "Forest",
-        a = Triple(0.2f, 0.4f, 0.2f),
-        b = Triple(0.2f, 0.3f, 0.2f),
-        c = Triple(1.0f, 1.0f, 1.0f),
-        d = Triple(0.0f, 0.33f, 0.0f)
-    )
-    
-    /** Nebula - cosmic purples */
+    /** Nebula - cosmic purples and magentas */
     val NEBULA = AuroraPalette(
         name = "Nebula",
         a = Triple(0.3f, 0.1f, 0.4f),
         b = Triple(0.4f, 0.2f, 0.4f),
-        c = Triple(1.0f, 1.0f, 0.5f),
+        c = Triple(1.0f, 0.7f, 1.0f),
         d = Triple(0.25f, 0.0f, 0.50f)
     )
     
-    /** All available palettes */
-    val ALL = listOf(CLASSIC, NORTHERN, TEAL, SUNSET, NEON, FOREST, NEBULA)
+    /** Midnight - deep blues with subtle purple */
+    val MIDNIGHT = AuroraPalette(
+        name = "Midnight",
+        a = Triple(0.1f, 0.1f, 0.4f),
+        b = Triple(0.2f, 0.2f, 0.4f),
+        c = Triple(1.0f, 1.0f, 1.0f),
+        d = Triple(0.0f, 0.05f, 0.25f)
+    )
+    
+    /** Ruby - rich reds */
+    val RUBY = AuroraPalette(
+        name = "Ruby",
+        a = Triple(0.4f, 0.1f, 0.2f),
+        b = Triple(0.5f, 0.15f, 0.25f),
+        c = Triple(1.0f, 0.6f, 0.7f),
+        d = Triple(0.0f, 0.1f, 0.15f)
+    )
+    
+    /** Violet dream - purples and pinks */
+    val VIOLET = AuroraPalette(
+        name = "Violet",
+        a = Triple(0.4f, 0.15f, 0.5f),
+        b = Triple(0.35f, 0.2f, 0.4f),
+        c = Triple(1.0f, 0.8f, 1.0f),
+        d = Triple(0.3f, 0.0f, 0.4f)
+    )
+    
+    /** All available palettes - reds, blues, purples only */
+    val ALL = listOf(COSMIC, CRIMSON, ELECTRIC, NEBULA, MIDNIGHT, RUBY, VIOLET)
     
     /** Default palette */
-    val DEFAULT = CLASSIC
+    val DEFAULT = COSMIC
 }
