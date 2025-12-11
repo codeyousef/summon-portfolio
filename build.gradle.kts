@@ -47,7 +47,7 @@ dependencies {
     implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1")
     implementation("org.jsoup:jsoup:1.18.1")
 
-    implementation("codes.yousef:summon:0.5.6.2")
+    implementation("codes.yousef:summon:0.5.8.2")
     implementation("codes.yousef:materia-jvm:0.3.2.0")
     implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.0.0")
     implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.0.0")
