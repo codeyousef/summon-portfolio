@@ -69,7 +69,8 @@ jobs:
             --image "${{ steps.bp.outputs.image }}" \
             --region "${GCP_REGION}" \
             --allow-unauthenticated \
-            --port 8080
+            --port 8080 \
+            --set-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID}"
 
       - name: Show Service URL
         shell: bash
