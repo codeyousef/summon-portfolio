@@ -4,7 +4,6 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.aurora.AuroraBackground
 import code.yousef.portfolio.ui.aurora.AuroraConfig
-import code.yousef.portfolio.ui.aurora.AuroraHydrationScript
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.foundation.Canvas
 import codes.yousef.summon.components.layout.Box
@@ -107,10 +106,6 @@ fun PageScaffold(
             }
         Column(modifier = columnModifier) {
             content()
-        }
-        if (enableAuroraEffects) {
-            // Hydration script for aurora effect (pure Kotlin)
-            AuroraHydrationScript()
         }
     }
 }

@@ -1,85 +1,36 @@
 package code.yousef.portfolio.ui.aurora
 
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.foundation.Canvas
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.left
 import codes.yousef.summon.modifier.LayoutModifiers.top
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import codes.yousef.sigil.summon.effects.SigilEffectCanvas
+import codes.yousef.sigil.summon.effects.CustomShaderEffect
+import codes.yousef.sigil.schema.effects.SigilCanvasConfig
+import codes.yousef.sigil.schema.effects.InteractionConfig
+import codes.yousef.sigil.schema.effects.UniformValue
+import codes.yousef.sigil.schema.effects.Vec3
+import codes.yousef.sigil.schema.effects.WGSLLib
 
 /**
- * Serializable effect configuration for client-side hydration.
- */
-@Serializable
-data class AuroraEffectData(
-    val timeScale: Float,
-    val noiseScale: Float,
-    val initialPaletteIndex: Int,
-    val enableMouse: Boolean,
-    val enableKeyboard: Boolean,
-    val enableClick: Boolean,
-    val palettes: List<PaletteData>
-)
-
-@Serializable
-data class PaletteData(
-    val name: String,
-    val a: List<Float>,
-    val b: List<Float>,
-    val c: List<Float>,
-    val d: List<Float>
-)
-
-/**
- * Aurora background effect component using WebGPU.
+ * Aurora background effect component using Sigil.
  * 
- * This component renders a WebGPU-powered aurora background effect.
+ * This component renders a WebGPU-powered aurora background effect using
+ * Sigil's screen-space effect system. The effect uses IQ's cosine palette
+ * formula for smooth color gradients and simplex noise for organic movement.
  * 
- * SSR renders:
- * - A fixed-position canvas element
- * - Serialized effect configuration as a data attribute
- * 
- * Client-side (via AuroraHydrationScript):
- * - Parses the effect configuration
- * - Creates WebGPU pipeline with aurora shader
- * - Handles mouse/keyboard interactions
- * - Runs render loop with time uniform updates
+ * SSR renders the canvas with embedded effect configuration.
+ * Client-side hydration creates WebGPU shader passes via Sigil's SigilEffectHydrator.
  */
 @Composable
 fun AuroraBackground(
     config: AuroraConfig = AuroraConfig()
 ) {
-    val json = Json { prettyPrint = false }
-    
-    // Convert palettes to serializable format
-    val paletteData = AuroraPalettes.ALL.map { palette ->
-        PaletteData(
-            name = palette.name,
-            a = listOf(palette.a.first, palette.a.second, palette.a.third),
-            b = listOf(palette.b.first, palette.b.second, palette.b.third),
-            c = listOf(palette.c.first, palette.c.second, palette.c.third),
-            d = listOf(palette.d.first, palette.d.second, palette.d.third)
-        )
-    }
-    
-    // Create effect configuration
-    val effectData = AuroraEffectData(
-        timeScale = config.timeScale,
-        noiseScale = config.noiseScale,
-        initialPaletteIndex = config.initialPaletteIndex,
-        enableMouse = config.enableMouseInteraction,
-        enableKeyboard = config.enableKeyboardCycle,
-        enableClick = config.enableClickCycle,
-        palettes = paletteData
-    )
-    
-    // Serialize the effect for client-side hydration
-    val effectJson = json.encodeToString(effectData)
+    // Get the selected palette
+    val palette = AuroraPalettes.ALL.getOrElse(config.initialPaletteIndex) { AuroraPalettes.DEFAULT }
     
     // Container for the aurora canvas - positioned fixed behind all content
     Box(
@@ -92,16 +43,110 @@ fun AuroraBackground(
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {
-        // The WebGPU canvas element with embedded effect data
-        Canvas(
+        // Sigil effect canvas with aurora shader
+        SigilEffectCanvas(
             id = config.canvasId,
-            modifier = Modifier()
-                .width(100.percent)
-                .height(100.percent)
-                .display(Display.Block),
-            dataAttributes = mapOf(
-                "aurora-effect" to effectJson
+            width = "100%",
+            height = "100%",
+            config = SigilCanvasConfig(
+                id = config.canvasId,
+                respectDevicePixelRatio = true
+            ),
+            interactions = InteractionConfig(
+                enableMouseMove = config.enableMouseInteraction,
+                enableMouseClick = config.enableClickCycle,
+                enableKeyboard = config.enableKeyboardCycle,
+                enableTouch = config.enableMouseInteraction
+            ),
+            fallback = { "" }
+        ) {
+            CustomShaderEffect(
+                id = "aurora-effect",
+                name = "Aurora Background",
+                fragmentShader = buildAuroraShader(),
+                timeScale = config.timeScale,
+                enableMouseInteraction = config.enableMouseInteraction,
+                uniforms = mapOf(
+                    "noiseScale" to UniformValue.FloatValue(config.noiseScale),
+                    "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
+                    "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
+                    "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
+                    "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
+                )
             )
-        )
+        }
     }
 }
+
+/**
+ * Builds the WGSL aurora shader using Sigil's WGSLLib.
+ */
+private fun buildAuroraShader(): String = """
+${WGSLLib.Structs.EFFECT_UNIFORMS}
+
+// Custom uniforms for aurora effect
+@group(0) @binding(1) var<uniform> noiseScale: f32;
+@group(0) @binding(2) var<uniform> paletteA: vec3<f32>;
+@group(0) @binding(3) var<uniform> paletteB: vec3<f32>;
+@group(0) @binding(4) var<uniform> paletteC: vec3<f32>;
+@group(0) @binding(5) var<uniform> paletteD: vec3<f32>;
+
+${WGSLLib.Noise.SIMPLEX_2D}
+
+// IQ's cosine palette function
+fn palette(t: f32) -> vec3<f32> {
+    return paletteA + paletteB * cos(6.28318 * (paletteC * t + paletteD));
+}
+
+// Fractal Brownian Motion using 2D simplex noise with z as time
+fn fbm(p: vec3<f32>) -> f32 {
+    var f = 0.0;
+    var scale = noiseScale;
+    var amp = 0.5;
+    for (var i = 0; i < 5; i++) {
+        f += amp * simplex2D(p.xy * scale + vec2<f32>(p.z * 0.3));
+        scale *= 2.0;
+        amp *= 0.5;
+    }
+    return f;
+}
+
+@fragment
+fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+    let aspect = uniforms.resolution.x / uniforms.resolution.y;
+    var p = uv;
+    p.x *= aspect;
+    
+    let t = uniforms.time * 0.1;
+    
+    // Create flowing aurora bands using FBM noise
+    let n1 = fbm(vec3<f32>(p * 2.0, t));
+    let n2 = fbm(vec3<f32>(p * 3.0 + 100.0, t * 0.7));
+    let n3 = fbm(vec3<f32>(p * 1.5 + 200.0, t * 1.3));
+    
+    // Aurora intensity based on vertical position and noise
+    let verticalFade = smoothstep(0.0, 0.6, 1.0 - uv.y);
+    let aurora1 = smoothstep(0.1, 0.5, n1) * verticalFade;
+    let aurora2 = smoothstep(0.2, 0.6, n2) * verticalFade * 0.7;
+    let aurora3 = smoothstep(0.15, 0.55, n3) * verticalFade * 0.5;
+    
+    // Color each band using the palette
+    let c1 = palette(n1 * 0.5 + 0.2) * aurora1;
+    let c2 = palette(n2 * 0.5 + 0.5) * aurora2;
+    let c3 = palette(n3 * 0.5 + 0.8) * aurora3;
+    
+    var color = c1 + c2 + c3;
+    
+    // Add subtle mouse interaction
+    let mouseDist = length(uv - uniforms.mouse);
+    let mouseGlow = exp(-mouseDist * 3.0) * 0.15;
+    color += palette(uniforms.time * 0.05) * mouseGlow;
+    
+    // Soft fade at edges
+    let edgeFade = smoothstep(0.0, 0.1, uv.y) * smoothstep(1.0, 0.9, uv.y);
+    color *= edgeFade;
+    
+    let alpha = max(max(aurora1, aurora2), aurora3) * 0.8;
+    return vec4<f32>(color, alpha * edgeFade);
+}
+"""
