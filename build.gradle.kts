@@ -45,10 +45,12 @@ dependencies {
     implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1")
     implementation("org.jsoup:jsoup:1.18.1")
 
+    // Summon SSR framework + Sigil 3D/effects library
+    // Sigil 0.2.3.0 includes complete JS hydration bundle for WebGPU/WebGL effects
     implementation("codes.yousef:summon:0.5.8.4")
     implementation("codes.yousef:materia-jvm:0.3.3.0")
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.2.0")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.2.0")
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.3.0")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.3.0")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)
