@@ -223,35 +223,16 @@ private fun ProjectsDropdownNav(baseNavModifier: Modifier) {
                     .gap(4.px)
                     .cursor(Cursor.Pointer)
             ) {
-                Text(
-                    text = "Projects",
-                    modifier = baseNavModifier
-                )
-                Text(
-                    text = "▼",
-                    modifier = Modifier()
-                        .fontSize(0.6.rem)
-                        .opacity(0.7F)
-                )
+                Text(text = "Projects", modifier = baseNavModifier)
+                Text(text = "▼", modifier = Modifier().fontSize(0.6.rem).opacity(0.7F))
             }
         },
         modifier = Modifier(),
-        triggerBehavior = DropdownTrigger.HOVER
+        triggerBehavior = DropdownTrigger.CLICK,
+        closeOnItemClick = true
     ) {
-        // Summon
-        DropdownItem(
-            label = "⚡ Summon",
-            href = summonMarketingUrl()
-        )
-        // Materia
-        DropdownItem(
-            label = "🎨 Materia",
-            href = materiaMarketingUrl()
-        )
-        // Sigil
-        DropdownItem(
-            label = "🔮 Sigil",
-            href = sigilMarketingUrl()
-        )
+        DropdownItem(label = "⚡ Summon", href = summonMarketingUrl())
+        DropdownItem(label = "🎨 Materia", href = materiaMarketingUrl())
+        DropdownItem(label = "🔮 Sigil", href = sigilMarketingUrl())
     }
 }
