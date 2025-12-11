@@ -8,12 +8,14 @@ import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.left
 import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.sigil.summon.effects.SigilEffectCanvas
-import codes.yousef.sigil.summon.effects.CustomShaderEffect
+import codes.yousef.sigil.summon.effects.SigilEffect
 import codes.yousef.sigil.schema.effects.SigilCanvasConfig
 import codes.yousef.sigil.schema.effects.InteractionConfig
+import codes.yousef.sigil.schema.effects.ShaderEffectData
 import codes.yousef.sigil.schema.effects.UniformValue
 import codes.yousef.sigil.schema.effects.Vec3
 import codes.yousef.sigil.schema.effects.WGSLLib
+import codes.yousef.sigil.schema.effects.GLSLLib
 
 /**
  * Aurora background effect component using Sigil.
@@ -24,6 +26,9 @@ import codes.yousef.sigil.schema.effects.WGSLLib
  * 
  * SSR renders the canvas with embedded effect configuration.
  * Client-side hydration creates WebGPU shader passes via Sigil's SigilEffectHydrator.
+ * 
+ * For browsers without WebGPU (e.g., Firefox), Sigil automatically falls back
+ * to WebGL rendering using the GLSL shader variant.
  */
 @Composable
 fun AuroraBackground(
@@ -50,7 +55,9 @@ fun AuroraBackground(
             height = "100%",
             config = SigilCanvasConfig(
                 id = config.canvasId,
-                respectDevicePixelRatio = true
+                respectDevicePixelRatio = true,
+                fallbackToWebGL = true,  // Enable WebGL fallback for Firefox
+                fallbackToCSS = true
             ),
             interactions = InteractionConfig(
                 enableMouseMove = config.enableMouseInteraction,
@@ -60,18 +67,22 @@ fun AuroraBackground(
             ),
             fallback = { "" }
         ) {
-            CustomShaderEffect(
-                id = "aurora-effect",
-                name = "Aurora Background",
-                fragmentShader = buildAuroraShader(),
-                timeScale = config.timeScale,
-                enableMouseInteraction = config.enableMouseInteraction,
-                uniforms = mapOf(
-                    "noiseScale" to UniformValue.FloatValue(config.noiseScale),
-                    "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
-                    "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
-                    "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
-                    "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
+            // Use SigilEffect directly to provide both WGSL and GLSL shaders
+            SigilEffect(
+                ShaderEffectData(
+                    id = "aurora-effect",
+                    name = "Aurora Background",
+                    fragmentShader = buildAuroraWGSLShader(),
+                    glslFragmentShader = buildAuroraGLSLShader(palette),
+                    timeScale = config.timeScale,
+                    enableMouseInteraction = config.enableMouseInteraction,
+                    uniforms = mapOf(
+                        "noiseScale" to UniformValue.FloatValue(config.noiseScale),
+                        "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
+                        "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
+                        "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
+                        "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
+                    )
                 )
             )
         }
@@ -81,7 +92,7 @@ fun AuroraBackground(
 /**
  * Builds the WGSL aurora shader using Sigil's WGSLLib.
  */
-private fun buildAuroraShader(): String = """
+private fun buildAuroraWGSLShader(): String = """
 ${WGSLLib.Structs.EFFECT_UNIFORMS}
 
 // Custom uniforms for aurora effect
@@ -148,5 +159,77 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     
     let alpha = max(max(aurora1, aurora2), aurora3) * 0.8;
     return vec4<f32>(color, alpha * edgeFade);
+}
+"""
+
+/**
+ * Builds the GLSL aurora shader for WebGL fallback using Sigil's GLSLLib.
+ */
+private fun buildAuroraGLSLShader(palette: AuroraPalette): String = """
+${GLSLLib.Presets.FRAGMENT_HEADER_WITH_UNIFORMS}
+
+// Custom uniforms for aurora effect
+uniform float noiseScale;
+uniform vec3 paletteA;
+uniform vec3 paletteB;
+uniform vec3 paletteC;
+uniform vec3 paletteD;
+
+${GLSLLib.Noise.SIMPLEX_2D}
+
+// IQ's cosine palette function
+vec3 palette(float t) {
+    return paletteA + paletteB * cos(6.28318 * (paletteC * t + paletteD));
+}
+
+// Fractal Brownian Motion using 2D simplex noise with z as time
+float fbm(vec3 p) {
+    float f = 0.0;
+    float scale = noiseScale;
+    float amp = 0.5;
+    for (int i = 0; i < 5; i++) {
+        f += amp * simplex2D(p.xy * scale + vec2(p.z * 0.3));
+        scale *= 2.0;
+        amp *= 0.5;
+    }
+    return f;
+}
+
+void main() {
+    float aspect = resolution.x / resolution.y;
+    vec2 p = vUv;
+    p.x *= aspect;
+    
+    float t = time * 0.1;
+    
+    // Create flowing aurora bands using FBM noise
+    float n1 = fbm(vec3(p * 2.0, t));
+    float n2 = fbm(vec3(p * 3.0 + 100.0, t * 0.7));
+    float n3 = fbm(vec3(p * 1.5 + 200.0, t * 1.3));
+    
+    // Aurora intensity based on vertical position and noise
+    float verticalFade = smoothstep(0.0, 0.6, 1.0 - vUv.y);
+    float aurora1 = smoothstep(0.1, 0.5, n1) * verticalFade;
+    float aurora2 = smoothstep(0.2, 0.6, n2) * verticalFade * 0.7;
+    float aurora3 = smoothstep(0.15, 0.55, n3) * verticalFade * 0.5;
+    
+    // Color each band using the palette
+    vec3 c1 = palette(n1 * 0.5 + 0.2) * aurora1;
+    vec3 c2 = palette(n2 * 0.5 + 0.5) * aurora2;
+    vec3 c3 = palette(n3 * 0.5 + 0.8) * aurora3;
+    
+    vec3 color = c1 + c2 + c3;
+    
+    // Add subtle mouse interaction
+    float mouseDist = length(vUv - mouse);
+    float mouseGlow = exp(-mouseDist * 3.0) * 0.15;
+    color += palette(time * 0.05) * mouseGlow;
+    
+    // Soft fade at edges
+    float edgeFade = smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+    color *= edgeFade;
+    
+    float alpha = max(max(aurora1, aurora2), aurora3) * 0.8;
+    gl_FragColor = vec4(color, alpha * edgeFade);
 }
 """
