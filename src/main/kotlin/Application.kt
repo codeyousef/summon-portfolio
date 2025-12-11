@@ -36,12 +36,23 @@ fun Application.module() {
         appConfig.port
     )
 
-    val firestore = FirestoreProvider.create(appConfig)
-    val portfolioMetaService = PortfolioMetaService(PortfolioMetaRepository(firestore))
+    // Lazy initialization: Firestore connects on first use, not at startup
+    val firestoreLazy = lazy { 
+        try {
+            FirestoreProvider.create(appConfig)
+        } catch (e: Exception) {
+            log.error("Failed to initialize Firestore - some features may be unavailable", e)
+            throw e
+        }
+    }
+    val firestore by firestoreLazy
+    val portfolioMetaService by lazy { PortfolioMetaService(PortfolioMetaRepository(firestore)) }
 
     environment.monitor.subscribe(ApplicationStopped) {
-        runCatching { firestore.close() }
-            .onFailure { throwable -> log.warn("Failed to close Firestore", throwable) }
+        if (firestoreLazy.isInitialized()) {
+            runCatching { firestore.close() }
+                .onFailure { throwable -> log.warn("Failed to close Firestore", throwable) }
+        }
     }
 
     install(DefaultHeaders)
