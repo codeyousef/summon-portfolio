@@ -18,6 +18,9 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
+import codes.yousef.summon.components.navigation.Dropdown
+import codes.yousef.summon.components.navigation.DropdownItem
+import codes.yousef.summon.components.navigation.DropdownTrigger
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
@@ -207,106 +210,48 @@ fun DesktopHeader(
 }
 
 /**
- * Projects navigation showing Summon, Materia, and Sigil libraries inline.
+ * Projects navigation dropdown showing Summon, Materia, and Sigil libraries.
  */
 @Composable
 private fun ProjectsDropdownNav(baseNavModifier: Modifier) {
-    // Show projects inline with a label
-    Row(
-        modifier = Modifier()
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .gap(4.px)
+    Dropdown(
+        trigger = {
+            Row(
+                modifier = Modifier()
+                    .display(Display.InlineFlex)
+                    .alignItems(AlignItems.Center)
+                    .gap(4.px)
+                    .cursor(Cursor.Pointer)
+            ) {
+                Text(
+                    text = "Projects",
+                    modifier = baseNavModifier
+                )
+                Text(
+                    text = "▼",
+                    modifier = Modifier()
+                        .fontSize(0.6.rem)
+                        .opacity(0.7F)
+                )
+            }
+        },
+        modifier = Modifier(),
+        triggerBehavior = DropdownTrigger.HOVER
     ) {
-        Text(
-            text = "Projects:",
-            modifier = baseNavModifier
-                .opacity(0.7F)
-        )
         // Summon
-        Row(
-            modifier = Modifier()
-                .display(Display.InlineFlex)
-                .alignItems(AlignItems.Center)
-                .gap(4.px)
-        ) {
-            Image(
-                src = "/static/summon-logo.png",
-                alt = "",
-                modifier = Modifier()
-                    .width(16.px)
-                    .height(16.px)
-            )
-            AnchorLink(
-                label = "Summon",
-                href = summonMarketingUrl(),
-                modifier = baseNavModifier,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("nav" to "summon"),
-                navigationMode = LinkNavigationMode.Native
-            )
-        }
+        DropdownItem(
+            label = "⚡ Summon",
+            href = summonMarketingUrl()
+        )
         // Materia
-        Row(
-            modifier = Modifier()
-                .display(Display.InlineFlex)
-                .alignItems(AlignItems.Center)
-                .gap(4.px)
-        ) {
-            Image(
-                src = "/static/materia-logo.png",
-                alt = "",
-                modifier = Modifier()
-                    .width(16.px)
-                    .height(16.px)
-            )
-            AnchorLink(
-                label = "Materia",
-                href = materiaMarketingUrl(),
-                modifier = baseNavModifier,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("nav" to "materia"),
-                navigationMode = LinkNavigationMode.Native
-            )
-        }
+        DropdownItem(
+            label = "🎨 Materia",
+            href = materiaMarketingUrl()
+        )
         // Sigil
-        Row(
-            modifier = Modifier()
-                .display(Display.InlineFlex)
-                .alignItems(AlignItems.Center)
-                .gap(4.px)
-        ) {
-            Text(
-                text = "🔮",
-                modifier = Modifier()
-                    .fontSize(0.9.rem)
-            )
-            AnchorLink(
-                label = "Sigil",
-                href = sigilMarketingUrl(),
-                modifier = baseNavModifier,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = mapOf("nav" to "sigil"),
-                navigationMode = LinkNavigationMode.Native
-            )
-        }
+        DropdownItem(
+            label = "🔮 Sigil",
+            href = sigilMarketingUrl()
+        )
     }
 }
