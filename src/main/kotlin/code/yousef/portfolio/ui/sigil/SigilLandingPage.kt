@@ -64,11 +64,14 @@ private fun SigilHero(docsUrl: String, apiReferenceUrl: String) {
                     .alignItems(AlignItems.Center)
                     .gap(PortfolioTheme.Spacing.md)
             ) {
-                // Sigil logo placeholder - using a magic/sigil-themed emoji or text
-                Text(
-                    text = "🔮",
+                // Sigil logo image
+                Image(
+                    src = "/static/sigil-logo.png",
+                    alt = "Sigil Logo",
                     modifier = Modifier()
-                        .fontSize(cssClamp(48.px, 10.vw, 96.px))
+                        .width(cssClamp(48.px, 10.vw, 96.px))
+                        .height(cssClamp(48.px, 10.vw, 96.px))
+                        .objectFit(ObjectFit.Contain)
                 )
                 Text(
                     text = "Sigil",

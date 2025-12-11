@@ -19,8 +19,8 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.Dropdown
-import codes.yousef.summon.components.navigation.DropdownItem
 import codes.yousef.summon.components.navigation.DropdownTrigger
+import codes.yousef.summon.components.navigation.Link
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
@@ -231,8 +231,62 @@ private fun ProjectsDropdownNav(baseNavModifier: Modifier) {
         triggerBehavior = DropdownTrigger.CLICK,
         closeOnItemClick = true
     ) {
-        DropdownItem(label = "⚡ Summon", href = summonMarketingUrl())
-        DropdownItem(label = "🎨 Materia", href = materiaMarketingUrl())
-        DropdownItem(label = "🔮 Sigil", href = sigilMarketingUrl())
+        ProjectDropdownLink(
+            logoSrc = "/static/summon-logo.png",
+            label = "Summon",
+            href = summonMarketingUrl()
+        )
+        ProjectDropdownLink(
+            logoSrc = "/static/materia-logo.png",
+            label = "Materia",
+            href = materiaMarketingUrl()
+        )
+        ProjectDropdownLink(
+            logoSrc = "/static/sigil-logo.png",
+            label = "Sigil",
+            href = sigilMarketingUrl()
+        )
+    }
+}
+
+/**
+ * A dropdown item with a project logo and label.
+ */
+@Composable
+private fun ProjectDropdownLink(
+    logoSrc: String,
+    label: String,
+    href: String
+) {
+    Link(
+        href = href,
+        modifier = Modifier()
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+            .gap(10.px)
+            .padding(8.px, 16.px)
+            .textDecoration(TextDecoration.None)
+            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            .style("border-bottom", "1px solid ${PortfolioTheme.Colors.BORDER}")
+            .hover(
+                Modifier()
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE_ELEVATED)
+            ),
+        target = "_blank"
+    ) {
+        Image(
+            src = logoSrc,
+            alt = "$label logo",
+            modifier = Modifier()
+                .width(20.px)
+                .height(20.px)
+                .style("object-fit", "contain")
+        )
+        Text(
+            text = label,
+            modifier = Modifier()
+                .fontSize(0.9.rem)
+                .fontWeight(500)
+        )
     }
 }
