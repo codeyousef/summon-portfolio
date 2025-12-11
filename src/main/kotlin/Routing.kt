@@ -74,6 +74,16 @@ fun Application.configureRouting(
     val materiaLandingRenderer = MateriaLandingRenderer()
     val materiaWebhookHandler = WebhookHandler(materiaDocsService, materiaDocsCache, materiaDocsConfig, materiaDocsCatalog)
     
+    // Sigil docs services
+    val sigilDocsConfig = DocsConfig.sigilFromEnv()
+    val sigilDocsCache = DocsCache(sigilDocsConfig.cacheTtlSeconds)
+    val sigilDocsService = DocsService(sigilDocsConfig, sigilDocsCache)
+    val sigilDocsCatalog = DocsCatalog(sigilDocsConfig)
+    val sigilSeoExtractor = SeoExtractor(sigilDocsConfig)
+    val sigilDocsRouter = DocsRouter(sigilSeoExtractor, sigilDocsConfig.publicOriginPortfolio, DocsBranding.sigil())
+    val sigilLandingRenderer = SigilLandingRenderer()
+    val sigilWebhookHandler = WebhookHandler(sigilDocsService, sigilDocsCache, sigilDocsConfig, sigilDocsCatalog)
+    
     val summonLandingHosts =
         (System.getenv("SUMMON_LANDING_HOSTS") ?: "summon.yousef.codes,summon.dev.yousef.codes")
         .split(",")
@@ -86,6 +96,12 @@ fun Application.configureRouting(
     // Materia docs hosts (materia.yousef.codes and variants)
     val materiaDocsHosts = (System.getenv("MATERIA_DOCS_HOSTS")
         ?: "materia.yousef.codes,materia.dev.yousef.codes,materia.localhost")
+        .split(",")
+        .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
+    
+    // Sigil docs hosts (sigil.yousef.codes and variants)
+    val sigilDocsHosts = (System.getenv("SIGIL_DOCS_HOSTS")
+        ?: "sigil.yousef.codes,sigil.dev.yousef.codes,sigil.localhost")
         .split(",")
         .mapNotNull { it.trim().takeIf { host -> host.isNotEmpty() } }
     
@@ -235,6 +251,59 @@ fun Application.configureRouting(
                 }
             }
 
+        // Mount Sigil landing and docs on sigil.* hosts
+        sigilDocsHosts
+            .flatMap { rawHost ->
+                val parts = rawHost.split(":", limit = 2)
+                val host = parts[0]
+                val port = parts.getOrNull(1)?.toIntOrNull()
+                if (port != null) listOf(host to port) else listOf(host to null, host to configuredPort)
+            }
+            .forEach { (hostName, port) ->
+                val mountSigilDocsForHost: Route.() -> Unit = {
+                    get("/health") { call.respondHealth(bootInstant) }
+                    get("/healthz") { call.respondHealthz(appConfig, bootInstant) }
+                    // Serve Sigil landing page at /
+                    get("/") {
+                        val host = call.request.host()
+                        val links = resolveEnvironmentLinks(host)
+                        EnvironmentLinksRegistry.withLinks(links) {
+                            val page = sigilLandingRenderer.landingPage()
+                            SummonRenderLock.withLock {
+                                call.respondSummonHydrated {
+                                    val renderer = getPlatformRenderer()
+                                    renderer.renderHeadElements(page.head)
+                                    page.content()
+                                }
+                            }
+                        }
+                    }
+                    // Serve Sigil docs at /docs on sigil.* hosts
+                    route("/docs") {
+                        docsRoutes(
+                            docsService = sigilDocsService,
+                            markdownRenderer = markdownRenderer,
+                            linkRewriter = linkRewriter,
+                            docsRouter = sigilDocsRouter,
+                            webhookHandler = sigilWebhookHandler,
+                            config = sigilDocsConfig,
+                            docsCatalog = sigilDocsCatalog,
+                            pathResolver = { call ->
+                                val raw = call.request.path()
+                                raw.removePrefix("/docs").ifBlank { "/" }
+                            },
+                            basePath = "/docs",
+                            registerInfrastructure = false
+                        )
+                    }
+                }
+                if (port != null) {
+                    host(hostName, port) { mountSigilDocsForHost() }
+                } else {
+                    host(hostName) { mountSigilDocsForHost() }
+                }
+            }
+
         route("/summon") {
             docsRoutes(
                 docsService = docsService,
@@ -274,9 +343,34 @@ fun Application.configureRouting(
             )
         }
 
+        // Sigil docs accessible on portfolio at /sigil
+        route("/sigil") {
+            docsRoutes(
+                docsService = sigilDocsService,
+                markdownRenderer = markdownRenderer,
+                linkRewriter = linkRewriter,
+                docsRouter = sigilDocsRouter,
+                webhookHandler = sigilWebhookHandler,
+                config = sigilDocsConfig,
+                docsCatalog = sigilDocsCatalog,
+                pathResolver = { call ->
+                    val raw = call.request.path()
+                    val stripped = raw.removePrefix("/sigil")
+                    stripped.ifBlank { "/" }
+                },
+                basePath = "/sigil",
+                registerInfrastructure = false
+            )
+        }
+
         // Materia webhook endpoint (separate from Summon)
         post("/__hooks/github/materia") {
             materiaWebhookHandler.handle(call)
+        }
+
+        // Sigil webhook endpoint
+        post("/__hooks/github/sigil") {
+            sigilWebhookHandler.handle(call)
         }
 
         // Redirect portfolio-hosted /docs and /api-reference paths to the public docs site

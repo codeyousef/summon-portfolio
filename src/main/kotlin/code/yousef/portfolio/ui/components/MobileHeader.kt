@@ -3,6 +3,7 @@ package code.yousef.portfolio.ui.components
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
+import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.LocalPageChrome
@@ -135,6 +136,20 @@ fun MobileHeader(
                                 navigationMode = linkMode,
                             )
                         }
+                        
+                        // Projects section header
+                        Text(
+                            text = "Projects",
+                            modifier = Modifier()
+                                .fontSize(0.75.rem)
+                                .fontWeight(600)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                                .marginTop(8.px)
+                                .marginBottom(4.px)
+                                .textTransform(TextTransform.Uppercase)
+                                .letterSpacing(0.1.rem)
+                        )
+                        
                         // Summon link with logo
                         Row(
                             modifier = Modifier()
@@ -190,6 +205,33 @@ fun MobileHeader(
                                 ariaDescribedBy = null,
                                 dataHref = null,
                                 dataAttributes = mapOf("nav" to "materia"),
+                                navigationMode = LinkNavigationMode.Native,
+                            )
+                        }
+                        // Sigil link with logo
+                        Row(
+                            modifier = Modifier()
+                                .display(Display.Flex)
+                                .alignItems(AlignItems.Center)
+                                .gap(8.px)
+                        ) {
+                            Text(
+                                text = "🔮",
+                                modifier = Modifier()
+                                    .fontSize(1.rem)
+                            )
+                            AnchorLink(
+                                label = "Sigil",
+                                href = sigilMarketingUrl(),
+                                modifier = baseNavModifier,
+                                target = null,
+                                rel = null,
+                                title = null,
+                                id = null,
+                                ariaLabel = null,
+                                ariaDescribedBy = null,
+                                dataHref = null,
+                                dataAttributes = mapOf("nav" to "sigil"),
                                 navigationMode = LinkNavigationMode.Native,
                             )
                         }

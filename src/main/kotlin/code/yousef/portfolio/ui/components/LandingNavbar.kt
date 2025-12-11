@@ -42,6 +42,15 @@ data class LandingBranding(
             apiReferenceUrl = apiReferenceUrl,
             accentColor = PortfolioTheme.Colors.LINK
         )
+
+        fun sigil(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
+            name = "Sigil",
+            logoPath = "/static/sigil-logo.png",
+            homeUrl = "/",
+            docsUrl = docsUrl,
+            apiReferenceUrl = apiReferenceUrl,
+            accentColor = "#06b6d4" // Teal/cyan accent for Sigil
+        )
     }
 }
 

@@ -7,7 +7,9 @@ data class EnvironmentLinks(
     val summonBase: String,
     val docsBase: String,
     val materiaBase: String,
-    val materiaDocsBase: String
+    val materiaDocsBase: String,
+    val sigilBase: String,
+    val sigilDocsBase: String
 )
 
 private enum class DeploymentStage {
@@ -22,21 +24,27 @@ private val stageLinks = mapOf(
         summonBase = "https://summon.dev.yousef.codes",
         docsBase = "https://summon.dev.yousef.codes/docs",
         materiaBase = "https://materia.dev.yousef.codes",
-        materiaDocsBase = "https://materia.dev.yousef.codes/docs"
+        materiaDocsBase = "https://materia.dev.yousef.codes/docs",
+        sigilBase = "https://sigil.dev.yousef.codes",
+        sigilDocsBase = "https://sigil.dev.yousef.codes/docs"
     ),
     DeploymentStage.PROD to EnvironmentLinks(
         portfolioBase = "https://yousef.codes",
         summonBase = "https://summon.yousef.codes",
         docsBase = "https://summon.yousef.codes/docs",
         materiaBase = "https://materia.yousef.codes",
-        materiaDocsBase = "https://materia.yousef.codes/docs"
+        materiaDocsBase = "https://materia.yousef.codes/docs",
+        sigilBase = "https://sigil.yousef.codes",
+        sigilDocsBase = "https://sigil.yousef.codes/docs"
     ),
     DeploymentStage.LOCAL to EnvironmentLinks(
         portfolioBase = SITE_URL,
         summonBase = SUMMON_MARKETING_URL,
         docsBase = SUMMON_MARKETING_URL.trimEnd('/') + "/docs",
         materiaBase = MATERIA_MARKETING_URL,
-        materiaDocsBase = MATERIA_MARKETING_URL.trimEnd('/') + "/docs"
+        materiaDocsBase = MATERIA_MARKETING_URL.trimEnd('/') + "/docs",
+        sigilBase = SIGIL_MARKETING_URL,
+        sigilDocsBase = SIGIL_MARKETING_URL.trimEnd('/') + "/docs"
     )
 )
 
@@ -44,6 +52,8 @@ private val docsBaseOverride = System.getenv("DOCS_BASE_URL")?.takeIf { it.isNot
 private val summonBaseOverride = System.getenv("SUMMON_MARKETING_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
 private val materiaBaseOverride = System.getenv("MATERIA_MARKETING_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
 private val materiaDocsBaseOverride = System.getenv("MATERIA_DOCS_BASE_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
+private val sigilBaseOverride = System.getenv("SIGIL_MARKETING_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
+private val sigilDocsBaseOverride = System.getenv("SIGIL_DOCS_BASE_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
 
 object EnvironmentLinksRegistry {
     private val threadLocal = ThreadLocal<EnvironmentLinks>()
@@ -76,11 +86,15 @@ fun resolveEnvironmentLinks(host: String?): EnvironmentLinks {
     val docsBase = docsBaseOverride ?: baseline.docsBase
     val materiaBase = materiaBaseOverride ?: baseline.materiaBase
     val materiaDocsBase = materiaDocsBaseOverride ?: baseline.materiaDocsBase
+    val sigilBase = sigilBaseOverride ?: baseline.sigilBase
+    val sigilDocsBase = sigilDocsBaseOverride ?: baseline.sigilDocsBase
     return baseline.copy(
         summonBase = summonBase,
         docsBase = docsBase,
         materiaBase = materiaBase,
-        materiaDocsBase = materiaDocsBase
+        materiaDocsBase = materiaDocsBase,
+        sigilBase = sigilBase,
+        sigilDocsBase = sigilDocsBase
     )
 }
 
@@ -102,4 +116,13 @@ fun materiaDocsBaseUrl(): String {
     EnvironmentLinksRegistry.current()?.materiaDocsBase?.let { return it }
     materiaDocsBaseOverride?.let { return it }
     return materiaMarketingUrl().trimEnd('/') + "/docs"
+}
+
+fun sigilMarketingUrl(): String =
+    EnvironmentLinksRegistry.current()?.sigilBase ?: (sigilBaseOverride ?: SIGIL_MARKETING_URL)
+
+fun sigilDocsBaseUrl(): String {
+    EnvironmentLinksRegistry.current()?.sigilDocsBase?.let { return it }
+    sigilDocsBaseOverride?.let { return it }
+    return sigilMarketingUrl().trimEnd('/') + "/docs"
 }
