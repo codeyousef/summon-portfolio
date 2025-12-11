@@ -50,10 +50,9 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                     .gap(PortfolioTheme.Spacing.lg)
                     .flexWrap(FlexWrap.Wrap)
             ) {
-                FooterSocialLink(label = "LinkedIn", href = "https://www.linkedin.com/in/yousefbaitalmal")
+                FooterSocialLink(label = "LinkedIn", href = "https://www.linkedin.com/in/yousef-baitalmal/")
                 FooterSocialLink(label = "X (Twitter)", href = "https://x.com/deepissuemassaj")
                 FooterSocialLink(label = "GitHub", href = "https://github.com/codeyousef")
-                FooterSocialLink(label = "Bluesky", href = "https://bsky.app/profile/yousef.codes")
             }
             
             // Copyright

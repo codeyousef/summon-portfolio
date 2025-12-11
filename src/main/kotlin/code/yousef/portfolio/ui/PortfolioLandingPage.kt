@@ -603,7 +603,7 @@ private fun StructuredDataSnippet() {
           "name": "Yousef",
           "url": "https://dev.yousef.codes",
           "sameAs": [
-            "https://www.linkedin.com/in/yousefbaitalmal",
+            "https://www.linkedin.com/in/yousef-baitalmal/",
             "https://github.com/codeyousef",
             "https://x.com/deepissuemassaj"
           ],
