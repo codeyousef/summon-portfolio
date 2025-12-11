@@ -2,24 +2,27 @@ package code.yousef.portfolio.ui
 
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.i18n.strings.HeroStrings
 import code.yousef.portfolio.i18n.pathPrefix
+import code.yousef.portfolio.ssr.materiaMarketingUrl
+import code.yousef.portfolio.ssr.sigilMarketingUrl
+import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.components.ServicesOverlay
+import code.yousef.portfolio.ui.components.CodeBlock
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
-import code.yousef.portfolio.ui.sections.AboutMeSection
-import code.yousef.portfolio.ui.sections.CaseStudySection
+import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.sections.ContactFooterSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
-import code.yousef.portfolio.ui.sections.SelectedWorksSection
-import code.yousef.portfolio.ui.sections.ServicesSection
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
+import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.px
@@ -34,8 +37,6 @@ import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import codes.yousef.summon.runtime.LocalPlatformRenderer
 import codes.yousef.summon.runtime.rememberMutableStateOf
 
-
-
 @Composable
 fun PortfolioLandingPage(
     content: PortfolioContent,
@@ -48,28 +49,20 @@ fun PortfolioLandingPage(
 
     PageScaffold(locale = locale) {
         AppHeader(locale = locale)
-        Box(
-            modifier = Modifier()
-                .height(PortfolioTheme.Spacing.xxl)
-        ) {}
-        HeroBand(locale)
-        CaseStudySection(locale = locale)
-        AboutMeSection(locale = locale)
-        if (content.services.isNotEmpty()) {
-            ServicesSection(
-                services = content.services,
-                locale = locale,
-                onRequestServices = openServicesModal,
-                modifier = Modifier().id("services")
-            )
-        }
-        if (content.projects.isNotEmpty()) {
-            SelectedWorksSection(
-                projects = content.projects,
-                locale = locale,
-                modifier = Modifier().id("projects")
-            )
-        }
+        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        
+        // 2. Hero Section (The Hook)
+        HeroSection(locale)
+        
+        // 3. The Trinity Showcase (The Core Value)
+        TrinityShowcase(locale)
+        
+        // 4. The Philosophy (Manifesto)
+        PhilosophySection(locale)
+        
+        // 5. Selected Engineering (The Products)
+        SelectedEngineeringSection(locale)
+        
         ContactFooterSection(locale = locale, modifier = Modifier().id("contact"))
         PortfolioFooter(locale = locale)
         ServicesOverlay(
@@ -83,19 +76,26 @@ fun PortfolioLandingPage(
     }
 }
 
+// =============================================================================
+// 2. HERO SECTION
+// =============================================================================
+
 @Composable
-private fun HeroBand(locale: PortfolioLocale) {
+private fun HeroSection(locale: PortfolioLocale) {
     SectionWrap(modifier = Modifier().id("hero")) {
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
                 .flexDirection(FlexDirection.Column)
-                .gap(PortfolioTheme.Spacing.lg)
+                .gap(PortfolioTheme.Spacing.xl)
+                .paddingTop(PortfolioTheme.Spacing.xxl)
+                .paddingBottom(PortfolioTheme.Spacing.xxl)
         ) {
+            // Headline
             Text(
-                text = HeroStrings.title.resolve(locale),
+                text = "Bridging the JVM and the GPU.",
                 modifier = Modifier()
-                    .fontSize(cssClamp(42.px, 6.vw, 76.px))
+                    .fontSize(cssClamp(42.px, 7.vw, 84.px))
                     .fontWeight(900)
                     .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
                     .backgroundLayers {
@@ -109,13 +109,185 @@ private fun HeroBand(locale: PortfolioLocale) {
                     .color("transparent")
                     .letterSpacing("-0.02em")
             )
-            Text(
-                text = HeroStrings.body.resolve(locale),
+            
+            // Sub-headline
+            Paragraph(
+                text = "I build high-performance UI frameworks and graphics engines using Kotlin Multiplatform.",
                 modifier = Modifier()
                     .color("rgba(255,255,255,0.88)")
-                    .fontSize(1.25.rem)
+                    .fontSize(cssClamp(18.px, 2.5.vw, 26.px))
                     .lineHeight(1.6)
                     .fontWeight(500)
+                    .maxWidth(700.px)
+            )
+            
+            // CTAs
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .gap(PortfolioTheme.Spacing.md)
+                    .flexWrap(FlexWrap.Wrap)
+                    .marginTop(PortfolioTheme.Spacing.md)
+            ) {
+                // Primary CTA: View the Stack
+                ButtonLink(
+                    label = "View the Stack",
+                    href = "#trinity",
+                    modifier = Modifier()
+                        .display(Display.InlineFlex)
+                        .alignItems(AlignItems.Center)
+                        .justifyContent(JustifyContent.Center)
+                        .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.xl)
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                        .color("#ffffff")
+                        .textDecoration(TextDecoration.None)
+                        .fontWeight(600)
+                        .letterSpacing("-0.01em")
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    navigationMode = LinkNavigationMode.Client,
+                    dataAttributes = mapOf("cta" to "view-stack"),
+                    target = null,
+                    rel = null,
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null
+                )
+                
+                // Secondary CTA: Source Code (GitHub)
+                ButtonLink(
+                    label = "⌘ Source Code",
+                    href = "https://github.com/codeyousef",
+                    modifier = Modifier()
+                        .display(Display.InlineFlex)
+                        .alignItems(AlignItems.Center)
+                        .justifyContent(JustifyContent.Center)
+                        .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.xl)
+                        .borderRadius(PortfolioTheme.Radii.pill)
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .backgroundColor("rgba(255,255,255,0.03)")
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .textDecoration(TextDecoration.None)
+                        .fontWeight(600)
+                        .whiteSpace(WhiteSpace.NoWrap),
+                    navigationMode = LinkNavigationMode.Native,
+                    target = "_blank",
+                    rel = "noopener",
+                    dataAttributes = mapOf("cta" to "source-code"),
+                    title = null,
+                    id = null,
+                    ariaLabel = null,
+                    ariaDescribedBy = null,
+                    dataHref = null
+                )
+            }
+        }
+    }
+}
+
+// =============================================================================
+// 3. THE TRINITY SHOWCASE
+// =============================================================================
+
+@Composable
+private fun TrinityShowcase(locale: PortfolioLocale) {
+    ContentSection(modifier = Modifier().id("trinity")) {
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.scale(16))
+        ) {
+            // Block A: Summon (The Interface) - Code left, copy right
+            TrinityBlock(
+                tagline = "Declarative UI, Purely in Kotlin.",
+                description = "A type-safe frontend framework for JVM backends. Zero JavaScript glue code. Shared data models from database to DOM.",
+                techBadges = listOf("Kotlin", "Wasm", "Reactive"),
+                codeSnippet = SUMMON_CODE_SNIPPET,
+                imageOnLeft = false,
+                accentColor = "#4ECDC4"
+            )
+            
+            // Block B: Sigil (The Bridge) - Code right, copy left
+            TrinityBlock(
+                tagline = "Declarative 3D for Kotlin.",
+                description = "The \"React-Three-Fiber\" for Kotlin Multiplatform. Compose complex 3D scenes using the same declarative syntax as your UI. Manage scene graphs, lights, and meshes as reactive components.",
+                techBadges = listOf("Declarative 3D", "Compose", "Multiplatform"),
+                codeSnippet = SIGIL_CODE_SNIPPET,
+                imageOnLeft = true,
+                accentColor = "#A855F7"
+            )
+            
+            // Block C: Materia (The Engine) - Diagram left, copy right
+            TrinityBlock(
+                tagline = "Unified Rendering Core.",
+                description = "The high-performance engine that orchestrates it all. Optimized for battery life on mobile and flexibility on the web.",
+                techBadges = listOf("Vulkan", "Metal", "WebGL"),
+                codeSnippet = MATERIA_ARCHITECTURE_SNIPPET,
+                imageOnLeft = false,
+                accentColor = "#FF6B6B"
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrinityBlock(
+    tagline: String,
+    description: String,
+    techBadges: List<String>,
+    codeSnippet: String,
+    imageOnLeft: Boolean,
+    accentColor: String
+) {
+    val direction = if (imageOnLeft) FlexDirection.Row else FlexDirection.RowReverse
+    
+    Row(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .flexDirection(direction)
+            .alignItems(AlignItems.Center)
+            .gap(PortfolioTheme.Spacing.xxl)
+            .flexWrap(FlexWrap.Wrap)
+    ) {
+        // Code/Visual side
+        Box(
+            modifier = Modifier()
+                .flex(grow = 1, shrink = 1, basis = "480px")
+                .minWidth(320.px)
+        ) {
+            CodeBlock(
+                lines = codeSnippet.lines(),
+                showCopyButton = false
+            )
+        }
+        
+        // Copy side
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.md)
+                .flex(grow = 1, shrink = 1, basis = "400px")
+                .minWidth(280.px)
+        ) {
+            Text(
+                text = tagline,
+                modifier = Modifier()
+                    .fontSize(cssClamp(24.px, 4.vw, 36.px))
+                    .fontWeight(700)
+                    .color(accentColor)
+            )
+            Paragraph(
+                text = description,
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .fontSize(1.1.rem)
+                    .lineHeight(1.7)
             )
             Row(
                 modifier = Modifier()
@@ -123,23 +295,127 @@ private fun HeroBand(locale: PortfolioLocale) {
                     .gap(PortfolioTheme.Spacing.sm)
                     .flexWrap(FlexWrap.Wrap)
             ) {
-                val prefix = locale.pathPrefix()
-                val home = if (prefix.isEmpty()) "/" else prefix
-                val projectsHref = "$home#projects"
-                PrimaryCtaButton(
-                    text = HeroStrings.primaryCta.resolve(locale),
-                    href = projectsHref,
-                    modifier = Modifier()
-                        .minWidth(200.px)
-                        .whiteSpace(WhiteSpace.NoWrap),
-                    navigationMode = LinkNavigationMode.Client
+                techBadges.forEach { badge ->
+                    TechBadge(text = badge, accentColor = accentColor)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TechBadge(text: String, accentColor: String) {
+    Box(
+        modifier = Modifier()
+            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+            .borderRadius(PortfolioTheme.Radii.pill)
+            .backgroundColor("${accentColor}22")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor("${accentColor}44")
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier()
+                .fontSize(0.75.rem)
+                .fontWeight(600)
+                .color(accentColor)
+                .letterSpacing("0.05em")
+        )
+    }
+}
+
+// =============================================================================
+// 4. THE PHILOSOPHY (MANIFESTO)
+// =============================================================================
+
+@Composable
+private fun PhilosophySection(locale: PortfolioLocale) {
+    ContentSection(
+        surface = false,
+        modifier = Modifier()
+            .backgroundColor("#0a0a0f")
+            .paddingTop(PortfolioTheme.Spacing.scale(16))
+            .paddingBottom(PortfolioTheme.Spacing.scale(16))
+    ) {
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.lg)
+                .maxWidth(800.px)
+                .marginLeft("auto")
+                .marginRight("auto")
+                .textAlign(TextAlign.Center)
+        ) {
+            Text(
+                text = "The 'One Developer' Philosophy.",
+                modifier = Modifier()
+                    .fontSize(cssClamp(28.px, 5.vw, 48.px))
+                    .fontWeight(700)
+                    .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
+            )
+            Paragraph(
+                text = "Modern software has become overly complex. I believe in radical simplification. By using unified languages like Kotlin across the stack, I eliminate the friction between 'backend' and 'frontend' teams. One developer, one language, one codebase — from server logic to mobile UI to web applications.",
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .fontSize(1.2.rem)
+                    .lineHeight(1.8)
+            )
+        }
+    }
+}
+
+// =============================================================================
+// 5. SELECTED ENGINEERING (THE PRODUCTS)
+// =============================================================================
+
+@Composable
+private fun SelectedEngineeringSection(locale: PortfolioLocale) {
+    ContentSection(modifier = Modifier().id("projects")) {
+        Column(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(PortfolioTheme.Spacing.xl)
+        ) {
+            Text(
+                text = "Selected Engineering",
+                modifier = Modifier()
+                    .fontSize(2.rem)
+                    .fontWeight(700)
+            )
+            
+            // Grid of 3 cards
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .gap(PortfolioTheme.Spacing.lg)
+                    .flexWrap(FlexWrap.Wrap)
+            ) {
+                EngineeringCard(
+                    logoSrc = "/static/summon-logo.png",
+                    title = "Summon",
+                    subtitle = "The Frontend Framework",
+                    docsHref = "${summonMarketingUrl()}/docs",
+                    githubHref = "https://github.com/codeyousef/summon",
+                    accentColor = "#4ECDC4"
                 )
-                SecondaryCtaButton(
-                    text = HeroStrings.secondaryCta.resolve(locale),
-                    href = "https://app.usemotion.com/meet/motion.duckling867/meeting",
-                    modifier = Modifier()
-                        .minWidth(220.px)
-                        .whiteSpace(WhiteSpace.NoWrap)
+                EngineeringCard(
+                    logoSrc = "/static/sigil-logo.png",
+                    title = "Sigil",
+                    subtitle = "The 3D Composition Tool",
+                    docsHref = "${sigilMarketingUrl()}/docs",
+                    githubHref = "https://github.com/codeyousef/sigil",
+                    accentColor = "#A855F7"
+                )
+                EngineeringCard(
+                    logoSrc = "/static/materia-logo.png",
+                    title = "Materia",
+                    subtitle = "The Rendering Engine",
+                    docsHref = "${materiaMarketingUrl()}/docs",
+                    githubHref = "https://github.com/codeyousef/materia",
+                    accentColor = "#FF6B6B"
                 )
             }
         }
@@ -147,76 +423,175 @@ private fun HeroBand(locale: PortfolioLocale) {
 }
 
 @Composable
-private fun PrimaryCtaButton(
-    text: String,
-    href: String,
-    modifier: Modifier = Modifier(),
-    navigationMode: LinkNavigationMode = LinkNavigationMode.Native
+private fun EngineeringCard(
+    logoSrc: String,
+    title: String,
+    subtitle: String,
+    docsHref: String,
+    githubHref: String,
+    accentColor: String
 ) {
-    ButtonLink(
-        label = text,
-        href = href,
-        modifier = modifier
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.Center)
-            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-            .borderRadius(PortfolioTheme.Radii.pill)
-            .backgroundColor(PortfolioTheme.Colors.ACCENT)
-            .color("#ffffff")
-            .textDecoration(TextDecoration.None)
-            .fontWeight(600)
-            .letterSpacing("-0.01em")
-            .whiteSpace(WhiteSpace.NoWrap),
-        target = null,
-        rel = null,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = mapOf("cta" to text.lowercase()),
-        navigationMode = LinkNavigationMode.Client
-    )
-}
-
-@Composable
-private fun SecondaryCtaButton(
-    text: String,
-    href: String,
-    modifier: Modifier = Modifier(),
-    openInNewTab: Boolean = true
-) {
-    val targetAttr = if (openInNewTab) "_blank" else null
-    val relAttr = if (openInNewTab) "noopener" else null
-    ButtonLink(
-        label = text,
-        href = href,
-        modifier = modifier
+    Column(
+        modifier = Modifier()
+            .flex(grow = 1, shrink = 1, basis = "300px")
+            .minWidth(280.px)
+            .padding(PortfolioTheme.Spacing.xl)
+            .borderRadius(PortfolioTheme.Radii.lg)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.TEXT_SECONDARY)
-            .borderRadius(PortfolioTheme.Radii.lg)
-            .height(56.px)
-            .display(Display.InlineFlex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.Center)
-            .padding("0", PortfolioTheme.Spacing.lg)
-            .textDecoration(TextDecoration.None)
-            .backgroundColor("rgba(255,255,255,0.03)")
-            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-            .boxShadow("0 10px 30px rgba(0,0,0,0.25)"),
-        target = targetAttr,
-        rel = relAttr,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = mapOf("cta" to text.lowercase()),
-        navigationMode = LinkNavigationMode.Native
-    )
+            .borderColor(PortfolioTheme.Colors.BORDER)
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
+            .gap(PortfolioTheme.Spacing.md)
+    ) {
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.md)
+        ) {
+            Image(
+                src = logoSrc,
+                alt = "$title logo",
+                modifier = Modifier()
+                    .width(48.px)
+                    .height(48.px)
+                    .style("object-fit", "contain")
+            )
+            Column(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(2.px)
+            ) {
+                Text(
+                    text = title,
+                    modifier = Modifier()
+                        .fontSize(1.25.rem)
+                        .fontWeight(700)
+                )
+                Text(
+                    text = subtitle,
+                    modifier = Modifier()
+                        .fontSize(0.875.rem)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                )
+            }
+        }
+        
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .gap(PortfolioTheme.Spacing.sm)
+                .marginTop(PortfolioTheme.Spacing.sm)
+        ) {
+            AnchorLink(
+                label = "Read the Docs",
+                href = docsHref,
+                modifier = Modifier()
+                    .color(accentColor)
+                    .fontWeight(600)
+                    .fontSize(0.875.rem)
+                    .textDecoration(TextDecoration.None)
+                    .hover(Modifier().textDecoration(TextDecoration.Underline)),
+                navigationMode = LinkNavigationMode.Native,
+                target = "_blank",
+                rel = "noopener",
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = emptyMap()
+            )
+            Text(
+                text = "|",
+                modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY).opacity(0.5F)
+            )
+            AnchorLink(
+                label = "View on GitHub",
+                href = githubHref,
+                modifier = Modifier()
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .fontWeight(500)
+                    .fontSize(0.875.rem)
+                    .textDecoration(TextDecoration.None)
+                    .hover(Modifier().textDecoration(TextDecoration.Underline)),
+                navigationMode = LinkNavigationMode.Native,
+                target = "_blank",
+                rel = "noopener",
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = emptyMap()
+            )
+        }
+    }
 }
+
+// =============================================================================
+// CODE SNIPPETS
+// =============================================================================
+
+private val SUMMON_CODE_SNIPPET = """
+@Composable
+fun UserCard(user: User) {
+    Card {
+        Row {
+            Avatar(src = user.avatarUrl)
+            Column {
+                Text(user.name, style = Title)
+                Text(user.email, style = Subtitle)
+            }
+        }
+        Button("View Profile") {
+            navigate("/users/${'$'}{user.id}")
+        }
+    }
+}
+""".trimIndent()
+
+private val SIGIL_CODE_SNIPPET = """
+@Composable
+fun Scene() {
+    AmbientLight(intensity = 0.5f)
+    PointLight(
+        position = vec3(10f, 10f, 10f),
+        color = Color.White
+    )
+    Mesh(geometry = BoxGeometry()) {
+        StandardMaterial(
+            color = Color.Blue,
+            metalness = 0.5f
+        )
+    }
+}
+""".trimIndent()
+
+private val MATERIA_ARCHITECTURE_SNIPPET = """
+// Unified rendering pipeline
+val engine = MateriaEngine {
+    backend = auto() // Vulkan, Metal, or WebGL
+    features {
+        hdr = true
+        shadows = ShadowQuality.High
+        antialiasing = MSAA(4)
+    }
+}
+
+// Same code, every platform
+engine.render(scene) {
+    camera = perspectiveCamera
+    postProcess = bloom + tonemap
+}
+""".trimIndent()
+
+// =============================================================================
+// STRUCTURED DATA
+// =============================================================================
 
 @Composable
 private fun StructuredDataSnippet() {
@@ -229,16 +604,18 @@ private fun StructuredDataSnippet() {
           "url": "https://dev.yousef.codes",
           "sameAs": [
             "https://www.linkedin.com/in/yousefbaitalmal",
-            "https://github.com/yousefb"
+            "https://github.com/codeyousef",
+            "https://x.com/deepissuemassaj"
           ],
-          "knowsAbout": ["Kotlin", "Compose Multiplatform", "Summon UI", "SSR"],
+          "knowsAbout": ["Kotlin", "Compose Multiplatform", "WebGPU", "Graphics Programming", "Framework Architecture"],
+          "jobTitle": "Framework Architect",
           "hasOfferCatalog": {
             "@type": "OfferCatalog",
-            "name": "Summon Services",
+            "name": "Engineering Services",
             "itemListElement": [
-              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Web apps"}},
-              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Mobile apps"}},
-              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Dashboards"}}
+              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Framework Development"}},
+              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Graphics Engine Consulting"}},
+              {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Kotlin Multiplatform Architecture"}}
             ]
           }
         }

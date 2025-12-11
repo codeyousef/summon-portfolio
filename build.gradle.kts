@@ -48,9 +48,9 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
 
     implementation("codes.yousef:summon:0.5.8.4")
-    implementation("codes.yousef:materia-jvm:0.3.2.0")
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.0.0")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.0.0")
+    implementation("codes.yousef:materia-jvm:0.3.3.0")
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.1.0")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.1.0")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)

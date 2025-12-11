@@ -21,10 +21,7 @@ data class NavItem(
 )
 
 val defaultNavItems = listOf(
-    NavItem(NavigationStrings.about, NavTarget.Section("hero")),
-    NavItem(NavigationStrings.services, NavTarget.Section("services")),
-    NavItem(NavigationStrings.blog, NavTarget.Page("/blog")),
-    NavItem(NavigationStrings.contact, NavTarget.Section("contact"))
+    NavItem(NavigationStrings.blog, NavTarget.Page("/blog"))
 )
 
 val projectsLabel = NavigationStrings.projects

@@ -74,17 +74,18 @@ fun DesktopHeader(
             )
         }
 
-        // Desktop Nav
+        // Center Nav: The Ecosystem (Summon, Sigil, Materia)
         Box(
             modifier = Modifier()
-                .flex(grow = 1, shrink = 1, basis = "360px")
+                .flex(grow = 1, shrink = 1, basis = "400px")
         ) {
             Row(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
-                    .gap(PortfolioTheme.Spacing.md)
-                    .flex(grow = 1, shrink = 1, basis = "360px")
+                    .justifyContent(JustifyContent.Center)
+                    .gap(PortfolioTheme.Spacing.lg)
+                    .flex(grow = 1, shrink = 1, basis = "400px")
                     .flexWrap(FlexWrap.Wrap)
             ) {
                 val baseNavModifier = Modifier()
@@ -96,39 +97,34 @@ fun DesktopHeader(
                     .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .opacity(0.9F)
-                val prefixOverride = if (forcePortfolioAnchors) portfolioBaseUrl().trimEnd('/') else null
-                val linkMode = if (forceNativeLinks || forcePortfolioAnchors) {
-                    LinkNavigationMode.Native
-                } else {
-                    LinkNavigationMode.Client
-                }
-                navItems.forEach { item ->
-                    val href =
-                        if (forceNativeLinks) {
-                            item.target.absoluteHref(locale, nativeBaseUrl)
-                        } else if (prefixOverride != null) {
-                            prefixOverride + item.target.href(locale)
-                        } else {
-                            item.target.href(locale)
-                        }
-                    val label = item.label.resolve(locale)
-                    navLink(
-                        label = label,
-                        href = href,
-                        modifier = baseNavModifier,
-                        dataAttributes = mapOf("nav" to label.lowercase()),
-                        navigationMode = linkMode
-                    )
-                }
-                // Projects dropdown with Summon, Materia, Sigil
-                ProjectsDropdownNav(baseNavModifier = baseNavModifier)
+                    .hover(Modifier().opacity(1.0F).backgroundColor(PortfolioTheme.Colors.SURFACE))
+                
+                // Ecosystem links
+                EcosystemNavLink(
+                    logoSrc = "/static/summon-logo.png",
+                    label = "Summon",
+                    href = summonMarketingUrl(),
+                    modifier = baseNavModifier
+                )
+                EcosystemNavLink(
+                    logoSrc = "/static/sigil-logo.png",
+                    label = "Sigil",
+                    href = sigilMarketingUrl(),
+                    modifier = baseNavModifier
+                )
+                EcosystemNavLink(
+                    logoSrc = "/static/materia-logo.png",
+                    label = "Materia",
+                    href = materiaMarketingUrl(),
+                    modifier = baseNavModifier
+                )
             }
         }
 
-        // Actions
+        // Right Nav: Blog + Work With Me dropdown
         Box(
             modifier = Modifier()
-                .flex(grow = 0, shrink = 1, basis = "240px")
+                .flex(grow = 0, shrink = 1, basis = "320px")
         ) {
             Row(
                 modifier = Modifier()
@@ -139,6 +135,31 @@ fun DesktopHeader(
                     .justifyContent(JustifyContent.FlexEnd)
                     .flexWrap(FlexWrap.NoWrap)
             ) {
+                val baseNavModifier = Modifier()
+                    .textDecoration(TextDecoration.None)
+                    .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                    .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
+                    .fontSize(0.85.rem)
+                    .letterSpacing(0.08.rem)
+                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
+                    .borderRadius(PortfolioTheme.Radii.pill)
+                    .opacity(0.9F)
+                    .hover(Modifier().opacity(1.0F).backgroundColor(PortfolioTheme.Colors.SURFACE))
+                
+                // Blog link
+                val blogHref = if (forceNativeLinks) {
+                    NavTarget.Page("/blog").absoluteHref(locale, nativeBaseUrl)
+                } else {
+                    NavTarget.Page("/blog").href(locale)
+                }
+                navLink(
+                    label = "Blog",
+                    href = blogHref,
+                    modifier = baseNavModifier,
+                    dataAttributes = mapOf("nav" to "blog"),
+                    navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
+                )
+                
                 if (chrome.isAdminSession) {
                     val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
                     navLink(
@@ -156,53 +177,11 @@ fun DesktopHeader(
                         dataAttributes = mapOf("nav" to "admin"),
                         navigationMode = LinkNavigationMode.Native
                     )
-                    navLink(
-                        label = "Logout",
-                        href = "/admin/logout",
-                        modifier = Modifier()
-                            .textDecoration(TextDecoration.None)
-                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                            .fontSize(0.85.rem)
-                            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-                            .borderRadius(PortfolioTheme.Radii.pill),
-                        dataAttributes = mapOf("nav" to "logout"),
-                        navigationMode = LinkNavigationMode.Native
-                    )
                 }
-                val hireHref = when {
-                    forceNativeLinks -> NavTarget.Section("contact").absoluteHref(locale, nativeBaseUrl)
-                    forcePortfolioAnchors -> "${portfolioBaseUrl().trimEnd('/')}${NavTarget.Section("contact").href(locale)}"
-                    else -> NavTarget.Section("contact").href(locale)
-                }
-                val hireNavigation = if (forceNativeLinks || forcePortfolioAnchors) {
-                    LinkNavigationMode.Native
-                } else {
-                    LinkNavigationMode.Client
-                }
-                ButtonLink(
-                    label = startProjectLabel.resolve(locale),
-                    href = hireHref,
-                    modifier = Modifier()
-                        .display(Display.InlineFlex)
-                        .alignItems(AlignItems.Center)
-                        .justifyContent(JustifyContent.Center)
-                        .backgroundColor(PortfolioTheme.Colors.ACCENT)
-                        .color("#ffffff")
-                        .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
-                        .borderRadius(PortfolioTheme.Radii.pill)
-                        .fontWeight(600)
-                        .textDecoration(TextDecoration.None)
-                        .whiteSpace(WhiteSpace.NoWrap),
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("nav" to "hire"),
-                    navigationMode = hireNavigation
-                )
+                
+                // Work With Me dropdown
+                WorkWithMeDropdown(baseNavModifier = baseNavModifier, locale = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
+                
                 LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
             }
         }
@@ -210,7 +189,118 @@ fun DesktopHeader(
 }
 
 /**
+ * Ecosystem navigation link with logo and label.
+ */
+@Composable
+private fun EcosystemNavLink(
+    logoSrc: String,
+    label: String,
+    href: String,
+    modifier: Modifier
+) {
+    Link(
+        href = href,
+        modifier = modifier
+            .display(Display.InlineFlex)
+            .alignItems(AlignItems.Center)
+            .gap(6.px),
+        target = "_blank"
+    ) {
+        Image(
+            src = logoSrc,
+            alt = "$label logo",
+            modifier = Modifier()
+                .width(18.px)
+                .height(18.px)
+                .style("object-fit", "contain")
+        )
+        Text(
+            text = label,
+            modifier = Modifier()
+                .fontSize(0.85.rem)
+                .fontWeight(500)
+        )
+    }
+}
+
+/**
+ * Work With Me dropdown with Full-Time and Consulting options.
+ */
+@Composable
+private fun WorkWithMeDropdown(
+    baseNavModifier: Modifier,
+    locale: PortfolioLocale,
+    forceNativeLinks: Boolean,
+    nativeBaseUrl: String?
+) {
+    Dropdown(
+        trigger = {
+            Row(
+                modifier = Modifier()
+                    .display(Display.InlineFlex)
+                    .alignItems(AlignItems.Center)
+                    .gap(6.px)
+                    .cursor(Cursor.Pointer)
+                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                    .borderRadius(PortfolioTheme.Radii.pill)
+                    .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                    .color("#ffffff")
+                    .fontWeight(600)
+            ) {
+                Text(text = "Work With Me", modifier = Modifier().whiteSpace(WhiteSpace.NoWrap))
+                Text(text = "▼", modifier = Modifier().fontSize(0.6.rem).opacity(0.8F))
+            }
+        },
+        modifier = Modifier(),
+        triggerBehavior = DropdownTrigger.CLICK,
+        closeOnItemClick = true
+    ) {
+        WorkWithMeDropdownLink(
+            label = "Full-Time Opportunities",
+            href = "/full-time"
+        )
+        WorkWithMeDropdownLink(
+            label = "Consulting & Services",
+            href = "/services"
+        )
+    }
+}
+
+/**
+ * A dropdown item for Work With Me menu.
+ */
+@Composable
+private fun WorkWithMeDropdownLink(
+    label: String,
+    href: String
+) {
+    Link(
+        href = href,
+        modifier = Modifier()
+            .display(Display.Block)
+            .padding(12.px, 20.px)
+            .textDecoration(TextDecoration.None)
+            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+            .style("border-bottom", "1px solid ${PortfolioTheme.Colors.BORDER}")
+            .hover(
+                Modifier()
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
+            )
+            .whiteSpace(WhiteSpace.NoWrap),
+        target = null
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier()
+                .fontSize(0.9.rem)
+                .fontWeight(500)
+        )
+    }
+}
+
+/**
  * Projects navigation dropdown showing Summon, Materia, and Sigil libraries.
+ * @deprecated Use EcosystemNavLink instead for the new nav structure
  */
 @Composable
 private fun ProjectsDropdownNav(baseNavModifier: Modifier) {
@@ -270,7 +360,7 @@ private fun ProjectDropdownLink(
             .style("border-bottom", "1px solid ${PortfolioTheme.Colors.BORDER}")
             .hover(
                 Modifier()
-                    .backgroundColor(PortfolioTheme.Colors.SURFACE_ELEVATED)
+                    .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
             ),
         target = "_blank"
     ) {

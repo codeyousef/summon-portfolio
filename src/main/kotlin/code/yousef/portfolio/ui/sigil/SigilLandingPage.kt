@@ -71,7 +71,7 @@ private fun SigilHero(docsUrl: String, apiReferenceUrl: String) {
                     modifier = Modifier()
                         .width(cssClamp(48.px, 10.vw, 96.px))
                         .height(cssClamp(48.px, 10.vw, 96.px))
-                        .objectFit(ObjectFit.Contain)
+                        .style("object-fit", "contain")
                 )
                 Text(
                     text = "Sigil",
