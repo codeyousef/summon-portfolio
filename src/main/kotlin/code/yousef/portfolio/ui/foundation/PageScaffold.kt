@@ -2,9 +2,11 @@ package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.aurora.AuroraBackground
+import code.yousef.portfolio.ui.aurora.AuroraConfig
+import code.yousef.portfolio.ui.aurora.AuroraHydrationScript
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.foundation.Canvas
-import codes.yousef.summon.components.foundation.ScriptTag
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.styles.GlobalStyle
@@ -76,7 +78,17 @@ fun PageScaffold(
 
     Box(modifier = scaffoldModifier) {
         if (enableAuroraEffects) {
-            WebGlCanvas()
+            // Aurora WebGL/WebGPU background effect (pure Kotlin implementation)
+            AuroraBackground(
+                config = AuroraConfig(
+                    canvasId = "aurora-canvas",
+                    height = 3500,
+                    initialPaletteIndex = 0,
+                    enableMouseInteraction = true,
+                    enableKeyboardCycle = true,
+                    enableClickCycle = true
+                )
+            )
             GrainLayer()
         }
         val columnModifier = Modifier()
@@ -97,7 +109,8 @@ fun PageScaffold(
             content()
         }
         if (enableAuroraEffects) {
-            WebGlScript()
+            // Hydration script for aurora effect (pure Kotlin)
+            AuroraHydrationScript()
         }
     }
 }
@@ -120,20 +133,6 @@ private fun InjectFontAssets() {
 }
 
 @Composable
-private fun WebGlCanvas() {
-    Canvas(
-        id = "gl",
-        modifier = Modifier()
-            .position(Position.Fixed)
-            .inset("0")
-            .width(100.percent)
-            .height(3500.px)
-            .pointerEvents(PointerEvents.None)
-            .zIndex(0)
-    )
-}
-
-@Composable
 private fun GrainLayer() {
     Box(
         modifier = Modifier()
@@ -153,13 +152,4 @@ private fun GrainLayer() {
             }
             .zIndex(1)
     ) {}
-}
-
-@Composable
-private fun WebGlScript() {
-    ScriptTag(
-        id = "aurora-gl-script",
-        src = "/static/aurora-bg.js",
-        defer = true
-    )
 }

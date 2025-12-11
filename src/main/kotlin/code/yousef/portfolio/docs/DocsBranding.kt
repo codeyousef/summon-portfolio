@@ -1,6 +1,7 @@
 package code.yousef.portfolio.docs
 
 import code.yousef.portfolio.ssr.materiaMarketingUrl
+import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 
 /**
@@ -34,6 +35,14 @@ data class DocsBranding(
             docsTitle = "Materia Docs",
             accentColor = "#6ad7ff", // LINK_HOVER - a nice cyan that's visible
             logoPath = "/static/materia-logo.png"
+        )
+
+        fun sigil(homeUrlProvider: () -> String = ::sigilMarketingUrl) = DocsBranding(
+            name = "Sigil",
+            homeUrlProvider = homeUrlProvider,
+            docsTitle = "Sigil Docs",
+            accentColor = "#06b6d4", // Teal/cyan accent for Sigil
+            logoPath = "/static/sigil-logo.png"
         )
     }
 }

@@ -113,6 +113,45 @@ data class DocsConfig(
                 localDocsRoot = localRoot
             )
         }
+
+        /**
+         * Creates a DocsConfig for Sigil docs.
+         * Uses SIGIL_* environment variables with fallbacks.
+         */
+        fun sigilFromEnv(): DocsConfig {
+            val env = System.getenv()
+            val owner = env["SIGIL_GITHUB_OWNER"] ?: "codeyousef"
+            val repo = env["SIGIL_GITHUB_REPO"] ?: "sigil"
+            val branch = env["SIGIL_DOCS_BRANCH"] ?: "main"
+            val root = env["SIGIL_DOCS_ROOT"] ?: "docs"
+            val useApi = (env["SIGIL_DOCS_USE_API"] ?: "false").toBooleanStrictOrNull() ?: false
+            val ttl = (env["DOCS_CACHE_TTL_SECONDS"] ?: "3600").toLongOrNull() ?: 3600L
+            val enableRedis = (env["DOCS_ENABLE_REDIS"] ?: "false").toBooleanStrictOrNull() ?: false
+            val docsSource = when ((env["SIGIL_DOCS_SOURCE"] ?: "remote").lowercase()) {
+                "local" -> DocsSource.LOCAL
+                else -> DocsSource.REMOTE
+            }
+            val localRoot = env["SIGIL_DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: run {
+                val sigilDocs = Paths.get("docs/private/sigil-docs")
+                if (Files.exists(sigilDocs)) sigilDocs else Paths.get("docs")
+            }
+            val docsOrigin = env["PUBLIC_ORIGIN_SIGIL_DOCS"] ?: "https://sigil.yousef.codes"
+            val portfolioOrigin = env["PUBLIC_ORIGIN_PORTFOLIO"] ?: "https://www.yousef.codes"
+            return DocsConfig(
+                githubOwner = owner,
+                githubRepo = repo,
+                defaultBranch = branch,
+                docsRoot = root,
+                useContentsApi = useApi,
+                githubToken = env["GITHUB_TOKEN"],
+                cacheTtlSeconds = ttl,
+                enableRedis = enableRedis,
+                publicOriginDocs = docsOrigin,
+                publicOriginPortfolio = portfolioOrigin,
+                docsSource = docsSource,
+                localDocsRoot = localRoot
+            )
+        }
     }
 }
 
