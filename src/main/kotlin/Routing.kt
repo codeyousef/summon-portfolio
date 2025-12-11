@@ -17,6 +17,7 @@ import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.respondSummon
 import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.summonStaticAssets
 import codes.yousef.summon.integration.ktor.KtorRenderer.Companion.summonCallbackHandler
 import codes.yousef.summon.runtime.getPlatformRenderer
+import codes.yousef.sigil.summon.integration.sigilStaticAssets
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
@@ -112,6 +113,9 @@ fun Application.configureRouting(
 
         // Summon: Serve hydration assets (JS, WASM) automatically from the library
         summonStaticAssets()
+
+        // Sigil: Serve hydration assets for WebGPU/WebGL effects
+        sigilStaticAssets()
 
         // Summon: Handle callback requests for interactive components
         summonCallbackHandler()

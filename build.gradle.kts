@@ -17,9 +17,7 @@ application {
 }
 
 dependencies {
-    // Note: Aurora effect uses WebGPU directly via inline WGSL shaders,
-    // so we don't need the materia-js/sigil-js bundles for client-side rendering.
-    // The JVM dependencies are used for schema definitions and SSR.
+    // Ktor server dependencies
     implementation("io.ktor:ktor-server-core-jvm")
     implementation("io.ktor:ktor-server-netty")
     implementation("io.ktor:ktor-server-config-yaml")
@@ -49,8 +47,8 @@ dependencies {
 
     implementation("codes.yousef:summon:0.5.8.4")
     implementation("codes.yousef:materia-jvm:0.3.3.0")
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.1.0")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.1.0")
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.2.0")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.2.0")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)

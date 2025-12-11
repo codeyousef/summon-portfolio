@@ -2,7 +2,6 @@ package code.yousef.portfolio.ui.aurora
 
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
-import codes.yousef.summon.components.foundation.RawHtml
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
@@ -87,14 +86,6 @@ fun AuroraBackground(
                 )
             )
         }
-        
-        // Inject inline WebGL renderer script for browsers without WebGPU
-        // This script only activates if WebGPU is not available (e.g., Firefox)
-        // and provides a self-contained WebGL fallback without needing any JS bundle
-        RawHtml(
-            html = "<script>${AuroraWebGLRenderer.generateScript(config.canvasId, palette, config)}</script>",
-            sanitize = false
-        )
     }
 }
 
