@@ -46,11 +46,11 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
 
     // Summon SSR framework + Sigil 3D/effects library
-    // Sigil 0.2.7.6 - Fixed data-sigil-effects to contain full serialized effect data
+    // Sigil 0.2.7.7 - Fixed custom uniform bindings for WebGPU
     implementation("codes.yousef:summon:0.5.8.4")
     implementation("codes.yousef:materia-jvm:0.3.3.0")
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.7.6")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.7.6")
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.7.7")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.7.7")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)
