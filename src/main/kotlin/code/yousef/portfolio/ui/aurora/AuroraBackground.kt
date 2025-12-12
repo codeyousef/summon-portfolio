@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.aurora
 
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
@@ -37,6 +38,14 @@ fun AuroraBackground(
     // Get the selected palette
     val palette = AuroraPalettes.ALL.getOrElse(config.initialPaletteIndex) { AuroraPalettes.DEFAULT }
     
+    // CSS to force all descendants of aurora container to inherit full height
+    // This is needed because Summon wraps composables in divs without explicit sizing
+    GlobalStyle("""
+        [data-aurora-container="true"] > * { width: 100%; height: 100%; }
+        [data-aurora-container="true"] > * > * { width: 100%; height: 100%; }
+        [data-aurora-container="true"] > * > * > * { width: 100%; height: 100%; }
+    """.trimIndent())
+    
     // Container for the aurora canvas - positioned fixed behind all content
     Box(
         modifier = Modifier()
@@ -47,51 +56,45 @@ fun AuroraBackground(
             .height(config.height.px)
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
+            .dataAttribute("aurora-container", "true")
     ) {
-        // Inner wrapper to ensure 100% height propagation to canvas
-        Box(
-            modifier = Modifier()
-                .width(100.percent)
-                .height(100.percent)
-        ) {
-            // Sigil effect canvas with aurora shader
-            SigilEffectCanvas(
+        // Sigil effect canvas with aurora shader
+        SigilEffectCanvas(
+            id = config.canvasId,
+            width = "100%",
+            height = "100%",
+            config = SigilCanvasConfig(
                 id = config.canvasId,
-                width = "100%",
-                height = "100%",
-                config = SigilCanvasConfig(
-                    id = config.canvasId,
-                    respectDevicePixelRatio = true,
-                    fallbackToWebGL = true,  // Enable WebGL fallback for Firefox
-                    fallbackToCSS = true
-                ),
-                interactions = InteractionConfig(
-                    enableMouseMove = config.enableMouseInteraction,
-                    enableMouseClick = config.enableClickCycle,
-                    enableKeyboard = config.enableKeyboardCycle,
-                    enableTouch = config.enableMouseInteraction
-                ),
-                fallback = { "" }
-            ) {
-                // Use SigilEffect directly to provide both WGSL and GLSL shaders
-                SigilEffect(
-                    ShaderEffectData(
-                        id = "aurora-effect",
-                        name = "Aurora Background",
-                        fragmentShader = buildAuroraWGSLShader(),
-                        glslFragmentShader = buildAuroraGLSLShader(palette),
-                        timeScale = config.timeScale,
-                        enableMouseInteraction = config.enableMouseInteraction,
-                        uniforms = mapOf(
-                            "noiseScale" to UniformValue.FloatValue(config.noiseScale),
-                            "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
-                            "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
-                            "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
-                            "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
-                        )
+                respectDevicePixelRatio = true,
+                fallbackToWebGL = true,  // Enable WebGL fallback for Firefox
+                fallbackToCSS = true
+            ),
+            interactions = InteractionConfig(
+                enableMouseMove = config.enableMouseInteraction,
+                enableMouseClick = config.enableClickCycle,
+                enableKeyboard = config.enableKeyboardCycle,
+                enableTouch = config.enableMouseInteraction
+            ),
+            fallback = { "" }
+        ) {
+            // Use SigilEffect directly to provide both WGSL and GLSL shaders
+            SigilEffect(
+                ShaderEffectData(
+                    id = "aurora-effect",
+                    name = "Aurora Background",
+                    fragmentShader = buildAuroraWGSLShader(),
+                    glslFragmentShader = buildAuroraGLSLShader(palette),
+                    timeScale = config.timeScale,
+                    enableMouseInteraction = config.enableMouseInteraction,
+                    uniforms = mapOf(
+                        "noiseScale" to UniformValue.FloatValue(config.noiseScale),
+                        "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
+                        "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
+                        "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
+                        "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
                     )
                 )
-            }
+            )
         }
     }
 }
