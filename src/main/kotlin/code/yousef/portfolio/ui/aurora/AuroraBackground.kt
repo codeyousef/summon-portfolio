@@ -103,26 +103,35 @@ fun AuroraBackground(
  * Builds the WGSL aurora shader using Sigil's WGSLLib.
  */
 private fun buildAuroraWGSLShader(): String = """
-${WGSLLib.Structs.EFFECT_UNIFORMS}
+struct EffectUniforms {
+    time: f32,
+    deltaTime: f32,
+    resolution: vec2<f32>,
+    mouse: vec2<f32>,
+    scroll: f32,
+    _padding: f32,
+    // Custom uniforms for aurora effect (Sigil 0.2.7.8 packs all uniforms into binding(0))
+    noiseScale: f32,
+    paletteA: vec3<f32>,
+    paletteB: vec3<f32>,
+    paletteC: vec3<f32>,
+    paletteD: vec3<f32>,
+}
 
-// Custom uniforms for aurora effect
-@group(0) @binding(1) var<uniform> noiseScale: f32;
-@group(0) @binding(2) var<uniform> paletteA: vec3<f32>;
-@group(0) @binding(3) var<uniform> paletteB: vec3<f32>;
-@group(0) @binding(4) var<uniform> paletteC: vec3<f32>;
-@group(0) @binding(5) var<uniform> paletteD: vec3<f32>;
+@group(0) @binding(0)
+var<uniform> uniforms: EffectUniforms;
 
 ${WGSLLib.Noise.SIMPLEX_2D}
 
 // IQ's cosine palette function
 fn palette(t: f32) -> vec3<f32> {
-    return paletteA + paletteB * cos(6.28318 * (paletteC * t + paletteD));
+    return uniforms.paletteA + uniforms.paletteB * cos(6.28318 * (uniforms.paletteC * t + uniforms.paletteD));
 }
 
 // Fractal Brownian Motion using 2D simplex noise with z as time
 fn fbm(p: vec3<f32>) -> f32 {
     var f = 0.0;
-    var scale = noiseScale;
+    var scale = uniforms.noiseScale;
     var amp = 0.5;
     for (var i = 0; i < 5; i++) {
         f += amp * simplex2D(p.xy * scale + vec2<f32>(p.z * 0.3));
