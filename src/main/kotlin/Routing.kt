@@ -111,6 +111,24 @@ fun Application.configureRouting(
     routing {
         staticResources("/static", "static")
 
+        // Serve Sigil hydration bundle explicitly (ensures correct content-type and avoids any routing collisions).
+        get("/sigil-hydration.js") {
+            val bytes = this::class.java.classLoader
+                .getResourceAsStream("static/sigil-hydration.js")
+                ?.use { it.readBytes() }
+                ?: return@get call.respond(HttpStatusCode.NotFound)
+            call.response.headers.append(HttpHeaders.CacheControl, "no-cache")
+            call.respondBytes(bytes, contentType = ContentType.parse("application/javascript"))
+        }
+        get("/sigil-hydration.js.map") {
+            val bytes = this::class.java.classLoader
+                .getResourceAsStream("static/sigil-hydration.js.map")
+                ?.use { it.readBytes() }
+                ?: return@get call.respond(HttpStatusCode.NotFound)
+            call.response.headers.append(HttpHeaders.CacheControl, "no-cache")
+            call.respondBytes(bytes, contentType = ContentType.Application.Json)
+        }
+
         // Sigil: Serve hydration assets for WebGPU/WebGL effects (Aurora background)
         sigilStaticAssets()
 
