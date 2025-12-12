@@ -164,7 +164,7 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     color += palette(uniforms.time * 0.05) * mouseGlow;
     
     // Soft fade at edges
-    let edgeFade = smoothstep(0.0, 0.1, uv.y) * smoothstep(1.0, 0.9, uv.y);
+    let edgeFade = smoothstep(0.0, 0.1, uv.y) * (1.0 - smoothstep(0.9, 1.0, uv.y));
     color *= edgeFade;
     
     let alpha = max(max(aurora1, aurora2), aurora3) * 0.8;
@@ -236,7 +236,7 @@ void main() {
     color += palette(time * 0.05) * mouseGlow;
     
     // Soft fade at edges
-    float edgeFade = smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+    float edgeFade = smoothstep(0.0, 0.1, vUv.y) * (1.0 - smoothstep(0.9, 1.0, vUv.y));
     color *= edgeFade;
     
     float alpha = max(max(aurora1, aurora2), aurora3) * 0.8;
