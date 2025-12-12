@@ -91,8 +91,7 @@ class PortfolioRenderer(
         head.link("stylesheet", "https://fonts.googleapis.com/icon?family=Material+Icons", null, null, null, null)
         // Hydration script also loads synchronously to ensure polyfill is applied
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
-        // Sigil hydration script for WebGPU/WebGL canvas effects (aurora background)
-        head.script(SIGIL_HYDRATION_SCRIPT_PATH, "sigil-hydration-runtime", "application/javascript", false, false, null)
+        // Sigil hydration bundle auto-loads via sigilStaticAssets() - no manual script needed
         // Non-critical cleanup script (async)
         head.script("/static/textarea-cleanup.js", "textarea-cleanup", "application/javascript", true, false, null)
         // (Structured data currently omitted until HeadScope gains inline support)
