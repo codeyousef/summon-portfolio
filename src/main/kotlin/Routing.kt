@@ -111,11 +111,12 @@ fun Application.configureRouting(
     routing {
         staticResources("/static", "static")
 
-        // Summon: Serve hydration assets (JS, WASM) automatically from the library
-        summonStaticAssets()
-
         // Sigil: Serve hydration assets for WebGPU/WebGL effects (Aurora background)
         sigilStaticAssets()
+
+        // Summon: Serve hydration assets (JS, WASM) automatically from the library
+        // NOTE: This must come after Sigil's assets so it doesn't shadow `/sigil-hydration.js`.
+        summonStaticAssets()
 
         // Summon: Handle callback requests for interactive components
         summonCallbackHandler()
