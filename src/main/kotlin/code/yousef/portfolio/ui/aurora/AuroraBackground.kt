@@ -48,43 +48,50 @@ fun AuroraBackground(
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {
-        // Sigil effect canvas with aurora shader
-        SigilEffectCanvas(
-            id = config.canvasId,
-            width = "100%",
-            height = "100%",
-            config = SigilCanvasConfig(
-                id = config.canvasId,
-                respectDevicePixelRatio = true,
-                fallbackToWebGL = true,  // Enable WebGL fallback for Firefox
-                fallbackToCSS = true
-            ),
-            interactions = InteractionConfig(
-                enableMouseMove = config.enableMouseInteraction,
-                enableMouseClick = config.enableClickCycle,
-                enableKeyboard = config.enableKeyboardCycle,
-                enableTouch = config.enableMouseInteraction
-            ),
-            fallback = { "" }
+        // Inner wrapper to ensure 100% height propagation to canvas
+        Box(
+            modifier = Modifier()
+                .width(100.percent)
+                .height(100.percent)
         ) {
-            // Use SigilEffect directly to provide both WGSL and GLSL shaders
-            SigilEffect(
-                ShaderEffectData(
-                    id = "aurora-effect",
-                    name = "Aurora Background",
-                    fragmentShader = buildAuroraWGSLShader(),
-                    glslFragmentShader = buildAuroraGLSLShader(palette),
-                    timeScale = config.timeScale,
-                    enableMouseInteraction = config.enableMouseInteraction,
-                    uniforms = mapOf(
-                        "noiseScale" to UniformValue.FloatValue(config.noiseScale),
-                        "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
-                        "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
-                        "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
-                        "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
+            // Sigil effect canvas with aurora shader
+            SigilEffectCanvas(
+                id = config.canvasId,
+                width = "100%",
+                height = "100%",
+                config = SigilCanvasConfig(
+                    id = config.canvasId,
+                    respectDevicePixelRatio = true,
+                    fallbackToWebGL = true,  // Enable WebGL fallback for Firefox
+                    fallbackToCSS = true
+                ),
+                interactions = InteractionConfig(
+                    enableMouseMove = config.enableMouseInteraction,
+                    enableMouseClick = config.enableClickCycle,
+                    enableKeyboard = config.enableKeyboardCycle,
+                    enableTouch = config.enableMouseInteraction
+                ),
+                fallback = { "" }
+            ) {
+                // Use SigilEffect directly to provide both WGSL and GLSL shaders
+                SigilEffect(
+                    ShaderEffectData(
+                        id = "aurora-effect",
+                        name = "Aurora Background",
+                        fragmentShader = buildAuroraWGSLShader(),
+                        glslFragmentShader = buildAuroraGLSLShader(palette),
+                        timeScale = config.timeScale,
+                        enableMouseInteraction = config.enableMouseInteraction,
+                        uniforms = mapOf(
+                            "noiseScale" to UniformValue.FloatValue(config.noiseScale),
+                            "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
+                            "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
+                            "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
+                            "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
+                        )
                     )
                 )
-            )
+            }
         }
     }
 }
