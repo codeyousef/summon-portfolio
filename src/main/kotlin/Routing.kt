@@ -6,6 +6,8 @@ import code.yousef.firestore.PortfolioMetaService
 import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.contact.ContactService
+import code.yousef.portfolio.content.ContentStore
+import code.yousef.portfolio.content.LocalContentStore
 import code.yousef.portfolio.content.PortfolioContentService
 import com.google.cloud.firestore.Firestore
 import code.yousef.portfolio.docs.*
@@ -32,11 +34,18 @@ import java.time.Instant
 
 fun Application.configureRouting(
     appConfig: AppConfig,
-    portfolioMetaService: PortfolioMetaService,
-    firestore: Firestore
+    portfolioMetaService: PortfolioMetaService?,
+    firestore: Firestore?
 ) {
     val bootInstant = Instant.now()
-    val contentStore = FirestoreContentStore(firestore)
+    
+    // Use LocalContentStore for development, FirestoreContentStore for production
+    val contentStore: ContentStore = if (firestore != null) {
+        FirestoreContentStore(firestore)
+    } else {
+        log.info("Using LocalContentStore with seed data (Firestore not available)")
+        LocalContentStore()
+    }
     val contentService = PortfolioContentService(contentStore)
     val adminContentService = AdminContentService(contentStore)
     
@@ -110,6 +119,47 @@ fun Application.configureRouting(
 
     routing {
         staticResources("/static", "static")
+
+        // DEBUG: Diagnostic route to check if Sigil hydration bundle can be loaded from JAR
+        get("/debug/sigil-check") {
+            val locations = listOf(
+                "static/sigil-hydration.js",
+                "META-INF/resources/static/sigil-hydration.js",
+                "codes/yousef/sigil/static/sigil-hydration.js",
+                "sigil-hydration.js"
+            )
+            val results = mutableMapOf<String, String>()
+            
+            for (path in locations) {
+                val stream = Thread.currentThread().contextClassLoader?.getResourceAsStream(path)
+                    ?: this::class.java.classLoader?.getResourceAsStream(path)
+                if (stream != null) {
+                    val size = stream.use { it.readBytes().size }
+                    results[path] = "FOUND ($size bytes)"
+                } else {
+                    results[path] = "NOT FOUND"
+                }
+            }
+            
+            // Also check what classes are available from Sigil
+            val sigilClasses = listOf(
+                "codes.yousef.sigil.summon.integration.SigilAssets",
+                "codes.yousef.sigil.summon.integration.SigilKtorIntegration"
+            )
+            for (className in sigilClasses) {
+                try {
+                    Class.forName(className)
+                    results["Class: $className"] = "LOADED"
+                } catch (e: Exception) {
+                    results["Class: $className"] = "ERROR: ${e.message}"
+                }
+            }
+            
+            call.respondText(
+                results.entries.joinToString("\n") { "${it.key}: ${it.value}" },
+                ContentType.Text.Plain
+            )
+        }
 
         // Sigil: Serve hydration assets for WebGPU/WebGL effects (Aurora background)
         sigilStaticAssets()
@@ -421,6 +471,13 @@ fun Application.configureRouting(
             call.respondHealth(bootInstant)
         }
         get("/db-test") {
+            if (portfolioMetaService == null) {
+                call.respond(
+                    HttpStatusCode.OK,
+                    DbTestResponse(ok = true, exists = false, data = JsonNull, error = "Using LocalContentStore - no Firestore connection")
+                )
+                return@get
+            }
             val response = runCatching {
                 val now = System.currentTimeMillis()
                 portfolioMetaService.touchHello(now)

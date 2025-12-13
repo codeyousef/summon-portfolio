@@ -46,12 +46,12 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
 
     // Summon SSR framework + Sigil 3D/effects library
-    // Sigil 0.2.7.8 - WebGPU uniforms in single binding(0) buffer
     implementation("codes.yousef:summon:0.5.8.4")
-    implementation("codes.yousef:materia-jvm:0.3.3.0")
-        // Sigil: WebGPU uniforms in single binding(0) buffer; 0.2.7.9 fixes Firefox hydration regex crash
-        implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.7.10")
-        implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.7.10")
+    // Materia 0.3.4.3 - Fixed asDynamic() on js({}) objects
+    implementation("codes.yousef:materia-jvm:0.3.4.3")
+    // Sigil 0.2.8.7 - WebGPU rendering now works
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.8.7")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.8.7")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)

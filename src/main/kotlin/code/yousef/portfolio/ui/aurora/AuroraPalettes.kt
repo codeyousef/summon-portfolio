@@ -34,16 +34,16 @@ data class AuroraPalette(
 /**
  * Predefined aurora color palettes using IQ's palette formula.
  * Users can cycle through these with keyboard (1-7) or click.
- * Palettes focus on reds, blues, and purples (no greens).
+ * Classic aurora colors: greens, teals, purples, and pinks.
  */
 object AuroraPalettes {
-    /** Deep cosmic - blues and purples */
+    /** Classic Northern Lights - vibrant greens and teals */
     val COSMIC = AuroraPalette(
-        name = "Cosmic",
-        a = Triple(0.3f, 0.1f, 0.5f),
-        b = Triple(0.4f, 0.2f, 0.4f),
-        c = Triple(1.0f, 0.8f, 1.0f),
-        d = Triple(0.0f, 0.1f, 0.5f)
+        name = "Northern Lights",
+        a = Triple(0.2f, 0.5f, 0.4f),    // Base: teal-green
+        b = Triple(0.3f, 0.4f, 0.3f),    // Amplitude
+        c = Triple(1.0f, 1.0f, 0.5f),    // Frequency
+        d = Triple(0.0f, 0.33f, 0.67f)   // Phase shift for rainbow
     )
     
     /** Crimson night - deep reds and magentas */

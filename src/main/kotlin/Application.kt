@@ -30,18 +30,26 @@ fun main(args: Array<String>) {
 fun Application.module() {
     val appConfig = loadAppConfig()
     log.info(
-        "Starting Summon Portfolio with projectId={}, emulator={}, port={}",
+        "Starting Summon Portfolio with projectId={}, emulator={}, port={}, localStore={}",
         appConfig.projectId,
         appConfig.emulatorHost ?: "OFF",
-        appConfig.port
+        appConfig.port,
+        appConfig.useLocalStore
     )
 
-    val firestore = FirestoreProvider.create(appConfig)
-    val portfolioMetaService = PortfolioMetaService(PortfolioMetaRepository(firestore))
+    // Use local store for development without Firestore, or Firestore for production
+    val firestore = if (appConfig.useLocalStore) null else FirestoreProvider.create(appConfig)
+    val portfolioMetaService = if (firestore != null) {
+        PortfolioMetaService(PortfolioMetaRepository(firestore))
+    } else {
+        null // Not needed for local dev
+    }
 
     environment.monitor.subscribe(ApplicationStopped) {
-        runCatching { firestore.close() }
-            .onFailure { throwable -> log.warn("Failed to close Firestore", throwable) }
+        firestore?.let { fs ->
+            runCatching { fs.close() }
+                .onFailure { throwable -> log.warn("Failed to close Firestore", throwable) }
+        }
     }
 
     install(DefaultHeaders)

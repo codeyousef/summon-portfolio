@@ -1,5 +1,6 @@
 package code.yousef.firestore
 
+import code.yousef.portfolio.content.ContentStore
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.content.model.*
 import code.yousef.portfolio.content.seed.PortfolioContentSeed
@@ -12,7 +13,7 @@ import java.time.LocalDate
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class FirestoreContentStore(private val firestore: Firestore) {
+class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
 
     private val projectsCollection = firestore.collection("projects")
     private val servicesCollection = firestore.collection("services")
@@ -26,7 +27,7 @@ class FirestoreContentStore(private val firestore: Firestore) {
         runBlocking { ensureSeedData() }
     }
 
-    fun loadPortfolioContent(): PortfolioContent = runBlocking {
+    override fun loadPortfolioContent(): PortfolioContent = runBlocking {
         PortfolioContent(
             hero = getHero(),
             projects = listProjects(),
@@ -37,7 +38,7 @@ class FirestoreContentStore(private val firestore: Firestore) {
     }
 
     // Projects
-    fun listProjects(): List<Project> = runBlocking {
+    override fun listProjects(): List<Project> = runBlocking {
         withContext(Dispatchers.IO) {
             retry {
                 projectsCollection.get().get().documents.mapNotNull { doc ->
@@ -47,24 +48,28 @@ class FirestoreContentStore(private val firestore: Firestore) {
         }
     }
 
-    fun upsertProject(project: Project) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { projectsCollection.document(project.id).set(project.toMap()).get() }
+    override fun upsertProject(project: Project) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { projectsCollection.document(project.id).set(project.toMap()).get() }
+                }
             }
         }
     }
 
-    fun deleteProject(id: String) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { projectsCollection.document(id).delete().get() }
+    override fun deleteProject(id: String) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { projectsCollection.document(id).delete().get() }
+                }
             }
         }
     }
 
     // Services
-    fun listServices(): List<Service> = runBlocking {
+    override fun listServices(): List<Service> = runBlocking {
         withContext(Dispatchers.IO) {
             retry {
                 servicesCollection.get().get().documents.mapNotNull { doc ->
@@ -74,24 +79,28 @@ class FirestoreContentStore(private val firestore: Firestore) {
         }
     }
 
-    fun upsertService(service: Service) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { servicesCollection.document(service.id).set(service.toMap()).get() }
+    override fun upsertService(service: Service) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { servicesCollection.document(service.id).set(service.toMap()).get() }
+                }
             }
         }
     }
 
-    fun deleteService(id: String) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { servicesCollection.document(id).delete().get() }
+    override fun deleteService(id: String) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { servicesCollection.document(id).delete().get() }
+                }
             }
         }
     }
 
     // Blog Posts
-    fun listBlogPosts(): List<BlogPost> = runBlocking {
+    override fun listBlogPosts(): List<BlogPost> = runBlocking {
         withContext(Dispatchers.IO) {
             retry {
                 blogPostsCollection.get().get().documents.mapNotNull { doc ->
@@ -101,24 +110,28 @@ class FirestoreContentStore(private val firestore: Firestore) {
         }
     }
 
-    fun upsertBlogPost(post: BlogPost) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { blogPostsCollection.document(post.id).set(post.toMap()).get() }
+    override fun upsertBlogPost(post: BlogPost) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { blogPostsCollection.document(post.id).set(post.toMap()).get() }
+                }
             }
         }
     }
 
-    fun deleteBlogPost(id: String) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { blogPostsCollection.document(id).delete().get() }
+    override fun deleteBlogPost(id: String) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { blogPostsCollection.document(id).delete().get() }
+                }
             }
         }
     }
 
     // Testimonials
-    fun listTestimonials(): List<Testimonial> = runBlocking {
+    override fun listTestimonials(): List<Testimonial> = runBlocking {
         withContext(Dispatchers.IO) {
             retry {
                 testimonialsCollection.get().get().documents.mapNotNull { doc ->
@@ -128,28 +141,44 @@ class FirestoreContentStore(private val firestore: Firestore) {
         }
     }
 
-    fun upsertTestimonial(testimonial: Testimonial) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { testimonialsCollection.document(testimonial.id).set(testimonial.toMap()).get() }
+    override fun upsertTestimonial(testimonial: Testimonial) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { testimonialsCollection.document(testimonial.id).set(testimonial.toMap()).get() }
+                }
             }
         }
     }
 
-    fun deleteTestimonial(id: String) = lock.withLock {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                retry { testimonialsCollection.document(id).delete().get() }
+    override fun deleteTestimonial(id: String) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { testimonialsCollection.document(id).delete().get() }
+                }
             }
         }
     }
 
     // Hero
-    private suspend fun getHero(): HeroContent = withContext(Dispatchers.IO) {
-        retry {
-            val doc = heroCollection.document("main").get().get()
-            if (doc.exists()) doc.toHeroContent() ?: PortfolioContentSeed.hero
-            else PortfolioContentSeed.hero
+    override fun getHero(): HeroContent = runBlocking {
+        withContext(Dispatchers.IO) {
+            retry {
+                val doc = heroCollection.document("main").get().get()
+                if (doc.exists()) doc.toHeroContent() ?: PortfolioContentSeed.hero
+                else PortfolioContentSeed.hero
+            }
+        }
+    }
+
+    override fun updateHero(hero: HeroContent) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { heroCollection.document("main").set(hero.toMap()).get() }
+                }
+            }
         }
     }
 

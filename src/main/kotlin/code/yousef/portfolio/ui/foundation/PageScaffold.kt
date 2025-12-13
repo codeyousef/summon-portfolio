@@ -27,11 +27,14 @@ fun PageScaffold(
     PostHogAnalytics()
 
     // Global styles to prevent zoom and horizontal overflow on mobile
+    // When aurora is enabled, set dark body background so the effect shows through transparent scaffold
+    val bodyBackground = if (enableAuroraEffects) "#001a2c" else "inherit"
     GlobalStyle(
         """
         html, body {
             overflow-x: hidden;
             max-width: 100vw;
+            background-color: $bodyBackground;
         }
         
         * {
@@ -50,25 +53,33 @@ fun PageScaffold(
 
     val scaffoldModifier = modifier
         .minHeight("100vh")
-        .backgroundColor(PortfolioTheme.Colors.BACKGROUND)
-        .backgroundLayers {
-            radialGradient {
-                position("20% 30%")
-                colorStop("rgba(255,70,104,0.2)", "0%")
-                colorStop("transparent", "60%")
-            }
-            radialGradient {
-                position("80% 70%")
-                colorStop("rgba(106,215,255,0.15)", "0%")
-                colorStop("transparent", "60%")
-            }
-            linearGradient {
-                direction("180deg")
-                colorStop("#001a2c", "0%")
-                colorStop("#05294a", "100%")
+        // When aurora effects are enabled, use transparent background to let the aurora show through
+        // Otherwise, use the solid background colors
+        .let { mod ->
+            if (enableAuroraEffects) {
+                mod.backgroundColor("transparent")
+            } else {
+                mod.backgroundColor(PortfolioTheme.Colors.BACKGROUND)
+                    .backgroundLayers {
+                        radialGradient {
+                            position("20% 30%")
+                            colorStop("rgba(255,70,104,0.2)", "0%")
+                            colorStop("transparent", "60%")
+                        }
+                        radialGradient {
+                            position("80% 70%")
+                            colorStop("rgba(106,215,255,0.15)", "0%")
+                            colorStop("transparent", "60%")
+                        }
+                        linearGradient {
+                            direction("180deg")
+                            colorStop("#001a2c", "0%")
+                            colorStop("#05294a", "100%")
+                        }
+                    }
+                    .backgroundColor(PortfolioTheme.Colors.BACKGROUND_ALT)
             }
         }
-        .backgroundColor(PortfolioTheme.Colors.BACKGROUND_ALT)
         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
         .fontFamily(PortfolioTheme.Typography.FONT_SANS)
         .position(Position.Relative)
