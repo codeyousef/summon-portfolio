@@ -2,7 +2,6 @@ package code.yousef.portfolio.ui.aurora
 
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
-import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
@@ -13,10 +12,6 @@ import codes.yousef.sigil.summon.effects.SigilEffect
 import codes.yousef.sigil.schema.effects.SigilCanvasConfig
 import codes.yousef.sigil.schema.effects.InteractionConfig
 import codes.yousef.sigil.schema.effects.ShaderEffectData
-import codes.yousef.sigil.schema.effects.UniformValue
-import codes.yousef.sigil.schema.effects.Vec3
-import codes.yousef.sigil.schema.effects.WGSLLib
-import codes.yousef.sigil.schema.effects.GLSLLib
 
 /**
  * Aurora background effect component using Sigil.
@@ -38,14 +33,6 @@ fun AuroraBackground(
     // Get the selected palette
     val palette = AuroraPalettes.ALL.getOrElse(config.initialPaletteIndex) { AuroraPalettes.DEFAULT }
     
-    // CSS to force all descendants of aurora container to inherit full height
-    // This is needed because Summon wraps composables in divs without explicit sizing
-    GlobalStyle("""
-        [data-aurora-container="true"] > * { width: 100%; height: 100%; }
-        [data-aurora-container="true"] > * > * { width: 100%; height: 100%; }
-        [data-aurora-container="true"] > * > * > * { width: 100%; height: 100%; }
-    """.trimIndent())
-    
     // Container for the aurora canvas - positioned fixed behind all content
     Box(
         modifier = Modifier()
@@ -56,7 +43,6 @@ fun AuroraBackground(
             .height(config.height.px)
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
-            .dataAttribute("aurora-container", "true")
     ) {
         // Sigil effect canvas with aurora shader
         SigilEffectCanvas(
@@ -82,17 +68,11 @@ fun AuroraBackground(
                 ShaderEffectData(
                     id = "aurora-effect",
                     name = "Aurora Background",
-                    fragmentShader = buildAuroraWGSLShader(),
+                    fragmentShader = buildAuroraWGSLShader(palette),
                     glslFragmentShader = buildAuroraGLSLShader(palette),
                     timeScale = config.timeScale,
                     enableMouseInteraction = config.enableMouseInteraction,
-                    uniforms = mapOf(
-                        "noiseScale" to UniformValue.FloatValue(config.noiseScale),
-                        "paletteA" to UniformValue.Vec3Value(Vec3(palette.a.first, palette.a.second, palette.a.third)),
-                        "paletteB" to UniformValue.Vec3Value(Vec3(palette.b.first, palette.b.second, palette.b.third)),
-                        "paletteC" to UniformValue.Vec3Value(Vec3(palette.c.first, palette.c.second, palette.c.third)),
-                        "paletteD" to UniformValue.Vec3Value(Vec3(palette.d.first, palette.d.second, palette.d.third))
-                    )
+                    uniforms = emptyMap()
                 )
             )
         }
@@ -100,9 +80,11 @@ fun AuroraBackground(
 }
 
 /**
- * Builds the WGSL aurora shader using Sigil's WGSLLib.
+ * Builds the WGSL aurora shader.
+ * Creates flowing aurora ribbons using sine waves - consistent with GLSL version.
+ * Uses IQ palette formula for colors.
  */
-private fun buildAuroraWGSLShader(): String = """
+private fun buildAuroraWGSLShader(palette: AuroraPalette): String = """
 struct EffectUniforms {
     time: f32,
     deltaTime: f32,
@@ -110,145 +92,138 @@ struct EffectUniforms {
     mouse: vec2<f32>,
     scroll: f32,
     _padding: f32,
-    // Custom uniforms for aurora effect (Sigil 0.2.7.8 packs all uniforms into binding(0))
-    noiseScale: f32,
-    paletteA: vec3<f32>,
-    paletteB: vec3<f32>,
-    paletteC: vec3<f32>,
-    paletteD: vec3<f32>,
 }
 
 @group(0) @binding(0)
 var<uniform> uniforms: EffectUniforms;
 
-${WGSLLib.Noise.SIMPLEX_2D}
-
-// IQ's cosine palette function
+// IQ Palette formula: a + b * cos(2*PI * (c * t + d))
 fn palette(t: f32) -> vec3<f32> {
-    return uniforms.paletteA + uniforms.paletteB * cos(6.28318 * (uniforms.paletteC * t + uniforms.paletteD));
-}
-
-// Fractal Brownian Motion using 2D simplex noise with z as time
-fn fbm(p: vec3<f32>) -> f32 {
-    var f = 0.0;
-    var scale = uniforms.noiseScale;
-    var amp = 0.5;
-    for (var i = 0; i < 5; i++) {
-        f += amp * simplex2D(p.xy * scale + vec2<f32>(p.z * 0.3));
-        scale *= 2.0;
-        amp *= 0.5;
-    }
-    return f;
+    let a = vec3<f32>(${palette.a.first}f, ${palette.a.second}f, ${palette.a.third}f);
+    let b = vec3<f32>(${palette.b.first}f, ${palette.b.second}f, ${palette.b.third}f);
+    let c = vec3<f32>(${palette.c.first}f, ${palette.c.second}f, ${palette.c.third}f);
+    let d = vec3<f32>(${palette.d.first}f, ${palette.d.second}f, ${palette.d.third}f);
+    return a + b * cos(6.283185 * (c * t + d));
 }
 
 @fragment
 fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+    // DON'T flip Y - uv.y=0 at bottom, y=1 at top is fine for aurora at top
+    
     let aspect = uniforms.resolution.x / uniforms.resolution.y;
     var p = uv;
-    p.x *= aspect;
+    p.x = p.x * aspect;
     
-    let t = uniforms.time * 0.1;
+    let t = uniforms.time * 0.3;
     
-    // Create flowing aurora bands using FBM noise
-    let n1 = fbm(vec3<f32>(p * 2.0, t));
-    let n2 = fbm(vec3<f32>(p * 3.0 + 100.0, t * 0.7));
-    let n3 = fbm(vec3<f32>(p * 1.5 + 200.0, t * 1.3));
+    // Wave distortion for aurora ribbon shape
+    let wave = sin(p.x * 2.0 + t) * 0.05 
+             + sin(p.x * 1.5 - t * 0.7) * 0.07
+             + sin(p.x * 4.0 + t * 1.3) * 0.03;
     
-    // Aurora intensity based on vertical position and noise
-    let verticalFade = smoothstep(0.0, 0.6, 1.0 - uv.y);
-    let aurora1 = smoothstep(0.1, 0.5, n1) * verticalFade;
-    let aurora2 = smoothstep(0.2, 0.6, n2) * verticalFade * 0.7;
-    let aurora3 = smoothstep(0.15, 0.55, n3) * verticalFade * 0.5;
+    // Aurora band at y=0.7 (upper area since y=1 is top)
+    let auroraY = 0.7 + wave;
+    let dist = uv.y - auroraY;
     
-    // Color each band using the palette
-    let c1 = palette(n1 * 0.5 + 0.2) * aurora1;
-    let c2 = palette(n2 * 0.5 + 0.5) * aurora2;
-    let c3 = palette(n3 * 0.5 + 0.8) * aurora3;
+    // Soft glow - Gaussian falloff (wide spread)
+    var glow = exp(-dist * dist * 15.0);
     
-    var color = c1 + c2 + c3;
+    // Add glow that extends downward
+    let lowerGlow = exp(-pow(dist + 0.2, 2.0) * 6.0) * 0.5;
+    glow = glow + lowerGlow;
     
-    // Add subtle mouse interaction
-    let mouseDist = length(uv - uniforms.mouse);
-    let mouseGlow = exp(-mouseDist * 3.0) * 0.15;
-    color += palette(uniforms.time * 0.05) * mouseGlow;
+    // Vertical rays (curtain effect)
+    var rays = sin(p.x * 15.0 + t * 2.0) * 0.15 + 0.85;
+    rays = rays * (sin(p.x * 8.0 - t) * 0.1 + 0.9);
+    glow = glow * rays;
     
-    // Soft fade at edges
-    let edgeFade = smoothstep(0.0, 0.1, uv.y) * (1.0 - smoothstep(0.9, 1.0, uv.y));
-    color *= edgeFade;
+    // Gentle fade only at very edges
+    glow = glow * smoothstep(0.0, 0.2, uv.y);   // Fade near bottom
+    glow = glow * smoothstep(1.0, 0.9, uv.y);   // Slight fade at very top
     
-    let alpha = max(max(aurora1, aurora2), aurora3) * 0.8;
-    return vec4<f32>(color, alpha * edgeFade);
+    // Color from palette
+    let colorT = sin(p.x * 1.5 + t * 0.3) * 0.3 + 0.5 + dist;
+    let auroraColor = palette(colorT);
+    
+    // Dark sky background
+    let sky = vec3<f32>(0.01, 0.01, 0.03);
+    
+    // Final color - strong intensity
+    let color = sky + auroraColor * glow * 2.0;
+    
+    return vec4<f32>(color, 1.0);
 }
 """
 
 /**
- * Builds the GLSL aurora shader for WebGL fallback using Sigil's GLSLLib.
+ * Builds the GLSL aurora shader for WebGL fallback.
+ * Creates flowing aurora ribbons using sine waves - consistent with WGSL version.
+ * Uses IQ palette formula for colors.
  */
 private fun buildAuroraGLSLShader(palette: AuroraPalette): String = """
-${GLSLLib.Presets.FRAGMENT_HEADER_WITH_UNIFORMS}
+precision highp float;
 
-// Custom uniforms for aurora effect
-uniform float noiseScale;
-uniform vec3 paletteA;
-uniform vec3 paletteB;
-uniform vec3 paletteC;
-uniform vec3 paletteD;
+uniform float time;
+uniform vec2 resolution;
+uniform vec2 mouse;
 
-${GLSLLib.Noise.SIMPLEX_2D}
+varying vec2 vUv;
 
-// IQ's cosine palette function
+// IQ Palette formula: a + b * cos(2*PI * (c * t + d))
 vec3 palette(float t) {
-    return paletteA + paletteB * cos(6.28318 * (paletteC * t + paletteD));
-}
-
-// Fractal Brownian Motion using 2D simplex noise with z as time
-float fbm(vec3 p) {
-    float f = 0.0;
-    float scale = noiseScale;
-    float amp = 0.5;
-    for (int i = 0; i < 5; i++) {
-        f += amp * simplex2D(p.xy * scale + vec2(p.z * 0.3));
-        scale *= 2.0;
-        amp *= 0.5;
-    }
-    return f;
+    vec3 a = vec3(${palette.a.first}, ${palette.a.second}, ${palette.a.third});
+    vec3 b = vec3(${palette.b.first}, ${palette.b.second}, ${palette.b.third});
+    vec3 c = vec3(${palette.c.first}, ${palette.c.second}, ${palette.c.third});
+    vec3 d = vec3(${palette.d.first}, ${palette.d.second}, ${palette.d.third});
+    return a + b * cos(6.283185 * (c * t + d));
 }
 
 void main() {
+    vec2 uv = vUv;
+    
+    // DON'T flip Y - vUv.y=0 at bottom, y=1 at top is fine for aurora at top
+    
     float aspect = resolution.x / resolution.y;
-    vec2 p = vUv;
+    vec2 p = uv;
     p.x *= aspect;
     
-    float t = time * 0.1;
+    float t = time * 0.3;
     
-    // Create flowing aurora bands using FBM noise
-    float n1 = fbm(vec3(p * 2.0, t));
-    float n2 = fbm(vec3(p * 3.0 + 100.0, t * 0.7));
-    float n3 = fbm(vec3(p * 1.5 + 200.0, t * 1.3));
+    // Wave distortion for aurora ribbon shape
+    float wave = sin(p.x * 2.0 + t) * 0.05 
+               + sin(p.x * 1.5 - t * 0.7) * 0.07
+               + sin(p.x * 4.0 + t * 1.3) * 0.03;
     
-    // Aurora intensity based on vertical position and noise
-    float verticalFade = smoothstep(0.0, 0.6, 1.0 - vUv.y);
-    float aurora1 = smoothstep(0.1, 0.5, n1) * verticalFade;
-    float aurora2 = smoothstep(0.2, 0.6, n2) * verticalFade * 0.7;
-    float aurora3 = smoothstep(0.15, 0.55, n3) * verticalFade * 0.5;
+    // Aurora band at y=0.7 (upper area since y=1 is top)
+    float auroraY = 0.7 + wave;
+    float dist = uv.y - auroraY;
     
-    // Color each band using the palette
-    vec3 c1 = palette(n1 * 0.5 + 0.2) * aurora1;
-    vec3 c2 = palette(n2 * 0.5 + 0.5) * aurora2;
-    vec3 c3 = palette(n3 * 0.5 + 0.8) * aurora3;
+    // Soft glow - Gaussian falloff (wide spread)
+    float glow = exp(-dist * dist * 15.0);
     
-    vec3 color = c1 + c2 + c3;
+    // Add glow that extends downward
+    float lowerGlow = exp(-pow(dist + 0.2, 2.0) * 6.0) * 0.5;
+    glow += lowerGlow;
     
-    // Add subtle mouse interaction
-    float mouseDist = length(vUv - mouse);
-    float mouseGlow = exp(-mouseDist * 3.0) * 0.15;
-    color += palette(time * 0.05) * mouseGlow;
+    // Vertical rays (curtain effect)
+    float rays = sin(p.x * 15.0 + t * 2.0) * 0.15 + 0.85;
+    rays *= sin(p.x * 8.0 - t) * 0.1 + 0.9;
+    glow *= rays;
     
-    // Soft fade at edges
-    float edgeFade = smoothstep(0.0, 0.1, vUv.y) * (1.0 - smoothstep(0.9, 1.0, vUv.y));
-    color *= edgeFade;
+    // Gentle fade only at very edges
+    glow *= smoothstep(0.0, 0.2, uv.y);   // Fade near bottom
+    glow *= smoothstep(1.0, 0.9, uv.y);   // Slight fade at very top
     
-    float alpha = max(max(aurora1, aurora2), aurora3) * 0.8;
-    gl_FragColor = vec4(color, alpha * edgeFade);
+    // Color from palette
+    float colorT = sin(p.x * 1.5 + t * 0.3) * 0.3 + 0.5 + dist;
+    vec3 auroraColor = palette(colorT);
+    
+    // Dark sky background
+    vec3 sky = vec3(0.01, 0.01, 0.03);
+    
+    // Final color - strong intensity
+    vec3 color = sky + auroraColor * glow * 2.0;
+    
+    gl_FragColor = vec4(color, 1.0);
 }
 """

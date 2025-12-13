@@ -1,10 +1,9 @@
 package code.yousef.portfolio.content
 
-import code.yousef.firestore.FirestoreContentStore
 import code.yousef.portfolio.content.repo.*
 
 class PortfolioContentService(
-    private val store: FirestoreContentStore
+    private val store: ContentStore
 ) {
 
     fun load(): PortfolioContent = store.loadPortfolioContent()

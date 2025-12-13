@@ -146,4 +146,6 @@ object PortfolioContentSeed {
             tags = listOf("engineering", "introduction", "coding")
         )
     )
+
+    val testimonials: List<Testimonial> = emptyList()
 }
