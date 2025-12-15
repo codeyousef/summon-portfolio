@@ -71,7 +71,7 @@ fun HeroSection(
                         }
                         .backgroundClipText()
                         .color(Color.TRANSPARENT)
-                        .boxShadow("0 1px 0 #ffffff33")
+                        .style("text-shadow", "0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.9)")
                 )
                 Text(
                     text = secondaryTitle,
@@ -80,13 +80,15 @@ fun HeroSection(
                         .fontWeight(700)
                         .letterSpacing("-0.02em")
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                        .style("text-shadow", "0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.9)")
                 )
                 Paragraph(
                     text = subtitle,
                     modifier = Modifier()
-                        .color("#cfcfe0")
+                        .color("#e8e8f0")
                         .fontSize(cssClamp(16.px, 2.2.vw, 22.px))
                         .lineHeight(1.5)
+                        .style("text-shadow", "0 0 8px rgba(0,0,0,1), 0 0 16px rgba(0,0,0,0.9), 0 0 32px rgba(0,0,0,0.7), 0 2px 4px rgba(0,0,0,1)")
                 )
                 CtaRow(
                     primaryLabel = hero.ctaPrimary.resolve(locale),

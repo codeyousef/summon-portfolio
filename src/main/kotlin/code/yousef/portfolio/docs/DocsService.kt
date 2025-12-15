@@ -1,3 +1,4 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
 package code.yousef.portfolio.docs
 
 import io.ktor.client.*
@@ -7,9 +8,9 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.datetime.Instant
-import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
-import kotlinx.datetime.toJavaInstant
+import kotlin.time.Instant
+import kotlin.time.Instant.Companion.fromEpochMilliseconds
+import kotlin.time.toJavaInstant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory

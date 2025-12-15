@@ -1,8 +1,9 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
 package code.yousef.portfolio.docs
 
 import com.github.benmanes.caffeine.cache.Caffeine
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import java.util.concurrent.TimeUnit
 
 class DocsCache(

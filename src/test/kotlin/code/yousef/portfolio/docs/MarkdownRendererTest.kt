@@ -46,4 +46,32 @@ class MarkdownRendererTest {
             message = "Expected rewritten html to retain heading ids"
         )
     }
+
+    @Test
+    fun `should render GFM tables correctly`() {
+        val markdown = """
+            # Table Test
+
+            | Header 1 | Header 2 |
+            |----------|----------|
+            | Cell 1   | Cell 2   |
+            | Cell 3   | Cell 4   |
+        """.trimIndent()
+
+        val result = renderer.render(markdown, "/test")
+        println("Rendered HTML: ${result.html}")
+
+        assertTrue(
+            actual = result.html.contains("<table>"),
+            message = "Expected html to contain <table> tag but got: ${result.html}"
+        )
+        assertTrue(
+            actual = result.html.contains("<th>"),
+            message = "Expected html to contain <th> tag"
+        )
+        assertTrue(
+            actual = result.html.contains("<td>"),
+            message = "Expected html to contain <td> tag"
+        )
+    }
 }

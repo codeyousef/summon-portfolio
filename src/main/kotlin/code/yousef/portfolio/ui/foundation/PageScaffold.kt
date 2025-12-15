@@ -41,6 +41,16 @@ fun PageScaffold(
             box-sizing: border-box;
         }
         
+        /* Style dropdown panels with dark background */
+        [data-dropdown-content="true"],
+        .summon-dropdown-content,
+        div[style*="position: absolute"][style*="z-index"] {
+            background-color: ${PortfolioTheme.Colors.SURFACE} !important;
+            border-radius: ${PortfolioTheme.Radii.md} !important;
+            border: 1px solid ${PortfolioTheme.Colors.BORDER} !important;
+            overflow: hidden !important;
+        }
+        
         @media (max-width: 768px) {
             [data-page-content="true"] {
                 padding: ${PortfolioTheme.Spacing.sm} !important;

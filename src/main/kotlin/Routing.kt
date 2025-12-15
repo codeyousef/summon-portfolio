@@ -359,63 +359,118 @@ fun Application.configureRouting(
                 }
             }
 
+        // Summon landing page + docs on portfolio at /summon
         route("/summon") {
-            docsRoutes(
-                docsService = docsService,
-                markdownRenderer = markdownRenderer,
-                linkRewriter = linkRewriter,
-                docsRouter = docsRouter,
-                webhookHandler = webhookHandler,
-                config = docsConfig,
-                docsCatalog = docsCatalog,
-                pathResolver = { call ->
-                    val raw = call.request.path()
-                    val stripped = raw.removePrefix("/summon")
-                    stripped.ifBlank { "/" }
-                },
-                basePath = "/summon",
-                registerInfrastructure = false
-            )
+            // Landing page at /summon
+            get {
+                val host = call.request.host()
+                val links = resolveEnvironmentLinks(host)
+                EnvironmentLinksRegistry.withLinks(links) {
+                    val page = summonLandingRenderer.landingPage()
+                    SummonRenderLock.withLock {
+                        call.respondSummonHydrated {
+                            val renderer = getPlatformRenderer()
+                            renderer.renderHeadElements(page.head)
+                            page.content()
+                        }
+                    }
+                }
+            }
+            // Docs at /summon/docs/*
+            route("/docs") {
+                docsRoutes(
+                    docsService = docsService,
+                    markdownRenderer = markdownRenderer,
+                    linkRewriter = linkRewriter,
+                    docsRouter = docsRouter,
+                    webhookHandler = webhookHandler,
+                    config = docsConfig,
+                    docsCatalog = docsCatalog,
+                    pathResolver = { call ->
+                        val raw = call.request.path()
+                        val stripped = raw.removePrefix("/summon/docs")
+                        stripped.ifBlank { "/" }
+                    },
+                    basePath = "/summon/docs",
+                    registerInfrastructure = false
+                )
+            }
         }
 
-        // Materia docs accessible on portfolio at /materia
+        // Materia landing page + docs on portfolio at /materia
         route("/materia") {
-            docsRoutes(
-                docsService = materiaDocsService,
-                markdownRenderer = markdownRenderer,
-                linkRewriter = linkRewriter,
-                docsRouter = materiaDocsRouter,
-                webhookHandler = materiaWebhookHandler,
-                config = materiaDocsConfig,
-                docsCatalog = materiaDocsCatalog,
-                pathResolver = { call ->
-                    val raw = call.request.path()
-                    val stripped = raw.removePrefix("/materia")
-                    stripped.ifBlank { "/" }
-                },
-                basePath = "/materia",
-                registerInfrastructure = false
-            )
+            // Landing page at /materia
+            get {
+                val host = call.request.host()
+                val links = resolveEnvironmentLinks(host)
+                EnvironmentLinksRegistry.withLinks(links) {
+                    val page = materiaLandingRenderer.landingPage()
+                    SummonRenderLock.withLock {
+                        call.respondSummonHydrated {
+                            val renderer = getPlatformRenderer()
+                            renderer.renderHeadElements(page.head)
+                            page.content()
+                        }
+                    }
+                }
+            }
+            // Docs at /materia/docs/*
+            route("/docs") {
+                docsRoutes(
+                    docsService = materiaDocsService,
+                    markdownRenderer = markdownRenderer,
+                    linkRewriter = linkRewriter,
+                    docsRouter = materiaDocsRouter,
+                    webhookHandler = materiaWebhookHandler,
+                    config = materiaDocsConfig,
+                    docsCatalog = materiaDocsCatalog,
+                    pathResolver = { call ->
+                        val raw = call.request.path()
+                        val stripped = raw.removePrefix("/materia/docs")
+                        stripped.ifBlank { "/" }
+                    },
+                    basePath = "/materia/docs",
+                    registerInfrastructure = false
+                )
+            }
         }
 
-        // Sigil docs accessible on portfolio at /sigil
+        // Sigil landing page + docs on portfolio at /sigil
         route("/sigil") {
-            docsRoutes(
-                docsService = sigilDocsService,
-                markdownRenderer = markdownRenderer,
-                linkRewriter = linkRewriter,
-                docsRouter = sigilDocsRouter,
-                webhookHandler = sigilWebhookHandler,
-                config = sigilDocsConfig,
-                docsCatalog = sigilDocsCatalog,
-                pathResolver = { call ->
-                    val raw = call.request.path()
-                    val stripped = raw.removePrefix("/sigil")
-                    stripped.ifBlank { "/" }
-                },
-                basePath = "/sigil",
-                registerInfrastructure = false
-            )
+            // Landing page at /sigil
+            get {
+                val host = call.request.host()
+                val links = resolveEnvironmentLinks(host)
+                EnvironmentLinksRegistry.withLinks(links) {
+                    val page = sigilLandingRenderer.landingPage()
+                    SummonRenderLock.withLock {
+                        call.respondSummonHydrated {
+                            val renderer = getPlatformRenderer()
+                            renderer.renderHeadElements(page.head)
+                            page.content()
+                        }
+                    }
+                }
+            }
+            // Docs at /sigil/docs/*
+            route("/docs") {
+                docsRoutes(
+                    docsService = sigilDocsService,
+                    markdownRenderer = markdownRenderer,
+                    linkRewriter = linkRewriter,
+                    docsRouter = sigilDocsRouter,
+                    webhookHandler = sigilWebhookHandler,
+                    config = sigilDocsConfig,
+                    docsCatalog = sigilDocsCatalog,
+                    pathResolver = { call ->
+                        val raw = call.request.path()
+                        val stripped = raw.removePrefix("/sigil/docs")
+                        stripped.ifBlank { "/" }
+                    },
+                    basePath = "/sigil/docs",
+                    registerInfrastructure = false
+                )
+            }
         }
 
         // Materia webhook endpoint (separate from Summon)

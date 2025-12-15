@@ -224,31 +224,124 @@ class DocsCatalog(
         if (entries.isEmpty()) {
             return DocsNavTree(emptyList())
         }
-        val (apiEntries, docEntries) = entries.partition { doc -> doc.slug.startsWith("api-reference") && doc.slug.isNotBlank() }
-        val toNodes: (List<DocEntry>) -> List<DocsNavNode> = { items ->
-            items.map { entry ->
-                DocsNavNode(
-                    title = entry.title,
-                    path = if (entry.slug == SLUG_ROOT) "/" else "/${entry.slug}",
-                    children = emptyList()
-                )
+        
+        // Separate API reference entries from other docs
+        val (apiEntries, docEntries) = entries.partition { doc -> 
+            doc.slug.startsWith("api-reference") && doc.slug.isNotBlank() 
+        }
+        
+        val sections = mutableListOf<DocsNavNode>()
+        val effectiveDocs = docEntries.ifEmpty { if (apiEntries.isEmpty()) entries else docEntries }
+        
+        // Group entries by their folder (first path segment)
+        val grouped = effectiveDocs.groupBy { entry ->
+            val slug = entry.slug
+            if (slug.isEmpty() || !slug.contains('/')) {
+                // Root-level docs (no folder)
+                ""
+            } else {
+                // Get the first folder segment
+                slug.substringBefore('/')
             }
         }
-
-        val sections = mutableListOf<DocsNavNode>()
-
-        val effectiveDocs = docEntries.ifEmpty { if (apiEntries.isEmpty()) entries else docEntries }
-        val docChildren = toNodes(effectiveDocs)
-        if (docChildren.isNotEmpty()) {
+        
+        // Build nodes for root-level docs first
+        val rootDocs = grouped[""] ?: emptyList()
+        val rootNodes = rootDocs.map { entry ->
+            DocsNavNode(
+                title = entry.title,
+                path = if (entry.slug == SLUG_ROOT) "/" else "/${entry.slug}",
+                children = emptyList()
+            )
+        }
+        
+        // Build folder sections with their children
+        val folderSections = grouped
+            .filter { it.key.isNotEmpty() }
+            .map { (folder, folderEntries) ->
+                val folderTitle = folder
+                    .replace('-', ' ')
+                    .split(' ')
+                    .joinToString(" ") { word -> 
+                        word.replaceFirstChar { it.uppercaseChar() } 
+                    }
+                
+                val children = folderEntries.map { entry ->
+                    DocsNavNode(
+                        title = entry.title,
+                        path = "/${entry.slug}",
+                        children = emptyList()
+                    )
+                }
+                
+                // Find the index/readme for this folder to use as the section path
+                val sectionPath = folderEntries
+                    .find { it.slug == folder || it.slug.endsWith("/index") || it.slug.endsWith("/readme") }
+                    ?.let { "/${it.slug}" }
+                    ?: "/${folderEntries.firstOrNull()?.slug ?: folder}"
+                
+                DocsNavNode(
+                    title = folderTitle,
+                    path = sectionPath,
+                    children = children
+                )
+            }
+            .sortedBy { it.title }
+        
+        // Combine root nodes and folder sections
+        val allDocChildren = rootNodes + folderSections
+        
+        if (allDocChildren.isNotEmpty()) {
             sections += DocsNavNode(
                 title = "Documentation",
                 path = "/",
-                children = docChildren
+                children = allDocChildren
             )
         }
 
-        val apiChildren = toNodes(apiEntries)
-        if (apiChildren.isNotEmpty()) {
+        // Handle API reference entries (also group by subfolder)
+        if (apiEntries.isNotEmpty()) {
+            val apiGrouped = apiEntries.groupBy { entry ->
+                val slug = entry.slug.removePrefix("api-reference/")
+                if (!slug.contains('/')) "" else slug.substringBefore('/')
+            }
+            
+            val apiRootNodes = (apiGrouped[""] ?: emptyList()).map { entry ->
+                DocsNavNode(
+                    title = entry.title,
+                    path = "/${entry.slug}",
+                    children = emptyList()
+                )
+            }
+            
+            val apiFolderSections = apiGrouped
+                .filter { it.key.isNotEmpty() }
+                .map { (folder, folderEntries) ->
+                    val folderTitle = folder
+                        .replace('-', ' ')
+                        .split(' ')
+                        .joinToString(" ") { word -> 
+                            word.replaceFirstChar { it.uppercaseChar() } 
+                        }
+                    
+                    val children = folderEntries.map { entry ->
+                        DocsNavNode(
+                            title = entry.title,
+                            path = "/${entry.slug}",
+                            children = emptyList()
+                        )
+                    }
+                    
+                    DocsNavNode(
+                        title = folderTitle,
+                        path = "/${folderEntries.firstOrNull()?.slug ?: "api-reference/$folder"}",
+                        children = children
+                    )
+                }
+                .sortedBy { it.title }
+            
+            val apiChildren = apiRootNodes + apiFolderSections
+            
             sections += DocsNavNode(
                 title = "API Reference",
                 path = "/api-reference",
@@ -260,7 +353,7 @@ class DocsCatalog(
             sections += DocsNavNode(
                 title = "Documentation",
                 path = "/",
-                children = docChildren
+                children = emptyList()
             )
         }
 

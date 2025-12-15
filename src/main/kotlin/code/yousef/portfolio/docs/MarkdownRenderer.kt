@@ -4,6 +4,7 @@ import org.commonmark.Extension
 import org.commonmark.ext.autolink.AutolinkExtension
 import org.commonmark.ext.front.matter.YamlFrontMatterExtension
 import org.commonmark.ext.front.matter.YamlFrontMatterVisitor
+import org.commonmark.ext.gfm.tables.TablesExtension
 import org.commonmark.node.*
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.AttributeProvider
@@ -14,7 +15,11 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 class MarkdownRenderer(
-    extensions: List<Extension> = listOf(YamlFrontMatterExtension.create(), AutolinkExtension.create())
+    private val extensions: List<Extension> = listOf(
+        YamlFrontMatterExtension.create(),
+        AutolinkExtension.create(),
+        TablesExtension.create()
+    )
 ) {
     private val parser: Parser = Parser.builder().extensions(extensions).build()
     private val sanitizer: PolicyFactory = HtmlPolicyBuilder()
@@ -62,6 +67,7 @@ class MarkdownRenderer(
         val slugMap = headingCollector.slugMap
 
         val renderer = HtmlRenderer.builder()
+            .extensions(extensions)
             .attributeProviderFactory {
                 AttributeProvider { node, _, attributes ->
                     if (node is Heading) {

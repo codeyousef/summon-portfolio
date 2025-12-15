@@ -4,6 +4,8 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.vh
+import codes.yousef.summon.extensions.vw
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.modifier.LayoutModifiers.left
 import codes.yousef.summon.modifier.LayoutModifiers.top
@@ -39,16 +41,16 @@ fun AuroraBackground(
             .position(Position.Fixed)
             .top(0.px)
             .left(0.px)
-            .width(100.percent)
-            .height(config.height.px)
+            .width(100.vw)
+            .height(100.vh)  // Use 100vh for full viewport height
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {
         // Sigil effect canvas with aurora shader
         SigilEffectCanvas(
             id = config.canvasId,
-            width = "100%",
-            height = "100%",
+            width = "100vw",
+            height = "100vh",
             config = SigilCanvasConfig(
                 id = config.canvasId,
                 respectDevicePixelRatio = true,
@@ -64,6 +66,7 @@ fun AuroraBackground(
             fallback = { "" }
         ) {
             // Use SigilEffect directly to provide both WGSL and GLSL shaders
+            // Uniforms are declared here so Sigil/Materia know what to provide
             SigilEffect(
                 ShaderEffectData(
                     id = "aurora-effect",
@@ -72,7 +75,19 @@ fun AuroraBackground(
                     glslFragmentShader = buildAuroraGLSLShader(palette),
                     timeScale = config.timeScale,
                     enableMouseInteraction = config.enableMouseInteraction,
-                    uniforms = emptyMap()
+                    // Uniforms map tells Sigil what uniform fields exist in the shader.
+                    // Values here are just initial/default values - Sigil overrides time, deltaTime,
+                    // resolution, and mouse with animated values in the render loop.
+                    uniforms = mapOf(
+                        "time" to codes.yousef.sigil.schema.effects.UniformValue.FloatValue(0f),
+                        "deltaTime" to codes.yousef.sigil.schema.effects.UniformValue.FloatValue(0f),
+                        "resolution" to codes.yousef.sigil.schema.effects.UniformValue.Vec2Value(
+                            codes.yousef.sigil.schema.effects.Vec2(1920f, 1080f)
+                        ),
+                        "mouse" to codes.yousef.sigil.schema.effects.UniformValue.Vec2Value(
+                            codes.yousef.sigil.schema.effects.Vec2(0.5f, 0.5f)
+                        )
+                    )
                 )
             )
         }
@@ -83,38 +98,27 @@ fun AuroraBackground(
  * Builds the WGSL aurora shader.
  * Creates flowing aurora ribbons using sine waves - consistent with GLSL version.
  * Uses IQ palette formula for colors.
+ * 
+ * NOTE: Sigil auto-generates the Uniforms struct and @group(0) @binding(0) var<uniform> u: Uniforms;
+ * We just use u.time, u.deltaTime, u.resolution, u.mouse in our fragment code.
  */
 private fun buildAuroraWGSLShader(palette: AuroraPalette): String = """
-struct EffectUniforms {
-    time: f32,
-    deltaTime: f32,
-    resolution: vec2<f32>,
-    mouse: vec2<f32>,
-    scroll: f32,
-    _padding: f32,
-}
-
-@group(0) @binding(0)
-var<uniform> uniforms: EffectUniforms;
-
-// IQ Palette formula: a + b * cos(2*PI * (c * t + d))
+// IQ Palette formula for aurora colors
 fn palette(t: f32) -> vec3<f32> {
-    let a = vec3<f32>(${palette.a.first}f, ${palette.a.second}f, ${palette.a.third}f);
-    let b = vec3<f32>(${palette.b.first}f, ${palette.b.second}f, ${palette.b.third}f);
-    let c = vec3<f32>(${palette.c.first}f, ${palette.c.second}f, ${palette.c.third}f);
-    let d = vec3<f32>(${palette.d.first}f, ${palette.d.second}f, ${palette.d.third}f);
+    let a = vec3<f32>(${palette.a.first}, ${palette.a.second}, ${palette.a.third});
+    let b = vec3<f32>(${palette.b.first}, ${palette.b.second}, ${palette.b.third});
+    let c = vec3<f32>(${palette.c.first}, ${palette.c.second}, ${palette.c.third});
+    let d = vec3<f32>(${palette.d.first}, ${palette.d.second}, ${palette.d.third});
     return a + b * cos(6.283185 * (c * t + d));
 }
 
 @fragment
 fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-    // DON'T flip Y - uv.y=0 at bottom, y=1 at top is fine for aurora at top
-    
-    let aspect = uniforms.resolution.x / uniforms.resolution.y;
+    let aspect = u.resolution.x / u.resolution.y;
     var p = uv;
     p.x = p.x * aspect;
     
-    let t = uniforms.time * 0.3;
+    let t = u.time * 0.3;
     
     // Wave distortion for aurora ribbon shape
     let wave = sin(p.x * 2.0 + t) * 0.05 
@@ -148,8 +152,8 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Dark sky background
     let sky = vec3<f32>(0.01, 0.01, 0.03);
     
-    // Final color - strong intensity
-    let color = sky + auroraColor * glow * 2.0;
+    // Final color - reduced intensity
+    let color = sky + auroraColor * glow * 0.7;
     
     return vec4<f32>(color, 1.0);
 }
@@ -221,8 +225,8 @@ void main() {
     // Dark sky background
     vec3 sky = vec3(0.01, 0.01, 0.03);
     
-    // Final color - strong intensity
-    vec3 color = sky + auroraColor * glow * 2.0;
+    // Final color - reduced intensity
+    vec3 color = sky + auroraColor * glow * 0.7;
     
     gl_FragColor = vec4(color, 1.0);
 }

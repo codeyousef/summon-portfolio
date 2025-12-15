@@ -3,6 +3,7 @@ package code.yousef.portfolio.ui
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.pathPrefix
+import code.yousef.portfolio.i18n.strings.PortfolioStrings
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
@@ -93,7 +94,7 @@ private fun HeroSection(locale: PortfolioLocale) {
         ) {
             // Headline
             Text(
-                text = "Bridging the JVM and the GPU.",
+                text = PortfolioStrings.Hero.headline.resolve(locale),
                 modifier = Modifier()
                     .fontSize(cssClamp(42.px, 7.vw, 84.px))
                     .fontWeight(900)
@@ -112,7 +113,7 @@ private fun HeroSection(locale: PortfolioLocale) {
             
             // Sub-headline
             Paragraph(
-                text = "I build high-performance UI frameworks and graphics engines using Kotlin Multiplatform.",
+                text = PortfolioStrings.Hero.subheadline.resolve(locale),
                 modifier = Modifier()
                     .color("rgba(255,255,255,0.88)")
                     .fontSize(cssClamp(18.px, 2.5.vw, 26.px))
@@ -131,7 +132,7 @@ private fun HeroSection(locale: PortfolioLocale) {
             ) {
                 // Primary CTA: View the Stack
                 ButtonLink(
-                    label = "View the Stack",
+                    label = PortfolioStrings.Hero.viewStack.resolve(locale),
                     href = "#trinity",
                     modifier = Modifier()
                         .display(Display.InlineFlex)
@@ -158,7 +159,7 @@ private fun HeroSection(locale: PortfolioLocale) {
                 
                 // Secondary CTA: Source Code (GitHub)
                 ButtonLink(
-                    label = "⌘ Source Code",
+                    label = PortfolioStrings.Hero.sourceCode.resolve(locale),
                     href = "https://github.com/codeyousef",
                     modifier = Modifier()
                         .display(Display.InlineFlex)
@@ -200,37 +201,64 @@ private fun TrinityShowcase(locale: PortfolioLocale) {
             modifier = Modifier()
                 .display(Display.Flex)
                 .flexDirection(FlexDirection.Column)
-                .gap(PortfolioTheme.Spacing.scale(16))
+                .gap(PortfolioTheme.Spacing.xxl)
         ) {
-            // Block A: Summon (The Interface) - Code left, copy right
-            TrinityBlock(
-                tagline = "Declarative UI, Purely in Kotlin.",
-                description = "A type-safe frontend framework for JVM backends. Zero JavaScript glue code. Shared data models from database to DOM.",
-                techBadges = listOf("Kotlin", "Wasm", "Reactive"),
-                codeSnippet = SUMMON_CODE_SNIPPET,
-                imageOnLeft = false,
-                accentColor = "#4ECDC4"
-            )
-            
-            // Block B: Sigil (The Bridge) - Code right, copy left
-            TrinityBlock(
-                tagline = "Declarative 3D for Kotlin.",
-                description = "The \"React-Three-Fiber\" for Kotlin Multiplatform. Compose complex 3D scenes using the same declarative syntax as your UI. Manage scene graphs, lights, and meshes as reactive components.",
-                techBadges = listOf("Declarative 3D", "Compose", "Multiplatform"),
-                codeSnippet = SIGIL_CODE_SNIPPET,
-                imageOnLeft = true,
-                accentColor = "#A855F7"
-            )
-            
-            // Block C: Materia (The Engine) - Diagram left, copy right
-            TrinityBlock(
-                tagline = "Unified Rendering Core.",
-                description = "The high-performance engine that orchestrates it all. Optimized for battery life on mobile and flexibility on the web.",
-                techBadges = listOf("Vulkan", "Metal", "WebGL"),
-                codeSnippet = MATERIA_ARCHITECTURE_SNIPPET,
-                imageOnLeft = false,
-                accentColor = "#FF6B6B"
-            )
+            // Block A: Summon (The Interface)
+            Column(modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(PortfolioTheme.Spacing.sm)) {
+                Text(
+                    text = "Summon",
+                    modifier = Modifier()
+                        .fontSize(cssClamp(32.px, 5.vw, 48.px))
+                        .fontWeight(800)
+                        .color("#4ECDC4")
+                )
+                TrinityBlock(
+                    tagline = PortfolioStrings.Trinity.summonTagline.resolve(locale),
+                    description = PortfolioStrings.Trinity.summonDescription.resolve(locale),
+                    techBadges = listOf("Kotlin", "Wasm", "Reactive"),
+                    codeSnippet = SUMMON_CODE_SNIPPET,
+                    imageOnLeft = false,
+                    accentColor = "#4ECDC4"
+                )
+            }
+
+            // Block B: Sigil (The Bridge)
+            Column(modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(PortfolioTheme.Spacing.sm)) {
+                Text(
+                    text = "Sigil",
+                    modifier = Modifier()
+                        .fontSize(cssClamp(32.px, 5.vw, 48.px))
+                        .fontWeight(800)
+                        .color("#A855F7")
+                )
+                TrinityBlock(
+                    tagline = PortfolioStrings.Trinity.sigilTagline.resolve(locale),
+                    description = PortfolioStrings.Trinity.sigilDescription.resolve(locale),
+                    techBadges = listOf("Declarative 3D", "Compose", "Multiplatform"),
+                    codeSnippet = SIGIL_CODE_SNIPPET,
+                    imageOnLeft = true,
+                    accentColor = "#A855F7"
+                )
+            }
+
+            // Block C: Materia (The Engine)
+            Column(modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(PortfolioTheme.Spacing.sm)) {
+                Text(
+                    text = "Materia",
+                    modifier = Modifier()
+                        .fontSize(cssClamp(32.px, 5.vw, 48.px))
+                        .fontWeight(800)
+                        .color("#FF6B6B")
+                )
+                TrinityBlock(
+                    tagline = PortfolioStrings.Trinity.materiaTagline.resolve(locale),
+                    description = PortfolioStrings.Trinity.materiaDescription.resolve(locale),
+                    techBadges = listOf("Vulkan", "Metal", "WebGL"),
+                    codeSnippet = MATERIA_ARCHITECTURE_SNIPPET,
+                    imageOnLeft = false,
+                    accentColor = "#FF6B6B"
+                )
+            }
         }
     }
 }
@@ -349,14 +377,14 @@ private fun PhilosophySection(locale: PortfolioLocale) {
                 .textAlign(TextAlign.Center)
         ) {
             Text(
-                text = "The 'One Developer' Philosophy.",
+                text = PortfolioStrings.Philosophy.title.resolve(locale),
                 modifier = Modifier()
                     .fontSize(cssClamp(28.px, 5.vw, 48.px))
                     .fontWeight(700)
                     .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
             )
             Paragraph(
-                text = "Modern software has become overly complex. I believe in radical simplification. By using unified languages like Kotlin across the stack, I eliminate the friction between 'backend' and 'frontend' teams. One developer, one language, one codebase — from server logic to mobile UI to web applications.",
+                text = PortfolioStrings.Philosophy.body.resolve(locale),
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(1.2.rem)
@@ -380,7 +408,7 @@ private fun SelectedEngineeringSection(locale: PortfolioLocale) {
                 .gap(PortfolioTheme.Spacing.xl)
         ) {
             Text(
-                text = "Selected Engineering",
+                text = PortfolioStrings.Engineering.title.resolve(locale),
                 modifier = Modifier()
                     .fontSize(2.rem)
                     .fontWeight(700)
@@ -394,25 +422,28 @@ private fun SelectedEngineeringSection(locale: PortfolioLocale) {
                     .flexWrap(FlexWrap.Wrap)
             ) {
                 EngineeringCard(
+                    locale = locale,
                     logoSrc = "/static/summon-logo.png",
                     title = "Summon",
-                    subtitle = "The Frontend Framework",
+                    subtitle = PortfolioStrings.Engineering.summonSubtitle.resolve(locale),
                     docsHref = "${summonMarketingUrl()}/docs",
                     githubHref = "https://github.com/codeyousef/summon",
                     accentColor = "#4ECDC4"
                 )
                 EngineeringCard(
+                    locale = locale,
                     logoSrc = "/static/sigil-logo.png",
                     title = "Sigil",
-                    subtitle = "The 3D Composition Tool",
+                    subtitle = PortfolioStrings.Engineering.sigilSubtitle.resolve(locale),
                     docsHref = "${sigilMarketingUrl()}/docs",
                     githubHref = "https://github.com/codeyousef/sigil",
                     accentColor = "#A855F7"
                 )
                 EngineeringCard(
+                    locale = locale,
                     logoSrc = "/static/materia-logo.png",
                     title = "Materia",
-                    subtitle = "The Rendering Engine",
+                    subtitle = PortfolioStrings.Engineering.materiaSubtitle.resolve(locale),
                     docsHref = "${materiaMarketingUrl()}/docs",
                     githubHref = "https://github.com/codeyousef/materia",
                     accentColor = "#FF6B6B"
@@ -424,6 +455,7 @@ private fun SelectedEngineeringSection(locale: PortfolioLocale) {
 
 @Composable
 private fun EngineeringCard(
+    locale: PortfolioLocale,
     logoSrc: String,
     title: String,
     subtitle: String,
@@ -487,7 +519,7 @@ private fun EngineeringCard(
                 .marginTop(PortfolioTheme.Spacing.sm)
         ) {
             AnchorLink(
-                label = "Read the Docs",
+                label = PortfolioStrings.Engineering.docs.resolve(locale),
                 href = docsHref,
                 modifier = Modifier()
                     .color(accentColor)
@@ -510,7 +542,7 @@ private fun EngineeringCard(
                 modifier = Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY).opacity(0.5F)
             )
             AnchorLink(
-                label = "View on GitHub",
+                label = PortfolioStrings.Engineering.github.resolve(locale),
                 href = githubHref,
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)

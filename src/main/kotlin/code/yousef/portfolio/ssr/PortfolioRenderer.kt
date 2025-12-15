@@ -4,7 +4,8 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
-import code.yousef.portfolio.ui.services.ServicesPage
+import code.yousef.portfolio.ui.workwithme.FullTimePage
+import code.yousef.portfolio.ui.workwithme.ServicesPage
 import codes.yousef.summon.seo.HeadScope
 
 class PortfolioRenderer(
@@ -50,15 +51,25 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = locale,
-                pageTitle = "Services | Yousef",
-                description = "Engagements across systems engineering, framework design, and interactive experiences."
+                pageTitle = "Consulting & Services | Yousef",
+                description = "Engineering partner for high-impact projects. 3D graphics, cross-platform development, and tooling expertise."
             ),
             content = {
-                ServicesPage(
-                    content = content,
-                    locale = locale,
-                    servicesModalOpen = servicesModalOpen
-                )
+                ServicesPage(locale = locale)
+            },
+            locale = locale
+        )
+    }
+
+    fun fullTimePage(locale: PortfolioLocale): SummonPage {
+        return SummonPage(
+            head = headBlockFor(
+                locale = locale,
+                pageTitle = "Full-Time Opportunities | Yousef",
+                description = "Systems architect and graphics engineer seeking Staff/Senior roles. Builder of Summon, Materia, and Sigil."
+            ),
+            content = {
+                FullTimePage(locale = locale)
             },
             locale = locale
         )

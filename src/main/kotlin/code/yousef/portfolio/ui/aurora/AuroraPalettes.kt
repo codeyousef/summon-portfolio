@@ -40,10 +40,10 @@ object AuroraPalettes {
     /** Classic Northern Lights - vibrant greens and teals */
     val COSMIC = AuroraPalette(
         name = "Northern Lights",
-        a = Triple(0.2f, 0.5f, 0.4f),    // Base: teal-green
-        b = Triple(0.3f, 0.4f, 0.3f),    // Amplitude
-        c = Triple(1.0f, 1.0f, 0.5f),    // Frequency
-        d = Triple(0.0f, 0.33f, 0.67f)   // Phase shift for rainbow
+        a = Triple(0.12f, 0.25f, 0.18f),   // Base: darker, less blue
+        b = Triple(0.18f, 0.22f, 0.15f),   // Reduced amplitude, especially blue
+        c = Triple(1.0f, 1.0f, 0.5f),      // Frequency
+        d = Triple(0.0f, 0.33f, 0.67f)     // Phase shift for rainbow
     )
     
     /** Crimson night - deep reds and magentas */
