@@ -1,3 +1,4 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
 package code.yousef.portfolio.server.routes
 
 import code.yousef.portfolio.docs.*
@@ -12,7 +13,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaInstant
+import kotlin.time.toJavaInstant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 

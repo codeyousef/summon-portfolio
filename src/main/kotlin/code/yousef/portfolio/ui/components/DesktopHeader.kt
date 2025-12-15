@@ -2,6 +2,8 @@ package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.NavigationStrings
+import code.yousef.portfolio.ssr.blogUrl
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
@@ -146,24 +148,20 @@ fun DesktopHeader(
                     .opacity(0.9F)
                     .hover(Modifier().opacity(1.0F).backgroundColor(PortfolioTheme.Colors.SURFACE))
                 
-                // Blog link
-                val blogHref = if (forceNativeLinks) {
-                    NavTarget.Page("/blog").absoluteHref(locale, nativeBaseUrl)
-                } else {
-                    NavTarget.Page("/blog").href(locale)
-                }
+                // Blog link - always use environment-aware URL for cross-site navigation
+                val blogHref = blogUrl()
                 navLink(
-                    label = "Blog",
+                    label = NavigationStrings.blog.resolve(locale),
                     href = blogHref,
                     modifier = baseNavModifier,
                     dataAttributes = mapOf("nav" to "blog"),
-                    navigationMode = if (forceNativeLinks) LinkNavigationMode.Native else LinkNavigationMode.Client
+                    navigationMode = LinkNavigationMode.Native
                 )
                 
                 if (chrome.isAdminSession) {
                     val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
                     navLink(
-                        label = "Admin",
+                        label = NavigationStrings.admin.resolve(locale),
                         href = adminHref,
                         modifier = Modifier()
                             .textDecoration(TextDecoration.None)
@@ -247,7 +245,7 @@ private fun WorkWithMeDropdown(
                     .color("#ffffff")
                     .fontWeight(600)
             ) {
-                Text(text = "Work With Me", modifier = Modifier().whiteSpace(WhiteSpace.NoWrap))
+                Text(text = NavigationStrings.workWithMe.resolve(locale), modifier = Modifier().whiteSpace(WhiteSpace.NoWrap))
                 Text(text = "▼", modifier = Modifier().fontSize(0.6.rem).opacity(0.8F))
             }
         },
@@ -255,14 +253,22 @@ private fun WorkWithMeDropdown(
         triggerBehavior = DropdownTrigger.CLICK,
         closeOnItemClick = true
     ) {
-        WorkWithMeDropdownLink(
-            label = "Full-Time Opportunities",
-            href = "/full-time"
-        )
-        WorkWithMeDropdownLink(
-            label = "Consulting & Services",
-            href = "/services"
-        )
+        Column(
+            modifier = Modifier()
+                .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                .borderRadius(PortfolioTheme.Radii.md)
+                .border("1px", "solid", PortfolioTheme.Colors.BORDER)
+                .overflow(Overflow.Hidden)
+        ) {
+            WorkWithMeDropdownLink(
+                label = NavigationStrings.fullTime.resolve(locale),
+                href = "/full-time"
+            )
+            WorkWithMeDropdownLink(
+                label = NavigationStrings.consulting.resolve(locale),
+                href = "/services"
+            )
+        }
     }
 }
 
@@ -280,6 +286,7 @@ private fun WorkWithMeDropdownLink(
             .display(Display.Block)
             .padding(12.px, 20.px)
             .textDecoration(TextDecoration.None)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
             .style("border-bottom", "1px solid ${PortfolioTheme.Colors.BORDER}")
             .hover(

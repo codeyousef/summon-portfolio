@@ -141,6 +141,10 @@ fun Route.portfolioRoutes(
         )
         call.respondSummonPage(page)
     }
+    get("/full-time") {
+        val page = portfolioRenderer.fullTimePage(locale = PortfolioLocale.EN)
+        call.respondSummonPage(page)
+    }
     get("/blog") {
         val page = blogRenderer.renderList(PortfolioLocale.EN)
         call.respondSummonPage(page)

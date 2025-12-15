@@ -6,13 +6,13 @@ object PortfolioTheme {
     object Colors {
         const val BACKGROUND = "#001a2c"
         const val BACKGROUND_ALT = "#05294a"
-        const val SURFACE = "rgba(255,255,255,0.04)"
-        const val SURFACE_STRONG = "rgba(255,255,255,0.08)"
-        const val GLASS = "rgba(255,255,255,0.06)"
-        const val BORDER = "rgba(255,255,255,0.08)"
-        const val BORDER_STRONG = "rgba(255,255,255,0.18)"
+        const val SURFACE = "rgba(255,255,255,0.12)"
+        const val SURFACE_STRONG = "rgba(255,255,255,0.18)"
+        const val GLASS = "rgba(255,255,255,0.15)"
+        const val BORDER = "rgba(255,255,255,0.15)"
+        const val BORDER_STRONG = "rgba(255,255,255,0.25)"
         const val TEXT_PRIMARY = "#ffffff"
-        const val TEXT_SECONDARY = "#a9b8d4"
+        const val TEXT_SECONDARY = "#d0dae8"
         const val ACCENT = "#ff4668"
         const val ACCENT_ALT = "#ff89b0"
         const val ACCENT_HOVER = "#ff5f7f"
@@ -67,7 +67,7 @@ object PortfolioTheme {
                 "radial-gradient(circle at 80% 70%, rgba(106,215,255,0.15) 0%, transparent 60%)," +
                 "linear-gradient(180deg, #001a2c 0%, #05294a 100%)"
         const val ACCENT = "linear-gradient(120deg, ${Colors.ACCENT}, ${Colors.ACCENT_ALT})"
-        const val CARD = "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))"
-        const val GLASS = "linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))"
+        const val CARD = "linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.06))"
+        const val GLASS = "linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.10))"
     }
 }

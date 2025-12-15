@@ -42,16 +42,17 @@ dependencies {
     implementation("org.commonmark:commonmark:0.22.0")
     implementation("org.commonmark:commonmark-ext-yaml-front-matter:0.22.0")
     implementation("org.commonmark:commonmark-ext-autolink:0.22.0")
+    implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
     implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1")
     implementation("org.jsoup:jsoup:1.18.1")
 
     // Summon SSR framework + Sigil 3D/effects library
     implementation("codes.yousef:summon:0.5.8.4")
-    // Materia 0.3.4.3 - Fixed asDynamic() on js({}) objects
-    implementation("codes.yousef:materia-jvm:0.3.4.3")
-    // Sigil 0.2.8.7 - WebGPU rendering now works
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.8.7")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.8.7")
+    // Materia 0.3.4.6 - Fixed WebGL uniform name mismatch
+    implementation("codes.yousef:materia-jvm:0.3.4.6")
+    // Sigil 0.2.9.0 - Fixed WebGL duplicate uniforms causing black screen
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.0")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.0")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)

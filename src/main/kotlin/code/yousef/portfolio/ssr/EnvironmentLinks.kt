@@ -4,6 +4,7 @@ import java.util.*
 
 data class EnvironmentLinks(
     val portfolioBase: String,
+    val blogBase: String,
     val summonBase: String,
     val docsBase: String,
     val materiaBase: String,
@@ -21,6 +22,7 @@ private enum class DeploymentStage {
 private val stageLinks = mapOf(
     DeploymentStage.DEV to EnvironmentLinks(
         portfolioBase = "https://dev.yousef.codes",
+        blogBase = "https://dev.yousef.codes/blog",
         summonBase = "https://summon.dev.yousef.codes",
         docsBase = "https://summon.dev.yousef.codes/docs",
         materiaBase = "https://materia.dev.yousef.codes",
@@ -30,6 +32,7 @@ private val stageLinks = mapOf(
     ),
     DeploymentStage.PROD to EnvironmentLinks(
         portfolioBase = "https://yousef.codes",
+        blogBase = "https://yousef.codes/blog",
         summonBase = "https://summon.yousef.codes",
         docsBase = "https://summon.yousef.codes/docs",
         materiaBase = "https://materia.yousef.codes",
@@ -38,13 +41,14 @@ private val stageLinks = mapOf(
         sigilDocsBase = "https://sigil.yousef.codes/docs"
     ),
     DeploymentStage.LOCAL to EnvironmentLinks(
-        portfolioBase = SITE_URL,
-        summonBase = SUMMON_MARKETING_URL,
-        docsBase = SUMMON_MARKETING_URL.trimEnd('/') + "/docs",
-        materiaBase = MATERIA_MARKETING_URL,
-        materiaDocsBase = MATERIA_MARKETING_URL.trimEnd('/') + "/docs",
-        sigilBase = SIGIL_MARKETING_URL,
-        sigilDocsBase = SIGIL_MARKETING_URL.trimEnd('/') + "/docs"
+        portfolioBase = "http://localhost:8080",
+        blogBase = "http://localhost:8080/blog",
+        summonBase = "http://localhost:8080/summon",
+        docsBase = "http://localhost:8080/summon/docs",
+        materiaBase = "http://localhost:8080/materia",
+        materiaDocsBase = "http://localhost:8080/materia/docs",
+        sigilBase = "http://localhost:8080/sigil",
+        sigilDocsBase = "http://localhost:8080/sigil/docs"
     )
 )
 
@@ -99,6 +103,8 @@ fun resolveEnvironmentLinks(host: String?): EnvironmentLinks {
 }
 
 fun portfolioBaseUrl(): String = EnvironmentLinksRegistry.current()?.portfolioBase ?: SITE_URL
+
+fun blogUrl(): String = EnvironmentLinksRegistry.current()?.blogBase ?: "${portfolioBaseUrl().trimEnd('/')}/blog"
 
 fun summonMarketingUrl(): String =
     EnvironmentLinksRegistry.current()?.summonBase ?: (summonBaseOverride ?: SUMMON_MARKETING_URL)

@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.i18n.strings.NavigationStrings
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
@@ -139,7 +140,7 @@ fun MobileHeader(
                         
                         // Projects section header
                         Text(
-                            text = "Projects",
+                            text = NavigationStrings.projects.resolve(locale),
                             modifier = Modifier()
                                 .fontSize(0.75.rem)
                                 .fontWeight(600)
@@ -239,14 +240,14 @@ fun MobileHeader(
                         if (chrome.isAdminSession) {
                             val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
                             navLink(
-                                label = "Admin",
+                                label = NavigationStrings.admin.resolve(locale),
                                 href = adminHref,
                                 modifier = baseNavModifier,
                                 dataAttributes = mapOf("nav" to "admin"),
                                 navigationMode = LinkNavigationMode.Native,
                             )
                             navLink(
-                                label = "Logout",
+                                label = NavigationStrings.logout.resolve(locale),
                                 href = "/admin/logout",
                                 modifier = baseNavModifier,
                                 dataAttributes = mapOf("nav" to "logout"),

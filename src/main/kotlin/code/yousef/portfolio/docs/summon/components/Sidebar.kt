@@ -1,5 +1,6 @@
 package code.yousef.portfolio.docs.summon.components
 
+import code.yousef.portfolio.docs.DocsNavNode
 import code.yousef.portfolio.docs.DocsNavTree
 import code.yousef.portfolio.docs.summon.safeHref
 import code.yousef.portfolio.theme.PortfolioTheme
@@ -37,26 +38,81 @@ fun DocsSidebar(tree: DocsNavTree, currentPath: String, basePath: String = "") {
             .overflowY(Overflow.Auto)
     ) {
         tree.sections.forEach { section ->
-            val nodes = if (section.children.isEmpty()) listOf(section) else section.children
             Column(
                 modifier = Modifier()
                     .gap(PortfolioTheme.Spacing.xs)
             ) {
+                // Top-level section title (e.g., "Documentation", "API Reference")
                 Text(
                     text = section.title,
                     modifier = Modifier()
                         .fontWeight(600)
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .marginBottom(PortfolioTheme.Spacing.xs)
                 )
-                nodes.forEach { node ->
-                    val active = normalize(currentPath) == normalize(node.path)
-                    DocsSidebarLink(
-                        label = node.title,
-                        href = basePath + node.path,
-                        active = active,
-                        dataLabel = node.title.lowercase()
-                    )
+                
+                // Render children (which may be direct links or folder groups)
+                section.children.forEach { node ->
+                    if (node.children.isEmpty()) {
+                        // Direct link (no nested children)
+                        val active = normalize(currentPath) == normalize(node.path)
+                        DocsSidebarLink(
+                            label = node.title,
+                            href = basePath + node.path,
+                            active = active,
+                            dataLabel = node.title.lowercase()
+                        )
+                    } else {
+                        // Folder group with children
+                        DocsSidebarGroup(
+                            node = node,
+                            currentPath = currentPath,
+                            basePath = basePath
+                        )
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocsSidebarGroup(
+    node: DocsNavNode,
+    currentPath: String,
+    basePath: String
+) {
+    Column(
+        modifier = Modifier()
+            .gap(PortfolioTheme.Spacing.xxs)
+            .marginTop(PortfolioTheme.Spacing.sm)
+    ) {
+        // Folder heading
+        Text(
+            text = node.title,
+            modifier = Modifier()
+                .fontWeight(500)
+                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                .fontSize(13.px)
+                .textTransform(TextTransform.Uppercase)
+                .letterSpacing(0.5.px)
+                .marginBottom(PortfolioTheme.Spacing.xxs)
+        )
+        
+        // Children links (indented)
+        Column(
+            modifier = Modifier()
+                .paddingLeft(PortfolioTheme.Spacing.sm)
+                .gap(PortfolioTheme.Spacing.xxs)
+        ) {
+            node.children.forEach { child ->
+                val active = normalize(currentPath) == normalize(child.path)
+                DocsSidebarLink(
+                    label = child.title,
+                    href = basePath + child.path,
+                    active = active,
+                    dataLabel = child.title.lowercase()
+                )
             }
         }
     }
