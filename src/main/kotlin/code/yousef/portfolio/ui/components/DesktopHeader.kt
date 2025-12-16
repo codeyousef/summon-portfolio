@@ -259,6 +259,7 @@ private fun WorkWithMeDropdown(
                 .borderRadius(PortfolioTheme.Radii.md)
                 .border("1px", "solid", PortfolioTheme.Colors.BORDER)
                 .overflow(Overflow.Hidden)
+                .width(100.percent)
         ) {
             WorkWithMeDropdownLink(
                 label = NavigationStrings.fullTime.resolve(locale),
