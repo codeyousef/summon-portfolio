@@ -104,7 +104,8 @@ fun MobileHeader(
                                 .width(100.percent)
                                 .padding(16.px)
                                 .gap(12.px)
-                                .minWidth(200.px),
+                                .minWidth(200.px)
+                                .backgroundColor("#0a1628"),
                     ) {
                         val baseNavModifier =
                             Modifier()
