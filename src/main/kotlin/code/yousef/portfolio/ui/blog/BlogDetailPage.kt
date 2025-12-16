@@ -7,7 +7,7 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.foundation.PageScaffold
-import code.yousef.portfolio.ui.sections.ContactSection
+import code.yousef.portfolio.ui.sections.ContactFooterSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
@@ -117,7 +117,7 @@ fun BlogDetailPage(
                 )
             }
         }
-        ContactSection(locale = locale)
+        ContactFooterSection(locale = locale, modifier = Modifier().id("contact"))
         PortfolioFooter(locale = locale)
     }
 }
@@ -158,7 +158,7 @@ fun BlogNotFoundPage(locale: PortfolioLocale) {
                 )
             }
         }
-        ContactSection(locale = locale)
+        ContactFooterSection(locale = locale, modifier = Modifier().id("contact"))
         PortfolioFooter(locale = locale)
     }
 }
