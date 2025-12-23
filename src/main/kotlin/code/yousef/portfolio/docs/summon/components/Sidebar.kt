@@ -6,6 +6,8 @@ import code.yousef.portfolio.docs.summon.safeHref
 import code.yousef.portfolio.theme.PortfolioTheme
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.foundation.RawHtml
+import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
@@ -32,6 +34,11 @@ fun DocsSidebar(tree: DocsNavTree, currentPath: String, basePath: String = "") {
             .top(PortfolioTheme.Spacing.lg)
             .maxHeight(80.vh)
             .overflowY(Overflow.Auto)
+            // Hide on mobile, show on desktop
+            .display(Display.None)
+            .mediaQuery(MediaQuery.MinWidth(900)) {
+                display(Display.Flex)
+            }
     ) {
         tree.sections.forEach { section ->
             Column(
@@ -147,4 +154,72 @@ private fun DocsSidebarLink(
         ariaDescribedBy = null,
         dataHref = null
     )
+}
+
+/**
+ * Mobile-friendly collapsible sidebar for documentation navigation.
+ * Uses HTML details/summary for native accordion behavior without JS.
+ */
+@Composable
+fun MobileDocsSidebar(tree: DocsNavTree, currentPath: String, basePath: String = "") {
+    Column(
+        modifier = Modifier()
+            .width("100%")
+            .marginBottom(PortfolioTheme.Spacing.md)
+            // Show only on mobile, hide on desktop
+            .display(Display.Block)
+            .mediaQuery(MediaQuery.MinWidth(900)) {
+                display(Display.None)
+            }
+    ) {
+        // Using details/summary for native collapsible behavior
+        Box(
+            modifier = Modifier()
+                .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .borderRadius(PortfolioTheme.Radii.lg)
+                .padding(PortfolioTheme.Spacing.md)
+        ) {
+            RawHtml(
+                html = buildMobileNavHtml(tree, currentPath, basePath)
+            )
+        }
+    }
+}
+
+private fun buildMobileNavHtml(tree: DocsNavTree, currentPath: String, basePath: String): String {
+    val sb = StringBuilder()
+    sb.append("""<details class="mobile-docs-nav">""")
+    sb.append("""<summary style="cursor: pointer; font-weight: 600; padding: 8px 0; display: flex; align-items: center; gap: 8px;">""")
+    sb.append("""<span style="font-size: 20px;">☰</span> Navigation</summary>""")
+    sb.append("""<nav style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px;">""")
+    
+    tree.sections.forEach { section ->
+        sb.append("""<div style="margin-bottom: 12px;">""")
+        sb.append("""<div style="font-weight: 600; color: ${PortfolioTheme.Colors.TEXT_SECONDARY}; margin-bottom: 8px;">${section.title}</div>""")
+        
+        section.children.forEach { node ->
+            if (node.children.isEmpty()) {
+                val active = normalize(currentPath) == normalize(node.path)
+                val activeStyle = if (active) "background: ${PortfolioTheme.Colors.SURFACE_STRONG}; color: ${PortfolioTheme.Colors.ACCENT_ALT};" else ""
+                sb.append("""<a href="${safeHref(basePath + node.path)}" style="display: block; padding: 8px 12px; border-radius: 6px; color: ${PortfolioTheme.Colors.TEXT_PRIMARY}; text-decoration: none; $activeStyle">${node.title}</a>""")
+            } else {
+                sb.append("""<details style="margin-left: 0;">""")
+                sb.append("""<summary style="cursor: pointer; font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: ${PortfolioTheme.Colors.TEXT_SECONDARY}; padding: 4px 0;">${node.title}</summary>""")
+                sb.append("""<div style="padding-left: 12px; display: flex; flex-direction: column; gap: 4px;">""")
+                node.children.forEach { child ->
+                    val childActive = normalize(currentPath) == normalize(child.path)
+                    val childActiveStyle = if (childActive) "background: ${PortfolioTheme.Colors.SURFACE_STRONG}; color: ${PortfolioTheme.Colors.ACCENT_ALT};" else ""
+                    sb.append("""<a href="${safeHref(basePath + child.path)}" style="display: block; padding: 8px 12px; border-radius: 6px; color: ${PortfolioTheme.Colors.TEXT_PRIMARY}; text-decoration: none; $childActiveStyle">${child.title}</a>""")
+                }
+                sb.append("""</div></details>""")
+            }
+        }
+        sb.append("""</div>""")
+    }
+    
+    sb.append("""</nav></details>""")
+    return sb.toString()
 }

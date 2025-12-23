@@ -31,6 +31,11 @@ fun Toc(entries: List<TocEntry>) {
             .width(160.px)
             .position(Position.Sticky)
             .top(PortfolioTheme.Spacing.lg)
+            // Hide on mobile, show on large screens
+            .display(Display.None)
+            .mediaQuery(MediaQuery.MinWidth(1100)) {
+                display(Display.Flex)
+            }
     ) {
         Text(
             text = "On this page",

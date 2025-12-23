@@ -1,5 +1,5 @@
 # Build stage: JDK only; run the project's Gradle Wrapper
-FROM eclipse-temurin:17-jdk AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 
 # Copy wrapper first for better caching, then the rest
@@ -17,7 +17,7 @@ COPY . /workspace
 RUN /workspace/gradlew -x test shadowJar --no-daemon
 
 # Runtime stage
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Copy application JAR

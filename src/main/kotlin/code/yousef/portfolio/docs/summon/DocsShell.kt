@@ -5,6 +5,7 @@ import code.yousef.portfolio.docs.MarkdownMeta
 import code.yousef.portfolio.docs.NeighborLinks
 import code.yousef.portfolio.docs.TocEntry
 import code.yousef.portfolio.docs.summon.components.DocsSidebar
+import code.yousef.portfolio.docs.summon.components.MobileDocsSidebar
 import code.yousef.portfolio.docs.summon.components.Prose
 import code.yousef.portfolio.docs.summon.components.Toc
 import code.yousef.portfolio.i18n.PortfolioLocale
@@ -47,6 +48,8 @@ fun DocsShell(
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
+        // Mobile sidebar (visible only on small screens)
+        MobileDocsSidebar(tree = sidebar, currentPath = requestPath, basePath = basePath)
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -61,6 +64,11 @@ fun DocsShell(
                     .flex(grow = 1, shrink = 1, basis = "0%")
                     .minWidth(0.px)
                     .gap(PortfolioTheme.Spacing.lg)
+                    // Mobile padding
+                    .padding("0")
+                    .mediaQuery(MediaQuery.MaxWidth(900)) {
+                        padding(PortfolioTheme.Spacing.sm)
+                    }
             ) {
                 Prose(html = html)
                 NeighborRow(neighbors, basePath)
