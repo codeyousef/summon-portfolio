@@ -48,8 +48,10 @@ fun DocsShell(
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
-        // Mobile sidebar (visible only on small screens)
-        MobileDocsSidebar(tree = sidebar, currentPath = requestPath, basePath = basePath)
+        // Mobile sidebar - only render on docs pages
+        if (sidebar.sections.isNotEmpty()) {
+            MobileDocsSidebar(tree = sidebar, currentPath = requestPath, basePath = basePath)
+        }
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
