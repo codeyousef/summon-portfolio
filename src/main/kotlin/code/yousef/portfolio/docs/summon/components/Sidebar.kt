@@ -12,10 +12,6 @@ import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.vh
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.LayoutModifiers.top
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
 fun DocsSidebar(tree: DocsNavTree, currentPath: String, basePath: String = "") {

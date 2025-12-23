@@ -5,9 +5,6 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.alignItems
-import codes.yousef.summon.modifier.LayoutModifiers.display
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
 fun GlassPill(text: String, emphasize: Boolean = false, modifier: Modifier = Modifier()) {

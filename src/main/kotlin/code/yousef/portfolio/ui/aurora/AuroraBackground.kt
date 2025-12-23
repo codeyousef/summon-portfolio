@@ -7,8 +7,6 @@ import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.vh
 import codes.yousef.summon.extensions.vw
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.left
-import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.sigil.summon.effects.SigilEffectCanvas
 import codes.yousef.sigil.summon.effects.SigilEffect
 import codes.yousef.sigil.schema.effects.SigilCanvasConfig

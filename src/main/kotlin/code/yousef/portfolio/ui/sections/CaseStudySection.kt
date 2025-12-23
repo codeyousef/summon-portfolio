@@ -14,10 +14,6 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
-import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 
 @Composable
 fun CaseStudySection(

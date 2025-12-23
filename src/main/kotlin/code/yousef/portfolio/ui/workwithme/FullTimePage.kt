@@ -18,11 +18,6 @@ import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.StylingModifiers.color
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
-import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 
 /**
  * Full-Time Opportunities page.

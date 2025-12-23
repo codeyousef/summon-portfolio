@@ -7,8 +7,6 @@ import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.gap
 
 /**
  * Responsive split view layout.

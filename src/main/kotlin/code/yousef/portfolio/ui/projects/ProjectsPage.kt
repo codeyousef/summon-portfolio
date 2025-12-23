@@ -14,7 +14,9 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.modifier.Modifier
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
+import codes.yousef.summon.modifier.color
+import codes.yousef.summon.modifier.fontWeight
+import codes.yousef.summon.modifier.id
 import codes.yousef.summon.runtime.rememberMutableStateOf
 
 @Composable
