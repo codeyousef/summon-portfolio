@@ -61,7 +61,7 @@ fun ContactSection(
                     text = ContactStrings.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.5.rem)
-                        .fontWeight("700")
+                        .fontWeight(700)
                 )
                 Text(
                     text = ContactStrings.subtitle.resolve(locale),
