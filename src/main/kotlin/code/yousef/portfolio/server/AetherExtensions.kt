@@ -71,11 +71,13 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
             // Note: We use the simpler renderComposableRoot because renderComposableRootWithHydration signature mismatch
             // TODO: Fix hydration signature match
             try {
-                renderer.renderComposableRoot {
+                val content = renderer.renderComposableRoot {
                     // Render head elements
                     renderer.renderHeadElements(page.head)
                     page.content()
                 }
+                // Add DOCTYPE to ensure standards mode (not quirks mode)
+                "<!DOCTYPE html>$content"
             } catch (e: Exception) {
                 System.err.println("ERROR in renderComposableRoot: ${e.message}")
                 e.printStackTrace()
