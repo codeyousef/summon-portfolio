@@ -377,27 +377,7 @@ private fun DeploymentDocsSection() {
                     dataAttributes = emptyMap(),
                     navigationMode = LinkNavigationMode.Native
                 )
-                ButtonLink(
-                    label = "View LinkedIn Profile",
-                    href = "https://linkedin.com/in/yehhousef",
-                    modifier = Modifier()
-                        .backgroundColor(PortfolioTheme.Colors.SURFACE_STRONG)
-                        .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .padding("12px", "24px")
-                        .borderRadius(PortfolioTheme.Radii.md)
-                        .fontWeight(600)
-                        .textDecoration(TextDecoration.None)
-                        .border("1px", "solid", PortfolioTheme.Colors.BORDER),
-                    target = "_blank",
-                    rel = "noopener noreferrer",
-                    title = null,
-                    id = null,
-                    ariaLabel = null,
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = emptyMap(),
-                    navigationMode = LinkNavigationMode.Native
-                )
+
             }
         }
     }

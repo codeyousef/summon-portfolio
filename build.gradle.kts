@@ -13,7 +13,7 @@ group = "code.yousef"
 version = "0.0.2"
 
 application {
-    mainClass.set("io.ktor.server.netty.EngineMain")
+    mainClass.set("code.yousef.ApplicationKt")
 }
 
 dependencies {
@@ -47,12 +47,19 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
 
     // Summon SSR framework + Sigil 3D/effects library
-    implementation("codes.yousef:summon:0.5.8.4")
+    implementation("codes.yousef:summon:0.6.0")
     // Materia 0.3.4.6 - Fixed WebGL uniform name mismatch
     implementation("codes.yousef:materia-jvm:0.3.4.6")
     // Sigil 0.2.9.0 - Fixed WebGL duplicate uniforms causing black screen
     implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.0")
     implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.0")
+
+    // Aether Framework 0.2.0.0 - Django-like KMP framework
+    // Currently used alongside Ktor for gradual migration
+    // TODO: Full migration once Aether has host-based routing and static file serving
+    implementation("codes.yousef.aether:aether-core-jvm:0.2.0.0")
+    implementation("codes.yousef.aether:aether-web-jvm:0.2.0.0")
+
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)

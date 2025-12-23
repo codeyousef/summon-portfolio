@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  portfolio:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      # Persistent storage for content and credentials
+      - portfolio-data:/app/storage
+    environment:
+      - PORT=8080
+      - PORTFOLIO_CONTENT_PATH=/app/storage/content.json
+      - ADMIN_CREDENTIALS_PATH=/app/storage/admin-credentials.json
+      # Firestore settings (optional)
+      - USE_LOCAL_STORE=true
+      # - GCP_PROJECT_ID=your-project-id
+      # - FIRESTORE_EMULATOR_HOST=localhost:8081
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  portfolio-data:
+    driver: local
