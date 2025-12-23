@@ -70,13 +70,33 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
             // The context is now properly installed in the thread-local before rendering
             // Note: We use the simpler renderComposableRoot because renderComposableRootWithHydration signature mismatch
             // TODO: Fix hydration signature match
-             renderer.renderComposableRoot {
-                // Render head elements
-                renderer.renderHeadElements(page.head)
-                page.content()
+            try {
+                renderer.renderComposableRoot {
+                    // Render head elements
+                    renderer.renderHeadElements(page.head)
+                    page.content()
+                }
+            } catch (e: Exception) {
+                System.err.println("ERROR in renderComposableRoot: ${e.message}")
+                e.printStackTrace()
+                throw e
             }
         }
-        respondHtml(status, html)
+        try {
+            respondHtml(status, html)
+        } catch (e: Exception) {
+            System.err.println("ERROR in respondHtml: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
+    } catch (e: Exception) {
+        System.err.println("ERROR in respondSummonPage: ${e.message}")
+        e.printStackTrace()
+        // Send error response
+        response.statusCode = 500
+        response.setHeader("Content-Type", "text/plain")
+        response.write("Internal Server Error: ${e.message}")
+        response.end()
     } finally {
         clearPlatformRenderer()
     }
