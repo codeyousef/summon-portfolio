@@ -59,9 +59,12 @@ fun Router.portfolioRoutes(
             )
             exchange.respondSummonPage(page)
         } catch (e: Exception) {
+            val errorBody = "Error in route handler: ${e.message}\n${e.stackTraceToString()}"
+            val errorBytes = errorBody.toByteArray(Charsets.UTF_8)
             exchange.response.statusCode = 500
             exchange.response.setHeader("Content-Type", "text/plain")
-            exchange.response.write("Error in route handler: ${e.message}\n${e.stackTraceToString()}")
+            exchange.response.setHeader("Content-Length", errorBytes.size.toString())
+            exchange.response.write(errorBytes)
             exchange.response.end()
         }
     }

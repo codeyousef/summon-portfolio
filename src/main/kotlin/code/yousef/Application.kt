@@ -121,9 +121,12 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             } catch (e: Throwable) {
                 System.err.println("Uncaught exception: ${e.message}")
                 e.printStackTrace()
+                val errorBody = "Debug Recovery: ${e.message}\n${e.stackTraceToString()}"
+                val errorBytes = errorBody.toByteArray(Charsets.UTF_8)
                 exchange.response.statusCode = 500
                 exchange.response.setHeader("Content-Type", "text/plain")
-                exchange.response.write("Debug Recovery: ${e.message}\n${e.stackTraceToString()}")
+                exchange.response.setHeader("Content-Length", errorBytes.size.toString())
+                exchange.response.write(errorBytes)
                 exchange.response.end()
             }
         }

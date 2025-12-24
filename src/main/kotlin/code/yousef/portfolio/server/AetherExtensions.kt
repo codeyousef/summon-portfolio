@@ -13,6 +13,19 @@ import java.net.URLConnection
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
+/**
+ * Workaround for Aether 0.2.0.0 bug - sets Content-Length to avoid Vert.x chunked encoding error.
+ * TODO: Remove once Aether 0.2.0.1 is released (which enables chunked encoding automatically)
+ */
+suspend fun Exchange.respondHtmlWithLength(statusCode: Int = 200, html: String) {
+    response.statusCode = statusCode
+    response.setHeader("Content-Type", "text/html; charset=utf-8")
+    val bytes = html.toByteArray(Charsets.UTF_8)
+    response.setHeader("Content-Length", bytes.size.toString())
+    response.write(bytes)
+    response.end()
+}
+
 class StaticResourceHandler(
     private val resourcePackage: String,
     private val urlPrefix: String = "/"
@@ -85,7 +98,7 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
             }
         }
         try {
-            respondHtml(status, html)
+            respondHtmlWithLength(status, html)
         } catch (e: Exception) {
             System.err.println("ERROR in respondHtml: ${e.message}")
             e.printStackTrace()
@@ -94,10 +107,13 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
     } catch (e: Exception) {
         System.err.println("ERROR in respondSummonPage: ${e.message}")
         e.printStackTrace()
-        // Send error response
+        // Send error response with Content-Length to avoid Vert.x chunked encoding error
+        val errorBody = "Internal Server Error: ${e.message}\n\nStack Trace:\n${e.stackTraceToString()}"
+        val errorBytes = errorBody.toByteArray(Charsets.UTF_8)
         response.statusCode = 500
         response.setHeader("Content-Type", "text/plain")
-        response.write("Internal Server Error: ${e.message}\n\nStack Trace:\n${e.stackTraceToString()}")
+        response.setHeader("Content-Length", errorBytes.size.toString())
+        response.write(errorBytes)
         response.end()
     } finally {
         clearPlatformRenderer()

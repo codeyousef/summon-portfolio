@@ -54,11 +54,11 @@ dependencies {
     implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.0")
     implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.0")
 
-    // Aether Framework 0.2.0.1 - Django-like KMP framework
+    // Aether Framework 0.2.0.0 - Django-like KMP framework
     // Currently used alongside Ktor for gradual migration
-    // TODO: Full migration once Aether has host-based routing and static file serving
-    implementation("codes.yousef.aether:aether-core-jvm:0.2.0.1")
-    implementation("codes.yousef.aether:aether-web-jvm:0.2.0.1")
+    // TODO: Update to 0.2.0.1 once published (has chunked encoding fix)
+    implementation("codes.yousef.aether:aether-core-jvm:0.2.0.0")
+    implementation("codes.yousef.aether:aether-web-jvm:0.2.0.0")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
