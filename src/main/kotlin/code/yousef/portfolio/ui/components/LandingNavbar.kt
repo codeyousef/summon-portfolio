@@ -75,7 +75,7 @@ fun LandingNavbar(branding: LandingBranding) {
         ),
         defaultContent = desktopContent,
         modifier = Modifier().width(100.percent),
-        serverSideScreenSize = ScreenSize.LARGE
+        serverSideScreenSize = ScreenSize.SMALL
     )
 }
 
