@@ -609,7 +609,9 @@ fun Router.docsRoutes(
         respondSummonPage(page)
     }
 
-    get("/__asset/*") { exchange ->
+    val prefix = if (basePath.isBlank()) "" else basePath.trimEnd('/')
+
+    get("$prefix/__asset/*") { exchange ->
         val assetPath = exchange.pathParam("*")
         val branch = exchange.request.queryParameter("ref") ?: config.defaultBranch
         
@@ -630,15 +632,21 @@ fun Router.docsRoutes(
             }
     }
 
-    post("/__hooks/github") { exchange ->
+    post("$prefix/__hooks/github") { exchange ->
         webhookHandler.handle(exchange)
     }
 
-    get("/") { exchange ->
+    if (prefix.isNotEmpty()) {
+        get(prefix) { exchange ->
+            exchange.renderDocsPage()
+        }
+    }
+
+    get("$prefix/") { exchange ->
         exchange.renderDocsPage()
     }
 
-    get("/*") { exchange ->
+    get("$prefix/*") { exchange ->
         exchange.renderDocsPage()
     }
 }
