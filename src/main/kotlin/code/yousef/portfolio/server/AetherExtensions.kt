@@ -97,7 +97,7 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
         // Send error response
         response.statusCode = 500
         response.setHeader("Content-Type", "text/plain")
-        response.write("Internal Server Error: ${e.message}")
+        response.write("Internal Server Error: ${e.message}\n\nStack Trace:\n${e.stackTraceToString()}")
         response.end()
     } finally {
         clearPlatformRenderer()
