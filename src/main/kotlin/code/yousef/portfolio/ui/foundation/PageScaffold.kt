@@ -143,6 +143,15 @@ private fun InjectFontAssets() {
             null,
             null
         )
+        // Material Icons for HamburgerMenu and other icon components
+        link(
+            "stylesheet",
+            "https://fonts.googleapis.com/icon?family=Material+Icons",
+            null,
+            null,
+            null,
+            null
+        )
     }
 }
 
