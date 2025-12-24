@@ -20,6 +20,8 @@ import code.yousef.portfolio.server.docsRoutes
 import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
+import code.yousef.portfolio.ssr.EnvironmentLinksRegistry
+import code.yousef.portfolio.ssr.resolveEnvironmentLinks
 import codes.yousef.aether.core.AetherDispatcher
 import codes.yousef.aether.core.jvm.VertxServer
 import codes.yousef.aether.core.jvm.VertxServerConfig
@@ -134,6 +136,15 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         }
         installCallLogging()
         installContentNegotiation()
+
+        use { exchange, next ->
+            val host = exchange.request.headers["Host"]
+            val links = resolveEnvironmentLinks(host)
+            EnvironmentLinksRegistry.withLinks(links) {
+                next()
+            }
+        }
+
         use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
         use(staticHandler::handle)
         use(rootHydrationHandler::handle)
