@@ -55,19 +55,16 @@ fun Router.summonRoutes(
         exchange.respondSummonPage(page)
     }
 
-    val docsRouter = router {
-        docsRoutes(
-            docsService,
-            markdownRenderer,
-            linkRewriter,
-            docsRouter,
-            webhookHandler,
-            docsConfig,
-            docsCatalog,
-            basePath = "/docs"
-        )
-    }
-    use("/docs", docsRouter.asMiddleware())
+    docsRoutes(
+        docsService,
+        markdownRenderer,
+        linkRewriter,
+        docsRouter,
+        webhookHandler,
+        docsConfig,
+        docsCatalog,
+        basePath = "/docs"
+    )
 }
 
 fun Router.portfolioRoutes(
