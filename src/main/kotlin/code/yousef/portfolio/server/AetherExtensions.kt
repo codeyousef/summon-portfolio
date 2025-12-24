@@ -81,21 +81,21 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
         // CRITICAL: Install callback context BEFORE rendering starts
         val html = withContext(callbackContext) {
             // The context is now properly installed in the thread-local before rendering
-            // Note: We use the simpler renderComposableRoot because renderComposableRootWithHydration signature mismatch
-            // TODO: Fix hydration signature match
             try {
-                // IMPORTANT: Render head elements BEFORE renderComposableRoot
-                // The head section is created inside renderComposableRoot and reads headElements synchronously,
-                // so they must be added before renderComposableRoot is called
+                // IMPORTANT: Render head elements BEFORE renderComposableRootWithHydration
+                // The head section is created inside the render function and reads headElements synchronously,
+                // so they must be added before the render function is called
                 renderer.renderHeadElements(page.head)
                 
-                val content = renderer.renderComposableRoot {
+                // Use renderComposableRootWithHydration to include the bootloader script
+                // which handles data-action toggles for HamburgerMenu, Dropdown, etc.
+                val lang = page.locale.code
+                val dir = page.locale.direction
+                renderer.renderComposableRootWithHydration(lang, dir) {
                     page.content()
                 }
-                // Note: renderComposableRoot already outputs <!DOCTYPE html>, so we don't add another
-                content
             } catch (e: Exception) {
-                System.err.println("ERROR in renderComposableRoot: ${e.message}")
+                System.err.println("ERROR in renderComposableRootWithHydration: ${e.message}")
                 e.printStackTrace()
                 throw e
             }
