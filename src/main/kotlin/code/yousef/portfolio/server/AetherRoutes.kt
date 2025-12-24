@@ -47,7 +47,7 @@ fun Router.portfolioRoutes(
     adminAuthService: AdminAuthService
 ) {
     get("/version") { exchange ->
-        exchange.respondJson(mapOf("version" to "0.6.2.0-debug-2"))
+        exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
     }
 
     get("/") { exchange ->
