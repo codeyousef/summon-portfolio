@@ -95,7 +95,16 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     }
 
     val summonRouter = router {
-        summonRoutes(portfolioRenderer)
+        summonRoutes(
+            portfolioRenderer,
+            docsService,
+            markdownRenderer,
+            linkRewriter,
+            docsRouter,
+            webhookHandler,
+            docsConfig,
+            docsCatalog
+        )
     }
 
     val docsRouterHandler = router {

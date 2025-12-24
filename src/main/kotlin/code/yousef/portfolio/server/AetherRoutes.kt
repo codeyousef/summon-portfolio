@@ -38,13 +38,36 @@ import kotlin.time.toJavaInstant
 
 private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
-fun Router.summonRoutes(portfolioRenderer: PortfolioRenderer) {
+fun Router.summonRoutes(
+    portfolioRenderer: PortfolioRenderer,
+    docsService: DocsService,
+    markdownRenderer: MarkdownRenderer,
+    linkRewriter: LinkRewriter,
+    docsRouter: DocsRouter,
+    webhookHandler: WebhookHandler,
+    docsConfig: DocsConfig,
+    docsCatalog: DocsCatalog
+) {
     get("/") { exchange ->
         val docsUrl = docsBaseUrl()
         val apiReferenceUrl = "$docsUrl/api-reference"
         val page = portfolioRenderer.summonLandingPage(docsUrl, apiReferenceUrl)
         exchange.respondSummonPage(page)
     }
+
+    val docsRouter = router {
+        docsRoutes(
+            docsService,
+            markdownRenderer,
+            linkRewriter,
+            docsRouter,
+            webhookHandler,
+            docsConfig,
+            docsCatalog,
+            basePath = "/docs"
+        )
+    }
+    use("/docs", docsRouter.asMiddleware())
 }
 
 fun Router.portfolioRoutes(
@@ -493,7 +516,20 @@ fun Router.docsRoutes(
     basePath: String = ""
 ) {
     suspend fun Exchange.renderDocsPage() {
-        val requestPath = request.path.ifBlank { "/" }
+        // When mounted under a subpath (e.g. /docs), we need to strip that prefix to get the relative path
+        // for docs lookup. However, Aether's router might not strip it automatically if using 'use'.
+        // But here we are inside a router that is mounted.
+        // If we use 'use("/docs", docsRouter.asMiddleware())', the exchange.request.path will still be full path.
+        // We need to handle basePath stripping.
+        
+        val fullPath = request.path
+        val relativePath = if (basePath.isNotEmpty() && fullPath.startsWith(basePath)) {
+             fullPath.removePrefix(basePath)
+        } else {
+             fullPath
+        }
+        
+        val requestPath = relativePath.ifBlank { "/" }
         val (branch, pathPart) = extractBranch(requestPath, config)
         val slug = normalizeSlug(pathPart)
         var navTree = docsCatalog.navTree()
