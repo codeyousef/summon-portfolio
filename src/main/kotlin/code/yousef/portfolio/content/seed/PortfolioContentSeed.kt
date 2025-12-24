@@ -75,7 +75,7 @@ object PortfolioContentSeed {
             category = ProjectCategory.WEB,
             featured = true,
             order = 1,
-            technologies = listOf("Kotlin", "KMP", "Compose", "Ktor")
+            technologies = listOf("Kotlin", "KMP", "Compose", "Aether")
         ),
         Project(
             id = "hearthshire",

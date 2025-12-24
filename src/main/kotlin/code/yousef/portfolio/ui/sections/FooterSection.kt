@@ -28,7 +28,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
         ) {
             // Technical sign-off
             Text(
-                text = "Architected in Kotlin. Rendered with Materia. Powered by Ktor.",
+                text = "Architected in Kotlin. Rendered with Materia. Powered by Aether.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(0.9.rem)
