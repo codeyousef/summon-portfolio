@@ -46,6 +46,10 @@ fun Router.portfolioRoutes(
     adminContentService: AdminContentService,
     adminAuthService: AdminAuthService
 ) {
+    get("/version") { exchange ->
+        exchange.respondJson(mapOf("version" to "0.6.2.0-debug-2"))
+    }
+
     get("/") { exchange ->
         try {
             val servicesParam = exchange.request.queryParameter("services")
