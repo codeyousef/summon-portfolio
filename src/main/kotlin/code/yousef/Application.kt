@@ -114,7 +114,19 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val staticHandler = StaticResourceHandler("static", "/static")
 
     val pipeline = Pipeline().apply {
-        installRecovery()
+        // Custom debug recovery to print stack traces
+        use { exchange, next ->
+            try {
+                next()
+            } catch (e: Throwable) {
+                System.err.println("Uncaught exception: ${e.message}")
+                e.printStackTrace()
+                exchange.response.statusCode = 500
+                exchange.response.setHeader("Content-Type", "text/plain")
+                exchange.response.write("Debug Recovery: ${e.message}\n${e.stackTraceToString()}")
+                exchange.response.end()
+            }
+        }
         installCallLogging()
         installContentNegotiation()
         use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
