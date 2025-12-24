@@ -20,6 +20,7 @@ import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
 import code.yousef.portfolio.ui.admin.AdminSectionPage
@@ -36,6 +37,15 @@ import java.time.format.DateTimeFormatter
 import kotlin.time.toJavaInstant
 
 private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+fun Router.summonRoutes(portfolioRenderer: PortfolioRenderer) {
+    get("/") { exchange ->
+        val docsUrl = docsBaseUrl()
+        val apiReferenceUrl = "$docsUrl/api-reference"
+        val page = portfolioRenderer.summonLandingPage(docsUrl, apiReferenceUrl)
+        exchange.respondSummonPage(page)
+    }
+}
 
 fun Router.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,

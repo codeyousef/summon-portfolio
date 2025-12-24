@@ -16,6 +16,7 @@ import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.server.HostRouter
 import code.yousef.portfolio.server.StaticResourceHandler
 import code.yousef.portfolio.server.portfolioRoutes
+import code.yousef.portfolio.server.summonRoutes
 import code.yousef.portfolio.server.docsRoutes
 import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
@@ -93,6 +94,10 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         )
     }
 
+    val summonRouter = router {
+        summonRoutes(portfolioRenderer)
+    }
+
     val docsRouterHandler = router {
         docsRoutes(
             docsService,
@@ -107,7 +112,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 
     // Host Routing
     val hostRouter = HostRouter(mapOf(
-        "summon.yousef.codes" to mainRouter.asMiddleware(),
+        "summon.yousef.codes" to summonRouter.asMiddleware(),
+        "summon.dev.yousef.codes" to summonRouter.asMiddleware(),
         "localhost" to mainRouter.asMiddleware(),
         "docs.yousef.codes" to docsRouterHandler.asMiddleware(),
         "*" to mainRouter.asMiddleware()
