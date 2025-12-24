@@ -47,12 +47,19 @@ fun Router.portfolioRoutes(
     adminAuthService: AdminAuthService
 ) {
     get("/") { exchange ->
-        val servicesParam = exchange.request.queryParameter("services")
-        val page = portfolioRenderer.landingPage(
-            locale = PortfolioLocale.EN,
-            servicesModalOpen = servicesParam == "true"
-        )
-        exchange.respondSummonPage(page)
+        try {
+            val servicesParam = exchange.request.queryParameter("services")
+            val page = portfolioRenderer.landingPage(
+                locale = PortfolioLocale.EN,
+                servicesModalOpen = servicesParam == "true"
+            )
+            exchange.respondSummonPage(page)
+        } catch (e: Exception) {
+            exchange.response.statusCode = 500
+            exchange.response.setHeader("Content-Type", "text/plain")
+            exchange.response.write("Error in route handler: ${e.message}\n${e.stackTraceToString()}")
+            exchange.response.end()
+        }
     }
 
     get("/projects") { exchange ->
