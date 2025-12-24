@@ -112,6 +112,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     ))
 
     val staticHandler = StaticResourceHandler("static", "/static")
+    // Root-level handler for hydration scripts (loaded by sigil-summon inline JS at /sigil-hydration.js)
+    val rootHydrationHandler = StaticResourceHandler("static", "/")
 
     val pipeline = Pipeline().apply {
         // Custom debug recovery to print stack traces
@@ -134,6 +136,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         installContentNegotiation()
         use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
         use(staticHandler::handle)
+        use(rootHydrationHandler::handle)
         use(hostRouter::handle)
     }
     
