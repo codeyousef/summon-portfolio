@@ -6,12 +6,11 @@ import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.layout.ResponsiveLayout
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.layout.ScreenSize
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -63,20 +62,28 @@ data class LandingBranding(
  */
 @Composable
 fun LandingNavbar(branding: LandingBranding) {
-    val desktopContent = @Composable { DesktopLandingNavbar(branding) }
-    val mobileContent = @Composable { MobileLandingNavbar(branding) }
+    // CSS for responsive visibility
+    GlobalStyle("""
+        .landing-nav-desktop { display: block !important; }
+        .landing-nav-mobile { display: none !important; }
+        
+        @media (max-width: 960px) {
+            .landing-nav-desktop { display: none !important; }
+            .landing-nav-mobile { display: block !important; }
+        }
+    """)
 
-    ResponsiveLayout(
-        content = mapOf(
-            ScreenSize.SMALL to mobileContent,
-            ScreenSize.MEDIUM to mobileContent,
-            ScreenSize.LARGE to desktopContent,
-            ScreenSize.XLARGE to desktopContent
-        ),
-        defaultContent = desktopContent,
-        modifier = Modifier().width(100.percent),
-        serverSideScreenSize = ScreenSize.SMALL
-    )
+    Box(modifier = Modifier().width(100.percent)) {
+        // Desktop Version
+        Box(modifier = Modifier().className("landing-nav-desktop").width(100.percent)) {
+            DesktopLandingNavbar(branding)
+        }
+        
+        // Mobile Version
+        Box(modifier = Modifier().className("landing-nav-mobile").width(100.percent)) {
+            MobileLandingNavbar(branding)
+        }
+    }
 }
 
 @Composable
