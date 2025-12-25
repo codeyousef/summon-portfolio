@@ -21,8 +21,11 @@ import code.yousef.portfolio.server.docsRoutes
 import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
+import code.yousef.portfolio.ssr.MateriaLandingRenderer
+import code.yousef.portfolio.ssr.SigilLandingRenderer
 import code.yousef.portfolio.ssr.EnvironmentLinksRegistry
 import code.yousef.portfolio.ssr.resolveEnvironmentLinks
+import code.yousef.portfolio.server.respondSummonPage
 import codes.yousef.aether.core.AetherDispatcher
 import codes.yousef.aether.core.jvm.VertxServer
 import codes.yousef.aether.core.jvm.VertxServerConfig
@@ -80,6 +83,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val portfolioRenderer = PortfolioRenderer(contentService)
     val blogRenderer = BlogRenderer(contentService)
     val adminRenderer = AdminRenderer()
+    val materiaRenderer = MateriaLandingRenderer()
+    val sigilRenderer = SigilLandingRenderer()
 
     // Routers
     val mainRouter = router {
@@ -107,6 +112,20 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         )
     }
 
+    val materiaRouter = router {
+        get("/") { exchange ->
+            val page = materiaRenderer.landingPage()
+            exchange.respondSummonPage(page)
+        }
+    }
+
+    val sigilRouter = router {
+        get("/") { exchange ->
+            val page = sigilRenderer.landingPage()
+            exchange.respondSummonPage(page)
+        }
+    }
+
     val docsRouterHandler = router {
         docsRoutes(
             docsService,
@@ -123,6 +142,10 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val hostRouter = HostRouter(mapOf(
         "summon.yousef.codes" to summonRouter.asMiddleware(),
         "summon.dev.yousef.codes" to summonRouter.asMiddleware(),
+        "materia.dev.yousef.codes" to materiaRouter.asMiddleware(),
+        "materia.yousef.codes" to materiaRouter.asMiddleware(),
+        "sigil.dev.yousef.codes" to sigilRouter.asMiddleware(),
+        "sigil.yousef.codes" to sigilRouter.asMiddleware(),
         "localhost" to mainRouter.asMiddleware(),
         "docs.yousef.codes" to docsRouterHandler.asMiddleware(),
         "*" to mainRouter.asMiddleware()
