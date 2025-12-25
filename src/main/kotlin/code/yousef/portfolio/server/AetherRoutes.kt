@@ -653,16 +653,11 @@ fun Router.docsRoutes(
         webhookHandler.handle(exchange)
     }
 
-    if (prefix.isNotEmpty()) {
-        get(prefix) { exchange ->
-            exchange.renderDocsPage()
-        }
-    }
-
-    get("$prefix/") { exchange ->
+    // Handle both the root of the docs (e.g. /docs) and any subpaths (e.g. /docs/roadmap)
+    val rootPath = if (prefix.isEmpty()) "/" else prefix
+    get(rootPath) { exchange ->
         exchange.renderDocsPage()
     }
-
     get("$prefix/*") { exchange ->
         exchange.renderDocsPage()
     }
