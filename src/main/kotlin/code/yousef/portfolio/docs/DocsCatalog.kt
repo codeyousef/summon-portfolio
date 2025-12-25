@@ -118,26 +118,20 @@ class DocsCatalog(
         }
         logger.info("Fetched remote tree with ${tree.size} nodes")
         val normalizedRoot = config.normalizedDocsRoot.trim('/')
+        val rootPrefix = if (normalizedRoot.isBlank()) "" else "$normalizedRoot/"
         val slugSeen = mutableSetOf<String>()
         return tree.asSequence()
             .filter { it.type == "blob" && it.path.endsWith(".md", ignoreCase = true) }
             .filter { entry ->
-                val matchesRoot = normalizedRoot.isBlank() || entry.path.startsWith("$normalizedRoot/", ignoreCase = true)
+                if (rootPrefix.isBlank()) return@filter true
+                val matchesRoot = entry.path.startsWith(rootPrefix, ignoreCase = true)
                 if (!matchesRoot) return@filter false
-                val relative = if (normalizedRoot.isBlank()) entry.path else {
-                    if (entry.path.startsWith(normalizedRoot, ignoreCase = true)) {
-                        entry.path.substring(normalizedRoot.length).trimStart('/')
-                    } else entry.path
-                }
+                val relative = entry.path.removePrefix(rootPrefix)
                 val firstSegment = relative.substringBefore('/', relative)
                 !firstSegment.equals("private", ignoreCase = true)
             }
             .mapNotNull { node ->
-                val relative = if (normalizedRoot.isBlank()) node.path else {
-                    if (node.path.startsWith(normalizedRoot, ignoreCase = true)) {
-                        node.path.substring(normalizedRoot.length).trimStart('/')
-                    } else node.path
-                }
+                val relative = if (rootPrefix.isBlank()) node.path else node.path.removePrefix(rootPrefix)
                 val slug = slugFor(relative) ?: return@mapNotNull null
                 if (!slugSeen.add(slug)) {
                     return@mapNotNull null
@@ -146,13 +140,16 @@ class DocsCatalog(
                 DocEntry(
                     slug = slug,
                     title = title,
-                    repoPath = config.repoPathFor(relative)
+                    repoPath = node.path  // Use the full GitHub path directly
                 )
             }
             .sortedWith(compareBy<DocEntry> { it.slug != SLUG_ROOT }.thenBy { it.slug })
             .toList()
             .also { entries ->
-                logger.info("Loaded ${entries.size} remote doc entries. Sample: ${entries.take(3).map { it.slug }}")
+                logger.info("Loaded ${entries.size} remote doc entries. Sample slugs: ${entries.take(5).map { it.slug }}")
+                if (entries.any { it.slug.contains("roadmap") }) {
+                    logger.info("Roadmap entries: ${entries.filter { it.slug.contains("roadmap") }.map { "${it.slug} -> ${it.repoPath}" }}")
+                }
             }
     }
 
