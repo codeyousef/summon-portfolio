@@ -65,6 +65,20 @@ fun Router.summonRoutes(
         docsCatalog,
         basePath = "/docs"
     )
+
+    get("/docs-debug") { exchange ->
+        val debugInfo = mapOf(
+            "source" to docsConfig.docsSource.name,
+            "owner" to docsConfig.githubOwner,
+            "repo" to docsConfig.githubRepo,
+            "branch" to docsConfig.defaultBranch,
+            "root" to docsConfig.docsRoot,
+            "localRoot" to docsConfig.localDocsRoot.toString(),
+            "localRootExists" to Files.exists(docsConfig.localDocsRoot),
+            "slugs" to docsCatalog.allSlugs()
+        )
+        exchange.respondJson(200, debugInfo)
+    }
 }
 
 fun Router.portfolioRoutes(
@@ -529,6 +543,7 @@ fun Router.docsRoutes(
         val requestPath = relativePath.ifBlank { "/" }
         val (branch, pathPart) = extractBranch(requestPath, config)
         val slug = normalizeSlug(pathPart)
+        LoggerFactory.getLogger("DocsRoutes").info("Docs request: path={}, branch={}, slug={}", requestPath, branch, slug)
         var navTree = docsCatalog.navTree()
         var entry = docsCatalog.find(slug)
         if (entry == null) {

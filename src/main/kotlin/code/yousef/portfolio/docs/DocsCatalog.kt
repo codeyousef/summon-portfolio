@@ -94,7 +94,7 @@ class DocsCatalog(
         return mdFiles.mapNotNull { path ->
             val relative = root.relativize(path).toString().replace('\\', '/')
             val firstSegment = relative.substringBefore('/', relative)
-            if (firstSegment.equals("private", ignoreCase = true)) {
+            if (firstSegment.equals("private", ignoreCase = true) && !root.toString().contains("private")) {
                 return@mapNotNull null
             }
             val slug = slugFor(relative) ?: return@mapNotNull null
@@ -111,20 +111,33 @@ class DocsCatalog(
     }
 
     private fun loadRemoteEntries(): List<DocEntry> {
-        val tree = fetchRemoteTree() ?: return emptyList()
+        val tree = fetchRemoteTree()
+        if (tree == null) {
+            logger.error("Failed to fetch remote tree for ${config.githubOwner}/${config.githubRepo} on branch ${config.defaultBranch}")
+            return emptyList()
+        }
+        logger.info("Fetched remote tree with ${tree.size} nodes")
         val normalizedRoot = config.normalizedDocsRoot.trim('/')
         val slugSeen = mutableSetOf<String>()
         return tree.asSequence()
             .filter { it.type == "blob" && it.path.endsWith(".md", ignoreCase = true) }
             .filter { entry ->
-                val matchesRoot = normalizedRoot.isBlank() || entry.path.startsWith("$normalizedRoot/")
+                val matchesRoot = normalizedRoot.isBlank() || entry.path.startsWith("$normalizedRoot/", ignoreCase = true)
                 if (!matchesRoot) return@filter false
-                val relative = entry.path.removePrefix("$normalizedRoot/").trimStart('/')
+                val relative = if (normalizedRoot.isBlank()) entry.path else {
+                    if (entry.path.startsWith(normalizedRoot, ignoreCase = true)) {
+                        entry.path.substring(normalizedRoot.length).trimStart('/')
+                    } else entry.path
+                }
                 val firstSegment = relative.substringBefore('/', relative)
                 !firstSegment.equals("private", ignoreCase = true)
             }
             .mapNotNull { node ->
-                val relative = node.path.removePrefix("$normalizedRoot/").trimStart('/')
+                val relative = if (normalizedRoot.isBlank()) node.path else {
+                    if (node.path.startsWith(normalizedRoot, ignoreCase = true)) {
+                        node.path.substring(normalizedRoot.length).trimStart('/')
+                    } else node.path
+                }
                 val slug = slugFor(relative) ?: return@mapNotNull null
                 if (!slugSeen.add(slug)) {
                     return@mapNotNull null
@@ -138,6 +151,9 @@ class DocsCatalog(
             }
             .sortedWith(compareBy<DocEntry> { it.slug != SLUG_ROOT }.thenBy { it.slug })
             .toList()
+            .also { entries ->
+                logger.info("Loaded ${entries.size} remote doc entries. Sample: ${entries.take(3).map { it.slug }}")
+            }
     }
 
     private fun fetchRemoteTree(): List<GitTreeNode>? {
