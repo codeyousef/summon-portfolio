@@ -5,6 +5,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.HYDRATION_SCRIPT_PATH
 import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.ssr.materiaMarketingUrl
+import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
@@ -30,7 +31,7 @@ import java.net.URI
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
     private val portfolioOrigin: String,
-    private val branding: DocsBranding = DocsBranding.summon(),
+    private val defaultBranding: DocsBranding = DocsBranding.summon(),
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     fun render(
@@ -45,8 +46,9 @@ class DocsRouter(
     ): SummonPage {
         val seo = seoExtractor.build(requestPath, meta)
         val navBase = resolveNavBase(origin)
+        val branding = resolveBranding(origin)
         return SummonPage(
-            head = headBlock(seo.title, seo.description, seo.canonicalUrl),
+            head = headBlock(branding, seo.title, seo.description, seo.canonicalUrl),
             content = {
                 DocsPageFrame(navBase, origin, branding) {
                     DocsShell(
@@ -67,8 +69,9 @@ class DocsRouter(
         val canonical = seoExtractor.canonical(requestPath)
         val navJson = json.encodeToString(sidebar).replace("</", "<\\/")
         val navBase = resolveNavBase(origin)
+        val branding = resolveBranding(origin)
         return SummonPage(
-            head = headBlock("Not found", "This page could not be located.", canonical),
+            head = headBlock(branding, "Not found", "This page could not be located.", canonical),
             content = {
                 DocsPageFrame(navBase, origin, branding) {
                     DocsNotFoundContent(navJson)
@@ -77,7 +80,7 @@ class DocsRouter(
         )
     }
 
-    private fun headBlock(title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
+    private fun headBlock(branding: DocsBranding, title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
         head.title("$title · ${branding.docsTitle}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("description", null, description, null, null)
@@ -90,6 +93,19 @@ class DocsRouter(
         head.meta("twitter:description", null, description, null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.script(HYDRATION_SCRIPT_PATH, null, "application/javascript", false, true, null)
+    }
+
+    private fun resolveBranding(origin: String): DocsBranding {
+        val uri = runCatching { URI(origin) }.getOrNull()
+        val host = uri?.host
+        
+        return when {
+            host == null -> defaultBranding
+            host.startsWith("summon.") -> DocsBranding.summon(::summonMarketingUrl)
+            host.startsWith("materia.") -> DocsBranding.materia(::materiaMarketingUrl)
+            host.startsWith("sigil.") -> DocsBranding.sigil(::sigilMarketingUrl)
+            else -> defaultBranding
+        }
     }
 
     private fun resolveNavBase(origin: String): String {

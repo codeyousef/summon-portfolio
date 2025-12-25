@@ -210,10 +210,12 @@ fun MobileHeader(
                                 .alignItems(AlignItems.Center)
                                 .gap(8.px)
                         ) {
-                            Text(
-                                text = "🔮",
+                            Image(
+                                src = "/static/sigil-logo.png",
+                                alt = "",
                                 modifier = Modifier()
-                                    .fontSize(1.rem)
+                                    .width(20.px)
+                                    .height(20.px)
                             )
                             AnchorLink(
                                 label = "Sigil",
