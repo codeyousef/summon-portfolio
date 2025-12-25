@@ -9,6 +9,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.FileVisitOption
 
 class DocsCatalog(
     private val config: DocsConfig
@@ -83,7 +84,7 @@ class DocsCatalog(
     private fun loadLocalEntries(): List<DocEntry> {
         val root = config.localDocsRoot
         if (!Files.exists(root)) return emptyList()
-        val mdFiles = Files.walk(root).use { stream ->
+        val mdFiles = Files.walk(root, FileVisitOption.FOLLOW_LINKS).use { stream ->
             stream
                 .filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".md", ignoreCase = true) }
                 .toList()
