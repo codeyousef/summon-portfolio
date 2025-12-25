@@ -49,13 +49,18 @@ data class DocsConfig(
             val useApi = (env["DOCS_USE_API"] ?: "false").toBooleanStrictOrNull() ?: false
             val ttl = (env["DOCS_CACHE_TTL_SECONDS"] ?: "3600").toLongOrNull() ?: 3600L
             val enableRedis = (env["DOCS_ENABLE_REDIS"] ?: "false").toBooleanStrictOrNull() ?: false
-            val docsSource = when ((env["DOCS_SOURCE"] ?: "remote").lowercase()) {
-                "local" -> DocsSource.LOCAL
-                else -> DocsSource.REMOTE
-            }
             val localRoot = env["DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: run {
                 val summonDocs = Paths.get("docs/private/summon-docs")
                 if (Files.exists(summonDocs)) summonDocs else Paths.get("docs")
+            }
+
+            val envSource = env["DOCS_SOURCE"]
+            val docsSource = if (envSource != null) {
+                if (envSource.equals("local", ignoreCase = true)) DocsSource.LOCAL else DocsSource.REMOTE
+            } else {
+                // Auto-detect: if we found the specific local docs folder, use it
+                val summonDocs = Paths.get("docs/private/summon-docs")
+                if (Files.exists(summonDocs)) DocsSource.LOCAL else DocsSource.REMOTE
             }
             val docsOrigin = env["PUBLIC_ORIGIN_DOCS"] ?: "https://summon.yousef.codes"
             val portfolioOrigin = env["PUBLIC_ORIGIN_PORTFOLIO"] ?: "https://www.yousef.codes"
@@ -88,13 +93,17 @@ data class DocsConfig(
             val useApi = (env["MATERIA_DOCS_USE_API"] ?: "false").toBooleanStrictOrNull() ?: false
             val ttl = (env["DOCS_CACHE_TTL_SECONDS"] ?: "3600").toLongOrNull() ?: 3600L
             val enableRedis = (env["DOCS_ENABLE_REDIS"] ?: "false").toBooleanStrictOrNull() ?: false
-            val docsSource = when ((env["MATERIA_DOCS_SOURCE"] ?: "remote").lowercase()) {
-                "local" -> DocsSource.LOCAL
-                else -> DocsSource.REMOTE
-            }
             val localRoot = env["MATERIA_DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: run {
                 val materiaDocs = Paths.get("docs/private/materia-docs")
                 if (Files.exists(materiaDocs)) materiaDocs else Paths.get("docs")
+            }
+
+            val envSource = env["MATERIA_DOCS_SOURCE"]
+            val docsSource = if (envSource != null) {
+                if (envSource.equals("local", ignoreCase = true)) DocsSource.LOCAL else DocsSource.REMOTE
+            } else {
+                val materiaDocs = Paths.get("docs/private/materia-docs")
+                if (Files.exists(materiaDocs)) DocsSource.LOCAL else DocsSource.REMOTE
             }
             val docsOrigin = env["PUBLIC_ORIGIN_MATERIA_DOCS"] ?: "https://materia.yousef.codes"
             val portfolioOrigin = env["PUBLIC_ORIGIN_PORTFOLIO"] ?: "https://www.yousef.codes"
@@ -127,13 +136,17 @@ data class DocsConfig(
             val useApi = (env["SIGIL_DOCS_USE_API"] ?: "false").toBooleanStrictOrNull() ?: false
             val ttl = (env["DOCS_CACHE_TTL_SECONDS"] ?: "3600").toLongOrNull() ?: 3600L
             val enableRedis = (env["DOCS_ENABLE_REDIS"] ?: "false").toBooleanStrictOrNull() ?: false
-            val docsSource = when ((env["SIGIL_DOCS_SOURCE"] ?: "remote").lowercase()) {
-                "local" -> DocsSource.LOCAL
-                else -> DocsSource.REMOTE
-            }
             val localRoot = env["SIGIL_DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: run {
                 val sigilDocs = Paths.get("docs/private/sigil-docs")
                 if (Files.exists(sigilDocs)) sigilDocs else Paths.get("docs")
+            }
+
+            val envSource = env["SIGIL_DOCS_SOURCE"]
+            val docsSource = if (envSource != null) {
+                if (envSource.equals("local", ignoreCase = true)) DocsSource.LOCAL else DocsSource.REMOTE
+            } else {
+                val sigilDocs = Paths.get("docs/private/sigil-docs")
+                if (Files.exists(sigilDocs)) DocsSource.LOCAL else DocsSource.REMOTE
             }
             val docsOrigin = env["PUBLIC_ORIGIN_SIGIL_DOCS"] ?: "https://sigil.yousef.codes"
             val portfolioOrigin = env["PUBLIC_ORIGIN_PORTFOLIO"] ?: "https://www.yousef.codes"
