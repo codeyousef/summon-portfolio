@@ -270,6 +270,7 @@ fun Router.portfolioRoutes(
         }
     }
     
+    /*
     get("/admin") { exchange ->
         val session = exchange.getAdminSession()
         if (session == null) {
@@ -354,6 +355,7 @@ fun Router.portfolioRoutes(
         exchange.requireAdminSession() ?: return@post
         exchange.handleTestimonialDelete(adminContentService, "/admin/testimonials")
     }
+    */
 }
 
 private suspend fun Exchange.getAdminSession(): AdminSession? {

@@ -36,8 +36,12 @@ import codes.yousef.aether.core.session.InMemorySessionStore
 import codes.yousef.aether.core.session.SessionConfig
 import codes.yousef.aether.core.session.SessionMiddleware
 import codes.yousef.aether.web.router
+import codes.yousef.aether.core.session.session
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
+import code.yousef.portfolio.db.ContentStoreDriver
+import codes.yousef.aether.db.DatabaseDriverRegistry
+import code.yousef.portfolio.admin.createAdminSite
 
 data class ApplicationResources(
     val pipeline: Pipeline,
@@ -67,6 +71,14 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val contactService = ContactService(InMemoryContactRepository())
     val adminAuthService = AdminAuthService(java.nio.file.Paths.get("storage/admin-credentials.json"))
     val adminContentService = AdminContentService(contentStore)
+    
+    // Initialize Aether DB Driver
+    val driver = ContentStoreDriver(contentStore)
+    DatabaseDriverRegistry.initialize(driver)
+    
+    // Initialize Admin Site
+    val adminSite = createAdminSite()
+    val adminRouter = adminSite.urls()
     
     // Docs Services - Summon
     val docsConfig = DocsConfig.fromEnv()
@@ -192,7 +204,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 
     val pipeline = Pipeline().apply {
         // Custom debug recovery to print stack traces
-        use { exchange, next ->
+        this.use { exchange, next ->
             try {
                 next()
             } catch (e: Throwable) {
@@ -210,7 +222,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         installCallLogging()
         installContentNegotiation()
 
-        use { exchange, next ->
+        this.use { exchange, next ->
             val host = exchange.request.headers["Host"]
             val links = resolveEnvironmentLinks(host)
             EnvironmentLinksRegistry.withLinks(links) {
@@ -219,6 +231,26 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         }
 
         use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
+        
+        // Admin Site Middleware
+        val adminMiddleware: codes.yousef.aether.core.pipeline.Middleware = { exchange, next ->
+            if (exchange.request.path.startsWith("/admin") && 
+                !exchange.request.path.startsWith("/admin/login") && 
+                !exchange.request.path.startsWith("/admin/change-password")) {
+                
+                val session = exchange.session()
+                val username = session?.get("username") as? String
+                if (username == null) {
+                    exchange.redirect("/admin/login")
+                } else {
+                    adminRouter.asMiddleware()(exchange, next)
+                }
+            } else {
+                next()
+            }
+        }
+        this.use(adminMiddleware)
+
         use(staticHandler::handle)
         use(rootHydrationHandler::handle)
         use(hostRouter::handle)
