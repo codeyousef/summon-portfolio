@@ -50,15 +50,18 @@ dependencies {
     implementation("codes.yousef:summon:0.6.2.0")
     // Materia 0.3.4.6 - Fixed WebGL uniform name mismatch
     implementation("codes.yousef:materia-jvm:0.3.4.6")
-    // Sigil 0.2.9.0 - Fixed WebGL duplicate uniforms causing black screen
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.0")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.0")
+    // Sigil 0.2.9.1 - Shared RenderLoop and UniformUpdater utilities
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.1")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.1")
 
-    // Aether Framework 0.2.1.0 - Django-like KMP framework (includes wildcard routing)
-    // Currently used alongside Ktor for gradual migration
-    // TODO: Full migration once Aether has host-based routing and static file serving
-    implementation("codes.yousef.aether:aether-core-jvm:0.2.1.0")
-    implementation("codes.yousef.aether:aether-web-jvm:0.2.1.0")
+    // Aether Framework 0.3.0.0 - Django-like KMP framework with admin, auth, forms
+    implementation("codes.yousef.aether:aether-core-jvm:0.3.0.0")
+    implementation("codes.yousef.aether:aether-web-jvm:0.3.0.0")
+    implementation("codes.yousef.aether:aether-db-jvm:0.3.0.0")
+    implementation("codes.yousef.aether:aether-ui-jvm:0.3.0.0")
+    implementation("codes.yousef.aether:aether-auth-jvm:0.3.0.0")
+    implementation("codes.yousef.aether:aether-forms-jvm:0.3.0.0")
+    implementation("codes.yousef.aether:aether-admin-jvm:0.3.0.0")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
 

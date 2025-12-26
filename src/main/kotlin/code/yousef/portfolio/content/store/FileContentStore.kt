@@ -136,20 +136,20 @@ class FileContentStore(
     private fun ensureFile() {
         if (!path.exists()) {
             path.parent?.createDirectories()
-            // Create with empty content but WITH version marker
-            // This distinguishes "intentionally empty" from "corrupted/missing"
-            val emptySnapshot = ContentSnapshot(
-                hero = PortfolioContentSeed.hero,
-                projects = emptyList(),
-                services = emptyList(),
-                blogPosts = emptyList(),
-                testimonials = emptyList(),
-                version = ContentSnapshot.CURRENT_VERSION
-            )
-            log.warn("No content file found at ${path.toAbsolutePath()}, creating new file with default hero content")
-            writeSnapshot(emptySnapshot)
+            // Create with seed data for initial setup
+            log.warn("No content file found at ${path.toAbsolutePath()}, creating new file with seed data")
+            writeSnapshot(createSeedSnapshot())
         }
     }
+    
+    private fun createSeedSnapshot(): ContentSnapshot = ContentSnapshot(
+        hero = PortfolioContentSeed.hero,
+        projects = PortfolioContentSeed.projects,
+        services = PortfolioContentSeed.services,
+        blogPosts = PortfolioContentSeed.blogPosts,
+        testimonials = emptyList(),
+        version = ContentSnapshot.CURRENT_VERSION
+    )
 
     private fun readSnapshot(): ContentSnapshot {
         ensureFile()
@@ -185,21 +185,16 @@ class FileContentStore(
     }
     
     private fun createAndSaveSeedSnapshot(): ContentSnapshot {
-        val snapshot = ContentSnapshot(
-            hero = PortfolioContentSeed.hero,
-            projects = PortfolioContentSeed.projects,
-            services = PortfolioContentSeed.services,
-            blogPosts = PortfolioContentSeed.blogPosts,
-            testimonials = emptyList(),
-            version = ContentSnapshot.CURRENT_VERSION
-        )
+        val snapshot = createSeedSnapshot()
         writeSnapshot(snapshot)
         return snapshot
     }
 
     private fun writeSnapshot(snapshot: ContentSnapshot) {
         path.parent?.createDirectories()
-        path.writeText(json.encodeToString(ContentSnapshot.serializer(), snapshot))
+        val serialized = json.encodeToString(ContentSnapshot.serializer(), snapshot)
+        log.info("Writing snapshot with ${serialized.length} chars, first 200: ${serialized.take(200)}")
+        path.writeText(serialized)
     }
 
     companion object {

@@ -32,7 +32,6 @@ import codes.yousef.aether.core.jvm.VertxServerConfig
 import codes.yousef.aether.core.pipeline.Pipeline
 import codes.yousef.aether.core.pipeline.installCallLogging
 import codes.yousef.aether.core.pipeline.installContentNegotiation
-import codes.yousef.aether.core.pipeline.installRecovery
 import codes.yousef.aether.core.session.InMemorySessionStore
 import codes.yousef.aether.core.session.SessionConfig
 import codes.yousef.aether.core.session.SessionMiddleware
@@ -69,7 +68,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val adminAuthService = AdminAuthService(java.nio.file.Paths.get("storage/admin-credentials.json"))
     val adminContentService = AdminContentService(contentStore)
     
-    // Docs Services
+    // Docs Services - Summon
     val docsConfig = DocsConfig.fromEnv()
     val docsCache = DocsCache(docsConfig.cacheTtlSeconds)
     val docsService = DocsService(docsConfig, docsCache) 
@@ -78,13 +77,29 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val docsRouter = DocsRouter(SeoExtractor(docsConfig), "https://docs.yousef.codes")
     val docsCatalog = DocsCatalog(docsConfig)
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
+
+    // Docs Services - Materia
+    val materiaDocsConfig = DocsConfig.materiaFromEnv()
+    val materiaDocsCache = DocsCache(materiaDocsConfig.cacheTtlSeconds)
+    val materiaDocsService = DocsService(materiaDocsConfig, materiaDocsCache)
+    val materiaDocsRouter = DocsRouter(SeoExtractor(materiaDocsConfig), "https://materia.yousef.codes")
+    val materiaDocsCatalog = DocsCatalog(materiaDocsConfig)
+    val materiaWebhookHandler = WebhookHandler(materiaDocsService, materiaDocsCache, materiaDocsConfig, materiaDocsCatalog)
+
+    // Docs Services - Sigil
+    val sigilDocsConfig = DocsConfig.sigilFromEnv()
+    val sigilDocsCache = DocsCache(sigilDocsConfig.cacheTtlSeconds)
+    val sigilDocsService = DocsService(sigilDocsConfig, sigilDocsCache)
+    val sigilDocsRouter = DocsRouter(SeoExtractor(sigilDocsConfig), "https://sigil.yousef.codes")
+    val sigilDocsCatalog = DocsCatalog(sigilDocsConfig)
+    val sigilWebhookHandler = WebhookHandler(sigilDocsService, sigilDocsCache, sigilDocsConfig, sigilDocsCatalog)
     
     // Renderers
     val portfolioRenderer = PortfolioRenderer(contentService)
     val blogRenderer = BlogRenderer(contentService)
-    val adminRenderer = AdminRenderer()
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
+    val adminRenderer = AdminRenderer()
 
     // Routers
     val mainRouter = router {
@@ -117,6 +132,16 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             val page = materiaRenderer.landingPage()
             exchange.respondSummonPage(page)
         }
+        docsRoutes(
+            materiaDocsService,
+            markdownRenderer,
+            linkRewriter,
+            materiaDocsRouter,
+            materiaWebhookHandler,
+            materiaDocsConfig,
+            materiaDocsCatalog,
+            basePath = "/docs"
+        )
     }
 
     val sigilRouter = router {
@@ -124,6 +149,16 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             val page = sigilRenderer.landingPage()
             exchange.respondSummonPage(page)
         }
+        docsRoutes(
+            sigilDocsService,
+            markdownRenderer,
+            linkRewriter,
+            sigilDocsRouter,
+            sigilWebhookHandler,
+            sigilDocsConfig,
+            sigilDocsCatalog,
+            basePath = "/docs"
+        )
     }
 
     val docsRouterHandler = router {

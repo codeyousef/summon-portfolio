@@ -12,7 +12,7 @@ services:
       - PORT=8080
       - PORTFOLIO_CONTENT_PATH=/app/storage/content.json
       - ADMIN_CREDENTIALS_PATH=/app/storage/admin-credentials.json
-      # Firestore settings (optional)
+      # Firestore settings (optional, fallback)
       - USE_LOCAL_STORE=true
       # - GCP_PROJECT_ID=your-project-id
       # - FIRESTORE_EMULATOR_HOST=localhost:8081
