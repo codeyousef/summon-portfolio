@@ -28,8 +28,6 @@ import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.jvm.receiveParameters
 import codes.yousef.aether.core.respondJson
 import codes.yousef.aether.core.session.session
-import org.slf4j.LoggerFactory
-import java.nio.file.Files
 import codes.yousef.aether.web.Router
 import codes.yousef.aether.web.pathParam
 import codes.yousef.aether.web.pathParamOrThrow
@@ -653,11 +651,16 @@ fun Router.docsRoutes(
         webhookHandler.handle(exchange)
     }
 
-    // Handle both the root of the docs (e.g. /docs) and any subpaths (e.g. /docs/roadmap)
-    val rootPath = if (prefix.isEmpty()) "/" else prefix
-    get(rootPath) { exchange ->
+    if (prefix.isNotEmpty()) {
+        get(prefix) { exchange ->
+            exchange.renderDocsPage()
+        }
+    }
+
+    get("$prefix/") { exchange ->
         exchange.renderDocsPage()
     }
+
     get("$prefix/*") { exchange ->
         exchange.renderDocsPage()
     }
