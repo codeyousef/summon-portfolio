@@ -54,14 +54,15 @@ dependencies {
     implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.1")
     implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.1")
 
-    // Aether Framework 0.3.1.2 - Django-like KMP framework with admin, auth, forms
-    implementation("codes.yousef.aether:aether-core-jvm:0.3.1.2")
-    implementation("codes.yousef.aether:aether-web-jvm:0.3.1.2")
-    implementation("codes.yousef.aether:aether-ui-jvm:0.3.1.2")
-    implementation("codes.yousef.aether:aether-db-jvm:0.3.1.2")
-    implementation("codes.yousef.aether:aether-auth-jvm:0.3.1.2")
-    implementation("codes.yousef.aether:aether-forms-jvm:0.3.1.2")
-    implementation("codes.yousef.aether:aether-admin-jvm:0.3.1.2")
+    // Aether Framework 0.3.1.3 - Django-like KMP framework with admin, auth, forms
+    // 0.3.1.3 - Fix redirect() session cookie race condition
+    implementation("codes.yousef.aether:aether-core-jvm:0.3.1.3")
+    implementation("codes.yousef.aether:aether-web-jvm:0.3.1.3")
+    implementation("codes.yousef.aether:aether-ui-jvm:0.3.1.3")
+    implementation("codes.yousef.aether:aether-db-jvm:0.3.1.3")
+    implementation("codes.yousef.aether:aether-auth-jvm:0.3.1.3")
+    implementation("codes.yousef.aether:aether-forms-jvm:0.3.1.3")
+    implementation("codes.yousef.aether:aether-admin-jvm:0.3.1.3")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
