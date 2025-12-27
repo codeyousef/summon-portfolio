@@ -79,7 +79,12 @@ fun AdminChangePasswordPage(
         subtitle = "Please set a new username and password before continuing.",
         errorMessage = errorMessage
     ) {
-        Form(action = "/admin/change-password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) {
+        Form(
+            action = "/admin/change-password",
+            method = FormMethod.Post,
+            encType = FormEncType.UrlEncoded,
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+        ) {
             FormField(
                 label = {
                     Text("New Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
