@@ -261,15 +261,31 @@ fun Router.portfolioRoutes(
             // Fallback for cases where the body was not delivered (e.g., user agents sending query params)
             exchange.request.queryParameters().mapValues { it.value.firstOrNull().orEmpty() }
         }
-        val username = params["username"].orEmpty().trim()
+
+        val rawUsername = params["username"].orEmpty().trim()
         val password = params["password"].orEmpty()
-        
-        if (username.isNotBlank() && password.isNotBlank()) {
-            adminAuthService.updateCredentials(username, password)
-            exchange.redirect("/admin")
-        } else {
-             val page = adminChangePasswordPage(session.username, "Username and password cannot be empty")
-             exchange.respondSummonPage(page)
+        val confirm = params["confirm"].orEmpty()
+
+        // If username is omitted, reuse the current session username so users only need to set a new password.
+        val username = if (rawUsername.isNotBlank()) rawUsername else session.username
+
+        when {
+            password.isBlank() -> {
+                val page = adminChangePasswordPage(session.username, "Password cannot be empty")
+                exchange.respondSummonPage(page, 400)
+            }
+            confirm.isNotBlank() && confirm != password -> {
+                val page = adminChangePasswordPage(session.username, "Passwords do not match")
+                exchange.respondSummonPage(page, 400)
+            }
+            username.isBlank() -> {
+                val page = adminChangePasswordPage(session.username, "Username cannot be empty")
+                exchange.respondSummonPage(page, 400)
+            }
+            else -> {
+                adminAuthService.updateCredentials(username, password)
+                exchange.redirect("/admin")
+            }
         }
     }
     
