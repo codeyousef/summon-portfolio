@@ -26,14 +26,6 @@ fun AdminLoginPage(
         subtitle = "Sign in to update your portfolio content.",
         errorMessage = errorMessage
     ) {
-        Text(
-            text = "Default credentials: admin / admin. You'll be prompted to update them after signing in.",
-            modifier = Modifier()
-                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .fontSize("0.85rem")
-                .textAlign(TextAlign.Center)
-                .margin("0 0 8px 0")
-        )
         Form(
             action = "/admin/login",
             hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList(),
