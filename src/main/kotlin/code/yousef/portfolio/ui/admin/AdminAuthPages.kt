@@ -7,6 +7,8 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.Form
 import codes.yousef.summon.components.forms.FormButton
+import codes.yousef.summon.components.forms.FormEncType
+import codes.yousef.summon.components.forms.FormMethod
 import codes.yousef.summon.components.forms.FormHiddenField
 import codes.yousef.summon.components.forms.FormTextField
 import codes.yousef.summon.components.forms.FormTextFieldType
