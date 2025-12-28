@@ -148,7 +148,8 @@ private fun AdminAuthScaffold(
     errorMessage: String?,
     content: @Composable () -> Unit
 ) {
-    PageScaffold(locale = PortfolioLocale.EN) {
+    // Use PageScaffold without aurora effects to avoid hydration interference with forms
+    PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         Row(
             modifier = Modifier()
                 .display(Display.Flex)

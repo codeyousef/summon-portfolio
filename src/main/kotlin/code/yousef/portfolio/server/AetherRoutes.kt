@@ -257,10 +257,9 @@ fun Router.portfolioRoutes(
             exchange.redirect("/admin/login")
             return@post
         }
-        val params = exchange.receiveParameters().ifEmpty {
-            // Fallback for cases where the body was not delivered (e.g., user agents sending query params)
-            exchange.request.queryParameters().mapValues { it.value.firstOrNull().orEmpty() }
-        }
+        
+        val params = exchange.receiveParameters()
+        LoggerFactory.getLogger("AetherRoutes").info("change-password params: {}", params)
 
         val rawUsername = params["username"].orEmpty().trim()
         val password = params["password"].orEmpty()

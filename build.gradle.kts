@@ -47,7 +47,7 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
 
     // Summon SSR framework + Sigil 3D/effects library
-    implementation("codes.yousef:summon:0.6.2.0")
+    implementation("codes.yousef:summon:0.6.2.1")
     // Materia 0.3.4.6 - Fixed WebGL uniform name mismatch
     implementation("codes.yousef:materia-jvm:0.3.4.6")
     // Sigil 0.2.9.1 - Shared RenderLoop and UniformUpdater utilities
