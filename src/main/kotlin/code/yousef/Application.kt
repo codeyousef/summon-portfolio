@@ -7,6 +7,8 @@ import code.yousef.firestore.PortfolioMetaRepository
 import code.yousef.firestore.PortfolioMetaService
 import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.admin.auth.AdminAuthService
+import code.yousef.portfolio.admin.auth.AdminAuthProvider
+import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.contact.InMemoryContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
@@ -69,7 +71,14 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val contentService = PortfolioContentService(contentStore)
     // Use InMemoryContactRepository for now as FirestoreContactRepository is missing
     val contactService = ContactService(InMemoryContactRepository())
-    val adminAuthService = AdminAuthService(java.nio.file.Paths.get("storage/admin-credentials.json"))
+    
+    // Admin auth - use Firestore in production, file-based locally
+    val adminAuthService: AdminAuthProvider = if (firestore != null) {
+        FirestoreAdminAuthService(firestore)
+    } else {
+        AdminAuthService(java.nio.file.Paths.get("storage/admin-credentials.json"))
+    }
+    
     val adminContentService = AdminContentService(contentStore)
     
     // Initialize Aether DB Driver

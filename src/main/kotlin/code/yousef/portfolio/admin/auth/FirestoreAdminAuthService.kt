@@ -1,50 +1,57 @@
 package code.yousef.portfolio.admin.auth
 
+import com.google.cloud.firestore.Firestore
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import java.nio.file.Path
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.*
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
-import kotlin.io.path.readText
-import kotlin.io.path.writeText
 
-class AdminAuthService(
-    private val credentialsPath: Path,
-    private val json: Json = Json {
-        prettyPrint = true
-        ignoreUnknownKeys = true
-    }
+/**
+ * Firestore-backed admin authentication service.
+ * Credentials persist across deployments in Firestore.
+ */
+class FirestoreAdminAuthService(
+    private val firestore: Firestore,
+    private val collectionName: String = "admin_settings",
+    private val documentId: String = "credentials"
 ) : AdminAuthProvider {
-    private val log = LoggerFactory.getLogger(AdminAuthService::class.java)
+    private val log = LoggerFactory.getLogger(FirestoreAdminAuthService::class.java)
     private val secureRandom = SecureRandom()
+    private val json = Json { ignoreUnknownKeys = true }
 
     @Volatile
     private var cachedCredentials: StoredCredentials = initialize()
 
     private fun initialize(): StoredCredentials {
-        log.info("Initializing AdminAuthService with credentials path: ${credentialsPath.toAbsolutePath()}")
-        credentialsPath.parent?.let { parent ->
-            if (!parent.exists()) {
-                log.info("Creating parent directory: ${parent.toAbsolutePath()}")
-                parent.createDirectories()
-            }
-        }
-        return if (credentialsPath.exists()) {
-            log.info("Found existing credentials file at: ${credentialsPath.toAbsolutePath()}")
-            runCatching {
-                val creds = json.decodeFromString<StoredCredentials>(credentialsPath.readText())
-                log.info("Loaded credentials for user '${creds.username}', mustChange=${creds.mustChange}")
-                creds
-            }.getOrElse { e ->
-                log.error("Failed to parse credentials file, creating defaults", e)
+        log.info("Initializing FirestoreAdminAuthService with collection=$collectionName, doc=$documentId")
+        
+        val docRef = firestore.collection(collectionName).document(documentId)
+        val snapshot = docRef.get().get()
+        
+        return if (snapshot.exists()) {
+            val data = snapshot.data
+            if (data != null) {
+                try {
+                    val creds = StoredCredentials(
+                        username = data["username"] as? String ?: "admin",
+                        passwordHash = data["passwordHash"] as? String ?: "",
+                        salt = data["salt"] as? String ?: "",
+                        mustChange = data["mustChange"] as? Boolean ?: true
+                    )
+                    log.info("Loaded credentials from Firestore for user '${creds.username}', mustChange=${creds.mustChange}")
+                    creds
+                } catch (e: Exception) {
+                    log.error("Failed to parse Firestore credentials, creating defaults", e)
+                    createDefaultCredentials()
+                }
+            } else {
+                log.warn("Firestore credentials document exists but has no data, creating defaults")
                 createDefaultCredentials()
             }
         } else {
-            log.warn("No credentials file found at ${credentialsPath.toAbsolutePath()}, creating defaults")
+            log.warn("No credentials found in Firestore, creating defaults")
             createDefaultCredentials()
         }
     }
@@ -66,10 +73,10 @@ class AdminAuthService(
         val creds = cachedCredentials
         val attemptedHash = hashPassword(password, creds.salt)
         return if (creds.username == username && creds.passwordHash == attemptedHash) {
-            log.info("Successful authentication for user '${username}', mustChangePassword=${creds.mustChange}")
+            log.info("Successful authentication for user '$username', mustChangePassword=${creds.mustChange}")
             AdminAuthProvider.AuthResult.Success(creds.mustChange)
         } else {
-            log.warn("Failed authentication attempt for user '${username}'")
+            log.warn("Failed authentication attempt for user '$username'")
             AdminAuthProvider.AuthResult.Invalid
         }
     }
@@ -79,7 +86,7 @@ class AdminAuthService(
     override fun currentUsername(): String = cachedCredentials.username
 
     override fun updateCredentials(username: String, password: String) {
-        log.info("Updating credentials for user '${username}'")
+        log.info("Updating credentials for user '$username'")
         val salt = generateSalt()
         val updated = StoredCredentials(
             username = username,
@@ -89,13 +96,18 @@ class AdminAuthService(
         )
         cachedCredentials = updated
         persist(updated)
-        log.info("Credentials updated and persisted successfully to ${credentialsPath.toAbsolutePath()}")
+        log.info("Credentials updated and persisted to Firestore")
     }
 
     private fun persist(credentials: StoredCredentials) {
-        synchronized(this) {
-            credentialsPath.writeText(json.encodeToString(StoredCredentials.serializer(), credentials))
-        }
+        val docRef = firestore.collection(collectionName).document(documentId)
+        val data = mapOf(
+            "username" to credentials.username,
+            "passwordHash" to credentials.passwordHash,
+            "salt" to credentials.salt,
+            "mustChange" to credentials.mustChange
+        )
+        docRef.set(data).get() // Blocking write
     }
 
     private fun generateSalt(): String {

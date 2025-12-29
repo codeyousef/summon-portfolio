@@ -9,8 +9,8 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import code.yousef.portfolio.admin.AdminContentService
-import code.yousef.portfolio.admin.auth.AdminAuthService
-import code.yousef.portfolio.admin.auth.AdminAuthService.AuthResult
+import code.yousef.portfolio.admin.auth.AdminAuthProvider
+import code.yousef.portfolio.admin.auth.AdminAuthProvider.AuthResult
 import code.yousef.portfolio.admin.auth.AdminSession
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.content.PortfolioContentService
@@ -90,7 +90,7 @@ fun Router.portfolioRoutes(
     contentService: PortfolioContentService,
     adminRenderer: AdminRenderer,
     adminContentService: AdminContentService,
-    adminAuthService: AdminAuthService
+    adminAuthService: AdminAuthProvider
 ) {
     get("/version") { exchange ->
         exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
