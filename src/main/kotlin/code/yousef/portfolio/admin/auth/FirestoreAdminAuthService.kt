@@ -27,32 +27,33 @@ class FirestoreAdminAuthService(
     private fun initialize(): StoredCredentials {
         log.info("Initializing FirestoreAdminAuthService with collection=$collectionName, doc=$documentId")
         
-        val docRef = firestore.collection(collectionName).document(documentId)
-        val snapshot = docRef.get().get()
-        
-        return if (snapshot.exists()) {
-            val data = snapshot.data
-            if (data != null) {
-                try {
+        try {
+            val docRef = firestore.collection(collectionName).document(documentId)
+            val snapshot = docRef.get().get()
+            
+            return if (snapshot.exists()) {
+                val data = snapshot.data
+                log.info("Firestore document exists, raw data: $data")
+                if (data != null && data["passwordHash"] != null && (data["passwordHash"] as? String)?.isNotEmpty() == true) {
                     val creds = StoredCredentials(
                         username = data["username"] as? String ?: "admin",
-                        passwordHash = data["passwordHash"] as? String ?: "",
+                        passwordHash = data["passwordHash"] as String,
                         salt = data["salt"] as? String ?: "",
                         mustChange = data["mustChange"] as? Boolean ?: true
                     )
                     log.info("Loaded credentials from Firestore for user '${creds.username}', mustChange=${creds.mustChange}")
                     creds
-                } catch (e: Exception) {
-                    log.error("Failed to parse Firestore credentials, creating defaults", e)
+                } else {
+                    log.warn("Firestore credentials document exists but has no valid passwordHash, creating defaults")
                     createDefaultCredentials()
                 }
             } else {
-                log.warn("Firestore credentials document exists but has no data, creating defaults")
+                log.warn("No credentials found in Firestore (document does not exist), creating defaults")
                 createDefaultCredentials()
             }
-        } else {
-            log.warn("No credentials found in Firestore, creating defaults")
-            createDefaultCredentials()
+        } catch (e: Exception) {
+            log.error("Failed to read Firestore credentials, creating defaults", e)
+            return createDefaultCredentials()
         }
     }
 
@@ -100,14 +101,21 @@ class FirestoreAdminAuthService(
     }
 
     private fun persist(credentials: StoredCredentials) {
-        val docRef = firestore.collection(collectionName).document(documentId)
-        val data = mapOf(
-            "username" to credentials.username,
-            "passwordHash" to credentials.passwordHash,
-            "salt" to credentials.salt,
-            "mustChange" to credentials.mustChange
-        )
-        docRef.set(data).get() // Blocking write
+        try {
+            val docRef = firestore.collection(collectionName).document(documentId)
+            val data = mapOf(
+                "username" to credentials.username,
+                "passwordHash" to credentials.passwordHash,
+                "salt" to credentials.salt,
+                "mustChange" to credentials.mustChange
+            )
+            log.info("Persisting credentials to Firestore: collection=$collectionName, doc=$documentId, username=${credentials.username}, mustChange=${credentials.mustChange}")
+            val writeResult = docRef.set(data).get() // Blocking write
+            log.info("Credentials persisted successfully at ${writeResult.updateTime}")
+        } catch (e: Exception) {
+            log.error("FAILED to persist credentials to Firestore!", e)
+            throw e // Re-throw so caller knows it failed
+        }
     }
 
     private fun generateSalt(): String {
