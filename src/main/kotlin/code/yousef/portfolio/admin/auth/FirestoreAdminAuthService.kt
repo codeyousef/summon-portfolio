@@ -34,17 +34,21 @@ class FirestoreAdminAuthService(
             return if (snapshot.exists()) {
                 val data = snapshot.data
                 log.info("Firestore document exists, raw data: $data")
-                if (data != null && data["passwordHash"] != null && (data["passwordHash"] as? String)?.isNotEmpty() == true) {
+                val passwordHash = data?.get("passwordHash") as? String
+                val salt = data?.get("salt") as? String
+                
+                // Only use stored credentials if we have both passwordHash AND salt
+                if (!passwordHash.isNullOrEmpty() && !salt.isNullOrEmpty()) {
                     val creds = StoredCredentials(
                         username = data["username"] as? String ?: "admin",
-                        passwordHash = data["passwordHash"] as String,
-                        salt = data["salt"] as? String ?: "",
+                        passwordHash = passwordHash,
+                        salt = salt,
                         mustChange = data["mustChange"] as? Boolean ?: true
                     )
                     log.info("Loaded credentials from Firestore for user '${creds.username}', mustChange=${creds.mustChange}")
                     creds
                 } else {
-                    log.warn("Firestore credentials document exists but has no valid passwordHash, creating defaults")
+                    log.warn("Firestore credentials document exists but missing passwordHash or salt, recreating defaults")
                     createDefaultCredentials()
                 }
             } else {
