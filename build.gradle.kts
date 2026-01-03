@@ -54,15 +54,15 @@ dependencies {
     implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.1")
     implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.1")
 
-    // Aether Framework 0.3.1.4 - Django-like KMP framework with admin, auth, forms
-    // 0.3.1.4 - Fix duplicate admin prefix in URLs
-    implementation("codes.yousef.aether:aether-core-jvm:0.3.1.4")
-    implementation("codes.yousef.aether:aether-web-jvm:0.3.1.4")
-    implementation("codes.yousef.aether:aether-ui-jvm:0.3.1.4")
-    implementation("codes.yousef.aether:aether-db-jvm:0.3.1.4")
-    implementation("codes.yousef.aether:aether-auth-jvm:0.3.1.4")
-    implementation("codes.yousef.aether:aether-forms-jvm:0.3.1.4")
-    implementation("codes.yousef.aether:aether-admin-jvm:0.3.1.4")
+    // Aether Framework 0.3.2.0 - Django-like KMP framework with admin, auth, forms
+    // 0.3.2.0 - Modern CMS-style admin UI with new theme and components
+    implementation("codes.yousef.aether:aether-core-jvm:0.3.2.0")
+    implementation("codes.yousef.aether:aether-web-jvm:0.3.2.0")
+    implementation("codes.yousef.aether:aether-ui-jvm:0.3.2.0")
+    implementation("codes.yousef.aether:aether-db-jvm:0.3.2.0")
+    implementation("codes.yousef.aether:aether-auth-jvm:0.3.2.0")
+    implementation("codes.yousef.aether:aether-forms-jvm:0.3.2.0")
+    implementation("codes.yousef.aether:aether-admin-jvm:0.3.2.0")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
 

@@ -2,13 +2,9 @@
 package code.yousef.portfolio.server
 
 import kotlinx.serialization.builtins.serializer
-import code.yousef.portfolio.routes.forms.*
 import code.yousef.portfolio.api.toDto
 import code.yousef.portfolio.contact.ContactRequest
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.AdminAuthProvider.AuthResult
 import code.yousef.portfolio.admin.auth.AdminSession
@@ -17,14 +13,12 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
 import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
-import code.yousef.portfolio.ui.admin.AdminSectionPage
 import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.jvm.receiveParameters
 import codes.yousef.aether.core.respondJson
@@ -88,8 +82,6 @@ fun Router.portfolioRoutes(
     blogRenderer: BlogRenderer,
     contactService: ContactService,
     contentService: PortfolioContentService,
-    adminRenderer: AdminRenderer,
-    adminContentService: AdminContentService,
     adminAuthService: AdminAuthProvider
 ) {
     get("/version") { exchange ->
@@ -287,93 +279,6 @@ fun Router.portfolioRoutes(
             }
         }
     }
-    
-    /*
-    get("/admin") { exchange ->
-        val session = exchange.getAdminSession()
-        if (session == null) {
-            exchange.redirect("/admin/login")
-            return@get
-        }
-        
-        val projects = contentService.listProjects()
-        val services = contentService.listServices()
-        val blogPosts = contentService.listBlogPosts()
-        val testimonials = contentService.listTestimonials()
-        val contacts = contactService.list()
-        
-        val page = adminRenderer.dashboard(
-            locale = PortfolioLocale.EN,
-            projects = projects,
-            services = services,
-            blogPosts = blogPosts,
-            testimonials = testimonials,
-            contacts = contacts,
-            section = AdminSectionPage.PROJECTS
-        )
-        exchange.respondSummonPage(page)
-    }
-
-    get("/admin/:section") { exchange ->
-        val session = exchange.getAdminSession()
-        if (session == null) {
-            exchange.redirect("/admin/login")
-            return@get
-        }
-        val sectionParam = exchange.pathParam("section")
-        val section = AdminSectionPage.entries.find { it.pathSegment() == sectionParam } ?: AdminSectionPage.PROJECTS
-        
-        val projects = contentService.listProjects()
-        val services = contentService.listServices()
-        val blogPosts = contentService.listBlogPosts()
-        val testimonials = contentService.listTestimonials()
-        val contacts = contactService.list()
-        
-        val page = adminRenderer.dashboard(
-            locale = PortfolioLocale.EN,
-            projects = projects,
-            services = services,
-            blogPosts = blogPosts,
-            testimonials = testimonials,
-            contacts = contacts,
-            section = section
-        )
-        exchange.respondSummonPage(page)
-    }
-
-    post("/admin/projects/upsert") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleProjectUpsert(adminContentService, "/admin/projects")
-    }
-    post("/admin/projects/delete") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleProjectDelete(adminContentService, "/admin/projects")
-    }
-    post("/admin/services/upsert") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleServiceUpsert(adminContentService, "/admin/services")
-    }
-    post("/admin/services/delete") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleServiceDelete(adminContentService, "/admin/services")
-    }
-    post("/admin/blog/upsert") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleBlogUpsert(adminContentService, "/admin/blog")
-    }
-    post("/admin/blog/delete") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleBlogDelete(adminContentService, "/admin/blog")
-    }
-    post("/admin/testimonials/upsert") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleTestimonialUpsert(adminContentService, "/admin/testimonials")
-    }
-    post("/admin/testimonials/delete") { exchange ->
-        exchange.requireAdminSession() ?: return@post
-        exchange.handleTestimonialDelete(adminContentService, "/admin/testimonials")
-    }
-    */
 }
 
 private suspend fun Exchange.getAdminSession(): AdminSession? {
@@ -387,132 +292,6 @@ private suspend fun Exchange.setAdminSession(adminSession: AdminSession) {
     val session = session() ?: throw IllegalStateException("Session middleware not installed")
     session.set("username", adminSession.username)
     session.set("mustChangePassword", adminSession.mustChangePassword.toString())
-}
-
-private suspend fun Exchange.requireAdminSession(): AdminSession? {
-    val session = getAdminSession()
-    if (session == null) {
-        val encoded = URLEncoder.encode(request.uri, StandardCharsets.UTF_8)
-        redirect("/admin/login?next=$encoded")
-        return null
-    }
-    if (session.mustChangePassword && !request.path.startsWith("/admin/change-password")) {
-        redirect("/admin/change-password")
-        return null
-    }
-    return session
-}
-
-private suspend fun Exchange.handleProjectUpsert(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val project = params.toProject()
-    if (project == null) {
-        redirect("$redirectTarget?error=project")
-    } else {
-        adminContentService.saveProject(project)
-        redirect("$redirectTarget?success=project")
-    }
-}
-
-private suspend fun Exchange.handleProjectDelete(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val id = params["id"].orEmpty()
-    if (id.isBlank()) {
-        redirect("$redirectTarget?error=project-delete")
-    } else {
-        adminContentService.deleteProject(id)
-        redirect("$redirectTarget?success=project-delete")
-    }
-}
-
-private suspend fun Exchange.handleServiceUpsert(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val service = params.toService()
-    if (service == null) {
-        redirect("$redirectTarget?error=service")
-    } else {
-        adminContentService.saveService(service)
-        redirect("$redirectTarget?success=service")
-    }
-}
-
-private suspend fun Exchange.handleServiceDelete(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val id = params["id"].orEmpty()
-    if (id.isBlank()) {
-        redirect("$redirectTarget?error=service-delete")
-    } else {
-        adminContentService.deleteService(id)
-        redirect("$redirectTarget?success=service-delete")
-    }
-}
-
-private suspend fun Exchange.handleBlogUpsert(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val post = params.toBlogPost()
-    if (post == null) {
-        redirect("$redirectTarget?error=blog")
-    } else {
-        adminContentService.saveBlogPost(post)
-        redirect("$redirectTarget?success=blog")
-    }
-}
-
-private suspend fun Exchange.handleBlogDelete(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val id = params["id"].orEmpty()
-    if (id.isBlank()) {
-        redirect("$redirectTarget?error=blog-delete")
-    } else {
-        adminContentService.deleteBlogPost(id)
-        redirect("$redirectTarget?success=blog-delete")
-    }
-}
-
-private suspend fun Exchange.handleTestimonialUpsert(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val testimonial = params.toTestimonial()
-    if (testimonial == null) {
-        redirect("$redirectTarget?error=testimonial")
-    } else {
-        adminContentService.saveTestimonial(testimonial)
-        redirect("$redirectTarget?success=testimonial")
-    }
-}
-
-private suspend fun Exchange.handleTestimonialDelete(
-    adminContentService: AdminContentService,
-    redirectTarget: String
-) {
-    val params = receiveParameters()
-    val id = params["id"].orEmpty()
-    if (id.isBlank()) {
-        redirect("$redirectTarget?error=testimonial-delete")
-    } else {
-        adminContentService.deleteTestimonial(id)
-        redirect("$redirectTarget?success=testimonial-delete")
-    }
 }
 
 private fun adminLoginPage(errorMessage: String?, nextPath: String?): SummonPage =

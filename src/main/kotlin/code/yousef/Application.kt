@@ -5,7 +5,6 @@ import code.yousef.config.loadAppConfig
 import code.yousef.firestore.FirestoreProvider
 import code.yousef.firestore.PortfolioMetaRepository
 import code.yousef.firestore.PortfolioMetaService
-import code.yousef.portfolio.admin.AdminContentService
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
@@ -20,7 +19,6 @@ import code.yousef.portfolio.server.StaticResourceHandler
 import code.yousef.portfolio.server.portfolioRoutes
 import code.yousef.portfolio.server.summonRoutes
 import code.yousef.portfolio.server.docsRoutes
-import code.yousef.portfolio.ssr.AdminRenderer
 import code.yousef.portfolio.ssr.BlogRenderer
 import code.yousef.portfolio.ssr.PortfolioRenderer
 import code.yousef.portfolio.ssr.MateriaLandingRenderer
@@ -79,8 +77,6 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         AdminAuthService(java.nio.file.Paths.get("storage/admin-credentials.json"))
     }
     
-    val adminContentService = AdminContentService(contentStore)
-    
     // Initialize Aether DB Driver
     val driver = ContentStoreDriver(contentStore)
     DatabaseDriverRegistry.initialize(driver)
@@ -120,7 +116,6 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val blogRenderer = BlogRenderer(contentService)
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
-    val adminRenderer = AdminRenderer()
 
     // Routers
     val mainRouter = router {
@@ -129,8 +124,6 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             blogRenderer,
             contactService,
             contentService,
-            adminRenderer,
-            adminContentService,
             adminAuthService
         )
     }
