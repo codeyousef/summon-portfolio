@@ -98,6 +98,10 @@ fun Router.buildingRoutes(
         val password = params["password"] ?: ""
         val confirm = params["confirm"] ?: ""
         
+        // Debug logging
+        println("DEBUG change-password: params keys = ${params.keys}")
+        println("DEBUG change-password: password length = ${password.length}, confirm length = ${confirm.length}")
+        
         when {
             password.isBlank() -> {
                 exchange.respondSummonPage(
