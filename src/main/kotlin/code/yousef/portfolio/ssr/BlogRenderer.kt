@@ -82,8 +82,8 @@ class BlogRenderer(
 
     private fun detailHead(locale: PortfolioLocale, post: BlogPost?, slug: String): (HeadScope) -> Unit = { head ->
         val canonical = blogDetailCanonical(locale, slug)
-        val title = post?.title?.resolve(locale) ?: "Article Not Found · Yousef"
-        val description = post?.excerpt?.resolve(locale) ?: "The requested article could not be located."
+        val title = post?.title ?: "Article Not Found · Yousef"
+        val description = post?.excerpt ?: "The requested article could not be located."
         head.title(title)
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         // Standard description

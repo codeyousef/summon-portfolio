@@ -131,15 +131,9 @@ object PortfolioContentSeed {
         BlogPost(
             id = "welcome",
             slug = "welcome-to-my-blog",
-            title = LocalizedText("Welcome to My Blog", "مرحبًا بك في مدونتي"),
-            excerpt = LocalizedText(
-                en = "Thoughts on systems engineering, creative coding, and building from first principles.",
-                ar = "أفكار حول هندسة الأنظمة والبرمجة الإبداعية والبناء من المبادئ الأولى."
-            ),
-            content = LocalizedText(
-                en = "Full post content coming soon.",
-                ar = "المحتوى الكامل للمقال قادم قريبًا."
-            ),
+            title = "Welcome to My Blog",
+            excerpt = "Thoughts on systems engineering, creative coding, and building from first principles.",
+            content = "Full post content coming soon.",
             publishedAt = LocalDate.of(2024, 1, 1),
             featured = true,
             author = "Yousef",

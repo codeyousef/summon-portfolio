@@ -76,7 +76,7 @@ fun BlogListPage(
                                 .padding(PortfolioTheme.Spacing.lg)
                         ) {
                             Text(
-                                text = post.title.resolve(locale),
+                                text = post.title,
                                 modifier = Modifier()
                                     .fontSize(1.75.rem)
                                     .fontWeight(600)
@@ -92,7 +92,7 @@ fun BlogListPage(
                                 Text(BlogStrings.List.byLabel.resolve(locale) + " " + post.author)
                             }
                             Text(
-                                text = post.excerpt.resolve(locale),
+                                text = post.excerpt,
                                 modifier = Modifier()
                                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                     .lineHeight(1.7)

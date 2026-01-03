@@ -43,7 +43,7 @@ fun BlogDetailPage(
                         .gap(PortfolioTheme.Spacing.xs)
                 ) {
                     Text(
-                        text = post.title.resolve(locale),
+                        text = post.title,
                         modifier = Modifier()
                             .fontSize(3.rem)
                             .fontWeight(700)
@@ -84,7 +84,7 @@ fun BlogDetailPage(
                     }
                 }
 
-                val paragraphs = post.content.resolve(locale).split("\n\n")
+                val paragraphs = post.content.split("\n\n")
                 Column(
                     modifier = Modifier()
                         .display(Display.Flex)

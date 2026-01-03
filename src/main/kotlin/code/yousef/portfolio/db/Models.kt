@@ -57,9 +57,9 @@ object BlogPosts : Model<BlogPostEntity>() {
     override fun createInstance() = BlogPostEntity()
     val id = varchar("id", primaryKey = true)
     val slug = varchar("slug")
-    val title = text("title") // JSON
-    val excerpt = text("excerpt") // JSON
-    val content = text("content") // JSON
+    val title = text("title")
+    val excerpt = text("excerpt")
+    val content = text("content")
     val publishedAt = varchar("publishedAt")
     val featured = boolean("featured")
     val author = varchar("author")

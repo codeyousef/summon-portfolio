@@ -63,9 +63,10 @@ fun Map<String, String>.toBlogPost(): BlogPost? {
     val slug = this["slug"]?.trim().orEmpty()
     if (slug.isBlank()) return null
     val id = this["id"].orEmpty().ifBlank { slug }
-    val title = localizedText("title") ?: return null
-    val excerpt = localizedText("excerpt") ?: return null
-    val content = localizedText("content") ?: return null
+    val title = this["title"]?.trim().orEmpty()
+    if (title.isBlank()) return null
+    val excerpt = this["excerpt"]?.trim().orEmpty()
+    val content = this["content"]?.trim().orEmpty()
     val publishedAt = this["published_at"]?.let { LocalDate.parse(it) } ?: LocalDate.now()
     val author = this["author"]?.trim().orEmpty()
     if (author.isBlank()) return null

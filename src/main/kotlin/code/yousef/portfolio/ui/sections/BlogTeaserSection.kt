@@ -69,7 +69,7 @@ fun BlogTeaserSection(
                             .padding(PortfolioTheme.Spacing.lg)
                     ) {
                         Text(
-                            text = post.title.resolve(locale),
+                            text = post.title,
                             modifier = Modifier()
                                 .fontSize(1.5.rem)
                                 .fontWeight(600)
@@ -80,7 +80,7 @@ fun BlogTeaserSection(
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         )
                         Text(
-                            text = post.excerpt.resolve(locale),
+                            text = post.excerpt,
                             modifier = Modifier()
                                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                                 .lineHeight(1.7)

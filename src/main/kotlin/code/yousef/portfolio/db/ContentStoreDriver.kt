@@ -85,7 +85,8 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
         when (query.table) {
             "projects" -> store.upsertProject(values.toProject())
             "services" -> store.upsertService(values.toService())
-            // Add others
+            "blog_posts" -> store.upsertBlogPost(values.toBlogPost())
+            "testimonials" -> store.upsertTestimonial(values.toTestimonial())
         }
         return 1
     }
@@ -120,6 +121,8 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
             when (query.table) {
                 "projects" -> store.upsertProject(merged.toProject())
                 "services" -> store.upsertService(merged.toService())
+                "blog_posts" -> store.upsertBlogPost(merged.toBlogPost())
+                "testimonials" -> store.upsertTestimonial(merged.toTestimonial())
             }
             return 1
         }
@@ -278,14 +281,28 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
     private fun BlogPost.toMap(): Map<String, Any?> = mapOf(
         "id" to id,
         "slug" to slug,
-        "title" to Json.encodeToString(title),
-        "excerpt" to Json.encodeToString(excerpt),
-        "content" to Json.encodeToString(content),
+        "title" to title,
+        "excerpt" to excerpt,
+        "content" to content,
         "publishedAt" to publishedAt.toString(),
         "featured" to featured,
         "author" to author,
         "tags" to tags.joinToString(",")
     )
+    
+    private fun Map<String, Any?>.toBlogPost(): BlogPost {
+        return BlogPost(
+            id = this["id"] as? String ?: "",
+            slug = this["slug"] as? String ?: "",
+            title = this["title"] as? String ?: "",
+            excerpt = this["excerpt"] as? String ?: "",
+            content = this["content"] as? String ?: "",
+            publishedAt = (this["publishedAt"] as? String)?.let { java.time.LocalDate.parse(it) } ?: java.time.LocalDate.now(),
+            featured = this["featured"] as? Boolean ?: false,
+            author = this["author"] as? String ?: "",
+            tags = (this["tags"] as? String)?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        )
+    }
     
     private fun Testimonial.toMap(): Map<String, Any?> = mapOf(
         "id" to id,
@@ -296,6 +313,18 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
         "featured" to featured,
         "order" to order
     )
+    
+    private fun Map<String, Any?>.toTestimonial(): Testimonial {
+        return Testimonial(
+            id = this["id"] as? String ?: "",
+            quote = (this["quote"] as? String)?.let { Json.decodeFromString(it) } ?: code.yousef.portfolio.i18n.LocalizedText("", ""),
+            author = this["author"] as? String ?: "",
+            role = (this["role"] as? String)?.let { Json.decodeFromString(it) } ?: code.yousef.portfolio.i18n.LocalizedText("", ""),
+            company = (this["company"] as? String)?.let { Json.decodeFromString(it) } ?: code.yousef.portfolio.i18n.LocalizedText("", ""),
+            featured = this["featured"] as? Boolean ?: false,
+            order = (this["order"] as? Number)?.toInt() ?: 0
+        )
+    }
     
     // Helper to expose map from MapRow
     private fun MapRow.toMap(): Map<String, Any?> {
