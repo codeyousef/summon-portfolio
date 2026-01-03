@@ -70,6 +70,9 @@ dependencies {
     implementation(platform("com.google.cloud:libraries-bom:26.51.0"))
     implementation("com.google.cloud:google-cloud-firestore")
 
+    // Apache POI for Excel (.xlsx) import
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }

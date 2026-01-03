@@ -8,6 +8,11 @@ import code.yousef.firestore.PortfolioMetaService
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
+import code.yousef.portfolio.building.auth.BuildingAuthProvider
+import code.yousef.portfolio.building.import.ExcelImportService
+import code.yousef.portfolio.building.repo.BuildingRepository
+import code.yousef.portfolio.building.repo.BuildingService
+import code.yousef.portfolio.building.server.createBuildingRouter
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.contact.InMemoryContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
@@ -75,6 +80,18 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         FirestoreAdminAuthService(firestore)
     } else {
         AdminAuthService(java.nio.file.Paths.get("storage/admin-credentials.json"))
+    }
+    
+    // Building management services (requires Firestore)
+    val buildingRouter = if (firestore != null) {
+        val buildingAuthProvider = BuildingAuthProvider(firestore)
+        val buildingRepository = BuildingRepository(firestore)
+        val buildingService = BuildingService(buildingRepository)
+        val excelImportService = ExcelImportService(buildingRepository)
+        createBuildingRouter(buildingAuthProvider, buildingRepository, buildingService, excelImportService)
+    } else {
+        log.warn("Building management disabled - requires Firestore (set USE_LOCAL_STORE=false)")
+        null
     }
     
     // Initialize Aether DB Driver
@@ -188,7 +205,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     }
 
     // Host Routing
-    val hostRouter = HostRouter(mapOf(
+    val hostMap = mutableMapOf(
         "summon.yousef.codes" to summonRouter.asMiddleware(),
         "summon.dev.yousef.codes" to summonRouter.asMiddleware(),
         "materia.dev.yousef.codes" to materiaRouter.asMiddleware(),
@@ -196,9 +213,19 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         "sigil.dev.yousef.codes" to sigilRouter.asMiddleware(),
         "sigil.yousef.codes" to sigilRouter.asMiddleware(),
         "localhost" to mainRouter.asMiddleware(),
-        "docs.yousef.codes" to docsRouterHandler.asMiddleware(),
-        "*" to mainRouter.asMiddleware()
-    ))
+        "docs.yousef.codes" to docsRouterHandler.asMiddleware()
+    )
+    
+    // Add building management routes if Firestore is available
+    if (buildingRouter != null) {
+        hostMap["building.yousef.codes"] = buildingRouter.asMiddleware()
+        hostMap["building.dev.yousef.codes"] = buildingRouter.asMiddleware()
+        log.info("Building management enabled at building.yousef.codes")
+    }
+    
+    hostMap["*"] = mainRouter.asMiddleware()
+    
+    val hostRouter = HostRouter(hostMap)
 
     val staticHandler = StaticResourceHandler("static", "/static")
     // Root-level handler for hydration scripts (loaded by sigil-summon inline JS at /sigil-hydration.js)
