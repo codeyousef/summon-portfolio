@@ -20,8 +20,8 @@ RUN /workspace/gradlew -x test shadowJar --no-daemon
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Copy application JAR
-COPY --from=build /workspace/build/libs/*.jar /app/app.jar
+# Copy application JAR (use the shadow/all JAR specifically)
+COPY --from=build /workspace/build/libs/*-all.jar /app/app.jar
 
 # Copy classpath resources (including static assets) alongside the JAR
 COPY --from=build /workspace/src/main/resources/ /app/resources/

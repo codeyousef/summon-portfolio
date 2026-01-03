@@ -18,8 +18,11 @@ fun createAdminSite(): AdminSite {
     })
     
     admin.register(BlogPosts, object : ModelAdmin<BlogPostEntity>(BlogPosts) {
-        override val listDisplay = listOf("slug", "publishedAt", "featured", "author")
-        override val searchFields = listOf("slug", "author")
+        override val listDisplay = listOf("slug", "publishedAt", "featured")
+        override val searchFields = listOf("slug")
+        override val multilineFields = listOf("content", "excerpt")
+        override val excludeFields = listOf("author")
+        override val defaultValues = mapOf("author" to "Yousef")
     })
     
     admin.register(Testimonials, object : ModelAdmin<TestimonialEntity>(Testimonials) {
