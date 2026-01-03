@@ -94,17 +94,9 @@ fun Router.buildingRoutes(
             return@post
         }
         
-        // Debug: log raw body
-        val rawBody = exchange.request.bodyText()
-        println("DEBUG change-password: raw body = '$rawBody' (length=${rawBody.length})")
-        
         val params = exchange.receiveParameters()
         val password = params["password"] ?: ""
         val confirm = params["confirm"] ?: ""
-        
-        // Debug logging
-        println("DEBUG change-password: params keys = ${params.keys}")
-        println("DEBUG change-password: password length = ${password.length}, confirm length = ${confirm.length}")
         
         when {
             password.isBlank() -> {
