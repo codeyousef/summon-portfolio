@@ -424,36 +424,78 @@ private fun extractBoundary(contentType: String): String? {
     return contentType.substring(idx + boundaryPrefix.length).trim().removeSurrounding("\"")
 }
 
+/**
+ * Extract file bytes from multipart form data using pure byte operations.
+ * This avoids string conversion which can corrupt binary data.
+ */
 private fun extractFileFromMultipart(body: ByteArray, boundary: String): ByteArray? {
-    val bodyStr = String(body, Charsets.ISO_8859_1)
-    val boundaryStr = "--$boundary"
+    val boundaryBytes = "--$boundary".toByteArray(Charsets.US_ASCII)
+    val crlfCrlf = "\r\n\r\n".toByteArray(Charsets.US_ASCII)
+    val crlf = "\r\n".toByteArray(Charsets.US_ASCII)
     
-    // Find the file part
-    val parts = bodyStr.split(boundaryStr)
-    for (part in parts) {
-        if (part.contains("filename=") && part.contains("Content-Type")) {
-            // Find the start of file content (after double CRLF)
-            val headerEnd = part.indexOf("\r\n\r\n")
-            if (headerEnd > 0) {
-                val contentStart = headerEnd + 4
-                // Find end of content (before next boundary or end)
-                var contentEnd = part.length
-                if (part.endsWith("--\r\n")) {
-                    contentEnd -= 4
-                } else if (part.endsWith("\r\n")) {
-                    contentEnd -= 2
+    // Find boundary positions
+    var pos = 0
+    while (pos < body.size) {
+        val boundaryPos = indexOf(body, boundaryBytes, pos)
+        if (boundaryPos < 0) break
+        
+        // Move past boundary and CRLF
+        var headerStart = boundaryPos + boundaryBytes.size
+        if (headerStart + 2 <= body.size && body[headerStart] == '\r'.code.toByte() && body[headerStart + 1] == '\n'.code.toByte()) {
+            headerStart += 2
+        }
+        
+        // Find end of headers (double CRLF)
+        val headerEnd = indexOf(body, crlfCrlf, headerStart)
+        if (headerEnd < 0) {
+            pos = headerStart
+            continue
+        }
+        
+        // Check if this part has a filename (it's the file upload)
+        val headerBytes = body.copyOfRange(headerStart, headerEnd)
+        val headerStr = String(headerBytes, Charsets.ISO_8859_1)
+        
+        if (headerStr.contains("filename=") && headerStr.contains("Content-Type")) {
+            // Content starts after \r\n\r\n
+            val contentStart = headerEnd + 4
+            
+            // Find the next boundary to determine content end
+            val nextBoundary = indexOf(body, boundaryBytes, contentStart)
+            val contentEnd = if (nextBoundary > 0) {
+                // Content ends before CRLF before next boundary
+                var end = nextBoundary
+                if (end >= 2 && body[end - 1] == '\n'.code.toByte() && body[end - 2] == '\r'.code.toByte()) {
+                    end -= 2
                 }
-                
-                // Extract bytes from original body
-                val partStartInBody = bodyStr.indexOf(part)
-                val fileStartInBody = partStartInBody + contentStart
-                val fileEndInBody = partStartInBody + contentEnd
-                
-                if (fileStartInBody >= 0 && fileEndInBody <= body.size) {
-                    return body.copyOfRange(fileStartInBody, fileEndInBody)
-                }
+                end
+            } else {
+                body.size
+            }
+            
+            if (contentStart < contentEnd) {
+                val fileBytes = body.copyOfRange(contentStart, contentEnd)
+                log.info("Extracted file: ${fileBytes.size} bytes from multipart body of ${body.size} bytes")
+                return fileBytes
             }
         }
+        
+        pos = headerEnd + 4
     }
+    
+    log.warn("No file part found in multipart body")
     return null
+}
+
+/**
+ * Find byte array needle in haystack starting from offset.
+ */
+private fun indexOf(haystack: ByteArray, needle: ByteArray, fromIndex: Int = 0): Int {
+    outer@ for (i in fromIndex..(haystack.size - needle.size)) {
+        for (j in needle.indices) {
+            if (haystack[i + j] != needle[j]) continue@outer
+        }
+        return i
+    }
+    return -1
 }
