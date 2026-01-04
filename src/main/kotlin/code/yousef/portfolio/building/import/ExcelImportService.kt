@@ -45,7 +45,12 @@ class ExcelImportService(
         DateTimeFormatter.ofPattern("d-M-yy"),
         DateTimeFormatter.ofPattern("d/M/yy"),
         DateTimeFormatter.ofPattern("yy/MM/dd"),
-        DateTimeFormatter.ofPattern("yy-MM-dd")
+        DateTimeFormatter.ofPattern("yy-MM-dd"),
+        // English month name formats (like 01-Oct-25, 30-Sep-26)
+        DateTimeFormatter.ofPattern("dd-MMM-yy", java.util.Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("d-MMM-yy", java.util.Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("dd-MMM-yyyy", java.util.Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("d-MMM-yyyy", java.util.Locale.ENGLISH)
     )
     
     private val outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -387,8 +392,10 @@ class ExcelImportService(
     }
     
     /**
-     * Format 2: كشف تفصيلي عن الإيرادات style (New format from screenshot)
-     * One row per unit, columns (RTL):
+     * Format 2: كشف تفصيلي عن الإيرادات style
+     * Supports TWO column structures:
+     * 
+     * 8-column format (المفرج style):
      * 0: # (row number)
      * 1: البيان (Unit - شقة 1)
      * 2: من (From date - period start)
@@ -397,6 +404,14 @@ class ExcelImportService(
      * 5: تاريخ التحويل (Payment/transfer date)
      * 6: الملاحظات (Notes - payment method)
      * 7: الملاحظات (Notes - due date يحل بتاريخ)
+     * 
+     * 6-column format (العمار style):
+     * 0: # (row number)
+     * 1: البيان (Unit - شقة 1)
+     * 2: من (From date - period start)
+     * 3: إلى (To date - period end)
+     * 4: القيمة (Amount)
+     * 5: الملاحظات (Notes)
      */
     private fun importFormat2(sheet: Sheet, buildingId: String, errors: MutableList<String>): Pair<Int, Int> {
         var unitsImported = 0
@@ -404,6 +419,19 @@ class ExcelImportService(
         
         // Skip header rows (0=title, 1=headers, 2=sub-headers), start from row 3
         val dataStartRow = 3
+        
+        // Detect column structure from header row
+        val headerRow = sheet.getRow(1)
+        val subHeaderRow = sheet.getRow(2)
+        val has8Columns = headerRow?.let { row ->
+            // Check if column 5 contains "تاريخ" (payment date column)
+            // or if there are more than 6 non-empty header cells
+            val col5Header = getCellStringValue(row.getCell(5))
+            val col6Header = getCellStringValue(row.getCell(6))
+            col5Header.contains("تاريخ") || col5Header.contains("التحويل") || col6Header.isNotBlank()
+        } ?: false
+        
+        log.info("Sheet column structure: ${if (has8Columns) "8-column (المفرج style)" else "6-column (العمار style)"}")
         
         // Track units to avoid duplicates (same شقة can have multiple rows)
         val unitMap = mutableMapOf<String, String>() // unitNumber -> unitId
@@ -417,15 +445,29 @@ class ExcelImportService(
             val row = sheet.getRow(rowIndex) ?: continue
             
             try {
-                // Format 2 columns (reading as they appear in Excel, RTL display)
+                // Common columns for both formats
                 val rowNum = getCellStringValue(row.getCell(0)) // # column
                 val unitCell = getCellStringValue(row.getCell(1)) // البيان - Unit
                 val periodStart = getCellDateValue(row.getCell(2)) // من
                 val periodEnd = getCellDateValue(row.getCell(3)) // إلى
-                val amount = getCellNumericValue(row.getCell(4)) // المبلغ
-                val paymentDate = getCellDateValue(row.getCell(5)) // تاريخ التحويل
-                val notesMethod = getCellStringValue(row.getCell(6)) // الملاحظات (method)
-                val notesDue = getCellStringValue(row.getCell(7)) // الملاحظات (due date)
+                val amount = getCellNumericValue(row.getCell(4)) // المبلغ/القيمة
+                
+                // Format-specific columns
+                val paymentDate: String?
+                val notesMethod: String
+                val notesDue: String
+                
+                if (has8Columns) {
+                    // 8-column format (المفرج style)
+                    paymentDate = getCellDateValue(row.getCell(5)) // تاريخ التحويل
+                    notesMethod = getCellStringValue(row.getCell(6)) // الملاحظات (method)
+                    notesDue = getCellStringValue(row.getCell(7)) // الملاحظات (due date)
+                } else {
+                    // 6-column format (العمار style) - no payment date column
+                    paymentDate = null
+                    notesMethod = ""
+                    notesDue = getCellStringValue(row.getCell(5)) // الملاحظات
+                }
                 
                 log.debug("Row $rowIndex: unit='$unitCell', start='$periodStart', end='$periodEnd', amount=$amount")
                 
