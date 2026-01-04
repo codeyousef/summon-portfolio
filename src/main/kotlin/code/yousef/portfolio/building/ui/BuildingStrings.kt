@@ -92,6 +92,7 @@ object BuildingStrings {
     const val IMPORT_ERROR = "حدث خطأ أثناء الاستيراد"
     const val CLEAR_DATA = "مسح جميع البيانات"
     const val CLEAR_CONFIRM = "هل أنت متأكد من مسح جميع البيانات؟"
+    const val CLEAR_DATA_CONFIRM_DIALOG = "تحذير: سيتم حذف جميع العمارات والشقق والعقود والدفعات بشكل نهائي. هل أنت متأكد؟"
     
     // Currency
     const val SAR = "ر.س"

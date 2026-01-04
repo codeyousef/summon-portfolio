@@ -676,6 +676,7 @@ fun ImportPage(
                     action = "/clear-data",
                     method = FormMethod.Post,
                     modifier = Modifier()
+                        .attribute("onsubmit", "return confirm('${BuildingStrings.CLEAR_DATA_CONFIRM_DIALOG}');")
                 ) {
                     FormButton(
                         text = BuildingStrings.CLEAR_DATA,
