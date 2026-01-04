@@ -320,7 +320,7 @@ fun BuildingsListPage(
                             modifier = Modifier()
                                 .fillMaxWidth()
                                 .style("display", "grid")
-                                .style("grid-template-columns", "1fr 1fr 100px")
+                                .style("grid-template-columns", "1fr 1fr 200px")
                                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
                                 .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                         ) {
@@ -334,19 +334,41 @@ fun BuildingsListPage(
                                 modifier = Modifier()
                                     .fillMaxWidth()
                                     .style("display", "grid")
-                                    .style("grid-template-columns", "1fr 1fr 100px")
+                                    .style("grid-template-columns", "1fr 1fr 200px")
                                     .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                             ) {
                                 GridCell { Text(building.name) }
                                 GridCell { Text((unitCounts[building.id] ?: 0).toString()) }
                                 GridCell {
-                                    codes.yousef.summon.components.navigation.Link(
-                                        href = "/buildings/${building.id}",
+                                    Row(
                                         modifier = Modifier()
-                                            .color(BuildingTheme.Colors.PRIMARY)
-                                            .fontSize(BuildingTheme.FontSize.sm)
+                                            .style("gap", BuildingTheme.Spacing.sm)
+                                            .style("flex-wrap", "wrap")
                                     ) {
-                                        Text(BuildingStrings.VIEW_UNITS)
+                                        Link(
+                                            href = "/buildings/${building.id}",
+                                            modifier = Modifier()
+                                                .color(BuildingTheme.Colors.PRIMARY)
+                                                .fontSize(BuildingTheme.FontSize.xs)
+                                        ) {
+                                            Text(BuildingStrings.VIEW_UNITS)
+                                        }
+                                        Link(
+                                            href = "/buildings/${building.id}/edit",
+                                            modifier = Modifier()
+                                                .color(BuildingTheme.Colors.WARNING_TEXT)
+                                                .fontSize(BuildingTheme.FontSize.xs)
+                                        ) {
+                                            Text(BuildingStrings.EDIT)
+                                        }
+                                        Link(
+                                            href = "/buildings/${building.id}/delete",
+                                            modifier = Modifier()
+                                                .color(BuildingTheme.Colors.DANGER)
+                                                .fontSize(BuildingTheme.FontSize.xs)
+                                        ) {
+                                            Text(BuildingStrings.DELETE)
+                                        }
                                     }
                                 }
                             }
@@ -664,6 +686,209 @@ fun ImportPage(
                             .borderRadius(BuildingTheme.BorderRadius.md)
                             .fontWeight("500")
                     )
+                }
+            }
+        }
+    }
+}
+
+// ===================== Edit Building Page =====================
+
+@Composable
+fun EditBuildingPage(
+    username: String,
+    building: Building,
+    errorMessage: String?
+) {
+    BuildingPageLayout(
+        title = BuildingStrings.EDIT_BUILDING,
+        username = username,
+        currentPath = "/buildings"
+    ) {
+        Column(modifier = Modifier().fillMaxWidth().maxWidth("600px")) {
+            // Breadcrumb
+            Row(
+                modifier = Modifier()
+                    .margin("0", "0", BuildingTheme.Spacing.md, "0")
+                    .style("gap", BuildingTheme.Spacing.sm)
+            ) {
+                Link(
+                    href = "/buildings",
+                    modifier = Modifier().color(BuildingTheme.Colors.PRIMARY).fontSize(BuildingTheme.FontSize.sm)
+                ) { Text(BuildingStrings.BUILDINGS) }
+                Text(text = "←", modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED))
+                Text(text = building.name, modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED).fontSize(BuildingTheme.FontSize.sm))
+            }
+            
+            PageHeader(title = BuildingStrings.EDIT_BUILDING)
+            
+            Card(modifier = Modifier().fillMaxWidth()) {
+                if (errorMessage != null) {
+                    Alert(errorMessage, AlertType.ERROR)
+                }
+                
+                Form(
+                    action = "/buildings/${building.id}/edit",
+                    method = FormMethod.Post,
+                    modifier = Modifier().fillMaxWidth()
+                ) {
+                    FormGroup(label = BuildingStrings.BUILDING_NAME) {
+                        FormTextField(
+                            name = "name",
+                            label = "",
+                            defaultValue = building.name,
+                            modifier = inputModifier()
+                        )
+                    }
+                    
+                    FormGroup(label = BuildingStrings.BUILDING_ADDRESS) {
+                        FormTextField(
+                            name = "address",
+                            label = "",
+                            defaultValue = building.address,
+                            modifier = inputModifier()
+                        )
+                    }
+                    
+                    Row(
+                        modifier = Modifier()
+                            .style("gap", BuildingTheme.Spacing.md)
+                            .margin(BuildingTheme.Spacing.md, "0", "0", "0")
+                    ) {
+                        FormButton(
+                            text = BuildingStrings.SAVE,
+                            modifier = Modifier()
+                                .backgroundColor(BuildingTheme.Colors.PRIMARY)
+                                .color(BuildingTheme.Colors.TEXT_WHITE)
+                                .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                                .borderRadius(BuildingTheme.BorderRadius.md)
+                                .fontWeight("500")
+                        )
+                        Link(
+                            href = "/buildings",
+                            modifier = Modifier()
+                                .backgroundColor(BuildingTheme.Colors.BG_HOVER)
+                                .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                                .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                                .borderRadius(BuildingTheme.BorderRadius.md)
+                                .style("text-decoration", "none")
+                        ) {
+                            Text(BuildingStrings.CANCEL)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===================== Delete Building Page =====================
+
+@Composable
+fun DeleteBuildingPage(
+    username: String,
+    building: Building,
+    unitCount: Int
+) {
+    BuildingPageLayout(
+        title = BuildingStrings.DELETE_BUILDING,
+        username = username,
+        currentPath = "/buildings"
+    ) {
+        Column(modifier = Modifier().fillMaxWidth().maxWidth("600px")) {
+            // Breadcrumb
+            Row(
+                modifier = Modifier()
+                    .margin("0", "0", BuildingTheme.Spacing.md, "0")
+                    .style("gap", BuildingTheme.Spacing.sm)
+            ) {
+                Link(
+                    href = "/buildings",
+                    modifier = Modifier().color(BuildingTheme.Colors.PRIMARY).fontSize(BuildingTheme.FontSize.sm)
+                ) { Text(BuildingStrings.BUILDINGS) }
+                Text(text = "←", modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED))
+                Text(text = building.name, modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED).fontSize(BuildingTheme.FontSize.sm))
+            }
+            
+            PageHeader(title = BuildingStrings.DELETE_BUILDING)
+            
+            Card(modifier = Modifier().fillMaxWidth()) {
+                // Warning banner
+                Box(
+                    modifier = Modifier()
+                        .fillMaxWidth()
+                        .backgroundColor(BuildingTheme.Colors.DANGER_BG)
+                        .borderRadius(BuildingTheme.BorderRadius.md)
+                        .padding(BuildingTheme.Spacing.md)
+                        .margin("0", "0", BuildingTheme.Spacing.lg, "0")
+                ) {
+                    Column {
+                        Text(
+                            text = "⚠️ ${BuildingStrings.CONFIRM_DELETE_BUILDING}",
+                            modifier = Modifier()
+                                .color(BuildingTheme.Colors.DANGER_TEXT)
+                                .fontWeight("600")
+                                .fontSize(BuildingTheme.FontSize.sm)
+                        )
+                        if (unitCount > 0) {
+                            Text(
+                                text = "سيتم حذف $unitCount شقة مع جميع العقود والدفعات المرتبطة بها.",
+                                modifier = Modifier()
+                                    .color(BuildingTheme.Colors.DANGER_TEXT)
+                                    .fontSize(BuildingTheme.FontSize.xs)
+                                    .margin(BuildingTheme.Spacing.xs, "0", "0", "0")
+                            )
+                        }
+                    }
+                }
+                
+                // Building info
+                Column(
+                    modifier = Modifier()
+                        .fillMaxWidth()
+                        .margin("0", "0", BuildingTheme.Spacing.lg, "0")
+                ) {
+                    Text(
+                        text = "${BuildingStrings.BUILDING_NAME}: ${building.name}",
+                        modifier = Modifier().fontSize(BuildingTheme.FontSize.sm).margin("0", "0", BuildingTheme.Spacing.xs, "0")
+                    )
+                    Text(
+                        text = "${BuildingStrings.TOTAL_UNITS}: $unitCount",
+                        modifier = Modifier().fontSize(BuildingTheme.FontSize.sm).color(BuildingTheme.Colors.TEXT_SECONDARY)
+                    )
+                }
+                
+                // Action buttons
+                Row(
+                    modifier = Modifier()
+                        .style("gap", BuildingTheme.Spacing.md)
+                ) {
+                    Form(
+                        action = "/buildings/${building.id}/delete",
+                        method = FormMethod.Post,
+                        modifier = Modifier()
+                    ) {
+                        FormButton(
+                            text = BuildingStrings.DELETE,
+                            modifier = Modifier()
+                                .backgroundColor(BuildingTheme.Colors.DANGER)
+                                .color(BuildingTheme.Colors.TEXT_WHITE)
+                                .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                                .borderRadius(BuildingTheme.BorderRadius.md)
+                                .fontWeight("500")
+                        )
+                    }
+                    Link(
+                        href = "/buildings",
+                        modifier = Modifier()
+                            .backgroundColor(BuildingTheme.Colors.BG_HOVER)
+                            .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                            .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                            .borderRadius(BuildingTheme.BorderRadius.md)
+                            .style("text-decoration", "none")
+                    ) {
+                        Text(BuildingStrings.CANCEL)
+                    }
                 }
             }
         }

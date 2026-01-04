@@ -163,6 +163,87 @@ fun Router.buildingRoutes(
         exchange.respondSummonPage(buildingUnitsPage(session.username, building, apartments))
     }
     
+    // Edit building page
+    get("/buildings/:id/edit") { exchange ->
+        val session = exchange.requireAuth() ?: return@get
+        val buildingId = exchange.pathParam("id") ?: ""
+        val building = repository.getBuilding(buildingId)
+        
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@get
+        }
+        
+        exchange.respondSummonPage(editBuildingPage(session.username, building, null))
+    }
+    
+    // Update building
+    post("/buildings/:id/edit") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val buildingId = exchange.pathParam("id") ?: ""
+        val building = repository.getBuilding(buildingId)
+        
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@post
+        }
+        
+        val params = exchange.receiveParameters()
+        val name = params["name"]?.trim() ?: ""
+        val address = params["address"]?.trim() ?: ""
+        
+        if (name.isBlank()) {
+            exchange.respondSummonPage(editBuildingPage(session.username, building, "اسم العمارة مطلوب"), 400)
+            return@post
+        }
+        
+        repository.upsertBuilding(building.copy(name = name, address = address))
+        exchange.redirect("/buildings")
+    }
+    
+    // Delete building confirmation page
+    get("/buildings/:id/delete") { exchange ->
+        val session = exchange.requireAuth() ?: return@get
+        val buildingId = exchange.pathParam("id") ?: ""
+        val building = repository.getBuilding(buildingId)
+        
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@get
+        }
+        
+        val unitCount = repository.listApartmentsByBuilding(buildingId).size
+        exchange.respondSummonPage(deleteBuildingPage(session.username, building, unitCount))
+    }
+    
+    // Delete building
+    post("/buildings/:id/delete") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val buildingId = exchange.pathParam("id") ?: ""
+        val building = repository.getBuilding(buildingId)
+        
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@post
+        }
+        
+        // Delete all related data
+        val apartments = repository.listApartmentsByBuilding(buildingId)
+        apartments.forEach { apartment ->
+            val leases = repository.listLeases().filter { it.unitId == apartment.id }
+            leases.forEach { lease ->
+                repository.listPayments().filter { it.leaseId == lease.id }.forEach {
+                    repository.deletePayment(it.id)
+                }
+                repository.deleteLease(lease.id)
+            }
+            repository.deleteApartment(apartment.id)
+        }
+        repository.deleteBuilding(buildingId)
+        
+        exchange.redirect("/buildings")
+    }
+    
     // Payments list
     get("/payments") { exchange ->
         val session = exchange.requireAuth() ?: return@get
@@ -414,6 +495,42 @@ private fun importPage(
         )
     },
     content = { ImportPage(username = username, successMessage = successMessage, errorMessage = errorMessage) }
+)
+
+private fun editBuildingPage(
+    username: String,
+    building: Building,
+    errorMessage: String?
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.EDIT_BUILDING} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = { EditBuildingPage(username = username, building = building, errorMessage = errorMessage) }
+)
+
+private fun deleteBuildingPage(
+    username: String,
+    building: Building,
+    unitCount: Int
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.DELETE_BUILDING} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = { DeleteBuildingPage(username = username, building = building, unitCount = unitCount) }
 )
 
 // Multipart parsing helpers

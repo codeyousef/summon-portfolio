@@ -44,6 +44,12 @@ object BuildingStrings {
     const val BUILDING_ADDRESS = "العنوان"
     const val VIEW_UNITS = "عرض الشقق"
     const val NO_BUILDINGS = "لا توجد عمارات مسجلة"
+    const val EDIT_BUILDING = "تعديل العمارة"
+    const val DELETE_BUILDING = "حذف العمارة"
+    const val CONFIRM_DELETE_BUILDING = "هل أنت متأكد من حذف هذه العمارة؟ سيتم حذف جميع الشقق والعقود المرتبطة بها."
+    const val BUILDING_DELETED = "تم حذف العمارة بنجاح"
+    const val BUILDING_UPDATED = "تم تحديث العمارة بنجاح"
+    const val ADD_BUILDING = "إضافة عمارة"
     
     // Units
     const val UNITS = "الشقق"
