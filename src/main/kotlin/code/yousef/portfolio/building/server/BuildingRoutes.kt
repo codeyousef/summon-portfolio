@@ -304,6 +304,7 @@ private suspend fun Exchange.clearBuildingSession() {
 private fun buildingLoginPage(errorMessage: String?): SummonPage = SummonPage(
     head = { head ->
         head.title("${BuildingStrings.LOGIN_TITLE} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
         head.style(BuildingTheme.globalStyles)
         // Add Tajawal Arabic font
@@ -318,6 +319,7 @@ private fun buildingLoginPage(errorMessage: String?): SummonPage = SummonPage(
 private fun buildingChangePasswordPage(username: String, errorMessage: String?): SummonPage = SummonPage(
     head = { head ->
         head.title("${BuildingStrings.CHANGE_PASSWORD_TITLE} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
         head.style(BuildingTheme.globalStyles)
         head.link(
@@ -331,6 +333,7 @@ private fun buildingChangePasswordPage(username: String, errorMessage: String?):
 private fun buildingDashboardPage(username: String, summary: code.yousef.portfolio.building.model.DashboardSummary): SummonPage = SummonPage(
     head = { head ->
         head.title("${BuildingStrings.DASHBOARD} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
         head.style(BuildingTheme.globalStyles)
         head.link(
@@ -348,6 +351,7 @@ private fun buildingsListPage(
 ): SummonPage = SummonPage(
     head = { head ->
         head.title("${BuildingStrings.BUILDINGS} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
         head.style(BuildingTheme.globalStyles)
         head.link(
@@ -365,6 +369,7 @@ private fun buildingUnitsPage(
 ): SummonPage = SummonPage(
     head = { head ->
         head.title("${building.name} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
         head.style(BuildingTheme.globalStyles)
         head.link(
@@ -382,6 +387,7 @@ private fun paymentsListPage(
 ): SummonPage = SummonPage(
     head = { head ->
         head.title("${BuildingStrings.PAYMENTS} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
         head.style(BuildingTheme.globalStyles)
         head.link(
@@ -399,6 +405,7 @@ private fun importPage(
 ): SummonPage = SummonPage(
     head = { head ->
         head.title("${BuildingStrings.IMPORT_DATA} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
         head.style(BuildingTheme.globalStyles)
         head.link(

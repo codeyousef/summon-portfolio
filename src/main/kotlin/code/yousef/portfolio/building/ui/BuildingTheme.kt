@@ -352,5 +352,111 @@ object BuildingTheme {
             font-weight: 700;
             color: ${Colors.TEXT_PRIMARY};
         }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 ${Spacing.sm};
+            }
+            
+            .nav {
+                padding: ${Spacing.sm} ${Spacing.md};
+            }
+            
+            .nav-content {
+                flex-direction: column;
+                gap: ${Spacing.sm};
+            }
+            
+            .nav-title {
+                font-size: ${FontSize.lg};
+            }
+            
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: ${Spacing.xs};
+            }
+            
+            .nav-link {
+                padding: ${Spacing.xs} ${Spacing.sm};
+                font-size: ${FontSize.xs};
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: ${Spacing.sm};
+            }
+            
+            .stat-card {
+                padding: ${Spacing.md};
+            }
+            
+            .stat-value {
+                font-size: ${FontSize.xl};
+            }
+            
+            .stat-label {
+                font-size: ${FontSize.xs};
+            }
+            
+            .card {
+                padding: ${Spacing.md};
+                border-radius: ${BorderRadius.md};
+            }
+            
+            .page-header {
+                flex-direction: column;
+                gap: ${Spacing.sm};
+                align-items: flex-start;
+            }
+            
+            .page-title {
+                font-size: ${FontSize.lg};
+            }
+            
+            table {
+                font-size: ${FontSize.xs};
+            }
+            
+            th, td {
+                padding: ${Spacing.xs} ${Spacing.sm};
+            }
+            
+            .btn {
+                padding: ${Spacing.xs} ${Spacing.sm};
+                font-size: ${FontSize.xs};
+            }
+            
+            .badge {
+                font-size: 10px;
+                padding: 2px ${Spacing.xs};
+            }
+            
+            .empty-state {
+                padding: ${Spacing.lg};
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-links {
+                width: 100%;
+            }
+            
+            .nav-link {
+                flex: 1;
+                text-align: center;
+            }
+        }
+        
+        /* Table horizontal scroll on mobile */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     """.trimIndent()
 }
