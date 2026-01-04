@@ -8,6 +8,7 @@ import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Div
 import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.navigation.Link
 import codes.yousef.summon.modifier.*
 
 // ===================== Login Page =====================
@@ -217,6 +218,16 @@ fun BuildingDashboardPage(
         currentPath = "/"
     ) {
         Column(modifier = Modifier().fillMaxWidth()) {
+            // Notification Banner - show upcoming payments due within 30 days
+            if (summary.upcomingPayments.isNotEmpty()) {
+                NotificationBanner(summary.upcomingPayments)
+            }
+            
+            // Overdue alert banner
+            if (summary.overduePayments.isNotEmpty()) {
+                OverdueAlertBanner(summary.overduePayments.size)
+            }
+            
             PageHeader(title = BuildingStrings.DASHBOARD)
             
             // Stats grid
@@ -698,4 +709,218 @@ private fun FileInputField(name: String, accept: String) {
             .attribute("accept", accept),
         value = ""
     )
+}
+
+// ===================== Notification Components =====================
+
+@Composable
+private fun NotificationBanner(upcomingPayments: List<PaymentWithDetails>) {
+    Column(
+        modifier = Modifier()
+            .fillMaxWidth()
+            .margin("0", "0", BuildingTheme.Spacing.lg, "0")
+    ) {
+        // Group payments by urgency
+        val today = java.time.LocalDate.now()
+        val urgentPayments = upcomingPayments.filter { payment ->
+            try {
+                val dueDate = java.time.LocalDate.parse(payment.payment.dueDate)
+                val daysUntilDue = java.time.temporal.ChronoUnit.DAYS.between(today, dueDate)
+                daysUntilDue <= 7
+            } catch (_: Exception) { false }
+        }
+        val upcomingInMonth = upcomingPayments.filter { payment ->
+            try {
+                val dueDate = java.time.LocalDate.parse(payment.payment.dueDate)
+                val daysUntilDue = java.time.temporal.ChronoUnit.DAYS.between(today, dueDate)
+                daysUntilDue > 7
+            } catch (_: Exception) { false }
+        }
+        
+        // Show urgent notifications (due within 7 days) - Warning color
+        urgentPayments.forEach { payment ->
+            val daysUntilDue = try {
+                val dueDate = java.time.LocalDate.parse(payment.payment.dueDate)
+                java.time.temporal.ChronoUnit.DAYS.between(today, dueDate)
+            } catch (_: Exception) { 30L }
+            
+            NotificationCard(
+                payment = payment,
+                daysUntilDue = daysUntilDue,
+                isUrgent = true
+            )
+        }
+        
+        // Show upcoming notifications (due within 30 days) - Info color
+        if (upcomingInMonth.isNotEmpty()) {
+            // Summary card for less urgent payments
+            Box(
+                modifier = Modifier()
+                    .fillMaxWidth()
+                    .backgroundColor(BuildingTheme.Colors.INFO_BG)
+                    .borderRadius(BuildingTheme.BorderRadius.md)
+                    .padding(BuildingTheme.Spacing.md)
+                    .margin("0", "0", BuildingTheme.Spacing.sm, "0")
+                    .style("border-right", "4px solid ${BuildingTheme.Colors.INFO}")
+            ) {
+                Row(
+                    modifier = Modifier()
+                        .fillMaxWidth()
+                        .style("align-items", "center")
+                        .style("gap", BuildingTheme.Spacing.md)
+                ) {
+                    // Bell icon
+                    Text(
+                        text = "🔔",
+                        modifier = Modifier().fontSize(BuildingTheme.FontSize.xl)
+                    )
+                    Column(modifier = Modifier().style("flex", "1")) {
+                        Text(
+                            text = "${BuildingStrings.NOTIFICATIONS}: ${upcomingInMonth.size} ${BuildingStrings.PAYMENT_DUE_SOON}",
+                            modifier = Modifier()
+                                .fontWeight("600")
+                                .color(BuildingTheme.Colors.INFO_TEXT)
+                                .fontSize(BuildingTheme.FontSize.sm)
+                        )
+                        Text(
+                            text = "دفعات مستحقة خلال الشهر القادم",
+                            modifier = Modifier()
+                                .fontSize(BuildingTheme.FontSize.xs)
+                                .color(BuildingTheme.Colors.TEXT_SECONDARY)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationCard(
+    payment: PaymentWithDetails,
+    daysUntilDue: Long,
+    isUrgent: Boolean
+) {
+    val bgColor = if (isUrgent) BuildingTheme.Colors.WARNING_BG else BuildingTheme.Colors.INFO_BG
+    val borderColor = if (isUrgent) BuildingTheme.Colors.WARNING else BuildingTheme.Colors.INFO
+    val textColor = if (isUrgent) BuildingTheme.Colors.WARNING_TEXT else BuildingTheme.Colors.INFO_TEXT
+    val icon = if (isUrgent) "⚠️" else "🔔"
+    
+    Box(
+        modifier = Modifier()
+            .fillMaxWidth()
+            .backgroundColor(bgColor)
+            .borderRadius(BuildingTheme.BorderRadius.md)
+            .padding(BuildingTheme.Spacing.md)
+            .margin("0", "0", BuildingTheme.Spacing.sm, "0")
+            .style("border-right", "4px solid $borderColor")
+    ) {
+        Row(
+            modifier = Modifier()
+                .fillMaxWidth()
+                .style("align-items", "center")
+                .style("gap", BuildingTheme.Spacing.md)
+        ) {
+            // Icon
+            Text(
+                text = icon,
+                modifier = Modifier().fontSize(BuildingTheme.FontSize.xl)
+            )
+            
+            // Content
+            Column(modifier = Modifier().style("flex", "1")) {
+                Text(
+                    text = "${payment.building?.name ?: ""} - ${payment.apartment?.unitNumber ?: ""}",
+                    modifier = Modifier()
+                        .fontWeight("600")
+                        .color(textColor)
+                        .fontSize(BuildingTheme.FontSize.sm)
+                )
+                Row(
+                    modifier = Modifier()
+                        .style("gap", BuildingTheme.Spacing.md)
+                        .style("flex-wrap", "wrap")
+                ) {
+                    Text(
+                        text = "${BuildingStrings.PAYMENT_AMOUNT}: ${BuildingStrings.formatCurrency(payment.payment.amount)}",
+                        modifier = Modifier()
+                            .fontSize(BuildingTheme.FontSize.xs)
+                            .color(BuildingTheme.Colors.TEXT_SECONDARY)
+                    )
+                    Text(
+                        text = "${BuildingStrings.DUE_DATE}: ${payment.payment.dueDate}",
+                        modifier = Modifier()
+                            .fontSize(BuildingTheme.FontSize.xs)
+                            .color(BuildingTheme.Colors.TEXT_SECONDARY)
+                    )
+                }
+            }
+            
+            // Days remaining badge
+            Box(
+                modifier = Modifier()
+                    .backgroundColor(borderColor)
+                    .color(BuildingTheme.Colors.TEXT_WHITE)
+                    .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.sm)
+                    .borderRadius(BuildingTheme.BorderRadius.full)
+                    .fontSize(BuildingTheme.FontSize.xs)
+                    .fontWeight("600")
+            ) {
+                Text(BuildingStrings.formatDaysRemaining(daysUntilDue))
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverdueAlertBanner(overdueCount: Int) {
+    Box(
+        modifier = Modifier()
+            .fillMaxWidth()
+            .backgroundColor(BuildingTheme.Colors.DANGER_BG)
+            .borderRadius(BuildingTheme.BorderRadius.md)
+            .padding(BuildingTheme.Spacing.md)
+            .margin("0", "0", BuildingTheme.Spacing.lg, "0")
+            .style("border-right", "4px solid ${BuildingTheme.Colors.DANGER}")
+    ) {
+        Row(
+            modifier = Modifier()
+                .fillMaxWidth()
+                .style("align-items", "center")
+                .style("gap", BuildingTheme.Spacing.md)
+        ) {
+            Text(
+                text = "🚨",
+                modifier = Modifier().fontSize(BuildingTheme.FontSize.xl)
+            )
+            Column(modifier = Modifier().style("flex", "1")) {
+                Text(
+                    text = "تنبيه: $overdueCount دفعات متأخرة",
+                    modifier = Modifier()
+                        .fontWeight("600")
+                        .color(BuildingTheme.Colors.DANGER_TEXT)
+                        .fontSize(BuildingTheme.FontSize.sm)
+                )
+                Text(
+                    text = "يرجى مراجعة قائمة الدفعات المتأخرة أدناه",
+                    modifier = Modifier()
+                        .fontSize(BuildingTheme.FontSize.xs)
+                        .color(BuildingTheme.Colors.TEXT_SECONDARY)
+                )
+            }
+            Link(
+                href = "/payments?status=OVERDUE",
+                modifier = Modifier()
+                    .backgroundColor(BuildingTheme.Colors.DANGER)
+                    .color(BuildingTheme.Colors.TEXT_WHITE)
+                    .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.md)
+                    .borderRadius(BuildingTheme.BorderRadius.md)
+                    .fontSize(BuildingTheme.FontSize.xs)
+                    .fontWeight("600")
+                    .style("text-decoration", "none")
+            ) {
+                Text("عرض")
+            }
+        }
+    }
 }

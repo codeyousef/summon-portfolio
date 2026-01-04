@@ -105,6 +105,24 @@ object BuildingStrings {
     const val LOADING = "جاري التحميل..."
     const val ERROR = "حدث خطأ"
     
+    // Notifications
+    const val NOTIFICATIONS = "التنبيهات"
+    const val PAYMENT_DUE_SOON = "دفعة مستحقة قريباً"
+    const val PAYMENT_DUE_IN_DAYS = "مستحقة خلال"
+    const val DAYS = "يوم"
+    const val DAY = "يوم"
+    const val TODAY = "اليوم"
+    const val TOMORROW = "غداً"
+    const val NO_NOTIFICATIONS = "لا توجد تنبيهات"
+    
+    fun formatDaysRemaining(days: Long): String {
+        return when {
+            days <= 0 -> TODAY
+            days == 1L -> TOMORROW
+            else -> "خلال $days $DAYS"
+        }
+    }
+    
     // Format helpers
     fun formatCurrency(amount: Double): String {
         val formatted = String.format("%,.0f", amount)
