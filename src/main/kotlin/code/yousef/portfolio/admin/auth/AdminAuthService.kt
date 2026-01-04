@@ -18,7 +18,7 @@ class AdminAuthService(
         prettyPrint = true
         ignoreUnknownKeys = true
     }
-) {
+) : AdminAuthProvider {
     private val log = LoggerFactory.getLogger(AdminAuthService::class.java)
     private val secureRandom = SecureRandom()
 
@@ -62,23 +62,23 @@ class AdminAuthService(
         return default
     }
 
-    fun authenticate(username: String, password: String): AuthResult {
+    override fun authenticate(username: String, password: String): AdminAuthProvider.AuthResult {
         val creds = cachedCredentials
         val attemptedHash = hashPassword(password, creds.salt)
         return if (creds.username == username && creds.passwordHash == attemptedHash) {
             log.info("Successful authentication for user '${username}', mustChangePassword=${creds.mustChange}")
-            AuthResult.Success(creds.mustChange)
+            AdminAuthProvider.AuthResult.Success(creds.mustChange)
         } else {
             log.warn("Failed authentication attempt for user '${username}'")
-            AuthResult.Invalid
+            AdminAuthProvider.AuthResult.Invalid
         }
     }
 
-    fun mustChangePassword(): Boolean = cachedCredentials.mustChange
+    override fun mustChangePassword(): Boolean = cachedCredentials.mustChange
 
-    fun currentUsername(): String = cachedCredentials.username
+    override fun currentUsername(): String = cachedCredentials.username
 
-    fun updateCredentials(username: String, password: String) {
+    override fun updateCredentials(username: String, password: String) {
         log.info("Updating credentials for user '${username}'")
         val salt = generateSalt()
         val updated = StoredCredentials(
@@ -94,7 +94,7 @@ class AdminAuthService(
 
     private fun persist(credentials: StoredCredentials) {
         synchronized(this) {
-            credentialsPath.writeText(json.encodeToString(credentials))
+            credentialsPath.writeText(json.encodeToString(StoredCredentials.serializer(), credentials))
         }
     }
 
@@ -118,9 +118,4 @@ class AdminAuthService(
         val salt: String,
         val mustChange: Boolean
     )
-
-    sealed class AuthResult {
-        object Invalid : AuthResult()
-        data class Success(val mustChangePassword: Boolean) : AuthResult()
-    }
 }

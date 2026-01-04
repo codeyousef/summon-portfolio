@@ -3,6 +3,8 @@ package code.yousef.portfolio.ui.components
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.modifier.Modifier
+import codes.yousef.summon.modifier.style
+import codes.yousef.summon.modifier.width
 
 /**
  * Container that maintains a specific aspect ratio.

@@ -78,9 +78,9 @@ fun BlogPost.toDto(locale: PortfolioLocale): BlogPostDto =
     BlogPostDto(
         id = id,
         slug = slug,
-        title = title.resolve(locale),
-        excerpt = excerpt.resolve(locale),
-        content = content.resolve(locale),
+        title = title,
+        excerpt = excerpt,
+        content = content,
         publishedAt = publishedAt.toString(),
         featured = featured,
         author = author,

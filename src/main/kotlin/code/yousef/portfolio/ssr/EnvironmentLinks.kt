@@ -85,7 +85,23 @@ private fun stageForHost(host: String?): DeploymentStage {
 
 fun resolveEnvironmentLinks(host: String?): EnvironmentLinks {
     val stage = stageForHost(host)
-    val baseline = stageLinks[stage] ?: stageLinks.getValue(DeploymentStage.LOCAL)
+    var baseline = stageLinks[stage] ?: stageLinks.getValue(DeploymentStage.LOCAL)
+
+    // If we are in LOCAL stage and have a valid host (e.g. LAN IP or tunnel), use it dynamically
+    if (stage == DeploymentStage.LOCAL && !host.isNullOrBlank() && !host.contains("localhost")) {
+        val base = "http://$host"
+        baseline = baseline.copy(
+            portfolioBase = base,
+            blogBase = "$base/blog",
+            summonBase = "$base/summon",
+            docsBase = "$base/summon/docs",
+            materiaBase = "$base/materia",
+            materiaDocsBase = "$base/materia/docs",
+            sigilBase = "$base/sigil",
+            sigilDocsBase = "$base/sigil/docs"
+        )
+    }
+
     val summonBase = summonBaseOverride ?: baseline.summonBase
     val docsBase = docsBaseOverride ?: baseline.docsBase
     val materiaBase = materiaBaseOverride ?: baseline.materiaBase

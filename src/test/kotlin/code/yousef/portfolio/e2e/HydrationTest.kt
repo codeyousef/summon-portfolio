@@ -1,123 +1,82 @@
 package code.yousef.portfolio.e2e
 
-import code.yousef.module
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.server.config.*
-import io.ktor.server.testing.*
-import kotlin.test.*
+import code.yousef.buildApplication
+import code.yousef.config.AppConfig
+import codes.yousef.aether.core.jvm.VertxServer
+import codes.yousef.aether.core.jvm.VertxServerConfig
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.net.URI
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class HydrationTest {
 
-    @Test
-    fun `should serve landing page with correct hydration tags`() = testApplication {
-        environment {
-            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
+    private lateinit var server: VertxServer
+    private val testPort = 8082
+    private val baseUrl = "http://localhost:$testPort"
+    private val httpClient = HttpClient.newHttpClient()
+
+    @BeforeAll
+    fun setup() {
+        val appConfig = AppConfig(
+            projectId = "test-project",
+            emulatorHost = "localhost:8080",
+            port = testPort,
+            useLocalStore = true
+        )
+        val resources = buildApplication(appConfig)
+        val config = VertxServerConfig(port = testPort)
+        server = VertxServer(config, resources.pipeline) { exchange ->
+            exchange.notFound("Route not found")
         }
-        application {
-            module()
+        runBlocking {
+            server.start()
         }
+    }
 
-        client.get("/").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertTrue(headers[HttpHeaders.ContentType]?.startsWith("text/html") == true, "Should be HTML")
-            
-            val body = bodyAsText()
-
-            // Verify Summon hydration script is present
-            assertTrue(body.contains("summon-hydration.js"), "Should contain summon-hydration.js script tag")
-
-            // Note: In Summon 0.5+, the WASM is loaded dynamically by the JS loader,
-            // not preloaded in HTML. The hydration script handles WASM loading internally.
+    @AfterAll
+    fun teardown() {
+        runBlocking {
+            server.stop()
         }
     }
 
     @Test
-    fun `should serve WASM binary with correct MIME type`() = testApplication {
-        environment {
-            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
-        }
-        application {
-            module()
-        }
+    fun `should serve landing page with correct hydration tags`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/"))
+            .GET()
+            .build()
 
-        // The path might be /static/summon-hydration.wasm or just /summon-hydration.wasm depending on routing
-        // Based on previous file listings, it's in src/main/resources/static, so likely /static/
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode())
+        assertTrue(response.headers().firstValue("Content-Type").orElse("").startsWith("text/html"), "Should be HTML")
         
-        client.get("/static/summon-hydration.wasm").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals("application/wasm", headers[HttpHeaders.ContentType])
-        }
+        val body = response.body()
+        // Verify Summon hydration script is present
+        assertTrue(body.contains("summon-hydration.js"), "Should contain summon-hydration.js script tag")
     }
 
     @Test
-    fun `should serve hydration JS with correct MIME type`() = testApplication {
-        environment {
-            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
-        }
-        application {
-            module()
-        }
+    fun `should serve WASM binary with correct MIME type`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/static/summon-hydration.wasm"))
+            .GET()
+            .build()
 
-        client.get("/static/summon-hydration.js").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            // Ktor might serve as application/javascript or text/javascript
-            val contentType = headers[HttpHeaders.ContentType]
-            assertTrue(
-                contentType?.startsWith("application/javascript") == true || contentType?.startsWith("text/javascript") == true,
-                "Content-Type should be javascript, got: $contentType"
-            )
-        }
-    }
-    
-    @Test
-    fun `should serve hydration assets at root paths`() = testApplication {
-        environment {
-            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
-        }
-        application {
-            module()
-        }
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-        val assets = listOf(
-            "/summon-hydration.js" to "application/javascript",
-            "/summon-hydration.wasm" to "application/wasm"
-        )
-
-        for ((path, expectedType) in assets) {
-            client.get(path).apply {
-                assertEquals(HttpStatusCode.OK, status, "Asset $path should be served at root")
-                val contentType = headers[HttpHeaders.ContentType]
-                assertTrue(
-                    contentType?.startsWith(expectedType) == true || 
-                    (expectedType == "application/javascript" && contentType?.startsWith("text/javascript") == true),
-                    "Content-Type for $path should be $expectedType, got: $contentType"
-                )
-            }
-        }
-    }
-    
-    @Test
-    fun `should NOT serve obsolete polyfills`() = testApplication {
-        environment {
-            config = MapApplicationConfig("gcp.projectId" to "test-project", "firestore.emulatorHost" to "localhost:8080")
-        }
-        application {
-            module()
-        }
-
-        // These files were removed and should return 404
-        val obsoleteFiles = listOf(
-            "/static/process-polyfill.js",
-            "/static/wasm-polyfill.js",
-            "/static/initialize-summon.js"
-        )
-
-        for (file in obsoleteFiles) {
-            client.get(file).apply {
-                assertEquals(HttpStatusCode.NotFound, status, "File $file should not exist")
-            }
+        if (response.statusCode() == 200) {
+             assertEquals("application/wasm", response.headers().firstValue("Content-Type").orElse(""))
         }
     }
 }

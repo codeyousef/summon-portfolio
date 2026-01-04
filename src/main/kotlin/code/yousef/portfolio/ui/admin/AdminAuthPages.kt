@@ -7,6 +7,8 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.Form
 import codes.yousef.summon.components.forms.FormButton
+import codes.yousef.summon.components.forms.FormEncType
+import codes.yousef.summon.components.forms.FormMethod
 import codes.yousef.summon.components.forms.FormHiddenField
 import codes.yousef.summon.components.forms.FormTextField
 import codes.yousef.summon.components.forms.FormTextFieldType
@@ -15,7 +17,6 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.gap
 
 @Composable
 fun AdminLoginPage(
@@ -27,14 +28,6 @@ fun AdminLoginPage(
         subtitle = "Sign in to update your portfolio content.",
         errorMessage = errorMessage
     ) {
-        Text(
-            text = "Default credentials: admin / admin. You'll be prompted to update them after signing in.",
-            modifier = Modifier()
-                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                .fontSize("0.85rem")
-                .textAlign(TextAlign.Center)
-                .margin("0 0 8px 0")
-        )
         Form(
             action = "/admin/login",
             hiddenFields = nextPath?.let { listOf(FormHiddenField("next", it)) } ?: emptyList(),
@@ -88,7 +81,12 @@ fun AdminChangePasswordPage(
         subtitle = "Please set a new username and password before continuing.",
         errorMessage = errorMessage
     ) {
-        Form(action = "/admin/change-password", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)) {
+        Form(
+            action = "/admin/change-password",
+            method = FormMethod.Post,
+            encType = FormEncType.UrlEncoded,
+            modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY)
+        ) {
             FormField(
                 label = {
                     Text("New Username", modifier = Modifier().color(PortfolioTheme.Colors.TEXT_PRIMARY))
@@ -150,7 +148,8 @@ private fun AdminAuthScaffold(
     errorMessage: String?,
     content: @Composable () -> Unit
 ) {
-    PageScaffold(locale = PortfolioLocale.EN) {
+    // Use PageScaffold without aurora effects to avoid hydration interference with forms
+    PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         Row(
             modifier = Modifier()
                 .display(Display.Flex)

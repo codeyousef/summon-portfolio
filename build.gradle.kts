@@ -1,5 +1,6 @@
 val kotlin_version: String by project
 val logback_version: String by project
+val aether_version = "0.4.0.1"
 
 plugins {
     application
@@ -13,7 +14,7 @@ group = "code.yousef"
 version = "0.0.2"
 
 application {
-    mainClass.set("io.ktor.server.netty.EngineMain")
+    mainClass.set("code.yousef.ApplicationKt")
 }
 
 dependencies {
@@ -47,17 +48,30 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
 
     // Summon SSR framework + Sigil 3D/effects library
-    implementation("codes.yousef:summon:0.5.8.4")
+    implementation("codes.yousef:summon:0.6.2.1")
     // Materia 0.3.4.6 - Fixed WebGL uniform name mismatch
     implementation("codes.yousef:materia-jvm:0.3.4.6")
-    // Sigil 0.2.9.0 - Fixed WebGL duplicate uniforms causing black screen
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.0")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.0")
+    // Sigil 0.2.9.1 - Shared RenderLoop and UniformUpdater utilities
+    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.1")
+    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.1")
+
+    // Aether Framework 0.4.0.0 - Django-like KMP framework with admin, auth, forms
+    implementation("codes.yousef.aether:aether-core-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-web-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-ui-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-db-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-auth-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-forms-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-admin-jvm:$aether_version")
+
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     // Cloud Firestore (ready for future integrations)
     implementation(platform("com.google.cloud:libraries-bom:26.51.0"))
     implementation("com.google.cloud:google-cloud-firestore")
+
+    // Apache POI for Excel (.xlsx) import
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
 
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")

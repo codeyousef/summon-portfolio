@@ -18,18 +18,11 @@ import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.modifier.LayoutModifiers.left
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.alignItems
-import codes.yousef.summon.modifier.LayoutModifiers.display
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.LayoutModifiers.justifyContent
-import codes.yousef.summon.modifier.LayoutModifiers.top
 import codes.yousef.summon.modifier.ModifierExtras.onClick
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
 fun MobileHeader(
@@ -217,10 +210,12 @@ fun MobileHeader(
                                 .alignItems(AlignItems.Center)
                                 .gap(8.px)
                         ) {
-                            Text(
-                                text = "🔮",
+                            Image(
+                                src = "/static/sigil-logo.png",
+                                alt = "",
                                 modifier = Modifier()
-                                    .fontSize(1.rem)
+                                    .width(20.px)
+                                    .height(20.px)
                             )
                             AnchorLink(
                                 label = "Sigil",

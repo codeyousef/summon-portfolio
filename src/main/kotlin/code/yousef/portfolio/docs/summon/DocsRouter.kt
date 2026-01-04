@@ -5,6 +5,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.HYDRATION_SCRIPT_PATH
 import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.ssr.materiaMarketingUrl
+import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
@@ -12,17 +13,17 @@ import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
+import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import codes.yousef.summon.seo.HeadScope
 import kotlinx.serialization.json.Json
 import java.net.URI
@@ -30,7 +31,7 @@ import java.net.URI
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
     private val portfolioOrigin: String,
-    private val branding: DocsBranding = DocsBranding.summon(),
+    private val defaultBranding: DocsBranding = DocsBranding.summon(),
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     fun render(
@@ -45,8 +46,9 @@ class DocsRouter(
     ): SummonPage {
         val seo = seoExtractor.build(requestPath, meta)
         val navBase = resolveNavBase(origin)
+        val branding = resolveBranding(origin)
         return SummonPage(
-            head = headBlock(seo.title, seo.description, seo.canonicalUrl),
+            head = headBlock(branding, seo.title, seo.description, seo.canonicalUrl),
             content = {
                 DocsPageFrame(navBase, origin, branding) {
                     DocsShell(
@@ -67,8 +69,9 @@ class DocsRouter(
         val canonical = seoExtractor.canonical(requestPath)
         val navJson = json.encodeToString(sidebar).replace("</", "<\\/")
         val navBase = resolveNavBase(origin)
+        val branding = resolveBranding(origin)
         return SummonPage(
-            head = headBlock("Not found", "This page could not be located.", canonical),
+            head = headBlock(branding, "Not found", "This page could not be located.", canonical),
             content = {
                 DocsPageFrame(navBase, origin, branding) {
                     DocsNotFoundContent(navJson)
@@ -77,7 +80,7 @@ class DocsRouter(
         )
     }
 
-    private fun headBlock(title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
+    private fun headBlock(branding: DocsBranding, title: String, description: String, canonical: String): (HeadScope) -> Unit = { head ->
         head.title("$title · ${branding.docsTitle}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("description", null, description, null, null)
@@ -90,6 +93,19 @@ class DocsRouter(
         head.meta("twitter:description", null, description, null, null)
         head.link("canonical", canonical, null, null, null, null)
         head.script(HYDRATION_SCRIPT_PATH, null, "application/javascript", false, true, null)
+    }
+
+    private fun resolveBranding(origin: String): DocsBranding {
+        val uri = runCatching { URI(origin) }.getOrNull()
+        val host = uri?.host
+        
+        return when {
+            host == null -> defaultBranding
+            host.startsWith("summon.") -> DocsBranding.summon(::summonMarketingUrl)
+            host.startsWith("materia.") -> DocsBranding.materia(::materiaMarketingUrl)
+            host.startsWith("sigil.") -> DocsBranding.sigil(::sigilMarketingUrl)
+            else -> defaultBranding
+        }
     }
 
     private fun resolveNavBase(origin: String): String {
@@ -183,6 +199,33 @@ private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, branding: Doc
 private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding) {
     val docsPath = "/docs"
     val apiReferencePath = "/docs/api-reference"
+
+    // CSS for responsive visibility
+    GlobalStyle("""
+        .docs-nav-desktop { display: block !important; }
+        .docs-nav-mobile { display: none !important; }
+        
+        @media (max-width: 960px) {
+            .docs-nav-desktop { display: none !important; }
+            .docs-nav-mobile { display: block !important; }
+        }
+    """)
+
+    Box(modifier = Modifier().width(100.percent)) {
+        // Desktop Version
+        Box(modifier = Modifier().className("docs-nav-desktop").width(100.percent)) {
+            DesktopDocsNavbar(navBaseUrl, docsBaseUrl, branding, docsPath, apiReferencePath)
+        }
+        
+        // Mobile Version
+        Box(modifier = Modifier().className("docs-nav-mobile").width(100.percent)) {
+            MobileDocsNavbar(navBaseUrl, docsBaseUrl, branding, docsPath, apiReferencePath)
+        }
+    }
+}
+
+@Composable
+private fun DesktopDocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, docsPath: String, apiReferencePath: String) {
     Row(
         modifier = Modifier()
             .display(Display.Flex)
@@ -234,6 +277,93 @@ private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBr
         ) {
             DocsNavLink(label = "Documentation", href = docsPath, accentColor = branding.accentColor)
             DocsNavLink(label = "API Reference", href = apiReferencePath, accentColor = branding.accentColor)
+        }
+    }
+}
+
+@Composable
+private fun MobileDocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, docsPath: String, apiReferencePath: String) {
+    Row(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+            .justifyContent(JustifyContent.SpaceBetween)
+            .padding(PortfolioTheme.Spacing.md)
+            .backgroundColor(PortfolioTheme.Colors.SURFACE)
+            .borderWidth(1, BorderSide.Bottom)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
+    ) {
+        // Hamburger Menu (Left)
+        HamburgerMenu(
+            modifier = Modifier()
+                .position(Position.Relative)
+                .width(40.px)
+                .height(40.px)
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .justifyContent(JustifyContent.Center)
+                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                .zIndex(100),
+            menuContainerModifier = Modifier()
+                .position(Position.Absolute)
+                .top(100.percent)
+                .left(0.px)
+                .marginTop(8.px)
+                .backgroundColor("#0a1628")
+                .borderRadius(8.px)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .zIndex(1000)
+                .minWidth(200.px)
+                .width("max-content"),
+            menuContent = {
+                Column(
+                    modifier = Modifier()
+                        .width(100.percent)
+                        .padding(16.px)
+                        .gap(12.px)
+                        .backgroundColor("#0a1628")
+                ) {
+                    DocsNavLink(label = "Documentation", href = docsPath, accentColor = branding.accentColor)
+                    DocsNavLink(label = "API Reference", href = apiReferencePath, accentColor = branding.accentColor)
+                }
+            }
+        )
+
+        // Logo and name (Right/Center)
+        Row(
+            modifier = Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .gap(PortfolioTheme.Spacing.sm)
+        ) {
+            Image(
+                src = branding.logoPath,
+                alt = branding.name,
+                modifier = Modifier()
+                    .width(28.px)
+                    .height(28.px)
+            )
+            AnchorLink(
+                label = branding.name,
+                href = branding.homeUrl,
+                modifier = Modifier()
+                    .fontWeight(700)
+                    .fontSize(1.1.rem)
+                    .color(branding.accentColor)
+                    .textDecoration(TextDecoration.None),
+                navigationMode = LinkNavigationMode.Native,
+                target = null,
+                rel = null,
+                title = null,
+                id = null,
+                ariaLabel = null,
+                ariaDescribedBy = null,
+                dataHref = null,
+                dataAttributes = emptyMap()
+            )
         }
     }
 }

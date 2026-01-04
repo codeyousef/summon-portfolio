@@ -5,6 +5,7 @@ import code.yousef.portfolio.docs.MarkdownMeta
 import code.yousef.portfolio.docs.NeighborLinks
 import code.yousef.portfolio.docs.TocEntry
 import code.yousef.portfolio.docs.summon.components.DocsSidebar
+import code.yousef.portfolio.docs.summon.components.MobileDocsSidebar
 import code.yousef.portfolio.docs.summon.components.Prose
 import code.yousef.portfolio.docs.summon.components.Toc
 import code.yousef.portfolio.i18n.PortfolioLocale
@@ -19,9 +20,6 @@ import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 
 @Composable
 fun DocsShell(
@@ -50,6 +48,10 @@ fun DocsShell(
             modifier = Modifier()
                 .color(PortfolioTheme.Colors.TEXT_SECONDARY)
         )
+        // Mobile sidebar - only render on docs pages
+        if (sidebar.sections.isNotEmpty()) {
+            MobileDocsSidebar(tree = sidebar, currentPath = requestPath, basePath = basePath)
+        }
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -64,6 +66,11 @@ fun DocsShell(
                     .flex(grow = 1, shrink = 1, basis = "0%")
                     .minWidth(0.px)
                     .gap(PortfolioTheme.Spacing.lg)
+                    // Mobile padding
+                    .padding("0")
+                    .mediaQuery(MediaQuery.MaxWidth(900)) {
+                        padding(PortfolioTheme.Spacing.sm)
+                    }
             ) {
                 Prose(html = html)
                 NeighborRow(neighbors, basePath)

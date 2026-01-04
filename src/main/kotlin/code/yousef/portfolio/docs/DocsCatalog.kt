@@ -9,6 +9,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.FileVisitOption
 
 class DocsCatalog(
     private val config: DocsConfig
@@ -83,7 +84,7 @@ class DocsCatalog(
     private fun loadLocalEntries(): List<DocEntry> {
         val root = config.localDocsRoot
         if (!Files.exists(root)) return emptyList()
-        val mdFiles = Files.walk(root).use { stream ->
+        val mdFiles = Files.walk(root, FileVisitOption.FOLLOW_LINKS).use { stream ->
             stream
                 .filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".md", ignoreCase = true) }
                 .toList()
@@ -93,7 +94,7 @@ class DocsCatalog(
         return mdFiles.mapNotNull { path ->
             val relative = root.relativize(path).toString().replace('\\', '/')
             val firstSegment = relative.substringBefore('/', relative)
-            if (firstSegment.equals("private", ignoreCase = true)) {
+            if (firstSegment.equals("private", ignoreCase = true) && !root.toString().contains("private")) {
                 return@mapNotNull null
             }
             val slug = slugFor(relative) ?: return@mapNotNull null
@@ -110,20 +111,27 @@ class DocsCatalog(
     }
 
     private fun loadRemoteEntries(): List<DocEntry> {
-        val tree = fetchRemoteTree() ?: return emptyList()
+        val tree = fetchRemoteTree()
+        if (tree == null) {
+            logger.error("Failed to fetch remote tree for ${config.githubOwner}/${config.githubRepo} on branch ${config.defaultBranch}")
+            return emptyList()
+        }
+        logger.info("Fetched remote tree with ${tree.size} nodes")
         val normalizedRoot = config.normalizedDocsRoot.trim('/')
+        val rootPrefix = if (normalizedRoot.isBlank()) "" else "$normalizedRoot/"
         val slugSeen = mutableSetOf<String>()
         return tree.asSequence()
             .filter { it.type == "blob" && it.path.endsWith(".md", ignoreCase = true) }
             .filter { entry ->
-                val matchesRoot = normalizedRoot.isBlank() || entry.path.startsWith("$normalizedRoot/")
+                if (rootPrefix.isBlank()) return@filter true
+                val matchesRoot = entry.path.startsWith(rootPrefix, ignoreCase = true)
                 if (!matchesRoot) return@filter false
-                val relative = entry.path.removePrefix("$normalizedRoot/").trimStart('/')
+                val relative = entry.path.removePrefix(rootPrefix)
                 val firstSegment = relative.substringBefore('/', relative)
                 !firstSegment.equals("private", ignoreCase = true)
             }
             .mapNotNull { node ->
-                val relative = node.path.removePrefix("$normalizedRoot/").trimStart('/')
+                val relative = if (rootPrefix.isBlank()) node.path else node.path.removePrefix(rootPrefix)
                 val slug = slugFor(relative) ?: return@mapNotNull null
                 if (!slugSeen.add(slug)) {
                     return@mapNotNull null
@@ -132,11 +140,17 @@ class DocsCatalog(
                 DocEntry(
                     slug = slug,
                     title = title,
-                    repoPath = config.repoPathFor(relative)
+                    repoPath = node.path  // Use the full GitHub path directly
                 )
             }
             .sortedWith(compareBy<DocEntry> { it.slug != SLUG_ROOT }.thenBy { it.slug })
             .toList()
+            .also { entries ->
+                logger.info("Loaded ${entries.size} remote doc entries. Sample slugs: ${entries.take(5).map { it.slug }}")
+                if (entries.any { it.slug.contains("roadmap") }) {
+                    logger.info("Roadmap entries: ${entries.filter { it.slug.contains("roadmap") }.map { "${it.slug} -> ${it.repoPath}" }}")
+                }
+            }
     }
 
     private fun fetchRemoteTree(): List<GitTreeNode>? {

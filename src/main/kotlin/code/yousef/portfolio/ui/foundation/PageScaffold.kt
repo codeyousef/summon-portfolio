@@ -12,8 +12,6 @@ import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.LayoutModifiers.minHeight
 import codes.yousef.summon.runtime.LocalPlatformRenderer
 
 @Composable
@@ -140,6 +138,15 @@ private fun InjectFontAssets() {
         link(
             "stylesheet",
             "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
+            null,
+            null,
+            null,
+            null
+        )
+        // Material Icons for HamburgerMenu and other icon components
+        link(
+            "stylesheet",
+            "https://fonts.googleapis.com/icon?family=Material+Icons",
             null,
             null,
             null,

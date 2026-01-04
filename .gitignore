@@ -44,6 +44,7 @@ out/
 /.ktlint-cache/
 /tmp/
 storage/admin-credentials.json
+storage/content.json
 
 ### Old Portfolio (Next.js) ###
 old-portfolio/*

@@ -6,11 +6,10 @@ import code.yousef.portfolio.content.model.ProjectCategory
 import code.yousef.portfolio.content.model.Service
 import code.yousef.portfolio.content.model.Testimonial
 import code.yousef.portfolio.i18n.LocalizedText
-import io.ktor.http.Parameters
 import java.time.LocalDate
 import java.util.UUID
 
-fun Parameters.toProject(): Project? {
+fun Map<String, String>.toProject(): Project? {
     val slug = this["slug"]?.trim().orEmpty()
     if (slug.isBlank()) return null
     val id = this["id"].orEmpty().ifBlank { slug }
@@ -45,37 +44,37 @@ fun Parameters.toProject(): Project? {
     )
 }
 
-fun Parameters.toService(): Service? {
+fun Map<String, String>.toService(): Service? {
     val id = this["id"].orEmpty().ifBlank { UUID.randomUUID().toString() }
     val title = localizedText("title") ?: return null
     val description = localizedText("description") ?: return null
-    val featured = this["featured"].isOn()
     val order = this["order"].orZero()
+    val featured = this["featured"].isOn()
     return Service(
         id = id,
         title = title,
         description = description,
-        featured = featured,
-        order = order
+        order = order,
+        featured = featured
     )
 }
 
-fun Parameters.toBlogPost(): BlogPost? {
+fun Map<String, String>.toBlogPost(): BlogPost? {
     val slug = this["slug"]?.trim().orEmpty()
     if (slug.isBlank()) return null
     val id = this["id"].orEmpty().ifBlank { slug }
-    val title = localizedText("title") ?: return null
-    val excerpt = localizedText("excerpt") ?: return null
-    val content = localizedText("content") ?: return null
-    val dateString = this["published_at"]?.trim().orEmpty()
-    val publishedAt = runCatching { LocalDate.parse(dateString) }.getOrNull() ?: return null
-    val featured = this["featured"].isOn()
+    val title = this["title"]?.trim().orEmpty()
+    if (title.isBlank()) return null
+    val excerpt = this["excerpt"]?.trim().orEmpty()
+    val content = this["content"]?.trim().orEmpty()
+    val publishedAt = this["published_at"]?.let { LocalDate.parse(it) } ?: LocalDate.now()
     val author = this["author"]?.trim().orEmpty()
     if (author.isBlank()) return null
     val tags = this["tags"]
         ?.split(",")
         ?.mapNotNull { it.trim().takeIf(String::isNotEmpty) }
         ?: emptyList()
+    val featured = this["featured"].isOn()
     return BlogPost(
         id = id,
         slug = slug,
@@ -83,13 +82,13 @@ fun Parameters.toBlogPost(): BlogPost? {
         excerpt = excerpt,
         content = content,
         publishedAt = publishedAt,
-        featured = featured,
         author = author,
-        tags = tags
+        tags = tags,
+        featured = featured
     )
 }
 
-fun Parameters.toTestimonial(): Testimonial? {
+fun Map<String, String>.toTestimonial(): Testimonial? {
     val id = this["id"].orEmpty().ifBlank { UUID.randomUUID().toString() }
     val quote = localizedText("quote") ?: return null
     val author = this["author"]?.trim().orEmpty()
@@ -109,7 +108,7 @@ fun Parameters.toTestimonial(): Testimonial? {
     )
 }
 
-private fun Parameters.localizedText(prefix: String): LocalizedText? {
+private fun Map<String, String>.localizedText(prefix: String): LocalizedText? {
     val en = this["${prefix}_en"]?.trim().orEmpty()
     if (en.isBlank()) return null
     val ar = this["${prefix}_ar"]?.trim().takeIf { !it.isNullOrEmpty() }

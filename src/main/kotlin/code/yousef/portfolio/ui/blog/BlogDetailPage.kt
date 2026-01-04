@@ -17,10 +17,6 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -47,7 +43,7 @@ fun BlogDetailPage(
                         .gap(PortfolioTheme.Spacing.xs)
                 ) {
                     Text(
-                        text = post.title.resolve(locale),
+                        text = post.title,
                         modifier = Modifier()
                             .fontSize(3.rem)
                             .fontWeight(700)
@@ -88,7 +84,7 @@ fun BlogDetailPage(
                     }
                 }
 
-                val paragraphs = post.content.resolve(locale).split("\n\n")
+                val paragraphs = post.content.split("\n\n")
                 Column(
                     modifier = Modifier()
                         .display(Display.Flex)

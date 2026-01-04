@@ -11,14 +11,6 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.alignItems
-import codes.yousef.summon.modifier.LayoutModifiers.display
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.LayoutModifiers.justifyContent
-import codes.yousef.summon.modifier.StylingModifiers.color
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
 import codes.yousef.summon.extensions.rem
 import java.time.Year
 
@@ -36,7 +28,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
         ) {
             // Technical sign-off
             Text(
-                text = "Architected in Kotlin. Rendered with Materia. Powered by Ktor.",
+                text = "Architected in Kotlin. Rendered with Materia. Powered by Aether.",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(0.9.rem)
@@ -50,7 +42,6 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                     .gap(PortfolioTheme.Spacing.lg)
                     .flexWrap(FlexWrap.Wrap)
             ) {
-                FooterSocialLink(label = "LinkedIn", href = "https://www.linkedin.com/in/yousef-baitalmal/")
                 FooterSocialLink(label = "X (Twitter)", href = "https://x.com/deepissuemassaj")
                 FooterSocialLink(label = "GitHub", href = "https://github.com/codeyousef")
             }

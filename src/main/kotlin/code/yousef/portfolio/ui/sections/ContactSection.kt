@@ -15,10 +15,6 @@ import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.flexDirection
-import codes.yousef.summon.modifier.LayoutModifiers.flexWrap
-import codes.yousef.summon.modifier.LayoutModifiers.gap
-import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 import codes.yousef.summon.theme.ColorHelpers.textColor
 
 @Composable
@@ -65,7 +61,7 @@ fun ContactSection(
                     text = ContactStrings.title.resolve(locale),
                     modifier = Modifier()
                         .fontSize(2.5.rem)
-                        .fontWeight("700")
+                        .fontWeight(700)
                 )
                 Text(
                     text = ContactStrings.subtitle.resolve(locale),

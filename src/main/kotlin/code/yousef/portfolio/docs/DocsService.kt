@@ -137,7 +137,9 @@ class DocsService(
 
     private fun fetchLocalDocument(repoPath: String): FetchedDoc {
         val path = localPathFor(repoPath)
+        logger.debug("Fetching local document: repoPath={}, resolved={}, exists={}", repoPath, path, Files.exists(path))
         if (path.notExists() || path.isDirectory()) {
+            logger.warn("Document not found: repoPath={}, resolved={}", repoPath, path)
             throw DocumentNotFound(repoPath)
         }
         val body = path.readText()
@@ -184,7 +186,10 @@ class DocsService(
 
     private fun localPathFor(repoPath: String): Path {
         val relative = repoPath.removePrefix(config.normalizedDocsRoot).trimStart('/')
-        return config.localDocsRoot.resolve(relative.ifBlank { "README.md" })
+        val resolved = config.localDocsRoot.resolve(relative.ifBlank { "README.md" })
+        logger.debug("localPathFor: repoPath={}, normalizedRoot={}, relative={}, localRoot={}, resolved={}", 
+            repoPath, config.normalizedDocsRoot, relative, config.localDocsRoot, resolved)
+        return resolved
     }
 
     private fun httpDateToInstant(value: String): Instant? =

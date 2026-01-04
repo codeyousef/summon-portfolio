@@ -9,11 +9,6 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.display
-import codes.yousef.summon.modifier.LayoutModifiers.justifyContent
-import codes.yousef.summon.modifier.StylingModifiers.color
-import codes.yousef.summon.modifier.StylingModifiers.fontWeight
-import codes.yousef.summon.modifier.StylingModifiers.lineHeight
 
 @Composable
 fun CodeBlock(lines: List<String>, showCopyButton: Boolean = false) {

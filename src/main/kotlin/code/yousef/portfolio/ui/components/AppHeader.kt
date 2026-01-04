@@ -8,8 +8,6 @@ import codes.yousef.summon.components.layout.ScreenSize
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.positionInset
-import codes.yousef.summon.modifier.LayoutModifiers.top
 
 @Composable
 fun AppHeader(

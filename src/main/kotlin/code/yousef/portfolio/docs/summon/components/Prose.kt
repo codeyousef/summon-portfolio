@@ -7,7 +7,6 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.gap
 
 @Composable
 fun Prose(html: String) {
@@ -30,6 +29,7 @@ fun Prose(html: String) {
             padding: 0.15em 0.4em;
             border-radius: 4px;
             font-size: 0.9em;
+            word-break: break-word;
         }
         .prose pre code {
             background-color: transparent;
@@ -40,6 +40,25 @@ fun Prose(html: String) {
             padding: 1rem;
             border-radius: 8px;
             overflow-x: auto;
+            max-width: 100%;
+        }
+        .prose img {
+            max-width: 100%;
+            height: auto;
+        }
+        .prose table {
+            display: block;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        @media (max-width: 768px) {
+            .prose {
+                padding: 1rem !important;
+            }
+            .prose pre {
+                padding: 0.75rem;
+                font-size: 0.85em;
+            }
         }
         """
     )
@@ -55,6 +74,8 @@ fun Prose(html: String) {
             .gap(PortfolioTheme.Spacing.md)
             .alignItems(codes.yousef.summon.modifier.AlignItems.Stretch)
             .className("prose")
+            .maxWidth("100%")
+            .overflowX(Overflow.Hidden)
     ) {
         RichText(
             html,

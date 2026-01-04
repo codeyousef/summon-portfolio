@@ -6,6 +6,7 @@ import code.yousef.portfolio.ui.PortfolioLandingPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
 import code.yousef.portfolio.ui.workwithme.FullTimePage
 import code.yousef.portfolio.ui.workwithme.ServicesPage
+import code.yousef.portfolio.ui.summon.SummonLandingPage
 import codes.yousef.summon.seo.HeadScope
 
 class PortfolioRenderer(
@@ -72,6 +73,20 @@ class PortfolioRenderer(
                 FullTimePage(locale = locale)
             },
             locale = locale
+        )
+    }
+
+    fun summonLandingPage(docsUrl: String, apiReferenceUrl: String): SummonPage {
+        return SummonPage(
+            head = headBlockFor(
+                locale = PortfolioLocale.EN,
+                pageTitle = "Summon | The Kotlin Multiplatform SSR Framework",
+                description = "Build type-safe, server-rendered web applications with Kotlin. Summon unifies backend and frontend with a single language and zero context switching."
+            ),
+            content = {
+                SummonLandingPage(docsUrl = docsUrl, apiReferenceUrl = apiReferenceUrl)
+            },
+            locale = PortfolioLocale.EN
         )
     }
 

@@ -9,9 +9,6 @@ import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.LayoutModifiers.alignItems
-import codes.yousef.summon.modifier.LayoutModifiers.display
-import codes.yousef.summon.modifier.LayoutModifiers.gap
 
 /**
  * macOS-style window frame container with traffic light buttons.

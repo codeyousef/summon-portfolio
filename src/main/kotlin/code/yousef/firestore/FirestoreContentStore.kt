@@ -257,9 +257,9 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
             BlogPost(
                 id = id,
                 slug = data["slug"] as? String ?: return null,
-                title = data.toLocalizedText("title") ?: return null,
-                excerpt = data.toLocalizedText("excerpt") ?: return null,
-                content = data.toLocalizedText("content") ?: return null,
+                title = data["title"] as? String ?: return null,
+                excerpt = data["excerpt"] as? String ?: "",
+                content = data["content"] as? String ?: "",
                 publishedAt = (data["publishedAt"] as? String)?.let { LocalDate.parse(it) } ?: LocalDate.now(),
                 featured = data["featured"] as? Boolean ?: false,
                 author = data["author"] as? String ?: "Unknown",
@@ -358,9 +358,9 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
 
     private fun BlogPost.toMap(): Map<String, Any?> = mapOf(
         "slug" to slug,
-        "title" to title.toMap(),
-        "excerpt" to excerpt.toMap(),
-        "content" to content.toMap(),
+        "title" to title,
+        "excerpt" to excerpt,
+        "content" to content,
         "publishedAt" to publishedAt.toString(),
         "featured" to featured,
         "author" to author,
