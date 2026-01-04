@@ -137,6 +137,35 @@ fun Router.portfolioRoutes(
         exchange.respondSummonPage(result.page, result.status.value)
     }
 
+    // Arabic locale routes
+    get("/ar") { exchange ->
+        val servicesParam = exchange.request.queryParameter("services")
+        val page = portfolioRenderer.landingPage(
+            locale = PortfolioLocale.AR,
+            servicesModalOpen = servicesParam == "true"
+        )
+        exchange.respondSummonPage(page)
+    }
+
+    get("/ar/projects") { exchange ->
+        val page = portfolioRenderer.projectsPage(locale = PortfolioLocale.AR)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/ar/services") { exchange ->
+        val servicesParam = exchange.request.queryParameter("services")
+        val page = portfolioRenderer.servicesPage(
+            locale = PortfolioLocale.AR,
+            servicesModalOpen = servicesParam == "true"
+        )
+        exchange.respondSummonPage(page)
+    }
+
+    get("/ar/full-time") { exchange ->
+        val page = portfolioRenderer.fullTimePage(locale = PortfolioLocale.AR)
+        exchange.respondSummonPage(page)
+    }
+
     post("/contact") { exchange ->
         val contentType = exchange.request.headers["Content-Type"] ?: ""
         val request = if (contentType.contains("application/json")) {

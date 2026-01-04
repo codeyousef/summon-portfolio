@@ -1,5 +1,6 @@
 val kotlin_version: String by project
 val logback_version: String by project
+val aether_version = "0.4.0.1"
 
 plugins {
     application
@@ -54,15 +55,14 @@ dependencies {
     implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.1")
     implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.1")
 
-    // Aether Framework 0.3.6.0 - Django-like KMP framework with admin, auth, forms
-    // 0.3.6.0 - Fix body reading: set up handlers synchronously before coroutine
-    implementation("codes.yousef.aether:aether-core-jvm:0.3.6.0")
-    implementation("codes.yousef.aether:aether-web-jvm:0.3.6.0")
-    implementation("codes.yousef.aether:aether-ui-jvm:0.3.6.0")
-    implementation("codes.yousef.aether:aether-db-jvm:0.3.6.0")
-    implementation("codes.yousef.aether:aether-auth-jvm:0.3.6.0")
-    implementation("codes.yousef.aether:aether-forms-jvm:0.3.6.0")
-    implementation("codes.yousef.aether:aether-admin-jvm:0.3.6.0")
+    // Aether Framework 0.4.0.0 - Django-like KMP framework with admin, auth, forms
+    implementation("codes.yousef.aether:aether-core-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-web-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-ui-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-db-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-auth-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-forms-jvm:$aether_version")
+    implementation("codes.yousef.aether:aether-admin-jvm:$aether_version")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
