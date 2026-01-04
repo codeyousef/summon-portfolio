@@ -30,13 +30,22 @@ class ExcelImportService(
     private val log = LoggerFactory.getLogger(ExcelImportService::class.java)
     
     // Date formatters for various formats in the Excel
+    // Note: Order matters - try more specific formats first
     private val dateFormatters = listOf(
+        // Full year formats
         DateTimeFormatter.ofPattern("yyyy/MM/dd"),
-        DateTimeFormatter.ofPattern("dd/MM/yyyy"),
         DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+        DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+        DateTimeFormatter.ofPattern("dd-MM-yyyy"),
         DateTimeFormatter.ofPattern("d/M/yyyy"),
-        DateTimeFormatter.ofPattern("d/MM/yyyy"),
-        DateTimeFormatter.ofPattern("dd/M/yyyy")
+        DateTimeFormatter.ofPattern("d-M-yyyy"),
+        // Two-digit year formats (common in Arabic Excel sheets)
+        DateTimeFormatter.ofPattern("dd-MM-yy"),
+        DateTimeFormatter.ofPattern("dd/MM/yy"),
+        DateTimeFormatter.ofPattern("d-M-yy"),
+        DateTimeFormatter.ofPattern("d/M/yy"),
+        DateTimeFormatter.ofPattern("yy/MM/dd"),
+        DateTimeFormatter.ofPattern("yy-MM-dd")
     )
     
     private val outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -402,6 +411,8 @@ class ExcelImportService(
         val tenantMap = mutableMapOf<String, String>() // unitId -> tenantId
         val paymentCountMap = mutableMapOf<String, Int>() // leaseId -> count
         
+        log.info("Format 2 import: Starting at row $dataStartRow, last row = ${sheet.lastRowNum}")
+        
         for (rowIndex in dataStartRow..sheet.lastRowNum) {
             val row = sheet.getRow(rowIndex) ?: continue
             
@@ -416,12 +427,15 @@ class ExcelImportService(
                 val notesMethod = getCellStringValue(row.getCell(6)) // الملاحظات (method)
                 val notesDue = getCellStringValue(row.getCell(7)) // الملاحظات (due date)
                 
+                log.debug("Row $rowIndex: unit='$unitCell', start='$periodStart', end='$periodEnd', amount=$amount")
+                
                 // Skip empty rows or header-like rows
                 if (unitCell.isBlank() || !unitCell.contains("شقة")) {
                     continue
                 }
                 
                 val unitNumber = unitCell.trim()
+                log.info("Processing unit: $unitNumber, period: $periodStart to $periodEnd, amount: $amount")
                 
                 // Get or create unit
                 val unitId = unitMap.getOrPut(unitNumber) {
@@ -446,24 +460,53 @@ class ExcelImportService(
                     newUnitId
                 }
                 
-                // Get or create lease for this unit
-                val leaseId = leaseMap.getOrPut(unitId) {
-                    val newLeaseId = UUID.randomUUID().toString()
-                    val tenantId = tenantMap[unitId] ?: UUID.randomUUID().toString()
-                    val lease = Lease(
-                        id = newLeaseId,
-                        unitId = unitId,
-                        tenantId = tenantId,
-                        annualRent = amount, // Use first payment amount as annual rent estimate
-                        startDate = periodStart ?: "",
-                        endDate = periodEnd ?: ""
-                    )
-                    repository.upsertLease(lease)
-                    newLeaseId
+                // Get or create lease for this unit (only if we have valid data)
+                // Update the lease if this row has better data (dates, amount)
+                val hasValidLeaseData = amount > 0 || (periodStart != null && periodEnd != null)
+                
+                val leaseId = if (hasValidLeaseData) {
+                    val existingLeaseId = leaseMap[unitId]
+                    if (existingLeaseId != null) {
+                        // Update existing lease if this row has better data
+                        val existingLeases = repository.listLeases().filter { it.id == existingLeaseId }
+                        if (existingLeases.isNotEmpty()) {
+                            val existing = existingLeases.first()
+                            // Update if we have new dates or higher amount
+                            if ((periodEnd != null && existing.endDate.isBlank()) || 
+                                (amount > existing.annualRent)) {
+                                val updatedLease = existing.copy(
+                                    annualRent = if (amount > existing.annualRent) amount else existing.annualRent,
+                                    startDate = periodStart ?: existing.startDate,
+                                    endDate = periodEnd ?: existing.endDate
+                                )
+                                repository.upsertLease(updatedLease)
+                                log.info("Updated lease for $unitNumber: rent=${updatedLease.annualRent}, end=${updatedLease.endDate}")
+                            }
+                        }
+                        existingLeaseId
+                    } else {
+                        // Create new lease
+                        val newLeaseId = UUID.randomUUID().toString()
+                        val tenantId = tenantMap[unitId] ?: UUID.randomUUID().toString()
+                        val lease = Lease(
+                            id = newLeaseId,
+                            unitId = unitId,
+                            tenantId = tenantId,
+                            annualRent = amount,
+                            startDate = periodStart ?: "",
+                            endDate = periodEnd ?: ""
+                        )
+                        repository.upsertLease(lease)
+                        leaseMap[unitId] = newLeaseId
+                        log.info("Created lease for $unitNumber: rent=$amount, period=$periodStart to $periodEnd")
+                        newLeaseId
+                    }
+                } else {
+                    leaseMap[unitId] // May be null if no valid data yet
                 }
                 
-                // Create payment if we have an amount
-                if (amount > 0) {
+                // Create payment if we have an amount and a lease
+                if (amount > 0 && leaseId != null) {
                     val paymentNumber = paymentCountMap.getOrDefault(leaseId, 0) + 1
                     paymentCountMap[leaseId] = paymentNumber
                     

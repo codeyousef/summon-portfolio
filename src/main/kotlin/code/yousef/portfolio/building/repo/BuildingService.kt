@@ -28,13 +28,17 @@ class BuildingService(private val repository: BuildingRepository) {
         val tenantMap = tenants.associateBy { it.id }
 
         // Find apartments with active leases
+        // A lease is considered active if:
+        // 1. endDate is parseable and not before today, OR
+        // 2. endDate is empty/unparseable but the lease has rent > 0 (assume active)
         val apartmentsWithLeases = leases
             .filter { lease ->
                 try {
                     val endDate = LocalDate.parse(lease.endDate, dateFormatter)
                     !endDate.isBefore(today)
                 } catch (_: Exception) {
-                    false
+                    // If we can't parse the date, check if lease has any rent (assume active if so)
+                    lease.annualRent > 0 && lease.endDate.isNotBlank()
                 }
             }
             .map { it.unitId }
@@ -120,6 +124,7 @@ class BuildingService(private val repository: BuildingRepository) {
             val building = buildings[apartment.buildingId]
             
             // Find current lease (not expired)
+            // If date parsing fails but lease has rent, consider it active
             val currentLease = leases
                 .filter { it.unitId == apartment.id }
                 .filter { lease ->
@@ -127,10 +132,11 @@ class BuildingService(private val repository: BuildingRepository) {
                         val endDate = LocalDate.parse(lease.endDate, dateFormatter)
                         !endDate.isBefore(today)
                     } catch (_: Exception) {
-                        false
+                        // If we can't parse the date, check if lease has rent (assume active)
+                        lease.annualRent > 0
                     }
                 }
-                .maxByOrNull { it.endDate }
+                .maxByOrNull { it.endDate.ifBlank { "9999-99-99" } }
 
             val tenant = currentLease?.let { tenants[it.tenantId] }
             val apartmentPayments = currentLease?.let { lease ->
