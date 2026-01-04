@@ -1,6 +1,8 @@
 package code.yousef.portfolio.server
 
+import code.yousef.portfolio.ssr.EnvironmentLinksRegistry
 import code.yousef.portfolio.ssr.SummonPage
+import code.yousef.portfolio.ssr.resolveEnvironmentLinks
 import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.pipeline.Middleware
 import codes.yousef.summon.annotation.Composable
@@ -72,6 +74,10 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
     val renderer = PlatformRenderer()
     setPlatformRenderer(renderer)
 
+    // Resolve environment links from the Host header for proper URL generation
+    val host = request.headers["Host"]
+    val links = resolveEnvironmentLinks(host)
+
     // Create stable callback context for this request to ensure callbacks
     // registered during rendering can be reliably collected even if the
     // coroutine switches threads
@@ -80,24 +86,27 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
     try {
         // CRITICAL: Install callback context BEFORE rendering starts
         val html = withContext(callbackContext) {
-            // The context is now properly installed in the thread-local before rendering
-            try {
-                // IMPORTANT: Render head elements BEFORE renderComposableRootWithHydration
-                // The head section is created inside the render function and reads headElements synchronously,
-                // so they must be added before the render function is called
-                renderer.renderHeadElements(page.head)
-                
-                // Use renderComposableRootWithHydration to include the bootloader script
-                // which handles data-action toggles for HamburgerMenu, Dropdown, etc.
-                val lang = page.locale.code
-                val dir = page.locale.direction
-                renderer.renderComposableRootWithHydration(lang, dir) {
-                    page.content()
+            // Set environment links context for URL resolution during rendering
+            EnvironmentLinksRegistry.withLinks(links) {
+                // The context is now properly installed in the thread-local before rendering
+                try {
+                    // IMPORTANT: Render head elements BEFORE renderComposableRootWithHydration
+                    // The head section is created inside the render function and reads headElements synchronously,
+                    // so they must be added before the render function is called
+                    renderer.renderHeadElements(page.head)
+                    
+                    // Use renderComposableRootWithHydration to include the bootloader script
+                    // which handles data-action toggles for HamburgerMenu, Dropdown, etc.
+                    val lang = page.locale.code
+                    val dir = page.locale.direction
+                    renderer.renderComposableRootWithHydration(lang, dir) {
+                        page.content()
+                    }
+                } catch (e: Exception) {
+                    System.err.println("ERROR in renderComposableRootWithHydration: ${e.message}")
+                    e.printStackTrace()
+                    throw e
                 }
-            } catch (e: Exception) {
-                System.err.println("ERROR in renderComposableRootWithHydration: ${e.message}")
-                e.printStackTrace()
-                throw e
             }
         }
         try {
