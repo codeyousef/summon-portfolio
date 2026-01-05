@@ -263,9 +263,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 
         use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
         
-        // Admin Site Middleware
+        // Admin Site Middleware (only for main portfolio site, not building subdomain)
         val adminMiddleware: codes.yousef.aether.core.pipeline.Middleware = { exchange, next ->
-            if (exchange.request.path.startsWith("/admin") && 
+            val host = exchange.request.headers["Host"]?.substringBefore(":")
+            val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
+            
+            if (!isBuildingSite && 
+                exchange.request.path.startsWith("/admin") && 
                 !exchange.request.path.startsWith("/admin/login") && 
                 !exchange.request.path.startsWith("/admin/change-password")) {
                 
