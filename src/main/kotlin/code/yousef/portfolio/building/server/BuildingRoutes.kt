@@ -2,6 +2,7 @@ package code.yousef.portfolio.building.server
 
 import code.yousef.portfolio.building.auth.BuildingAuthProvider
 import code.yousef.portfolio.building.auth.BuildingSession
+import code.yousef.portfolio.building.auth.PasswordResetService
 import code.yousef.portfolio.building.import.ExcelImportService
 import code.yousef.portfolio.building.model.Building
 import code.yousef.portfolio.building.model.PaymentStatus
@@ -26,12 +27,13 @@ private val log = LoggerFactory.getLogger("BuildingRoutes")
  */
 fun createBuildingRouter(
     authProvider: BuildingAuthProvider,
+    passwordResetService: PasswordResetService,
     repository: BuildingRepository,
     service: BuildingService,
     importService: ExcelImportService
 ): Router {
     return router {
-        buildingRoutes(authProvider, repository, service, importService)
+        buildingRoutes(authProvider, passwordResetService, repository, service, importService)
     }
 }
 
@@ -40,6 +42,7 @@ fun createBuildingRouter(
  */
 fun Router.buildingRoutes(
     authProvider: BuildingAuthProvider,
+    passwordResetService: PasswordResetService,
     repository: BuildingRepository,
     service: BuildingService,
     importService: ExcelImportService
@@ -128,6 +131,93 @@ fun Router.buildingRoutes(
     get("/logout") { exchange ->
         exchange.clearBuildingSession()
         exchange.redirect("/login")
+    }
+    
+    // ===================== Password Reset Routes =====================
+    
+    // Admin: User management page (generate reset links)
+    get("/admin/users") { exchange ->
+        val session = exchange.requireAuth() ?: return@get
+        // Only admin can access this page
+        if (session.username != "admin") {
+            exchange.redirect("/")
+            return@get
+        }
+        val users = authProvider.listUsers()
+        exchange.respondSummonPage(userManagementPage(session.username, users, null, null))
+    }
+    
+    // Admin: Generate password reset link
+    post("/admin/users/:username/reset") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        // Only admin can generate reset links
+        if (session.username != "admin") {
+            exchange.redirect("/")
+            return@post
+        }
+        
+        val targetUsername = exchange.pathParam("username") ?: ""
+        val token = passwordResetService.createResetToken(targetUsername)
+        
+        val users = authProvider.listUsers()
+        if (token != null) {
+            val host = exchange.request.headers["Host"] ?: "building.yousef.codes"
+            val scheme = if (host.contains("localhost")) "http" else "https"
+            val resetLink = "$scheme://$host/reset-password?token=$token"
+            exchange.respondSummonPage(userManagementPage(session.username, users, resetLink, targetUsername))
+        } else {
+            exchange.respondSummonPage(userManagementPage(session.username, users, null, null), 400)
+        }
+    }
+    
+    // User: Reset password page (accessed via link)
+    get("/reset-password") { exchange ->
+        val token = exchange.request.queryParameter("token")
+        if (token.isNullOrBlank()) {
+            exchange.respondSummonPage(resetPasswordPage(null, BuildingStrings.RESET_LINK_EXPIRED), 400)
+            return@get
+        }
+        
+        val username = passwordResetService.validateToken(token)
+        if (username == null) {
+            exchange.respondSummonPage(resetPasswordPage(null, BuildingStrings.RESET_LINK_EXPIRED), 400)
+            return@get
+        }
+        
+        exchange.respondSummonPage(resetPasswordPage(token, null))
+    }
+    
+    // User: Submit new password
+    post("/reset-password") { exchange ->
+        val params = exchange.receiveParameters()
+        val token = params["token"] ?: ""
+        val password = params["password"] ?: ""
+        val confirm = params["confirm"] ?: ""
+        
+        // Validate token first
+        val username = passwordResetService.validateToken(token)
+        if (username == null) {
+            exchange.respondSummonPage(resetPasswordPage(null, BuildingStrings.RESET_LINK_EXPIRED), 400)
+            return@post
+        }
+        
+        // Validate password
+        when {
+            password.isBlank() -> {
+                exchange.respondSummonPage(resetPasswordPage(token, BuildingStrings.PASSWORD_EMPTY), 400)
+            }
+            password != confirm -> {
+                exchange.respondSummonPage(resetPasswordPage(token, BuildingStrings.PASSWORDS_DONT_MATCH), 400)
+            }
+            else -> {
+                // Update password and consume token
+                authProvider.updatePassword(username, password)
+                passwordResetService.consumeToken(token)
+                
+                // Redirect to login with success message
+                exchange.redirect("/login?reset=success")
+            }
+        }
     }
     
     // ===================== Protected Routes =====================
@@ -409,6 +499,39 @@ private fun buildingChangePasswordPage(username: String, errorMessage: String?):
         )
     },
     content = { BuildingChangePasswordPage(username = username, errorMessage = errorMessage) }
+)
+
+private fun resetPasswordPage(token: String?, errorMessage: String?): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.RESET_PASSWORD_TITLE} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = { ResetPasswordPage(token = token, errorMessage = errorMessage) }
+)
+
+private fun userManagementPage(
+    username: String,
+    users: List<String>,
+    generatedLink: String?,
+    targetUser: String?
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.USER_MANAGEMENT} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = { UserManagementPage(username = username, users = users, generatedLink = generatedLink, targetUser = targetUser) }
 )
 
 private fun buildingDashboardPage(username: String, summary: code.yousef.portfolio.building.model.DashboardSummary): SummonPage = SummonPage(

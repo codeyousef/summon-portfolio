@@ -9,6 +9,7 @@ import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
 import code.yousef.portfolio.building.auth.BuildingAuthProvider
+import code.yousef.portfolio.building.auth.PasswordResetService
 import code.yousef.portfolio.building.import.ExcelImportService
 import code.yousef.portfolio.building.repo.BuildingRepository
 import code.yousef.portfolio.building.repo.BuildingService
@@ -85,10 +86,11 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     // Building management services (requires Firestore)
     val buildingRouter = if (firestore != null) {
         val buildingAuthProvider = BuildingAuthProvider(firestore)
+        val passwordResetService = PasswordResetService(firestore, buildingAuthProvider)
         val buildingRepository = BuildingRepository(firestore)
         val buildingService = BuildingService(buildingRepository)
         val excelImportService = ExcelImportService(buildingRepository)
-        createBuildingRouter(buildingAuthProvider, buildingRepository, buildingService, excelImportService)
+        createBuildingRouter(buildingAuthProvider, passwordResetService, buildingRepository, buildingService, excelImportService)
     } else {
         log.warn("Building management disabled - requires Firestore (set USE_LOCAL_STORE=false)")
         null

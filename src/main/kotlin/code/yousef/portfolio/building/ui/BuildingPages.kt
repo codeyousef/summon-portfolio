@@ -108,6 +108,202 @@ fun BuildingChangePasswordPage(username: String, errorMessage: String?) {
     }
 }
 
+// ===================== Reset Password Page =====================
+
+@Composable
+fun ResetPasswordPage(token: String?, errorMessage: String?) {
+    BuildingAuthScaffold(
+        title = BuildingStrings.RESET_PASSWORD_TITLE,
+        subtitle = if (token != null) BuildingStrings.RESET_PASSWORD_SUBTITLE else "",
+        errorMessage = errorMessage
+    ) {
+        if (token == null) {
+            // Invalid/expired token - show error and login link
+            Link(
+                href = "/login",
+                content = { Text(text = BuildingStrings.LOGIN_BUTTON) },
+                modifier = Modifier()
+                    .fillMaxWidth()
+                    .backgroundColor(BuildingTheme.Colors.PRIMARY)
+                    .color(BuildingTheme.Colors.TEXT_WHITE)
+                    .padding(BuildingTheme.Spacing.md)
+                    .borderRadius(BuildingTheme.BorderRadius.md)
+                    .fontWeight("600")
+                    .style("text-align", "center")
+                    .style("text-decoration", "none")
+                    .style("display", "block")
+            )
+        } else {
+            // Valid token - show password reset form
+            Form(
+                action = "/reset-password",
+                method = FormMethod.Post,
+                hiddenFields = listOf(FormHiddenField("token", token)),
+                modifier = Modifier().fillMaxWidth()
+            ) {
+                FormGroup(label = BuildingStrings.NEW_PASSWORD) {
+                    FormTextField(
+                        name = "password",
+                        label = "",
+                        defaultValue = "",
+                        type = FormTextFieldType.Password,
+                        modifier = inputModifier()
+                    )
+                }
+                
+                FormGroup(label = BuildingStrings.CONFIRM_PASSWORD) {
+                    FormTextField(
+                        name = "confirm",
+                        label = "",
+                        defaultValue = "",
+                        type = FormTextFieldType.Password,
+                        modifier = inputModifier()
+                    )
+                }
+                
+                FormButton(
+                    text = BuildingStrings.SAVE_PASSWORD,
+                    modifier = Modifier()
+                        .fillMaxWidth()
+                        .backgroundColor(BuildingTheme.Colors.PRIMARY)
+                        .color(BuildingTheme.Colors.TEXT_WHITE)
+                        .padding(BuildingTheme.Spacing.md)
+                        .borderRadius(BuildingTheme.BorderRadius.md)
+                        .fontWeight("600")
+                        .margin(BuildingTheme.Spacing.md, "0", "0", "0")
+                )
+            }
+        }
+    }
+}
+
+// ===================== User Management Page (Admin) =====================
+
+@Composable
+fun UserManagementPage(
+    username: String,
+    users: List<String>,
+    generatedLink: String?,
+    targetUser: String?
+) {
+    BuildingPageLayout(
+        title = BuildingStrings.USER_MANAGEMENT,
+        username = username,
+        currentPath = "/admin/users"
+    ) {
+        Column(modifier = Modifier().fillMaxWidth()) {
+            PageHeader(title = BuildingStrings.USER_MANAGEMENT)
+            
+            // Success message with generated link
+            if (generatedLink != null && targetUser != null) {
+                Box(
+                    modifier = Modifier()
+                        .fillMaxWidth()
+                        .backgroundColor("#d4edda")
+                        .borderRadius(BuildingTheme.BorderRadius.md)
+                        .padding(BuildingTheme.Spacing.lg)
+                        .margin("0", "0", BuildingTheme.Spacing.lg, "0")
+                        .style("border", "1px solid #c3e6cb")
+                ) {
+                    Column(modifier = Modifier().fillMaxWidth()) {
+                        Text(
+                            text = "${BuildingStrings.RESET_LINK_GENERATED} ($targetUser)",
+                            modifier = Modifier()
+                                .fontWeight("600")
+                                .color("#155724")
+                                .margin("0", "0", BuildingTheme.Spacing.sm, "0")
+                        )
+                        Text(
+                            text = BuildingStrings.LINK_EXPIRES_IN,
+                            modifier = Modifier()
+                                .fontSize(BuildingTheme.FontSize.sm)
+                                .color("#155724")
+                                .margin("0", "0", BuildingTheme.Spacing.md, "0")
+                        )
+                        // Link display with copy functionality
+                        Box(
+                            modifier = Modifier()
+                                .fillMaxWidth()
+                                .backgroundColor(BuildingTheme.Colors.BG_PRIMARY)
+                                .borderRadius(BuildingTheme.BorderRadius.sm)
+                                .padding(BuildingTheme.Spacing.sm)
+                                .style("word-break", "break-all")
+                                .style("font-family", "monospace")
+                                .fontSize(BuildingTheme.FontSize.sm)
+                        ) {
+                            Text(text = generatedLink)
+                        }
+                    }
+                }
+            }
+            
+            // Users table
+            Box(
+                modifier = Modifier()
+                    .fillMaxWidth()
+                    .backgroundColor(BuildingTheme.Colors.BG_CARD)
+                    .borderRadius(BuildingTheme.BorderRadius.lg)
+                    .style("overflow", "hidden")
+            ) {
+                if (users.isEmpty()) {
+                    Box(
+                        modifier = Modifier()
+                            .fillMaxWidth()
+                            .padding(BuildingTheme.Spacing.xl)
+                            .style("text-align", "center")
+                    ) {
+                        Text(
+                            text = BuildingStrings.NO_USERS,
+                            modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED)
+                        )
+                    }
+                } else {
+                    Column(modifier = Modifier().fillMaxWidth()) {
+                        users.forEachIndexed { index, user ->
+                            Row(
+                                modifier = Modifier()
+                                    .fillMaxWidth()
+                                    .padding(BuildingTheme.Spacing.md, BuildingTheme.Spacing.lg)
+                                    .style("align-items", "center")
+                                    .style("justify-content", "space-between")
+                                    .let { 
+                                        if (index < users.size - 1) 
+                                            it.style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                                        else it
+                                    }
+                            ) {
+                                Text(
+                                    text = user,
+                                    modifier = Modifier()
+                                        .fontWeight("500")
+                                        .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                                )
+                                
+                                Form(
+                                    action = "/admin/users/$user/reset",
+                                    method = FormMethod.Post,
+                                    modifier = Modifier()
+                                ) {
+                                    FormButton(
+                                        text = BuildingStrings.GENERATE_RESET_LINK,
+                                        modifier = Modifier()
+                                            .backgroundColor(BuildingTheme.Colors.WARNING)
+                                            .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                                            .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
+                                            .borderRadius(BuildingTheme.BorderRadius.md)
+                                            .fontWeight("500")
+                                            .fontSize(BuildingTheme.FontSize.sm)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun BuildingAuthScaffold(
     title: String,

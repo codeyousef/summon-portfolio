@@ -81,6 +81,11 @@ fun BuildingNav(username: String?, currentPath: String) {
                     NavLink(BuildingStrings.PAYMENTS, "/payments", currentPath)
                     NavLink(BuildingStrings.IMPORT_DATA, "/import", currentPath)
                     
+                    // Admin-only: User management
+                    if (username == "admin") {
+                        NavLink(BuildingStrings.USER_MANAGEMENT, "/admin/users", currentPath)
+                    }
+                    
                     // User info and logout
                     Text(
                         text = username,

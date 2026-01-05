@@ -27,6 +27,19 @@ object BuildingStrings {
     const val PASSWORD_EMPTY = "كلمة المرور لا يمكن أن تكون فارغة"
     const val PASSWORDS_DONT_MATCH = "كلمتا المرور غير متطابقتين"
     
+    // Password Reset
+    const val RESET_PASSWORD_TITLE = "إعادة تعيين كلمة المرور"
+    const val RESET_PASSWORD_SUBTITLE = "أدخل كلمة المرور الجديدة"
+    const val RESET_LINK_EXPIRED = "رابط إعادة التعيين منتهي الصلاحية أو غير صالح"
+    const val PASSWORD_RESET_SUCCESS = "تم تغيير كلمة المرور بنجاح"
+    const val GENERATE_RESET_LINK = "إنشاء رابط إعادة تعيين"
+    const val RESET_LINK_GENERATED = "تم إنشاء رابط إعادة التعيين"
+    const val COPY_LINK = "نسخ الرابط"
+    const val LINK_EXPIRES_IN = "ينتهي خلال 24 ساعة"
+    const val USER_MANAGEMENT = "إدارة المستخدمين"
+    const val SELECT_USER = "اختر المستخدم"
+    const val NO_USERS = "لا يوجد مستخدمين"
+    
     // Dashboard
     const val TOTAL_BUILDINGS = "إجمالي العمارات"
     const val TOTAL_UNITS = "إجمالي الشقق"
