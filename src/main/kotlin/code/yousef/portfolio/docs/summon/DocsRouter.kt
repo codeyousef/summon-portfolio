@@ -26,7 +26,6 @@ import java.net.URI
 
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
-    private val portfolioOrigin: String,
     private val defaultBranding: DocsBranding = DocsBranding.summon(),
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
@@ -41,12 +40,11 @@ class DocsRouter(
         basePath: String = ""
     ): SummonPage {
         val seo = seoExtractor.build(requestPath, meta)
-        val navBase = resolveNavBase(origin)
         val branding = resolveBranding(origin)
         return SummonPage(
             head = headBlock(branding, seo.title, seo.description, seo.canonicalUrl),
             content = {
-                DocsPageFrame(navBase, origin, branding, basePath) {
+                DocsPageFrame(branding, basePath) {
                     DocsShell(
                         requestPath = requestPath,
                         html = html,
@@ -64,12 +62,11 @@ class DocsRouter(
     fun notFound(requestPath: String, sidebar: DocsNavTree, origin: String, basePath: String = ""): SummonPage {
         val canonical = seoExtractor.canonical(requestPath)
         val navJson = json.encodeToString(sidebar).replace("</", "<\\/")
-        val navBase = resolveNavBase(origin)
         val branding = resolveBranding(origin)
         return SummonPage(
             head = headBlock(branding, "Not found", "This page could not be located.", canonical),
             content = {
-                DocsPageFrame(navBase, origin, branding, basePath) {
+                DocsPageFrame(branding, basePath) {
                     DocsNotFoundContent(navJson)
                 }
             }
@@ -103,35 +100,14 @@ class DocsRouter(
             else -> defaultBranding
         }
     }
-
-    private fun resolveNavBase(origin: String): String {
-        val uri = runCatching { URI(origin) }.getOrNull()
-        val host = uri?.host
-        val isLocalHost = host != null && (host == "localhost" || host.endsWith(".localhost"))
-        if (!isLocalHost && portfolioOrigin.isNotBlank()) {
-            return portfolioOrigin
-        }
-        if (uri == null || host == null) {
-            return if (portfolioOrigin.isNotBlank()) portfolioOrigin else origin
-        }
-        val normalizedHost = when {
-            host.startsWith("summon.") -> host.removePrefix("summon.")
-            host.startsWith("docs.") -> host.removePrefix("docs.")
-            else -> host
-        }
-        val scheme = uri.scheme ?: "http"
-        val defaultPort = if (scheme == "https") 443 else 80
-        val portPart = if (uri.port == -1 || uri.port == defaultPort) "" else ":${uri.port}"
-        return "$scheme://$normalizedHost$portPart"
-    }
 }
 
 @Composable
-private fun DocsNotFoundContent(navJson: String) {
+private fun DocsNotFoundContent(@Suppress("UNUSED_PARAMETER") navJson: String) {
     Column(
         modifier = Modifier()
             .display(Display.Flex)
-            .flexDirection(codes.yousef.summon.modifier.FlexDirection.Column)
+            .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.md)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderWidth(1)
@@ -176,8 +152,6 @@ private fun DocsNotFoundContent(navJson: String) {
 
 @Composable
 private fun DocsPageFrame(
-    navBaseUrl: String,
-    docsBaseUrl: String,
     branding: DocsBranding,
     basePath: String = "",
     content: @Composable () -> Unit
@@ -189,7 +163,7 @@ private fun DocsPageFrame(
                 .flexDirection(FlexDirection.Column)
                 .width(100.percent)
         ) {
-            DocsNavbar(navBaseUrl, docsBaseUrl, branding, basePath)
+            DocsNavbar(branding, basePath)
             SectionWrap(maxWidthPx = 1500) {
                 content()
             }
@@ -198,7 +172,7 @@ private fun DocsPageFrame(
 }
 
 @Composable
-private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, basePath: String = "") {
+private fun DocsNavbar(branding: DocsBranding, basePath: String = "") {
     val docsPath = basePath.ifBlank { "/" }
     val apiReferencePath = "$basePath/api-reference"
 
@@ -216,18 +190,18 @@ private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBr
     Box(modifier = Modifier().width(100.percent)) {
         // Desktop Version
         Box(modifier = Modifier().className("docs-nav-desktop").width(100.percent)) {
-            DesktopDocsNavbar(navBaseUrl, docsBaseUrl, branding, docsPath, apiReferencePath)
+            DesktopDocsNavbar(branding, docsPath, apiReferencePath)
         }
         
         // Mobile Version
         Box(modifier = Modifier().className("docs-nav-mobile").width(100.percent)) {
-            MobileDocsNavbar(navBaseUrl, docsBaseUrl, branding, docsPath, apiReferencePath)
+            MobileDocsNavbar(branding, docsPath, apiReferencePath)
         }
     }
 }
 
 @Composable
-private fun DesktopDocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, docsPath: String, apiReferencePath: String) {
+private fun DesktopDocsNavbar(branding: DocsBranding, docsPath: String, apiReferencePath: String) {
     Row(
         modifier = Modifier()
             .display(Display.Flex)
@@ -284,7 +258,7 @@ private fun DesktopDocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding:
 }
 
 @Composable
-private fun MobileDocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, docsPath: String, apiReferencePath: String) {
+private fun MobileDocsNavbar(branding: DocsBranding, docsPath: String, apiReferencePath: String) {
     Row(
         modifier = Modifier()
             .display(Display.Flex)

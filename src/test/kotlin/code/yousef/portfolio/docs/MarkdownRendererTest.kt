@@ -36,8 +36,8 @@ class MarkdownRendererTest {
         val rewritten = LinkRewriter().rewriteHtml(
             html = rendered.html,
             requestPath = "/accessibility-and-seo",
-            repoPath = "docs/private/summon-docs/accessibility-and-seo.md",
-            docsRoot = "docs/private/summon-docs",
+            repoPath = "docs/accessibility-and-seo.md",
+            docsRoot = "docs",
             branch = "main"
         )
 
@@ -89,8 +89,8 @@ class MarkdownRendererTest {
         val rewritten = LinkRewriter().rewriteHtml(
             html = rendered.html,
             requestPath = "/components",
-            repoPath = "docs/private/summon-docs/components.md",
-            docsRoot = "docs/private/summon-docs",
+            repoPath = "docs/components.md",
+            docsRoot = "docs",
             branch = "main",
             basePath = "/docs"
         )

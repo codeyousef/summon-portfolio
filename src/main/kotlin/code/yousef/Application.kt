@@ -5,9 +5,10 @@ import code.yousef.config.loadAppConfig
 import code.yousef.firestore.FirestoreProvider
 import code.yousef.firestore.PortfolioMetaRepository
 import code.yousef.firestore.PortfolioMetaService
-import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.admin.auth.AdminAuthProvider
+import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
+import code.yousef.portfolio.admin.createAdminSite
 import code.yousef.portfolio.building.auth.BuildingAuthProvider
 import code.yousef.portfolio.building.auth.PasswordResetService
 import code.yousef.portfolio.building.import.ExcelImportService
@@ -18,20 +19,11 @@ import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.contact.InMemoryContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.store.FileContentStore
+import code.yousef.portfolio.db.ContentStoreDriver
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
-import code.yousef.portfolio.server.HostRouter
-import code.yousef.portfolio.server.StaticResourceHandler
-import code.yousef.portfolio.server.portfolioRoutes
-import code.yousef.portfolio.server.summonRoutes
-import code.yousef.portfolio.server.docsRoutes
-import code.yousef.portfolio.ssr.BlogRenderer
-import code.yousef.portfolio.ssr.PortfolioRenderer
-import code.yousef.portfolio.ssr.MateriaLandingRenderer
-import code.yousef.portfolio.ssr.SigilLandingRenderer
-import code.yousef.portfolio.ssr.EnvironmentLinksRegistry
-import code.yousef.portfolio.ssr.resolveEnvironmentLinks
-import code.yousef.portfolio.server.respondSummonPage
+import code.yousef.portfolio.server.*
+import code.yousef.portfolio.ssr.*
 import codes.yousef.aether.core.AetherDispatcher
 import codes.yousef.aether.core.jvm.VertxServer
 import codes.yousef.aether.core.jvm.VertxServerConfig
@@ -41,13 +33,11 @@ import codes.yousef.aether.core.pipeline.installContentNegotiation
 import codes.yousef.aether.core.session.InMemorySessionStore
 import codes.yousef.aether.core.session.SessionConfig
 import codes.yousef.aether.core.session.SessionMiddleware
-import codes.yousef.aether.web.router
 import codes.yousef.aether.core.session.session
+import codes.yousef.aether.db.DatabaseDriverRegistry
+import codes.yousef.aether.web.router
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import code.yousef.portfolio.db.ContentStoreDriver
-import codes.yousef.aether.db.DatabaseDriverRegistry
-import code.yousef.portfolio.admin.createAdminSite
 
 data class ApplicationResources(
     val pipeline: Pipeline,
@@ -110,7 +100,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val docsService = DocsService(docsConfig, docsCache) 
     val markdownRenderer = MarkdownRenderer()
     val linkRewriter = LinkRewriter()
-    val docsRouter = DocsRouter(SeoExtractor(docsConfig), "https://docs.yousef.codes")
+    val docsRouter = DocsRouter(SeoExtractor(docsConfig))
     val docsCatalog = DocsCatalog(docsConfig)
     val webhookHandler = WebhookHandler(docsService, docsCache, docsConfig, docsCatalog)
 
@@ -118,7 +108,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val materiaDocsConfig = DocsConfig.materiaFromEnv()
     val materiaDocsCache = DocsCache(materiaDocsConfig.cacheTtlSeconds)
     val materiaDocsService = DocsService(materiaDocsConfig, materiaDocsCache)
-    val materiaDocsRouter = DocsRouter(SeoExtractor(materiaDocsConfig), "https://materia.yousef.codes")
+    val materiaDocsRouter = DocsRouter(SeoExtractor(materiaDocsConfig))
     val materiaDocsCatalog = DocsCatalog(materiaDocsConfig)
     val materiaWebhookHandler = WebhookHandler(materiaDocsService, materiaDocsCache, materiaDocsConfig, materiaDocsCatalog)
 
@@ -126,7 +116,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val sigilDocsConfig = DocsConfig.sigilFromEnv()
     val sigilDocsCache = DocsCache(sigilDocsConfig.cacheTtlSeconds)
     val sigilDocsService = DocsService(sigilDocsConfig, sigilDocsCache)
-    val sigilDocsRouter = DocsRouter(SeoExtractor(sigilDocsConfig), "https://sigil.yousef.codes")
+    val sigilDocsRouter = DocsRouter(SeoExtractor(sigilDocsConfig))
     val sigilDocsCatalog = DocsCatalog(sigilDocsConfig)
     val sigilWebhookHandler = WebhookHandler(sigilDocsService, sigilDocsCache, sigilDocsConfig, sigilDocsCatalog)
     
