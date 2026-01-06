@@ -1,13 +1,11 @@
 @file:OptIn(kotlin.time.ExperimentalTime::class)
 package code.yousef.portfolio.server
 
-import kotlinx.serialization.builtins.serializer
-import code.yousef.portfolio.api.toDto
-import code.yousef.portfolio.contact.ContactRequest
-import java.nio.file.Files
 import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.AdminAuthProvider.AuthResult
 import code.yousef.portfolio.admin.auth.AdminSession
+import code.yousef.portfolio.api.toDto
+import code.yousef.portfolio.contact.ContactRequest
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
@@ -26,8 +24,8 @@ import codes.yousef.aether.core.session.session
 import codes.yousef.aether.web.Router
 import codes.yousef.aether.web.pathParam
 import codes.yousef.aether.web.pathParamOrThrow
-import kotlinx.datetime.TimeZone
 import org.slf4j.LoggerFactory
+import java.nio.file.Files
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.time.toJavaInstant
@@ -403,7 +401,7 @@ fun Router.docsRoutes(
                 redirect(basePath + redirectPath)
                 return
             }
-            val page = docsRouter.notFound(requestPath, navTree, origin)
+            val page = docsRouter.notFound(requestPath, navTree, origin, basePath)
             respondSummonPage(page, 404)
             return
         }
@@ -418,7 +416,7 @@ fun Router.docsRoutes(
         val fetchedDocument = try {
             docsService.fetchDocument(entry.repoPath, branch)
         } catch (_: DocsService.DocumentNotFound) {
-            val page = docsRouter.notFound(requestPath, navTree, origin)
+            val page = docsRouter.notFound(requestPath, navTree, origin, basePath)
             respondSummonPage(page, 404)
             return
         }
@@ -429,7 +427,8 @@ fun Router.docsRoutes(
             requestPath = canonicalPath,
             repoPath = entry.repoPath,
             docsRoot = config.normalizedDocsRoot,
-            branch = branch
+            branch = branch,
+            basePath = basePath
         )
         val neighbors = docsCatalog.neighbors(entry.slug)
         val page = docsRouter.render(

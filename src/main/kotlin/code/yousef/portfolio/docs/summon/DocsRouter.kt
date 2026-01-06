@@ -2,11 +2,7 @@ package code.yousef.portfolio.docs.summon
 
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.ssr.HYDRATION_SCRIPT_PATH
-import code.yousef.portfolio.ssr.SummonPage
-import code.yousef.portfolio.ssr.materiaMarketingUrl
-import code.yousef.portfolio.ssr.sigilMarketingUrl
-import code.yousef.portfolio.ssr.summonMarketingUrl
+import code.yousef.portfolio.ssr.*
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
@@ -50,7 +46,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock(branding, seo.title, seo.description, seo.canonicalUrl),
             content = {
-                DocsPageFrame(navBase, origin, branding) {
+                DocsPageFrame(navBase, origin, branding, basePath) {
                     DocsShell(
                         requestPath = requestPath,
                         html = html,
@@ -65,7 +61,7 @@ class DocsRouter(
         )
     }
 
-    fun notFound(requestPath: String, sidebar: DocsNavTree, origin: String): SummonPage {
+    fun notFound(requestPath: String, sidebar: DocsNavTree, origin: String, basePath: String = ""): SummonPage {
         val canonical = seoExtractor.canonical(requestPath)
         val navJson = json.encodeToString(sidebar).replace("</", "<\\/")
         val navBase = resolveNavBase(origin)
@@ -73,7 +69,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock(branding, "Not found", "This page could not be located.", canonical),
             content = {
-                DocsPageFrame(navBase, origin, branding) {
+                DocsPageFrame(navBase, origin, branding, basePath) {
                     DocsNotFoundContent(navJson)
                 }
             }
@@ -179,7 +175,13 @@ private fun DocsNotFoundContent(navJson: String) {
 }
 
 @Composable
-private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, content: @Composable () -> Unit) {
+private fun DocsPageFrame(
+    navBaseUrl: String,
+    docsBaseUrl: String,
+    branding: DocsBranding,
+    basePath: String = "",
+    content: @Composable () -> Unit
+) {
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         Column(
             modifier = Modifier()
@@ -187,7 +189,7 @@ private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, branding: Doc
                 .flexDirection(FlexDirection.Column)
                 .width(100.percent)
         ) {
-            DocsNavbar(navBaseUrl, docsBaseUrl, branding)
+            DocsNavbar(navBaseUrl, docsBaseUrl, branding, basePath)
             SectionWrap(maxWidthPx = 1500) {
                 content()
             }
@@ -196,9 +198,9 @@ private fun DocsPageFrame(navBaseUrl: String, docsBaseUrl: String, branding: Doc
 }
 
 @Composable
-private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding) {
-    val docsPath = "/docs"
-    val apiReferencePath = "/docs/api-reference"
+private fun DocsNavbar(navBaseUrl: String, docsBaseUrl: String, branding: DocsBranding, basePath: String = "") {
+    val docsPath = basePath.ifBlank { "/" }
+    val apiReferencePath = "$basePath/api-reference"
 
     // CSS for responsive visibility
     GlobalStyle("""
