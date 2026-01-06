@@ -10,7 +10,8 @@ class LinkRewriter {
         requestPath: String,
         repoPath: String,
         docsRoot: String,
-        branch: String
+        branch: String,
+        basePath: String = ""
     ): String {
         val document = Jsoup.parseBodyFragment(html)
         val repoDirectory = repoPath.substringBeforeLast('/', docsRoot)
@@ -39,7 +40,7 @@ class LinkRewriter {
             if (looksLikeMarkdown) {
                 val normalized = if (resolved.endsWith(".md")) resolved else "$resolved.md"
                 val stripped = stripDocsRoot(normalized, docsRoot).removeSuffix(".md")
-                val newHref = buildDocsHref(requestPath, stripped, fragment)
+                val newHref = buildDocsHref(requestPath, stripped, fragment, basePath)
                 element.attr("href", newHref)
                 element.attr("data-doc-link", "true")
                 element.attr("rel", element.attr("rel").ifBlank { "noopener" })
@@ -76,8 +77,8 @@ class LinkRewriter {
         return path.removePrefix("$normalizedRoot/").trimStart('/')
     }
 
-    private fun buildDocsHref(currentPath: String, target: String, fragment: String?): String {
-        val prefix = if (target.isBlank()) "" else "/${target.trimStart('/')}"
+    private fun buildDocsHref(currentPath: String, target: String, fragment: String?, basePath: String = ""): String {
+        val prefix = if (target.isBlank()) basePath.ifBlank { "" } else "$basePath/${target.trimStart('/')}"
         return if (fragment != null) "$prefix#$fragment" else prefix.ifBlank { "/" }
     }
 

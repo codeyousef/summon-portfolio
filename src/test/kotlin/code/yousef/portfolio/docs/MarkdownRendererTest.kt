@@ -36,8 +36,8 @@ class MarkdownRendererTest {
         val rewritten = LinkRewriter().rewriteHtml(
             html = rendered.html,
             requestPath = "/accessibility-and-seo",
-            repoPath = "docs/private/summon-docs/accessibility-and-seo.md",
-            docsRoot = "docs/private/summon-docs",
+            repoPath = "docs/accessibility-and-seo.md",
+            docsRoot = "docs",
             branch = "main"
         )
 
@@ -72,6 +72,36 @@ class MarkdownRendererTest {
         assertTrue(
             actual = result.html.contains("<td>"),
             message = "Expected html to contain <td> tag"
+        )
+    }
+
+    @Test
+    fun `link rewriter should prepend basePath to markdown links`() {
+        val markdown = """
+            # Components Guide
+
+            Check out [styling](styling.md) for more info.
+            
+            Also see [api-reference](api-reference/index.md).
+        """.trimIndent()
+
+        val rendered = renderer.render(markdown, "/components")
+        val rewritten = LinkRewriter().rewriteHtml(
+            html = rendered.html,
+            requestPath = "/components",
+            repoPath = "docs/components.md",
+            docsRoot = "docs",
+            branch = "main",
+            basePath = "/docs"
+        )
+
+        assertTrue(
+            actual = rewritten.contains("href=\"/docs/styling\""),
+            message = "Expected link to styling to have /docs prefix but got: $rewritten"
+        )
+        assertTrue(
+            actual = rewritten.contains("href=\"/docs/api-reference/index\""),
+            message = "Expected link to api-reference to have /docs prefix but got: $rewritten"
         )
     }
 }
