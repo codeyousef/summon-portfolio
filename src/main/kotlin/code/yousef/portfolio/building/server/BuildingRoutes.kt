@@ -362,7 +362,116 @@ fun Router.buildingRoutes(
         
         exchange.respondSummonPage(paymentsListPage(session.username, payments, null))
     }
-    
+
+    // Edit apartment page
+    get("/apartments/:id/edit") { exchange ->
+        val session = exchange.requireAuth() ?: return@get
+        val apartmentId = exchange.pathParam("id") ?: ""
+        val apartment = repository.getApartment(apartmentId)
+
+        if (apartment == null) {
+            exchange.redirect("/buildings")
+            return@get
+        }
+
+        val building = repository.getBuilding(apartment.buildingId)
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@get
+        }
+
+        val lease = repository.getLeaseByUnit(apartmentId)
+        val tenant = lease?.let { repository.getTenant(it.tenantId) }
+
+        exchange.respondSummonPage(editApartmentPage(session.username, building, apartment, tenant, lease, null))
+    }
+
+    // Update apartment
+    post("/apartments/:id/edit") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val apartmentId = exchange.pathParam("id") ?: ""
+        val apartment = repository.getApartment(apartmentId)
+
+        if (apartment == null) {
+            exchange.redirect("/buildings")
+            return@post
+        }
+
+        val building = repository.getBuilding(apartment.buildingId)
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@post
+        }
+
+        val params = exchange.receiveParameters()
+        val unitNumber = params["unitNumber"]?.trim() ?: apartment.unitNumber
+        val floor = params["floor"]?.trim()?.toIntOrNull()
+        val apartmentNotes = params["apartmentNotes"]?.trim() ?: ""
+        val tenantName = params["tenantName"]?.trim() ?: ""
+        val tenantPhone = params["tenantPhone"]?.trim() ?: ""
+        val annualRent = params["annualRent"]?.trim()?.toDoubleOrNull()
+        val startDate = params["startDate"]?.trim() ?: ""
+        val endDate = params["endDate"]?.trim() ?: ""
+        val leaseNotes = params["leaseNotes"]?.trim() ?: ""
+
+        // Update apartment
+        repository.upsertApartment(
+            apartment.copy(
+                unitNumber = unitNumber,
+                floor = floor,
+                notes = apartmentNotes
+            )
+        )
+
+        // Get or create tenant if name is provided
+        val existingLease = repository.getLeaseByUnit(apartmentId)
+
+        if (tenantName.isNotBlank()) {
+            val tenantId = existingLease?.tenantId ?: java.util.UUID.randomUUID().toString()
+            val existingTenant = existingLease?.let { repository.getTenant(it.tenantId) }
+
+            repository.upsertTenant(
+                code.yousef.portfolio.building.model.Tenant(
+                    id = tenantId,
+                    name = tenantName,
+                    phone = tenantPhone,
+                    email = existingTenant?.email ?: "",
+                    nationalId = existingTenant?.nationalId ?: "",
+                    notes = existingTenant?.notes ?: ""
+                )
+            )
+
+            // Create or update lease if we have rent and dates
+            if (annualRent != null && annualRent > 0 && startDate.isNotBlank() && endDate.isNotBlank()) {
+                val leaseId = existingLease?.id ?: java.util.UUID.randomUUID().toString()
+                repository.upsertLease(
+                    code.yousef.portfolio.building.model.Lease(
+                        id = leaseId,
+                        unitId = apartmentId,
+                        tenantId = tenantId,
+                        annualRent = annualRent,
+                        startDate = startDate,
+                        endDate = endDate,
+                        notes = leaseNotes
+                    )
+                )
+            } else if (existingLease != null) {
+                // Update existing lease
+                repository.upsertLease(
+                    existingLease.copy(
+                        tenantId = tenantId,
+                        annualRent = annualRent ?: existingLease.annualRent,
+                        startDate = startDate.ifBlank { existingLease.startDate },
+                        endDate = endDate.ifBlank { existingLease.endDate },
+                        notes = leaseNotes
+                    )
+                )
+            }
+        }
+
+        exchange.redirect("/buildings/${building.id}")
+    }
+
     // Import page
     get("/import") { exchange ->
         val session = exchange.requireAuth() ?: return@get
@@ -654,6 +763,36 @@ private fun deleteBuildingPage(
         )
     },
     content = { DeleteBuildingPage(username = username, building = building, unitCount = unitCount) }
+)
+
+private fun editApartmentPage(
+    username: String,
+    building: Building,
+    apartment: code.yousef.portfolio.building.model.Apartment,
+    tenant: code.yousef.portfolio.building.model.Tenant?,
+    lease: code.yousef.portfolio.building.model.Lease?,
+    errorMessage: String?
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.EDIT_APARTMENT} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = {
+        EditApartmentPage(
+            username = username,
+            building = building,
+            apartment = apartment,
+            tenant = tenant,
+            lease = lease,
+            errorMessage = errorMessage
+        )
+    }
 )
 
 // Multipart parsing helpers

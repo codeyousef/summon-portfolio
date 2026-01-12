@@ -68,14 +68,22 @@ object BuildingStrings {
     const val UNITS = "الشقق"
     const val UNIT_NUMBER = "رقم الشقة"
     const val TENANT = "المستأجر"
+    const val TENANT_NAME = "اسم المستأجر"
+    const val TENANT_PHONE = "رقم جوال المستأجر"
     const val ANNUAL_RENT = "الإيجار السنوي"
     const val LEASE_PERIOD = "فترة العقد"
+    const val START_DATE = "تاريخ البداية"
+    const val END_DATE = "تاريخ النهاية"
     const val STATUS = "الحالة"
     const val VIEW_PAYMENTS = "عرض الدفعات"
     const val NO_UNITS = "لا توجد شقق مسجلة"
     const val OCCUPIED = "مؤجرة"
     const val VACANT = "شاغرة"
-    
+    const val EDIT_APARTMENT = "تعديل الشقة"
+    const val APARTMENT_UPDATED = "تم تحديث الشقة بنجاح"
+    const val FLOOR = "الطابق"
+    const val APARTMENT_NOTES = "ملاحظات الشقة"
+
     // Payments
     const val PAYMENTS = "الدفعات"
     const val PAYMENT_NUMBER = "رقم الدفعة"
@@ -93,6 +101,7 @@ object BuildingStrings {
     // Payment statuses
     const val PAID = "تم السداد"
     const val PENDING = "لم يسدد"
+    const val NOT_PAID_FULL = "لم يتم السداد"
     const val OVERDUE = "متأخر"
     
     // Import

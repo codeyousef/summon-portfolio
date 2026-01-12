@@ -6,7 +6,6 @@ import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.layout.Div
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.Link
 import codes.yousef.summon.modifier.*
@@ -619,7 +618,7 @@ fun BuildingUnitsPage(
                             modifier = Modifier()
                                 .fillMaxWidth()
                                 .style("display", "grid")
-                                .style("grid-template-columns", "80px 1fr 120px 160px 100px 100px")
+                                .style("grid-template-columns", "80px 1fr 120px 160px 100px 150px")
                                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
                                 .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                         ) {
@@ -636,7 +635,7 @@ fun BuildingUnitsPage(
                                 modifier = Modifier()
                                     .fillMaxWidth()
                                     .style("display", "grid")
-                                    .style("grid-template-columns", "80px 1fr 120px 160px 100px 100px")
+                                    .style("grid-template-columns", "80px 1fr 120px 160px 100px 150px")
                                     .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                             ) {
                                 GridCell { Text(detail.apartment.unitNumber) }
@@ -677,14 +676,28 @@ fun BuildingUnitsPage(
                                     }
                                 }
                                 GridCell {
-                                    if (detail.currentLease != null) {
+                                    Row(
+                                        modifier = Modifier()
+                                            .style("gap", BuildingTheme.Spacing.sm)
+                                            .style("flex-wrap", "wrap")
+                                    ) {
                                         codes.yousef.summon.components.navigation.Link(
-                                            href = "/apartments/${detail.apartment.id}/payments",
+                                            href = "/apartments/${detail.apartment.id}/edit",
                                             modifier = Modifier()
-                                                .color(BuildingTheme.Colors.PRIMARY)
+                                                .color(BuildingTheme.Colors.WARNING_TEXT)
                                                 .fontSize(BuildingTheme.FontSize.sm)
                                         ) {
-                                            Text(BuildingStrings.VIEW_PAYMENTS)
+                                            Text(BuildingStrings.EDIT)
+                                        }
+                                        if (detail.currentLease != null) {
+                                            codes.yousef.summon.components.navigation.Link(
+                                                href = "/apartments/${detail.apartment.id}/payments",
+                                                modifier = Modifier()
+                                                    .color(BuildingTheme.Colors.PRIMARY)
+                                                    .fontSize(BuildingTheme.FontSize.sm)
+                                            ) {
+                                                Text(BuildingStrings.VIEW_PAYMENTS)
+                                            }
                                         }
                                     }
                                 }
@@ -1085,6 +1098,252 @@ fun DeleteBuildingPage(
                             .style("text-decoration", "none")
                     ) {
                         Text(BuildingStrings.CANCEL)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===================== Edit Apartment Page =====================
+
+@Composable
+fun EditApartmentPage(
+    username: String,
+    building: Building,
+    apartment: Apartment,
+    tenant: Tenant?,
+    lease: Lease?,
+    errorMessage: String?
+) {
+    BuildingPageLayout(
+        title = BuildingStrings.EDIT_APARTMENT,
+        username = username,
+        currentPath = "/buildings/${building.id}"
+    ) {
+        Column(modifier = Modifier().fillMaxWidth().maxWidth("700px")) {
+            // Breadcrumb
+            Row(
+                modifier = Modifier()
+                    .margin("0", "0", BuildingTheme.Spacing.md, "0")
+                    .style("gap", BuildingTheme.Spacing.sm)
+            ) {
+                Link(
+                    href = "/buildings",
+                    modifier = Modifier().color(BuildingTheme.Colors.PRIMARY).fontSize(BuildingTheme.FontSize.sm)
+                ) { Text(BuildingStrings.BUILDINGS) }
+                Text(text = "←", modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED))
+                Link(
+                    href = "/buildings/${building.id}",
+                    modifier = Modifier().color(BuildingTheme.Colors.PRIMARY).fontSize(BuildingTheme.FontSize.sm)
+                ) { Text(building.name) }
+                Text(text = "←", modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED))
+                Text(
+                    text = apartment.unitNumber,
+                    modifier = Modifier().color(BuildingTheme.Colors.TEXT_MUTED).fontSize(BuildingTheme.FontSize.sm)
+                )
+            }
+
+            PageHeader(title = "${BuildingStrings.EDIT_APARTMENT} - ${apartment.unitNumber}")
+
+            Card(modifier = Modifier().fillMaxWidth()) {
+                if (errorMessage != null) {
+                    Alert(errorMessage, AlertType.ERROR)
+                }
+
+                Form(
+                    action = "/apartments/${apartment.id}/edit",
+                    method = FormMethod.Post,
+                    modifier = Modifier().fillMaxWidth()
+                ) {
+                    // Section: Apartment Info
+                    Text(
+                        text = "معلومات الشقة",
+                        modifier = Modifier()
+                            .fontSize(BuildingTheme.FontSize.lg)
+                            .fontWeight("600")
+                            .color(BuildingTheme.Colors.PRIMARY)
+                            .margin("0", "0", BuildingTheme.Spacing.md, "0")
+                    )
+
+                    Row(
+                        modifier = Modifier()
+                            .fillMaxWidth()
+                            .style("display", "grid")
+                            .style("grid-template-columns", "1fr 1fr")
+                            .style("gap", BuildingTheme.Spacing.md)
+                            .margin("0", "0", BuildingTheme.Spacing.lg, "0")
+                    ) {
+                        Column {
+                            FormGroup(label = BuildingStrings.UNIT_NUMBER) {
+                                FormTextField(
+                                    name = "unitNumber",
+                                    label = "",
+                                    defaultValue = apartment.unitNumber,
+                                    modifier = inputModifier()
+                                )
+                            }
+                        }
+                        Column {
+                            FormGroup(label = BuildingStrings.FLOOR) {
+                                FormTextField(
+                                    name = "floor",
+                                    label = "",
+                                    defaultValue = apartment.floor?.toString() ?: "",
+                                    modifier = inputModifier()
+                                )
+                            }
+                        }
+                    }
+
+                    FormGroup(label = BuildingStrings.APARTMENT_NOTES) {
+                        FormTextField(
+                            name = "apartmentNotes",
+                            label = "",
+                            defaultValue = apartment.notes,
+                            modifier = inputModifier()
+                        )
+                    }
+
+                    // Divider
+                    Box(
+                        modifier = Modifier()
+                            .fillMaxWidth()
+                            .height("1px")
+                            .backgroundColor(BuildingTheme.Colors.BORDER)
+                            .margin(BuildingTheme.Spacing.lg, "0")
+                    ) {}
+
+                    // Section: Tenant Info
+                    Text(
+                        text = "معلومات المستأجر",
+                        modifier = Modifier()
+                            .fontSize(BuildingTheme.FontSize.lg)
+                            .fontWeight("600")
+                            .color(BuildingTheme.Colors.PRIMARY)
+                            .margin("0", "0", BuildingTheme.Spacing.md, "0")
+                    )
+
+                    Row(
+                        modifier = Modifier()
+                            .fillMaxWidth()
+                            .style("display", "grid")
+                            .style("grid-template-columns", "1fr 1fr")
+                            .style("gap", BuildingTheme.Spacing.md)
+                    ) {
+                        Column {
+                            FormGroup(label = BuildingStrings.TENANT_NAME) {
+                                FormTextField(
+                                    name = "tenantName",
+                                    label = "",
+                                    defaultValue = tenant?.name ?: "",
+                                    modifier = inputModifier()
+                                )
+                            }
+                        }
+                        Column {
+                            FormGroup(label = BuildingStrings.TENANT_PHONE) {
+                                FormTextField(
+                                    name = "tenantPhone",
+                                    label = "",
+                                    defaultValue = tenant?.phone ?: "",
+                                    modifier = inputModifier()
+                                )
+                            }
+                        }
+                    }
+
+                    // Divider
+                    Box(
+                        modifier = Modifier()
+                            .fillMaxWidth()
+                            .height("1px")
+                            .backgroundColor(BuildingTheme.Colors.BORDER)
+                            .margin(BuildingTheme.Spacing.lg, "0")
+                    ) {}
+
+                    // Section: Lease Info
+                    Text(
+                        text = "معلومات العقد",
+                        modifier = Modifier()
+                            .fontSize(BuildingTheme.FontSize.lg)
+                            .fontWeight("600")
+                            .color(BuildingTheme.Colors.PRIMARY)
+                            .margin("0", "0", BuildingTheme.Spacing.md, "0")
+                    )
+
+                    FormGroup(label = BuildingStrings.ANNUAL_RENT) {
+                        FormTextField(
+                            name = "annualRent",
+                            label = "",
+                            defaultValue = lease?.annualRent?.toString() ?: "",
+                            modifier = inputModifier()
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier()
+                            .fillMaxWidth()
+                            .style("display", "grid")
+                            .style("grid-template-columns", "1fr 1fr")
+                            .style("gap", BuildingTheme.Spacing.md)
+                    ) {
+                        Column {
+                            FormGroup(label = BuildingStrings.START_DATE) {
+                                FormTextField(
+                                    name = "startDate",
+                                    label = "",
+                                    defaultValue = lease?.startDate ?: "",
+                                    modifier = inputModifier()
+                                )
+                            }
+                        }
+                        Column {
+                            FormGroup(label = BuildingStrings.END_DATE) {
+                                FormTextField(
+                                    name = "endDate",
+                                    label = "",
+                                    defaultValue = lease?.endDate ?: "",
+                                    modifier = inputModifier()
+                                )
+                            }
+                        }
+                    }
+
+                    FormGroup(label = BuildingStrings.NOTES) {
+                        FormTextField(
+                            name = "leaseNotes",
+                            label = "",
+                            defaultValue = lease?.notes ?: "",
+                            modifier = inputModifier()
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier()
+                            .style("gap", BuildingTheme.Spacing.md)
+                            .margin(BuildingTheme.Spacing.lg, "0", "0", "0")
+                    ) {
+                        FormButton(
+                            text = BuildingStrings.SAVE,
+                            modifier = Modifier()
+                                .backgroundColor(BuildingTheme.Colors.PRIMARY)
+                                .color(BuildingTheme.Colors.TEXT_WHITE)
+                                .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                                .borderRadius(BuildingTheme.BorderRadius.md)
+                                .fontWeight("500")
+                        )
+                        Link(
+                            href = "/buildings/${building.id}",
+                            modifier = Modifier()
+                                .backgroundColor(BuildingTheme.Colors.BG_HOVER)
+                                .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                                .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                                .borderRadius(BuildingTheme.BorderRadius.md)
+                                .style("text-decoration", "none")
+                        ) {
+                            Text(BuildingStrings.CANCEL)
+                        }
                     }
                 }
             }
