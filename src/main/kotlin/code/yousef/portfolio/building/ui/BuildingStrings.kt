@@ -41,7 +41,7 @@ object BuildingStrings {
     const val NO_USERS = "لا يوجد مستخدمين"
     
     // Dashboard
-    const val TOTAL_BUILDINGS = "إجمالي العمارات"
+    const val TOTAL_BUILDINGS = "إجمالي العمائر"
     const val TOTAL_UNITS = "إجمالي الشقق"
     const val OCCUPIED_UNITS = "الشقق المؤجرة"
     const val VACANT_UNITS = "الشقق الشاغرة"
@@ -52,7 +52,7 @@ object BuildingStrings {
     const val NO_OVERDUE_PAYMENTS = "لا توجد دفعات متأخرة"
     
     // Buildings
-    const val BUILDINGS = "العمارات"
+    const val BUILDINGS = "العمائر"
     const val BUILDING_NAME = "اسم العمارة"
     const val BUILDING_ADDRESS = "العنوان"
     const val VIEW_UNITS = "عرض الشقق"
@@ -114,7 +114,8 @@ object BuildingStrings {
     const val IMPORT_ERROR = "حدث خطأ أثناء الاستيراد"
     const val CLEAR_DATA = "مسح جميع البيانات"
     const val CLEAR_CONFIRM = "هل أنت متأكد من مسح جميع البيانات؟"
-    const val CLEAR_DATA_CONFIRM_DIALOG = "تحذير: سيتم حذف جميع العمارات والشقق والعقود والدفعات بشكل نهائي. هل أنت متأكد؟"
+    const val CLEAR_DATA_CONFIRM_DIALOG =
+        "تحذير: سيتم حذف جميع العمائر والشقق والعقود والدفعات بشكل نهائي. هل أنت متأكد؟"
     
     // Currency
     const val SAR = "ر.س"
