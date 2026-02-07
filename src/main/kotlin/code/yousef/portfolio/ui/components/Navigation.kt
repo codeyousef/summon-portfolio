@@ -2,8 +2,8 @@ package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.i18n.strings.NavigationStrings
 import code.yousef.portfolio.i18n.pathPrefix
+import code.yousef.portfolio.i18n.strings.NavigationStrings
 import code.yousef.portfolio.ssr.docsBaseUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import codes.yousef.summon.components.navigation.AnchorLink
@@ -21,7 +21,8 @@ data class NavItem(
 )
 
 val defaultNavItems = listOf(
-    NavItem(NavigationStrings.blog, NavTarget.Page("/blog"))
+    NavItem(NavigationStrings.blog, NavTarget.Page("/blog")),
+    NavItem(NavigationStrings.experiments, NavTarget.Page("/experiments"))
 )
 
 val projectsLabel = NavigationStrings.projects

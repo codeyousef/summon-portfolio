@@ -51,5 +51,6 @@ class ScratchpadRenderer {
             true,
             null
         )
+        head.script("/static/scratchpad-sticky.js", "scratchpad-sticky", "application/javascript", false, true, null)
     }
 }

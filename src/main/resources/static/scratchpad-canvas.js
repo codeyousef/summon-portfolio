@@ -57,6 +57,13 @@
     function updateTransform() {
         if (!canvas) return;
         canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+        // Sync grid background on wrapper so it covers viewport at any zoom level
+        if (wrapper) {
+            const gridSize = 50 * scale;
+            wrapper.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            wrapper.style.backgroundPosition = `${translateX % gridSize}px ${translateY % gridSize}px`;
+        }
     }
 
     // Mouse events
@@ -65,7 +72,7 @@
         if (e.button !== 0) return;
 
         // Don't drag if clicking on interactive elements
-        if (e.target.closest('button, a, input, .sticky-note, .tombstone, .dont-click-btn')) {
+        if (e.target.closest('button, a, input, .sticky-note, .dont-click-btn')) {
             return;
         }
 
@@ -99,6 +106,9 @@
 
     // Wheel zoom
     function onWheel(e) {
+        // Let the terminal handle its own scrolling
+        if (e.target.closest('#terminal-overlay')) return;
+
         e.preventDefault();
 
         const delta = -e.deltaY * ZOOM_SENSITIVITY;

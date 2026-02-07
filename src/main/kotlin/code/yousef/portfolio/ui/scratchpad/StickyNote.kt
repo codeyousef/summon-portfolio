@@ -30,13 +30,16 @@ fun StickyNote(
     rotation: Float = 0f,
     color: StickyNoteColor = StickyNoteColor.YELLOW,
     maxWidth: Int = 200,
-    title: String? = null
+    title: String? = null,
+    noteId: String = ""
 ) {
     GlobalStyle(
         css = """
         .sticky-note {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             transform-origin: center center;
+            cursor: grab;
+            user-select: none;
         }
         .sticky-note:hover {
             transform: rotate(0deg) scale(1.05) !important;
@@ -71,6 +74,7 @@ fun StickyNote(
             .boxShadow("4px 4px 0 rgba(0, 0, 0, 0.3)")
             .transform("rotate(${rotation}deg)")
             .className("sticky-note")
+            .let { if (noteId.isNotEmpty()) it.dataAttribute("note-id", noteId) else it }
     ) {
         Column(
             modifier = Modifier()

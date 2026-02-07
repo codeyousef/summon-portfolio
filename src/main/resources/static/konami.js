@@ -87,7 +87,7 @@
 
         // Navigate after a brief delay
         setTimeout(() => {
-            window.location.href = '/scratchpad';
+            window.location.href = '/experiments/scratchpad';
         }, 800);
     }
 

@@ -6,6 +6,7 @@ import code.yousef.portfolio.content.seed.MusicSeed
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
 import code.yousef.portfolio.ui.art.ArtPage
+import code.yousef.portfolio.ui.experiments.ExperimentsPage
 import code.yousef.portfolio.ui.music.MusicPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
 import code.yousef.portfolio.ui.summon.SummonLandingPage
@@ -103,6 +104,20 @@ class PortfolioRenderer(
             ),
             content = {
                 ArtPage(artworks = ArtworkSeed.artworks, locale = locale)
+            },
+            locale = locale
+        )
+    }
+
+    fun experimentsPage(locale: PortfolioLocale): SummonPage {
+        return SummonPage(
+            head = headBlockFor(
+                locale = locale,
+                pageTitle = "Experiments | Yousef",
+                description = "Side quests, creative detours, and things that didn't fit anywhere else."
+            ),
+            content = {
+                ExperimentsPage(locale = locale)
             },
             locale = locale
         )

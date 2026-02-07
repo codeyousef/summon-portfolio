@@ -122,20 +122,30 @@ fun Router.portfolioRoutes(
         exchange.respondSummonPage(page)
     }
 
-    get("/art") { exchange ->
+    get("/experiments") { exchange ->
+        val page = portfolioRenderer.experimentsPage(locale = PortfolioLocale.EN)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/experiments/art") { exchange ->
         val page = portfolioRenderer.artPage(locale = PortfolioLocale.EN)
         exchange.respondSummonPage(page)
     }
 
-    get("/music") { exchange ->
+    get("/experiments/music") { exchange ->
         val page = portfolioRenderer.musicPage(locale = PortfolioLocale.EN)
         exchange.respondSummonPage(page)
     }
 
-    get("/scratchpad") { exchange ->
+    get("/experiments/scratchpad") { exchange ->
         val page = scratchpadRenderer.scratchpadPage(locale = PortfolioLocale.EN)
         exchange.respondSummonPage(page)
     }
+
+    // Legacy redirects
+    get("/art") { exchange -> exchange.redirect("/experiments/art") }
+    get("/music") { exchange -> exchange.redirect("/experiments/music") }
+    get("/scratchpad") { exchange -> exchange.redirect("/experiments/scratchpad") }
 
     get("/blog") { exchange ->
         val page = blogRenderer.renderList(PortfolioLocale.EN)
@@ -177,15 +187,24 @@ fun Router.portfolioRoutes(
         exchange.respondSummonPage(page)
     }
 
-    get("/ar/art") { exchange ->
+    get("/ar/experiments") { exchange ->
+        val page = portfolioRenderer.experimentsPage(locale = PortfolioLocale.AR)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/ar/experiments/art") { exchange ->
         val page = portfolioRenderer.artPage(locale = PortfolioLocale.AR)
         exchange.respondSummonPage(page)
     }
 
-    get("/ar/music") { exchange ->
+    get("/ar/experiments/music") { exchange ->
         val page = portfolioRenderer.musicPage(locale = PortfolioLocale.AR)
         exchange.respondSummonPage(page)
     }
+
+    // Arabic legacy redirects
+    get("/ar/art") { exchange -> exchange.redirect("/ar/experiments/art") }
+    get("/ar/music") { exchange -> exchange.redirect("/ar/experiments/music") }
 
     post("/contact") { exchange ->
         val contentType = exchange.request.headers["Content-Type"] ?: ""
