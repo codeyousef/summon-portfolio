@@ -1,0 +1,133 @@
+[versions]
+kotlin = "2.2.20"
+ktor = "3.3.1"
+logback = "1.5.13"
+aether = "0.4.0.1"
+summon = "0.7.0.0"
+materia = "0.3.4.6"
+sigil = "0.2.9.1"
+shadow = "9.1.0"
+kotlinx-datetime = "0.6.1"
+caffeine = "3.1.8"
+commonmark = "0.22.0"
+owasp-sanitizer = "20240325.1"
+jsoup = "1.18.1"
+google-cloud-bom = "26.51.0"
+poi = "5.2.5"
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+
+[libraries]
+# Ktor server
+ktor-server-core-jvm = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-server-sessions = { module = "io.ktor:ktor-server-sessions", version.ref = "ktor" }
+ktor-server-default-headers = { module = "io.ktor:ktor-server-default-headers", version.ref = "ktor" }
+ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor" }
+ktor-server-compression = { module = "io.ktor:ktor-server-compression", version.ref = "ktor" }
+ktor-server-caching-headers = { module = "io.ktor:ktor-server-caching-headers", version.ref = "ktor" }
+ktor-server-auto-head-response = { module = "io.ktor:ktor-server-auto-head-response", version.ref = "ktor" }
+ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
+ktor-server-host-common = { module = "io.ktor:ktor-server-host-common", version.ref = "ktor" }
+
+# Ktor client
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-client-encoding = { module = "io.ktor:ktor-client-encoding", version.ref = "ktor" }
+
+# Kotlin extensions
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+
+# Markdown & HTML
+commonmark = { module = "org.commonmark:commonmark", version.ref = "commonmark" }
+commonmark-ext-yaml-front-matter = { module = "org.commonmark:commonmark-ext-yaml-front-matter", version.ref = "commonmark" }
+commonmark-ext-autolink = { module = "org.commonmark:commonmark-ext-autolink", version.ref = "commonmark" }
+commonmark-ext-gfm-tables = { module = "org.commonmark:commonmark-ext-gfm-tables", version.ref = "commonmark" }
+owasp-html-sanitizer = { module = "com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer", version.ref = "owasp-sanitizer" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+
+# Caching
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+
+# Summon SSR framework
+summon = { module = "codes.yousef:summon", version.ref = "summon" }
+
+# Materia engine
+materia-jvm = { module = "codes.yousef:materia-jvm", version.ref = "materia" }
+
+# Sigil 3D/effects
+sigil-schema-jvm = { module = "codes.yousef.sigil:sigil-schema-jvm", version.ref = "sigil" }
+sigil-summon-jvm = { module = "codes.yousef.sigil:sigil-summon-jvm", version.ref = "sigil" }
+
+# Aether framework
+aether-core-jvm = { module = "codes.yousef.aether:aether-core-jvm", version.ref = "aether" }
+aether-web-jvm = { module = "codes.yousef.aether:aether-web-jvm", version.ref = "aether" }
+aether-ui-jvm = { module = "codes.yousef.aether:aether-ui-jvm", version.ref = "aether" }
+aether-db-jvm = { module = "codes.yousef.aether:aether-db-jvm", version.ref = "aether" }
+aether-auth-jvm = { module = "codes.yousef.aether:aether-auth-jvm", version.ref = "aether" }
+aether-forms-jvm = { module = "codes.yousef.aether:aether-forms-jvm", version.ref = "aether" }
+aether-admin-jvm = { module = "codes.yousef.aether:aether-admin-jvm", version.ref = "aether" }
+
+# Logging
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+# Google Cloud
+google-cloud-bom = { module = "com.google.cloud:libraries-bom", version.ref = "google-cloud-bom" }
+google-cloud-firestore = { module = "com.google.cloud:google-cloud-firestore" }
+
+# Apache POI
+poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
+
+# Testing
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+
+[bundles]
+ktor-server = [
+    "ktor-server-core-jvm",
+    "ktor-server-netty",
+    "ktor-server-config-yaml",
+    "ktor-server-content-negotiation",
+    "ktor-serialization-kotlinx-json",
+    "ktor-server-sessions",
+    "ktor-server-default-headers",
+    "ktor-server-call-logging",
+    "ktor-server-compression",
+    "ktor-server-caching-headers",
+    "ktor-server-auto-head-response",
+    "ktor-server-status-pages",
+    "ktor-server-host-common",
+]
+ktor-client = [
+    "ktor-client-core",
+    "ktor-client-cio",
+    "ktor-client-content-negotiation",
+    "ktor-client-encoding",
+]
+commonmark = [
+    "commonmark",
+    "commonmark-ext-yaml-front-matter",
+    "commonmark-ext-autolink",
+    "commonmark-ext-gfm-tables",
+]
+aether = [
+    "aether-core-jvm",
+    "aether-web-jvm",
+    "aether-ui-jvm",
+    "aether-db-jvm",
+    "aether-auth-jvm",
+    "aether-forms-jvm",
+    "aether-admin-jvm",
+]
+sigil = [
+    "sigil-schema-jvm",
+    "sigil-summon-jvm",
+]

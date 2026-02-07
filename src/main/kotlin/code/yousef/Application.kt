@@ -123,6 +123,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     // Renderers
     val portfolioRenderer = PortfolioRenderer(contentService)
     val blogRenderer = BlogRenderer(contentService)
+    val scratchpadRenderer = ScratchpadRenderer()
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
 
@@ -131,6 +132,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         portfolioRoutes(
             portfolioRenderer,
             blogRenderer,
+            scratchpadRenderer,
             contactService,
             contentService,
             adminAuthService
