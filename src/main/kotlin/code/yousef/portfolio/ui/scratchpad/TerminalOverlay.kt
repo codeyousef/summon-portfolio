@@ -131,7 +131,7 @@ fun TerminalOverlay() {
     ) {
         RawHtml(
             html = """
-            <div style="height: 100%; display: flex; flex-direction: column; padding: 12px;">
+            <div style="height: 100%; display: flex; flex-direction: column; padding: 12px; min-height: 0; overflow: hidden;">
                 <!-- Terminal header -->
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid ${ScratchpadTheme.BORDER}; margin-bottom: 8px;">
                     <span style="color: ${ScratchpadTheme.TEXT_MUTED}; font-size: 12px;">SCRATCHPAD TERMINAL v0.1.0</span>
@@ -139,7 +139,7 @@ fun TerminalOverlay() {
                 </div>
 
                 <!-- Output area -->
-                <div id="terminal-output" style="flex: 1; overflow-y: auto; padding-right: 8px;">
+                <div id="terminal-output" style="flex: 1; overflow-y: auto; padding-right: 8px; min-height: 0;">
                     <div class="terminal-line terminal-output">Welcome to the void. Type 'help' to see what you can do.</div>
                 </div>
 

@@ -12,6 +12,7 @@ object NavigationStrings {
     val workWithMe = LocalizedText("Work With Me", "اعمل معي")
     val fullTime = LocalizedText("Full-Time", "دوام كامل")
     val consulting = LocalizedText("Consulting", "استشارات")
+    val experiments = LocalizedText("Experiments", "التجارب")
     val admin = LocalizedText("Admin", "المدير")
     val logout = LocalizedText("Logout", "تسجيل الخروج")
 }

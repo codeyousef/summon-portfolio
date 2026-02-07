@@ -63,7 +63,7 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                 // Hidden entry to scratchpad - nearly invisible "?" symbol
                 AnchorLink(
                     label = "?",
-                    href = "/scratchpad",
+                    href = "/experiments/scratchpad",
                     modifier = Modifier()
                         .color("rgba(255, 255, 255, 0.03)") // Nearly invisible
                         .textDecoration(TextDecoration.None)

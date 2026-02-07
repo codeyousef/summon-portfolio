@@ -34,7 +34,7 @@ fun ScratchpadPage(
         ) {
             AnchorLink(
                 label = "[ EXIT ]",
-                href = "/",
+                href = "/experiments",
                 modifier = Modifier()
                     .color(ScratchpadTheme.TEXT_PRIMARY)
                     .fontSize(0.9.rem)
@@ -115,6 +115,7 @@ fun ScratchpadPage(
         InfiniteCanvas {
             // Hot takes as sticky notes
             StickyNote(
+                noteId = "hot-take-1",
                 title = "HOT TAKE #1",
                 content = "Microservices are just distributed monoliths with extra network latency.",
                 x = 4400,
@@ -124,6 +125,7 @@ fun ScratchpadPage(
             )
 
             StickyNote(
+                noteId = "hot-take-2",
                 title = "HOT TAKE #2",
                 content = "The best code is the code you don't write.",
                 x = 4350,
@@ -133,6 +135,7 @@ fun ScratchpadPage(
             )
 
             StickyNote(
+                noteId = "hot-take-3",
                 title = "HOT TAKE #3",
                 content = "GraphQL is just REST with extra steps and a type system you'll eventually ignore anyway.",
                 x = 5650,
@@ -142,6 +145,7 @@ fun ScratchpadPage(
             )
 
             StickyNote(
+                noteId = "thought-1",
                 title = "THOUGHT",
                 content = "Every time I write 'TODO: fix later', I'm lying to future me.",
                 x = 5600,
@@ -151,6 +155,7 @@ fun ScratchpadPage(
             )
 
             StickyNote(
+                noteId = "note-to-self-1",
                 title = "NOTE TO SELF",
                 content = "Stop starting new side projects. Finish the ones you have.\n\n(Posted 47 side projects ago)",
                 x = 4450,
@@ -161,6 +166,7 @@ fun ScratchpadPage(
             )
 
             StickyNote(
+                noteId = "unpopular-opinion-1",
                 title = "UNPOPULAR OPINION",
                 content = "CSS is actually fine. You just need to understand it.",
                 x = 5700,
@@ -170,6 +176,7 @@ fun ScratchpadPage(
             )
 
             StickyNote(
+                noteId = "code-wisdom-1",
                 content = "if (works) {\n  don't.touch();\n}",
                 x = 5000,
                 y = 5650,

@@ -1,11 +1,9 @@
 package code.yousef.portfolio.ui.components
 
-import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.NavigationStrings
 import code.yousef.portfolio.ssr.blogUrl
 import code.yousef.portfolio.ssr.materiaMarketingUrl
-import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
@@ -13,13 +11,9 @@ import code.yousef.portfolio.ui.foundation.LocalPageChrome
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.input.Button
-import codes.yousef.summon.components.input.ButtonVariant
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.navigation.AnchorLink
-import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.Dropdown
 import codes.yousef.summon.components.navigation.DropdownTrigger
 import codes.yousef.summon.components.navigation.Link
@@ -28,8 +22,6 @@ import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.runtime.mutableStateOf
-import codes.yousef.summon.runtime.remember
 
 @Composable
 fun DesktopHeader(
@@ -150,7 +142,15 @@ fun DesktopHeader(
                     dataAttributes = mapOf("nav" to "blog"),
                     navigationMode = LinkNavigationMode.Native
                 )
-                
+
+                navLink(
+                    label = NavigationStrings.experiments.resolve(locale),
+                    href = "/experiments",
+                    modifier = baseNavModifier,
+                    dataAttributes = mapOf("nav" to "experiments"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+
                 if (chrome.isAdminSession) {
                     val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
                     navLink(

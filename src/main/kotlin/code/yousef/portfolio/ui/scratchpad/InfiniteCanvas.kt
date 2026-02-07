@@ -24,25 +24,14 @@ fun InfiniteCanvas(
             will-change: transform;
         }
 
-        /* Grid background pattern */
-        #$canvasId::before {
-            content: "";
-            position: absolute;
-            top: -5000px;
-            left: -5000px;
-            width: 10000px;
-            height: 10000px;
-            background-image:
-                linear-gradient(${ScratchpadTheme.BORDER} 1px, transparent 1px),
-                linear-gradient(90deg, ${ScratchpadTheme.BORDER} 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            opacity: 0.3;
-        }
-
-        /* Grab cursor when hovering canvas */
+        /* Grid background on wrapper so it always covers the viewport */
         .canvas-wrapper {
             cursor: grab;
+            background-image:
+                linear-gradient(rgba(51,51,51,0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(51,51,51,0.3) 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-position: 0px 0px;
         }
         .canvas-wrapper:active {
             cursor: grabbing;
