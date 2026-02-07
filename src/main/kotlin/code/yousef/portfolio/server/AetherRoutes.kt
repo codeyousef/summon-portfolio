@@ -11,10 +11,7 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.ssr.BlogRenderer
-import code.yousef.portfolio.ssr.PortfolioRenderer
-import code.yousef.portfolio.ssr.SummonPage
-import code.yousef.portfolio.ssr.docsBaseUrl
+import code.yousef.portfolio.ssr.*
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
 import codes.yousef.aether.core.Exchange
@@ -78,6 +75,7 @@ fun Router.summonRoutes(
 fun Router.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,
     blogRenderer: BlogRenderer,
+    scratchpadRenderer: ScratchpadRenderer,
     contactService: ContactService,
     contentService: PortfolioContentService,
     adminAuthService: AdminAuthProvider
@@ -124,6 +122,21 @@ fun Router.portfolioRoutes(
         exchange.respondSummonPage(page)
     }
 
+    get("/art") { exchange ->
+        val page = portfolioRenderer.artPage(locale = PortfolioLocale.EN)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/music") { exchange ->
+        val page = portfolioRenderer.musicPage(locale = PortfolioLocale.EN)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/scratchpad") { exchange ->
+        val page = scratchpadRenderer.scratchpadPage(locale = PortfolioLocale.EN)
+        exchange.respondSummonPage(page)
+    }
+
     get("/blog") { exchange ->
         val page = blogRenderer.renderList(PortfolioLocale.EN)
         exchange.respondSummonPage(page)
@@ -161,6 +174,16 @@ fun Router.portfolioRoutes(
 
     get("/ar/full-time") { exchange ->
         val page = portfolioRenderer.fullTimePage(locale = PortfolioLocale.AR)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/ar/art") { exchange ->
+        val page = portfolioRenderer.artPage(locale = PortfolioLocale.AR)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/ar/music") { exchange ->
+        val page = portfolioRenderer.musicPage(locale = PortfolioLocale.AR)
         exchange.respondSummonPage(page)
     }
 

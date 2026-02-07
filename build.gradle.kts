@@ -1,13 +1,9 @@
-val kotlin_version: String by project
-val logback_version: String by project
-val aether_version = "0.4.0.1"
-
 plugins {
     application
-    kotlin("jvm") version "2.2.20"
-    kotlin("plugin.serialization") version "2.2.20"
-    id("io.ktor.plugin") version "3.3.1"
-    id("com.gradleup.shadow") version "9.1.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktor)
+    alias(libs.plugins.shadow)
 }
 
 group = "code.yousef"
@@ -18,63 +14,48 @@ application {
 }
 
 dependencies {
-    // Ktor server dependencies
-    implementation("io.ktor:ktor-server-core-jvm")
-    implementation("io.ktor:ktor-server-netty")
-    implementation("io.ktor:ktor-server-config-yaml")
-    implementation("io.ktor:ktor-server-content-negotiation")
-    implementation("io.ktor:ktor-serialization-kotlinx-json")
-    implementation("io.ktor:ktor-server-sessions")
-    implementation("io.ktor:ktor-server-default-headers")
-    implementation("io.ktor:ktor-server-call-logging")
-    implementation("io.ktor:ktor-server-compression")
-    implementation("io.ktor:ktor-server-caching-headers")
-    implementation("io.ktor:ktor-server-auto-head-response")
-    implementation("io.ktor:ktor-server-status-pages")
-    implementation("io.ktor:ktor-server-host-common")
+    // Ktor server
+    implementation(libs.bundles.ktor.server)
 
-    implementation("io.ktor:ktor-client-core")
-    implementation("io.ktor:ktor-client-cio")
-    implementation("io.ktor:ktor-client-content-negotiation")
-    implementation("io.ktor:ktor-client-encoding")
+    // Ktor client
+    implementation(libs.bundles.ktor.client)
 
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
-    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
-    implementation("org.commonmark:commonmark:0.22.0")
-    implementation("org.commonmark:commonmark-ext-yaml-front-matter:0.22.0")
-    implementation("org.commonmark:commonmark-ext-autolink:0.22.0")
-    implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
-    implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1")
-    implementation("org.jsoup:jsoup:1.18.1")
+    // Kotlin extensions
+    implementation(libs.kotlinx.datetime)
 
-    // Summon SSR framework + Sigil 3D/effects library
-    implementation("codes.yousef:summon:0.6.2.1")
-    // Materia 0.3.4.6 - Fixed WebGL uniform name mismatch
-    implementation("codes.yousef:materia-jvm:0.3.4.6")
-    // Sigil 0.2.9.1 - Shared RenderLoop and UniformUpdater utilities
-    implementation("codes.yousef.sigil:sigil-schema-jvm:0.2.9.1")
-    implementation("codes.yousef.sigil:sigil-summon-jvm:0.2.9.1")
+    // Caching
+    implementation(libs.caffeine)
 
-    // Aether Framework 0.4.0.0 - Django-like KMP framework with admin, auth, forms
-    implementation("codes.yousef.aether:aether-core-jvm:$aether_version")
-    implementation("codes.yousef.aether:aether-web-jvm:$aether_version")
-    implementation("codes.yousef.aether:aether-ui-jvm:$aether_version")
-    implementation("codes.yousef.aether:aether-db-jvm:$aether_version")
-    implementation("codes.yousef.aether:aether-auth-jvm:$aether_version")
-    implementation("codes.yousef.aether:aether-forms-jvm:$aether_version")
-    implementation("codes.yousef.aether:aether-admin-jvm:$aether_version")
+    // Markdown & HTML
+    implementation(libs.bundles.commonmark)
+    implementation(libs.owasp.html.sanitizer)
+    implementation(libs.jsoup)
 
-    implementation("ch.qos.logback:logback-classic:$logback_version")
+    // Summon SSR framework
+    implementation(libs.summon)
 
-    // Cloud Firestore (ready for future integrations)
-    implementation(platform("com.google.cloud:libraries-bom:26.51.0"))
-    implementation("com.google.cloud:google-cloud-firestore")
+    // Materia engine
+    implementation(libs.materia.jvm)
+
+    // Sigil 3D/effects
+    implementation(libs.bundles.sigil)
+
+    // Aether framework
+    implementation(libs.bundles.aether)
+
+    // Logging
+    implementation(libs.logback.classic)
+
+    // Google Cloud Firestore
+    implementation(platform(libs.google.cloud.bom))
+    implementation(libs.google.cloud.firestore)
 
     // Apache POI for Excel (.xlsx) import
-    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation(libs.poi.ooxml)
 
-    testImplementation("io.ktor:ktor-server-test-host")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    // Testing
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.kotlin.test.junit)
 }
 
 tasks {
