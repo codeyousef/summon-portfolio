@@ -15,6 +15,9 @@ import code.yousef.portfolio.building.import.ExcelImportService
 import code.yousef.portfolio.building.repo.BuildingRepository
 import code.yousef.portfolio.building.repo.BuildingService
 import code.yousef.portfolio.building.server.createBuildingRouter
+import code.yousef.portfolio.ai.AiProgressStore
+import code.yousef.portfolio.ai.FileAiProgressStore
+import code.yousef.portfolio.ai.FirestoreAiProgressStore
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.contact.InMemoryContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
@@ -127,6 +130,11 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
 
+    // AI Curriculum
+    val aiProgressStore: AiProgressStore = if (firestore != null)
+        FirestoreAiProgressStore(firestore) else FileAiProgressStore()
+    val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer)
+
     // Routers
     val mainRouter = router {
         portfolioRoutes(
@@ -135,7 +143,9 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             scratchpadRenderer,
             contactService,
             contentService,
-            adminAuthService
+            adminAuthService,
+            aiCurriculumRenderer = aiCurriculumRenderer,
+            aiProgressStore = aiProgressStore
         )
     }
 
@@ -260,17 +270,26 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             val host = exchange.request.headers["Host"]?.substringBefore(":")
             val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
             
-            if (!isBuildingSite && 
-                exchange.request.path.startsWith("/admin") && 
-                !exchange.request.path.startsWith("/admin/login") && 
-                !exchange.request.path.startsWith("/admin/change-password")) {
-                
+            val path = exchange.request.path
+            if (!isBuildingSite &&
+                path.startsWith("/admin") &&
+                !path.startsWith("/admin/login") &&
+                !path.startsWith("/admin/change-password")) {
+
                 val session = exchange.session()
                 val username = session?.get("username") as? String
                 if (username == null) {
                     exchange.redirect("/admin/login")
                 } else {
                     adminRouter.asMiddleware()(exchange, next)
+                }
+            } else if (!isBuildingSite && (path == "/ai" || path.startsWith("/ai/"))) {
+                val session = exchange.session()
+                val username = session?.get("username") as? String
+                if (username == null) {
+                    exchange.redirect("/admin/login?next=${path}")
+                } else {
+                    next()
                 }
             } else {
                 next()
