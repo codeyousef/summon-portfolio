@@ -4,8 +4,6 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
-import codes.yousef.summon.extensions.vh
-import codes.yousef.summon.extensions.vw
 import codes.yousef.summon.modifier.*
 import codes.yousef.sigil.summon.effects.SigilEffectCanvas
 import codes.yousef.sigil.summon.effects.SigilEffect
@@ -39,16 +37,16 @@ fun AuroraBackground(
             .position(Position.Fixed)
             .top(0.px)
             .left(0.px)
-            .width(100.vw)
-            .height(100.vh)  // Use 100vh for full viewport height
+            .width(100.percent)
+            .height(config.height.px)
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {
         // Sigil effect canvas with aurora shader
         SigilEffectCanvas(
             id = config.canvasId,
-            width = "100vw",
-            height = "100vh",
+            width = "100%",
+            height = "100%",
             config = SigilCanvasConfig(
                 id = config.canvasId,
                 respectDevicePixelRatio = true,
@@ -150,8 +148,8 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Dark sky background
     let sky = vec3<f32>(0.01, 0.01, 0.03);
     
-    // Final color - reduced intensity
-    let color = sky + auroraColor * glow * 0.7;
+    // Final color - strong intensity
+    let color = sky + auroraColor * glow * 2.0;
     
     return vec4<f32>(color, 1.0);
 }
@@ -223,8 +221,8 @@ void main() {
     // Dark sky background
     vec3 sky = vec3(0.01, 0.01, 0.03);
     
-    // Final color - reduced intensity
-    vec3 color = sky + auroraColor * glow * 0.7;
+    // Final color - strong intensity
+    vec3 color = sky + auroraColor * glow * 2.0;
     
     gl_FragColor = vec4(color, 1.0);
 }

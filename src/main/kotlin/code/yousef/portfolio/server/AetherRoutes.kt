@@ -11,6 +11,8 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.ai.AiProgressStore
+import code.yousef.portfolio.ai.AiProgressUpdate
 import code.yousef.portfolio.ssr.*
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
@@ -78,7 +80,9 @@ fun Router.portfolioRoutes(
     scratchpadRenderer: ScratchpadRenderer,
     contactService: ContactService,
     contentService: PortfolioContentService,
-    adminAuthService: AdminAuthProvider
+    adminAuthService: AdminAuthProvider,
+    aiCurriculumRenderer: AiCurriculumRenderer? = null,
+    aiProgressStore: AiProgressStore? = null
 ) {
     get("/version") { exchange ->
         exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
@@ -261,6 +265,35 @@ fun Router.portfolioRoutes(
     get("/api/contacts") { exchange ->
         val contacts = contactService.list().map { it.toDto() }
         exchange.respondJson(200, contacts)
+    }
+
+    // AI Curriculum Routes (auth-gated by middleware in Application.kt)
+    if (aiCurriculumRenderer != null && aiProgressStore != null) {
+        get("/ai") { exchange ->
+            val page = aiCurriculumRenderer.curriculumPage()
+            exchange.respondSummonPage(page)
+        }
+
+        get("/ai/api/progress") { exchange ->
+            val data = aiProgressStore.getProgress()
+            exchange.respondJson(200, data)
+        }
+
+        post("/ai/api/progress") { exchange ->
+            val body = exchange.request.bodyText()
+            val update = try {
+                json.decodeFromString<AiProgressUpdate>(body)
+            } catch (e: Exception) {
+                exchange.respondJson(400, mapOf("error" to "Invalid request body"))
+                return@post
+            }
+            if (!update.id.matches(Regex("\\d+\\.\\d+"))) {
+                exchange.respondJson(400, mapOf("error" to "Invalid subsection ID"))
+                return@post
+            }
+            aiProgressStore.updateProgress(update.id, update.completed)
+            exchange.respondJson(200, mapOf("ok" to true))
+        }
     }
 
     // Admin Routes
