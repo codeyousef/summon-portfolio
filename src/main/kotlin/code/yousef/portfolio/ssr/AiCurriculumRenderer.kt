@@ -3,16 +3,16 @@ package code.yousef.portfolio.ssr
 import code.yousef.portfolio.docs.MarkdownRenderer
 import code.yousef.portfolio.ui.ai.AiCurriculumPage
 import codes.yousef.summon.seo.HeadScope
-import java.nio.file.Path
-import kotlin.io.path.readText
 
 class AiCurriculumRenderer(
     private val markdownRenderer: MarkdownRenderer,
-    private val curriculumPath: Path = Path.of("docs/private/unified_ai_curriculum.md")
+    private val resourcePath: String = "ai/unified_ai_curriculum.md"
 ) {
 
     fun curriculumPage(): SummonPage {
-        val markdown = curriculumPath.readText()
+        val markdown = Thread.currentThread().contextClassLoader
+            .getResourceAsStream(resourcePath)!!
+            .bufferedReader().readText()
         val rendered = markdownRenderer.render(markdown, "/ai")
         return SummonPage(
             head = headBlock(),
