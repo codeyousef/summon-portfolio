@@ -135,7 +135,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val aiProgressStore: AiProgressStore = if (firestore != null)
         FirestoreAiProgressStore(firestore) else FileAiProgressStore()
     val aiCurriculumCatalog = AiCurriculumCatalog()
-    val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer, aiCurriculumCatalog)
+    val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer, aiCurriculumCatalog, aiProgressStore)
 
     // Routers
     val mainRouter = router {

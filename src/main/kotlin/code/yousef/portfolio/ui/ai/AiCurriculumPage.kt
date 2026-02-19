@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui.ai
 
 import code.yousef.portfolio.ai.AiLessonEntry
+import code.yousef.portfolio.ai.AiSubLessonEntry
 import code.yousef.portfolio.docs.DocsNavTree
 import code.yousef.portfolio.docs.MarkdownMeta
 import code.yousef.portfolio.docs.NeighborLinks
@@ -13,7 +14,13 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.RichText
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.forms.Form
+import codes.yousef.summon.components.forms.FormButton
+import codes.yousef.summon.components.forms.FormEncType
+import codes.yousef.summon.components.forms.FormHiddenField
+import codes.yousef.summon.components.forms.FormMethod
 import codes.yousef.summon.components.foundation.RawHtml
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
@@ -26,7 +33,7 @@ import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 
-// ── Lesson page (wraps DocsShell) ──────────────────────────────────────────
+// ── Lesson page (full — used as fallback when no sub-lessons exist) ────────
 
 @Composable
 fun AiLessonPage(
@@ -44,10 +51,209 @@ fun AiLessonPage(
         AppHeader(locale = PortfolioLocale.EN)
 
         SectionWrap(maxWidthPx = 1500) {
-            if (sectionId != null) {
-                RawHtml(
-                    html = """<div id="ai-lesson-progress" data-section-id="${htmlEscape(sectionId)}" style="width:100%"></div>"""
+            DocsShell(
+                requestPath = requestPath,
+                html = html,
+                toc = toc,
+                sidebar = sidebar,
+                meta = meta,
+                neighbors = neighbors,
+                basePath = "/ai"
+            )
+        }
+    }
+}
+
+// ── Lesson landing page (intro + sub-lesson cards) ────────────────────────
+
+@Composable
+fun AiLessonLandingPage(
+    slug: String,
+    entry: AiLessonEntry,
+    introHtml: String,
+    subLessons: List<AiSubLessonEntry>,
+    progress: Map<String, Boolean>,
+    sidebar: DocsNavTree,
+    requestPath: String
+) {
+    AiCurriculumStyles()
+    AiLandingStyles()
+
+    PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
+        AppHeader(locale = PortfolioLocale.EN)
+
+        SectionWrap(maxWidthPx = 1200) {
+            // Title
+            Text(
+                text = entry.title,
+                modifier = Modifier()
+                    .fontSize(2.rem)
+                    .fontWeight(700)
+                    .marginBottom(PortfolioTheme.Spacing.sm)
+            )
+
+            // Progress bar for this lesson
+            val totalSubs = subLessons.size
+            val completedSubs = subLessons.count { sub ->
+                progress["${entry.sectionId}.${sub.index}"] == true
+            }
+            val pct = if (totalSubs > 0) (completedSubs * 100) / totalSubs else 0
+
+            Column(
+                modifier = Modifier()
+                    .width(100.percent)
+                    .marginBottom(PortfolioTheme.Spacing.md)
+            ) {
+                Text(
+                    text = "$completedSubs / $totalSubs sub-lessons completed ($pct%)",
+                    modifier = Modifier()
+                        .className("ai-summary-text")
                 )
+                RawHtml(
+                    html = """<div class="ai-progress-bar-track"><div class="ai-progress-bar-fill" style="width:${pct}%"></div></div>"""
+                )
+            }
+
+            // Intro prose
+            if (introHtml.isNotBlank()) {
+                Column(
+                    modifier = Modifier()
+                        .className("prose")
+                        .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER)
+                        .borderRadius(PortfolioTheme.Radii.lg)
+                        .padding(PortfolioTheme.Spacing.xl)
+                        .marginBottom(PortfolioTheme.Spacing.lg)
+                        .width(100.percent)
+                ) {
+                    RichText(
+                        introHtml,
+                        modifier = Modifier()
+                            .fontSize(1.rem)
+                            .lineHeight(1.7)
+                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                            .fontFamily(PortfolioTheme.Typography.FONT_SANS)
+                    )
+                }
+            }
+
+            // Sub-lesson cards
+            Text(
+                text = "Sub-lessons",
+                modifier = Modifier()
+                    .fontSize(1.5.rem)
+                    .fontWeight(600)
+                    .marginBottom(PortfolioTheme.Spacing.md)
+            )
+
+            Column(
+                modifier = Modifier()
+                    .gap(PortfolioTheme.Spacing.sm)
+                    .width(100.percent)
+            ) {
+                subLessons.forEach { sub ->
+                    val progressId = "${entry.sectionId}.${sub.index}"
+                    val isCompleted = progress[progressId] == true
+
+                    Row(
+                        modifier = Modifier()
+                            .className("ai-sub-card")
+                            .display(Display.Flex)
+                            .alignItems(AlignItems.Center)
+                            .gap(PortfolioTheme.Spacing.md)
+                            .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                            .borderWidth(1)
+                            .borderStyle(BorderStyle.Solid)
+                            .borderColor(if (isCompleted) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.BORDER)
+                            .borderRadius(PortfolioTheme.Radii.md)
+                            .padding(PortfolioTheme.Spacing.md)
+                            .width(100.percent)
+                    ) {
+                        // Number badge
+                        Box(
+                            modifier = Modifier()
+                                .display(Display.Flex)
+                                .alignItems(AlignItems.Center)
+                                .justifyContent(JustifyContent.Center)
+                                .width(36.px)
+                                .height(36.px)
+                                .borderRadius("50%")
+                                .backgroundColor(
+                                    if (isCompleted) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.SURFACE_STRONG
+                                )
+                                .color(if (isCompleted) "#fff" else PortfolioTheme.Colors.TEXT_PRIMARY)
+                                .fontWeight(700)
+                                .fontSize(0.9.rem)
+                                .flex(grow = 0, shrink = 0, basis = "36px")
+                        ) {
+                            Text(text = if (isCompleted) "\u2713" else "${sub.index}")
+                        }
+
+                        // Title link
+                        AnchorLink(
+                            label = sub.title,
+                            href = "/ai/$slug/${sub.index}",
+                            modifier = Modifier()
+                                .color(PortfolioTheme.Colors.ACCENT_ALT)
+                                .textDecoration(TextDecoration.None)
+                                .hover(Modifier().textDecoration(TextDecoration.Underline))
+                                .fontSize(1.05.rem)
+                                .fontWeight(500)
+                                .flex(grow = 1, shrink = 1, basis = "0%"),
+                            navigationMode = LinkNavigationMode.Native
+                        )
+                    }
+                }
+            }
+        }
+
+        PortfolioFooter(locale = PortfolioLocale.EN)
+    }
+}
+
+// ── Sub-lesson page (wraps DocsShell with completion form) ────────────────
+
+@Composable
+fun AiSubLessonPage(
+    requestPath: String,
+    html: String,
+    toc: List<TocEntry>,
+    sidebar: DocsNavTree,
+    meta: MarkdownMeta,
+    neighbors: NeighborLinks,
+    progressId: String,
+    isCompleted: Boolean,
+    currentPath: String
+) {
+    AiCurriculumStyles()
+    AiSubLessonStyles()
+
+    PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
+        AppHeader(locale = PortfolioLocale.EN)
+
+        SectionWrap(maxWidthPx = 1500) {
+            // Completion form
+            Box(
+                modifier = Modifier()
+                    .width(100.percent)
+                    .marginBottom(PortfolioTheme.Spacing.md)
+            ) {
+                Form(
+                    action = "/ai/api/progress",
+                    method = FormMethod.Post,
+                    encType = FormEncType.UrlEncoded,
+                    hiddenFields = listOf(
+                        FormHiddenField("id", progressId),
+                        FormHiddenField("completed", (!isCompleted).toString()),
+                        FormHiddenField("redirect", currentPath)
+                    )
+                ) {
+                    FormButton(
+                        text = if (isCompleted) "Completed \u2713" else "Mark as completed"
+                    )
+                }
             }
 
             DocsShell(
@@ -63,10 +269,10 @@ fun AiLessonPage(
     }
 }
 
-// ── Overview page (dashboard with phase cards) ─────────────────────────────
+// ── Overview page (dashboard with phase cards, server-side progress) ──────
 
 @Composable
-fun AiOverviewPage(entries: List<AiLessonEntry>) {
+fun AiOverviewPage(entries: List<AiLessonEntry>, progress: Map<String, Boolean> = emptyMap()) {
     AiCurriculumStyles()
     AiOverviewStyles()
 
@@ -74,13 +280,6 @@ fun AiOverviewPage(entries: List<AiLessonEntry>) {
         AppHeader(locale = PortfolioLocale.EN)
 
         SectionWrap(maxWidthPx = 1400) {
-            // Progress summary — JS populates
-            Box(
-                modifier = Modifier()
-                    .id("ai-progress-summary")
-                    .width(100.percent)
-            ) {}
-
             // Title
             Text(
                 text = "AI Curriculum",
@@ -90,12 +289,37 @@ fun AiOverviewPage(entries: List<AiLessonEntry>) {
                     .marginBottom(PortfolioTheme.Spacing.xs)
             )
             Text(
-                text = "From Zero to Research Frontier — A Learn-by-Doing Journey",
+                text = "From Zero to Research Frontier \u2014 A Learn-by-Doing Journey",
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .fontSize(1.1.rem)
-                    .marginBottom(PortfolioTheme.Spacing.xl)
+                    .marginBottom(PortfolioTheme.Spacing.md)
             )
+
+            // Compute overall progress
+            val lessons = entries.filter { it.slug != "overview" && it.sectionId != null }
+            val allIds = lessons.map { it.sectionId!! }
+            val doneCount = allIds.count { progress[it] == true }
+            val totalCount = allIds.size
+            val pct = if (totalCount > 0) (doneCount * 100) / totalCount else 0
+
+            // Server-rendered progress summary
+            if (totalCount > 0) {
+                Column(
+                    modifier = Modifier()
+                        .width(100.percent)
+                        .marginBottom(PortfolioTheme.Spacing.lg)
+                ) {
+                    Text(
+                        text = "$doneCount / $totalCount lessons completed ($pct%)",
+                        modifier = Modifier()
+                            .className("ai-summary-text")
+                    )
+                    RawHtml(
+                        html = """<div class="ai-progress-bar-track"><div class="ai-progress-bar-fill" style="width:${pct}%"></div></div>"""
+                    )
+                }
+            }
 
             // Phase cards
             Column(
@@ -106,11 +330,11 @@ fun AiOverviewPage(entries: List<AiLessonEntry>) {
                     .width(100.percent)
             ) {
                 // Group entries by phase, preserving order
-                val lessons = entries.filter { it.slug != "overview" }
+                val allLessons = entries.filter { it.slug != "overview" }
                 val phaseOrder = mutableListOf<String>()
                 val phaseGroups = linkedMapOf<String, MutableList<AiLessonEntry>>()
 
-                for (lesson in lessons) {
+                for (lesson in allLessons) {
                     val key = lesson.phaseTitle ?: "Other"
                     phaseGroups.getOrPut(key) {
                         phaseOrder.add(key)
@@ -119,7 +343,7 @@ fun AiOverviewPage(entries: List<AiLessonEntry>) {
                 }
 
                 for (key in phaseOrder) {
-                    PhaseCard(phaseTitle = key, lessons = phaseGroups[key]!!)
+                    PhaseCard(phaseTitle = key, lessons = phaseGroups[key]!!, progress = progress)
                 }
             }
         }
@@ -129,7 +353,13 @@ fun AiOverviewPage(entries: List<AiLessonEntry>) {
 }
 
 @Composable
-private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>) {
+private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>, progress: Map<String, Boolean>) {
+    // Compute phase progress
+    val phaseIds = lessons.mapNotNull { it.sectionId }
+    val phaseDone = phaseIds.count { progress[it] == true }
+    val phaseTotal = phaseIds.size
+    val allDone = phaseTotal > 0 && phaseDone == phaseTotal
+
     Column(
         modifier = Modifier()
             .className("ai-phase-card")
@@ -141,7 +371,7 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>) {
             .padding(PortfolioTheme.Spacing.lg)
             .width(100.percent)
     ) {
-        // Phase title with badge placeholder
+        // Phase title with badge
         Row(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -156,6 +386,11 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>) {
                     .fontSize(1.25.rem)
                     .fontWeight(600)
             )
+            if (phaseTotal > 0) {
+                RawHtml(
+                    html = """<span class="ai-phase-badge${if (allDone) " all-done" else ""}">$phaseDone/$phaseTotal</span>"""
+                )
+            }
         }
 
         // Lesson links
@@ -164,6 +399,8 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>) {
                 .gap(PortfolioTheme.Spacing.xs)
         ) {
             lessons.forEach { lesson ->
+                val isLessonDone = lesson.sectionId != null && progress[lesson.sectionId] == true
+
                 Row(
                     modifier = Modifier()
                         .display(Display.Flex)
@@ -171,10 +408,13 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>) {
                         .gap(PortfolioTheme.Spacing.sm)
                         .padding(PortfolioTheme.Spacing.xs, 0.px)
                 ) {
-                    // Checkbox placeholder — JS injects checkbox here
+                    // Server-rendered checkmark
                     if (lesson.sectionId != null) {
                         RawHtml(
-                            html = """<span class="ai-overview-checkbox" data-subsection="${htmlEscape(lesson.sectionId)}"></span>"""
+                            html = if (isLessonDone)
+                                """<span style="color:${PortfolioTheme.Colors.ACCENT};font-weight:700;font-size:1.1rem;flex-shrink:0;">&#10003;</span>"""
+                            else
+                                """<span style="color:${PortfolioTheme.Colors.TEXT_SECONDARY};font-size:1.1rem;flex-shrink:0;">&#9675;</span>"""
                         )
                     }
 
@@ -185,11 +425,12 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>) {
                             .className("ai-lesson-link")
                             .color(PortfolioTheme.Colors.ACCENT_ALT)
                             .textDecoration(TextDecoration.None)
-                            .hover(Modifier().textDecoration(TextDecoration.Underline)),
-                        navigationMode = LinkNavigationMode.Native,
-                        dataAttributes = buildMap {
-                            if (lesson.sectionId != null) put("section-id", lesson.sectionId)
-                        }
+                            .hover(Modifier().textDecoration(TextDecoration.Underline))
+                            .let { mod ->
+                                if (isLessonDone) mod.opacity(0.6f).textDecoration(TextDecoration.LineThrough)
+                                else mod
+                            },
+                        navigationMode = LinkNavigationMode.Native
                     )
                 }
             }
@@ -203,26 +444,6 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>) {
 private fun AiCurriculumStyles() {
     GlobalStyle(
         """
-        /* Checkbox styling */
-        .ai-checkbox {
-            width: 18px;
-            height: 18px;
-            accent-color: ${PortfolioTheme.Colors.ACCENT};
-            cursor: pointer;
-            margin-right: 8px;
-            vertical-align: middle;
-            flex-shrink: 0;
-        }
-        .ai-checkbox-label {
-            display: inline-flex;
-            align-items: center;
-            cursor: pointer;
-        }
-        .ai-subsection-done {
-            opacity: 0.6;
-            text-decoration: line-through;
-        }
-
         /* Phase badge */
         .ai-phase-badge {
             display: inline-block;
@@ -243,9 +464,6 @@ private fun AiCurriculumStyles() {
         }
 
         /* Progress bar */
-        #ai-progress-summary {
-            margin-bottom: 8px;
-        }
         .ai-progress-bar-track {
             width: 100%;
             height: 8px;
@@ -273,22 +491,47 @@ private fun AiCurriculumStyles() {
 private fun AiOverviewStyles() {
     GlobalStyle(
         """
-        /* Lesson progress on lesson page */
-        #ai-lesson-progress {
-            margin-bottom: 12px;
-        }
-        #ai-lesson-progress label {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-        }
-
         /* Overview lesson link hover */
         .ai-lesson-link:visited {
             color: ${PortfolioTheme.Colors.ACCENT_ALT};
+        }
+        """
+    )
+}
+
+@Composable
+private fun AiLandingStyles() {
+    GlobalStyle(
+        """
+        .ai-sub-card {
+            transition: border-color 0.2s ease;
+        }
+        .ai-sub-card:hover {
+            border-color: ${PortfolioTheme.Colors.ACCENT_ALT} !important;
+        }
+        """
+    )
+}
+
+@Composable
+private fun AiSubLessonStyles() {
+    GlobalStyle(
+        """
+        /* Completion button styling */
+        .ai-completion-form button {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid ${PortfolioTheme.Colors.BORDER};
+            background: ${PortfolioTheme.Colors.SURFACE};
+            color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
+            transition: all 0.2s ease;
+        }
+        .ai-completion-form button:hover {
+            background: ${PortfolioTheme.Colors.ACCENT};
+            color: #fff;
+            border-color: ${PortfolioTheme.Colors.ACCENT};
         }
         """
     )
