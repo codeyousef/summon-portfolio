@@ -102,20 +102,28 @@ private fun DocsSidebarGroup(
                 .marginBottom(PortfolioTheme.Spacing.xxs)
         )
         
-        // Children links (indented)
+        // Children (indented) — recurse if child has its own children
         Column(
             modifier = Modifier()
                 .paddingLeft(PortfolioTheme.Spacing.sm)
                 .gap(PortfolioTheme.Spacing.xxs)
         ) {
             node.children.forEach { child ->
-                val active = normalize(currentPath) == normalize(child.path)
-                DocsSidebarLink(
-                    label = child.title,
-                    href = basePath + child.path,
-                    active = active,
-                    dataLabel = child.title.lowercase()
-                )
+                if (child.children.isEmpty()) {
+                    val active = normalize(currentPath) == normalize(child.path)
+                    DocsSidebarLink(
+                        label = child.title,
+                        href = basePath + child.path,
+                        active = active,
+                        dataLabel = child.title.lowercase()
+                    )
+                } else {
+                    DocsSidebarGroup(
+                        node = child,
+                        currentPath = currentPath,
+                        basePath = basePath
+                    )
+                }
             }
         }
     }
@@ -195,31 +203,33 @@ private fun buildMobileNavHtml(tree: DocsNavTree, currentPath: String, basePath:
     sb.append("""<summary style="cursor: pointer; font-weight: 600; padding: 8px 0; display: flex; align-items: center; gap: 8px;">""")
     sb.append("""<span style="font-size: 20px;">☰</span> Navigation</summary>""")
     sb.append("""<nav style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px;">""")
-    
+
     tree.sections.forEach { section ->
         sb.append("""<div style="margin-bottom: 12px;">""")
         sb.append("""<div style="font-weight: 600; color: ${PortfolioTheme.Colors.TEXT_SECONDARY}; margin-bottom: 8px;">${section.title}</div>""")
-        
+
         section.children.forEach { node ->
-            if (node.children.isEmpty()) {
-                val active = normalize(currentPath) == normalize(node.path)
-                val activeStyle = if (active) "background: ${PortfolioTheme.Colors.SURFACE_STRONG}; color: ${PortfolioTheme.Colors.ACCENT_ALT};" else ""
-                sb.append("""<a href="${safeHref(basePath + node.path)}" style="display: block; padding: 8px 12px; border-radius: 6px; color: ${PortfolioTheme.Colors.TEXT_PRIMARY}; text-decoration: none; $activeStyle">${node.title}</a>""")
-            } else {
-                sb.append("""<details style="margin-left: 0;">""")
-                sb.append("""<summary style="cursor: pointer; font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: ${PortfolioTheme.Colors.TEXT_SECONDARY}; padding: 4px 0;">${node.title}</summary>""")
-                sb.append("""<div style="padding-left: 12px; display: flex; flex-direction: column; gap: 4px;">""")
-                node.children.forEach { child ->
-                    val childActive = normalize(currentPath) == normalize(child.path)
-                    val childActiveStyle = if (childActive) "background: ${PortfolioTheme.Colors.SURFACE_STRONG}; color: ${PortfolioTheme.Colors.ACCENT_ALT};" else ""
-                    sb.append("""<a href="${safeHref(basePath + child.path)}" style="display: block; padding: 8px 12px; border-radius: 6px; color: ${PortfolioTheme.Colors.TEXT_PRIMARY}; text-decoration: none; $childActiveStyle">${child.title}</a>""")
-                }
-                sb.append("""</div></details>""")
-            }
+            appendMobileNavNode(sb, node, currentPath, basePath)
         }
         sb.append("""</div>""")
     }
-    
+
     sb.append("""</nav></details>""")
     return sb.toString()
+}
+
+private fun appendMobileNavNode(sb: StringBuilder, node: DocsNavNode, currentPath: String, basePath: String) {
+    if (node.children.isEmpty()) {
+        val active = normalize(currentPath) == normalize(node.path)
+        val activeStyle = if (active) "background: ${PortfolioTheme.Colors.SURFACE_STRONG}; color: ${PortfolioTheme.Colors.ACCENT_ALT};" else ""
+        sb.append("""<a href="${safeHref(basePath + node.path)}" style="display: block; padding: 8px 12px; border-radius: 6px; color: ${PortfolioTheme.Colors.TEXT_PRIMARY}; text-decoration: none; $activeStyle">${node.title}</a>""")
+    } else {
+        sb.append("""<details style="margin-left: 0;">""")
+        sb.append("""<summary style="cursor: pointer; font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: ${PortfolioTheme.Colors.TEXT_SECONDARY}; padding: 4px 0;">${node.title}</summary>""")
+        sb.append("""<div style="padding-left: 12px; display: flex; flex-direction: column; gap: 4px;">""")
+        node.children.forEach { child ->
+            appendMobileNavNode(sb, child, currentPath, basePath)
+        }
+        sb.append("""</div></details>""")
+    }
 }

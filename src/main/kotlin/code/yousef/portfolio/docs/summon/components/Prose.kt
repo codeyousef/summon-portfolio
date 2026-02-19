@@ -51,6 +51,19 @@ fun Prose(html: String) {
             overflow-x: auto;
             max-width: 100%;
         }
+        /* Side-by-side text + code */
+        .prose-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+            margin: 1rem 0;
+        }
+        .prose-pair > p { margin: 0; }
+        .prose-pair > pre { margin: 0; }
+        @media (max-width: 900px) {
+            .prose-pair { grid-template-columns: 1fr; }
+        }
         @media (max-width: 768px) {
             .prose {
                 padding: 1rem !important;

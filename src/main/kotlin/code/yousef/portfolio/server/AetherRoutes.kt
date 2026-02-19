@@ -276,19 +276,25 @@ fun Router.portfolioRoutes(
         }
 
         post("/ai/api/progress") { exchange ->
-            val body = exchange.request.bodyText()
-            val update = try {
-                json.decodeFromString<AiProgressUpdate>(body)
-            } catch (e: Exception) {
-                exchange.respondJson(400, mapOf("error" to "Invalid request body"))
+            val params = exchange.receiveParameters()
+            val id = params["id"]?.trim() ?: ""
+            val completed = params["completed"]?.trim()?.toBooleanStrictOrNull()
+            val redirect = params["redirect"]?.trim()
+
+            if (id.isEmpty() || completed == null) {
+                exchange.respondJson(400, mapOf("error" to "Missing id or completed field"))
                 return@post
             }
-            if (!update.id.matches(Regex("\\d+\\.\\d+"))) {
+            if (!id.matches(Regex("\\d+\\.\\d+(\\.\\d+)?"))) {
                 exchange.respondJson(400, mapOf("error" to "Invalid subsection ID"))
                 return@post
             }
-            aiProgressStore.updateProgress(update.id, update.completed)
-            exchange.respondJson(200, mapOf("ok" to true))
+            aiProgressStore.updateProgress(id, completed)
+            if (!redirect.isNullOrBlank() && redirect.startsWith("/ai")) {
+                exchange.redirect(redirect)
+            } else {
+                exchange.respondJson(200, mapOf("ok" to true))
+            }
         }
 
         // Overview dashboard
@@ -296,10 +302,19 @@ fun Router.portfolioRoutes(
             exchange.respondSummonPage(aiCurriculumRenderer.overviewPage())
         }
 
-        // Individual lesson pages
+        // Sub-lesson pages (must be before :slug to avoid capture)
+        get("/ai/:slug/:sub") { exchange ->
+            val slug = exchange.pathParam("slug") ?: ""
+            val sub = exchange.pathParam("sub")?.toIntOrNull() ?: 0
+            val page = aiCurriculumRenderer.subLessonPage(slug, sub)
+            if (page != null) exchange.respondSummonPage(page)
+            else exchange.respond(404, "Sub-lesson not found")
+        }
+
+        // Lesson landing pages
         get("/ai/:slug") { exchange ->
             val slug = exchange.pathParam("slug") ?: ""
-            val page = aiCurriculumRenderer.lessonPage(slug)
+            val page = aiCurriculumRenderer.lessonLandingPage(slug)
             if (page != null) exchange.respondSummonPage(page)
             else exchange.respond(404, "Lesson not found")
         }
