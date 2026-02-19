@@ -15,6 +15,7 @@ import code.yousef.portfolio.building.import.ExcelImportService
 import code.yousef.portfolio.building.repo.BuildingRepository
 import code.yousef.portfolio.building.repo.BuildingService
 import code.yousef.portfolio.building.server.createBuildingRouter
+import code.yousef.portfolio.ai.AiCurriculumCatalog
 import code.yousef.portfolio.ai.AiProgressStore
 import code.yousef.portfolio.ai.FileAiProgressStore
 import code.yousef.portfolio.ai.FirestoreAiProgressStore
@@ -133,7 +134,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     // AI Curriculum
     val aiProgressStore: AiProgressStore = if (firestore != null)
         FirestoreAiProgressStore(firestore) else FileAiProgressStore()
-    val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer)
+    val aiCurriculumCatalog = AiCurriculumCatalog()
+    val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer, aiCurriculumCatalog)
 
     // Routers
     val mainRouter = router {
