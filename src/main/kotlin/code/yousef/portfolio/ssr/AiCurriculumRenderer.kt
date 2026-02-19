@@ -53,6 +53,15 @@ class AiCurriculumRenderer(
         head.title("$title · AI Curriculum · Yousef")
         head.meta("robots", null, "noindex, nofollow", null, null)
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        // Prism.js syntax highlighting
+        head.link("stylesheet", "https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css", null, null, null, null)
+        head.script("https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js", "prism-core", "application/javascript", false, true, null)
+        head.script("https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js", "prism-python", "application/javascript", false, true, null)
+        head.script("https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js", "prism-bash", "application/javascript", false, true, null)
+        // REPL styles and script
+        head.link("stylesheet", "/static/ai-repl.css", null, null, null, null)
+        head.script("/static/ai-repl.js", "ai-repl", "application/javascript", false, true, null)
+        // Hydration and curriculum scripts
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
         head.script("/static/ai-curriculum.js", "ai-curriculum", "application/javascript", false, true, null)
     }

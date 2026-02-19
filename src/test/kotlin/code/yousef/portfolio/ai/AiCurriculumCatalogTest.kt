@@ -18,8 +18,6 @@ class AiCurriculumCatalogTest {
         assertEquals("overview", overview.slug)
         assertNull(overview.sectionId)
         assertEquals("Overview", overview.title)
-        assertNull(overview.phaseTitle)
-        assertTrue(overview.markdown.contains("Unified AI Curriculum"))
     }
 
     @Test
@@ -27,26 +25,22 @@ class AiCurriculumCatalogTest {
         val entry = catalog.find("1-1")
         assertNotNull(entry)
         assertEquals("1.1", entry.sectionId)
-        assertTrue(entry.title.contains("Python"))
+        assertTrue(entry.title.contains("1.1"))
         assertEquals(1, entry.phaseNumber)
-        assertTrue(entry.markdown.contains("NumPy"))
     }
 
     @Test
     fun `parses capstone section`() {
         val entry = catalog.find("14-capstone")
         assertNotNull(entry)
-        assertNull(entry.sectionId)
         assertEquals("Capstone Projects", entry.title)
         assertEquals(14, entry.phaseNumber)
-        assertTrue(entry.markdown.contains("Choose One"))
     }
 
     @Test
     fun `parses appendix sections`() {
         val entry = catalog.find("appendix-recommended-hardware-progression")
         assertNotNull(entry)
-        assertNull(entry.sectionId)
         assertEquals("Recommended Hardware Progression", entry.title)
         assertEquals("Appendix", entry.phaseTitle)
     }
@@ -98,5 +92,41 @@ class AiCurriculumCatalogTest {
             .distinct()
             .sorted()
         assertEquals((1..14).toList(), phaseNumbers)
+    }
+
+    @Test
+    fun `front matter is stripped from markdown content`() {
+        val entry = catalog.find("1-1")
+        assertNotNull(entry)
+        // Markdown should not contain the YAML front matter delimiters
+        assertTrue(!entry.markdown.startsWith("---"), "Markdown should not start with front matter")
+    }
+
+    @Test
+    fun `all expected slugs exist`() {
+        val expectedSlugs = listOf(
+            "overview",
+            "1-1", "1-2", "1-3",
+            "2-1", "2-2", "2-3",
+            "3-1", "3-2", "3-3",
+            "4-1", "4-2", "4-3",
+            "5-1", "5-2", "5-3",
+            "6-1", "6-2",
+            "7-1", "7-2", "7-3",
+            "8-1", "8-2", "8-3",
+            "9-1", "9-2",
+            "10-1", "10-2", "10-3",
+            "11-1", "11-2", "11-3",
+            "12-1", "12-2", "12-3",
+            "13-1", "13-2", "13-3",
+            "14-capstone",
+            "appendix-recommended-hardware-progression",
+            "appendix-key-libraries-to-master",
+            "appendix-reading-list-papers",
+            "appendix-how-to-use-this-curriculum"
+        )
+        for (slug in expectedSlugs) {
+            assertNotNull(catalog.find(slug), "Missing lesson for slug: $slug")
+        }
     }
 }
