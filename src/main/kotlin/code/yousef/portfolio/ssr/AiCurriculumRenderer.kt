@@ -1,29 +1,56 @@
 package code.yousef.portfolio.ssr
 
+import code.yousef.portfolio.ai.AiCurriculumCatalog
+import code.yousef.portfolio.ai.AiLessonEntry
+import code.yousef.portfolio.docs.MarkdownMeta
 import code.yousef.portfolio.docs.MarkdownRenderer
-import code.yousef.portfolio.ui.ai.AiCurriculumPage
+import code.yousef.portfolio.ui.ai.AiLessonPage
+import code.yousef.portfolio.ui.ai.AiOverviewPage
 import codes.yousef.summon.seo.HeadScope
 
 class AiCurriculumRenderer(
     private val markdownRenderer: MarkdownRenderer,
-    private val resourcePath: String = "ai/unified_ai_curriculum.md"
+    private val catalog: AiCurriculumCatalog
 ) {
 
-    fun curriculumPage(): SummonPage {
-        val markdown = Thread.currentThread().contextClassLoader
-            .getResourceAsStream(resourcePath)!!
-            .bufferedReader().readText()
-        val rendered = markdownRenderer.render(markdown, "/ai")
+    fun overviewPage(): SummonPage {
+        val entries = catalog.allEntries()
         return SummonPage(
-            head = headBlock(),
+            head = headBlock("AI Curriculum"),
             content = {
-                AiCurriculumPage(html = rendered.html, toc = rendered.toc)
+                AiOverviewPage(entries = entries)
             }
         )
     }
 
-    private fun headBlock(): (HeadScope) -> Unit = { head ->
-        head.title("AI Curriculum · Yousef")
+    fun lessonPage(slug: String): SummonPage? {
+        val entry = catalog.find(slug) ?: return null
+        val rendered = markdownRenderer.render(entry.markdown, "/ai/$slug")
+        val meta = MarkdownMeta(
+            title = entry.title,
+            description = entry.phaseTitle ?: "AI Curriculum"
+        )
+        val neighbors = catalog.neighbors(slug)
+        val navTree = catalog.navTree()
+
+        return SummonPage(
+            head = headBlock(entry.title),
+            content = {
+                AiLessonPage(
+                    requestPath = "/$slug",
+                    html = rendered.html,
+                    toc = rendered.toc,
+                    sidebar = navTree,
+                    meta = meta,
+                    neighbors = neighbors,
+                    sectionId = entry.sectionId
+                )
+            }
+        )
+    }
+
+    private fun headBlock(title: String): (HeadScope) -> Unit = { head ->
+        head.title("$title · AI Curriculum · Yousef")
         head.meta("robots", null, "noindex, nofollow", null, null)
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)

@@ -269,11 +269,7 @@ fun Router.portfolioRoutes(
 
     // AI Curriculum Routes (auth-gated by middleware in Application.kt)
     if (aiCurriculumRenderer != null && aiProgressStore != null) {
-        get("/ai") { exchange ->
-            val page = aiCurriculumRenderer.curriculumPage()
-            exchange.respondSummonPage(page)
-        }
-
+        // API routes registered FIRST (before :slug wildcard)
         get("/ai/api/progress") { exchange ->
             val data = aiProgressStore.getProgress()
             exchange.respondJson(200, data)
@@ -293,6 +289,19 @@ fun Router.portfolioRoutes(
             }
             aiProgressStore.updateProgress(update.id, update.completed)
             exchange.respondJson(200, mapOf("ok" to true))
+        }
+
+        // Overview dashboard
+        get("/ai") { exchange ->
+            exchange.respondSummonPage(aiCurriculumRenderer.overviewPage())
+        }
+
+        // Individual lesson pages
+        get("/ai/:slug") { exchange ->
+            val slug = exchange.pathParam("slug") ?: ""
+            val page = aiCurriculumRenderer.lessonPage(slug)
+            if (page != null) exchange.respondSummonPage(page)
+            else exchange.respond(404, "Lesson not found")
         }
     }
 
