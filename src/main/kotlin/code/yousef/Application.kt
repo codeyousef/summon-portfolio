@@ -9,6 +9,9 @@ import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
 import code.yousef.portfolio.admin.createAdminSite
+import code.yousef.portfolio.ai.AiProgressStore
+import code.yousef.portfolio.ai.FileAiProgressStore
+import code.yousef.portfolio.ai.FirestoreAiProgressStore
 import code.yousef.portfolio.building.auth.BuildingAuthProvider
 import code.yousef.portfolio.building.auth.PasswordResetService
 import code.yousef.portfolio.building.import.ExcelImportService
@@ -16,9 +19,6 @@ import code.yousef.portfolio.building.repo.BuildingRepository
 import code.yousef.portfolio.building.repo.BuildingService
 import code.yousef.portfolio.building.server.createBuildingRouter
 import code.yousef.portfolio.ai.AiCurriculumCatalog
-import code.yousef.portfolio.ai.AiProgressStore
-import code.yousef.portfolio.ai.FileAiProgressStore
-import code.yousef.portfolio.ai.FirestoreAiProgressStore
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.contact.InMemoryContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
@@ -123,13 +123,22 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val sigilDocsRouter = DocsRouter(SeoExtractor(sigilDocsConfig))
     val sigilDocsCatalog = DocsCatalog(sigilDocsConfig)
     val sigilWebhookHandler = WebhookHandler(sigilDocsService, sigilDocsCache, sigilDocsConfig, sigilDocsCatalog)
-    
+
+    // Docs Services - Aether
+    val aetherDocsConfig = DocsConfig.aetherFromEnv()
+    val aetherDocsCache = DocsCache(aetherDocsConfig.cacheTtlSeconds)
+    val aetherDocsService = DocsService(aetherDocsConfig, aetherDocsCache)
+    val aetherDocsRouter = DocsRouter(SeoExtractor(aetherDocsConfig))
+    val aetherDocsCatalog = DocsCatalog(aetherDocsConfig)
+    val aetherWebhookHandler = WebhookHandler(aetherDocsService, aetherDocsCache, aetherDocsConfig, aetherDocsCatalog)
+
     // Renderers
     val portfolioRenderer = PortfolioRenderer(contentService)
     val blogRenderer = BlogRenderer(contentService)
     val scratchpadRenderer = ScratchpadRenderer()
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
+    val aetherRenderer = AetherLandingRenderer()
 
     // AI Curriculum
     val aiProgressStore: AiProgressStore = if (firestore != null)
@@ -198,6 +207,23 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         )
     }
 
+    val aetherRouter = router {
+        get("/") { exchange ->
+            val page = aetherRenderer.landingPage()
+            exchange.respondSummonPage(page)
+        }
+        docsRoutes(
+            aetherDocsService,
+            markdownRenderer,
+            linkRewriter,
+            aetherDocsRouter,
+            aetherWebhookHandler,
+            aetherDocsConfig,
+            aetherDocsCatalog,
+            basePath = "/docs"
+        )
+    }
+
     val docsRouterHandler = router {
         docsRoutes(
             docsService,
@@ -218,6 +244,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         "materia.yousef.codes" to materiaRouter.asMiddleware(),
         "sigil.dev.yousef.codes" to sigilRouter.asMiddleware(),
         "sigil.yousef.codes" to sigilRouter.asMiddleware(),
+        "aether.yousef.codes" to aetherRouter.asMiddleware(),
+        "aether.dev.yousef.codes" to aetherRouter.asMiddleware(),
         "localhost" to mainRouter.asMiddleware(),
         "docs.yousef.codes" to docsRouterHandler.asMiddleware()
     )

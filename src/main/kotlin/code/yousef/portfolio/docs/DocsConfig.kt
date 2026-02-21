@@ -124,6 +124,49 @@ data class DocsConfig(
         }
 
         /**
+         * Creates a DocsConfig for Aether docs.
+         * Uses AETHER_* environment variables with fallbacks.
+         */
+        fun aetherFromEnv(): DocsConfig {
+            val env = System.getenv()
+            val owner = env["AETHER_GITHUB_OWNER"] ?: "codeyousef"
+            val repo = env["AETHER_GITHUB_REPO"] ?: "Aether"
+            val branch = env["AETHER_DOCS_BRANCH"] ?: "main"
+            val root = env["AETHER_DOCS_ROOT"] ?: "docs"
+            val useApi = (env["AETHER_DOCS_USE_API"] ?: "false").toBooleanStrictOrNull() ?: false
+            val ttl = (env["DOCS_CACHE_TTL_SECONDS"] ?: "3600").toLongOrNull() ?: 3600L
+            val enableRedis = (env["DOCS_ENABLE_REDIS"] ?: "false").toBooleanStrictOrNull() ?: false
+            val localRoot = env["AETHER_DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: run {
+                val aetherDocs = Paths.get("docs/private/aether-docs")
+                if (Files.exists(aetherDocs)) aetherDocs else Paths.get("docs")
+            }
+
+            val envSource = env["AETHER_DOCS_SOURCE"]
+            val docsSource = if (envSource != null) {
+                if (envSource.equals("local", ignoreCase = true)) DocsSource.LOCAL else DocsSource.REMOTE
+            } else {
+                val aetherDocs = Paths.get("docs/private/aether-docs")
+                if (Files.exists(aetherDocs)) DocsSource.LOCAL else DocsSource.REMOTE
+            }
+            val docsOrigin = env["PUBLIC_ORIGIN_AETHER_DOCS"] ?: "https://aether.yousef.codes"
+            val portfolioOrigin = env["PUBLIC_ORIGIN_PORTFOLIO"] ?: "https://www.yousef.codes"
+            return DocsConfig(
+                githubOwner = owner,
+                githubRepo = repo,
+                defaultBranch = branch,
+                docsRoot = root,
+                useContentsApi = useApi,
+                githubToken = env["GITHUB_TOKEN"],
+                cacheTtlSeconds = ttl,
+                enableRedis = enableRedis,
+                publicOriginDocs = docsOrigin,
+                publicOriginPortfolio = portfolioOrigin,
+                docsSource = docsSource,
+                localDocsRoot = localRoot
+            )
+        }
+
+        /**
          * Creates a DocsConfig for Sigil docs.
          * Uses SIGIL_* environment variables with fallbacks.
          */
