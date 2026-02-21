@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.NavigationStrings
+import code.yousef.portfolio.ssr.aetherMarketingUrl
 import code.yousef.portfolio.ssr.blogUrl
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
@@ -103,6 +104,12 @@ fun DesktopHeader(
                     logoSrc = "/static/materia-logo.png",
                     label = "Materia",
                     href = materiaMarketingUrl(),
+                    modifier = baseNavModifier
+                )
+                EcosystemNavLink(
+                    logoSrc = "/static/aether-logo.png",
+                    label = "Aether",
+                    href = aetherMarketingUrl(),
                     modifier = baseNavModifier
                 )
             }
@@ -336,6 +343,11 @@ private fun ProjectsDropdownNav(baseNavModifier: Modifier) {
             logoSrc = "/static/sigil-logo.png",
             label = "Sigil",
             href = sigilMarketingUrl()
+        )
+        ProjectDropdownLink(
+            logoSrc = "/static/aether-logo.png",
+            label = "Aether",
+            href = aetherMarketingUrl()
         )
     }
 }

@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.NavigationStrings
+import code.yousef.portfolio.ssr.aetherMarketingUrl
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
@@ -229,6 +230,35 @@ fun MobileHeader(
                                 ariaDescribedBy = null,
                                 dataHref = null,
                                 dataAttributes = mapOf("nav" to "sigil"),
+                                navigationMode = LinkNavigationMode.Native,
+                            )
+                        }
+                        // Aether link with logo
+                        Row(
+                            modifier = Modifier()
+                                .display(Display.Flex)
+                                .alignItems(AlignItems.Center)
+                                .gap(8.px)
+                        ) {
+                            Image(
+                                src = "/static/aether-logo.png",
+                                alt = "",
+                                modifier = Modifier()
+                                    .width(20.px)
+                                    .height(20.px)
+                            )
+                            AnchorLink(
+                                label = "Aether",
+                                href = aetherMarketingUrl(),
+                                modifier = baseNavModifier,
+                                target = null,
+                                rel = null,
+                                title = null,
+                                id = null,
+                                ariaLabel = null,
+                                ariaDescribedBy = null,
+                                dataHref = null,
+                                dataAttributes = mapOf("nav" to "aether"),
                                 navigationMode = LinkNavigationMode.Native,
                             )
                         }
