@@ -97,6 +97,7 @@ class DocsRouter(
             host.startsWith("summon.") -> DocsBranding.summon(::summonMarketingUrl)
             host.startsWith("materia.") -> DocsBranding.materia(::materiaMarketingUrl)
             host.startsWith("sigil.") -> DocsBranding.sigil(::sigilMarketingUrl)
+            host.startsWith("aether.") -> DocsBranding.aether(::aetherMarketingUrl)
             else -> defaultBranding
         }
     }

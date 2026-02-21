@@ -3,7 +3,6 @@ package code.yousef.portfolio.ui.components
 import code.yousef.portfolio.theme.PortfolioTheme
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
-import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
@@ -53,6 +52,15 @@ data class LandingBranding(
             docsUrl = docsUrl,
             apiReferenceUrl = apiReferenceUrl,
             accentColor = "#06b6d4" // Teal/cyan accent for Sigil
+        )
+
+        fun aether(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
+            name = "Aether",
+            logoPath = "/static/aether-logo.png",
+            homeUrl = "/",
+            docsUrl = docsUrl,
+            apiReferenceUrl = apiReferenceUrl,
+            accentColor = "#7c3aed" // Violet/purple accent for Aether
         )
     }
 }
