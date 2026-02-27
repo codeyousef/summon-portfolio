@@ -156,7 +156,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             contentService,
             adminAuthService,
             aiCurriculumRenderer = aiCurriculumRenderer,
-            aiProgressStore = aiProgressStore
+            aiProgressStore = aiProgressStore,
         )
     }
 
@@ -256,7 +256,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         hostMap["building.dev.yousef.codes"] = buildingRouter.asMiddleware()
         log.info("Building management enabled at building.yousef.codes")
     }
-    
+
     hostMap["*"] = mainRouter.asMiddleware()
     
     val hostRouter = HostRouter(hostMap)
@@ -299,7 +299,6 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         val adminMiddleware: codes.yousef.aether.core.pipeline.Middleware = { exchange, next ->
             val host = exchange.request.headers["Host"]?.substringBefore(":")
             val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
-            
             val path = exchange.request.path
             if (!isBuildingSite &&
                 path.startsWith("/admin") &&
