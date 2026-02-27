@@ -82,7 +82,7 @@ fun Router.portfolioRoutes(
     contentService: PortfolioContentService,
     adminAuthService: AdminAuthProvider,
     aiCurriculumRenderer: AiCurriculumRenderer? = null,
-    aiProgressStore: AiProgressStore? = null
+    aiProgressStore: AiProgressStore? = null,
 ) {
     get("/version") { exchange ->
         exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
