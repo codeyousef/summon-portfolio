@@ -66,3 +66,7 @@ gh-deployer.json
 HAMBURGER_MENU_GUIDE.md
 hamburger.md
 /CLAUDE.md
+
+# Build artifacts
+/static/
+/codes/
