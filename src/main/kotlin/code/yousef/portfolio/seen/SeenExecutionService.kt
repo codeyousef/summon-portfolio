@@ -6,7 +6,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 @Serializable
-data class SeenRunRequest(val code: String)
+data class SeenRunRequest(val code: String, val language: String = "en")
 
 @Serializable
 data class ExecutionResult(
@@ -47,7 +47,10 @@ class SeenExecutionService(
                 ?: candidates.first()
         }
 
-    fun execute(code: String): ExecutionResult {
+    private val validLanguages = setOf("en", "ar", "es", "ru", "zh", "ja")
+
+    fun execute(code: String, language: String = "en"): ExecutionResult {
+        val validatedLang = if (language in validLanguages) language else "en"
         val tempDir = Files.createTempDirectory("seen-playground-")
         try {
             val sourceFile = tempDir.resolve("main.seen")
@@ -60,6 +63,7 @@ class SeenExecutionService(
                 command = listOf(
                     "timeout", "${compileTimeoutSec}s",
                     seenBinary, "run",
+                    "--language", validatedLang,
                     sourceFile.toAbsolutePath().toString()
                 )
             )

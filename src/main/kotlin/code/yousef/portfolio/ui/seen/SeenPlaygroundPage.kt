@@ -43,6 +43,25 @@ fun SeenPlaygroundPage() {
             border-color: #58a6ff;
             box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3);
         }
+        .language-select {
+            background: #21262d;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            cursor: pointer;
+            outline: none;
+            min-width: 120px;
+        }
+        .language-select:hover {
+            border-color: #58a6ff;
+        }
+        .language-select:focus {
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3);
+        }
         .run-button {
             transition: all 0.15s ease;
             user-select: none;
@@ -128,12 +147,17 @@ fun SeenPlaygroundPage() {
                 )
             }
 
-            // Center: example selector
-            Box(
+            // Center: language + example selectors
+            Row(
                 modifier = Modifier()
-                    .className("example-selector-container")
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(8.px)
             ) {
-                // select element rendered by JS — placeholder div
+                Box(
+                    modifier = Modifier()
+                        .id("language-selector")
+                ) {}
                 Box(
                     modifier = Modifier()
                         .id("example-selector")

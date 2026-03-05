@@ -436,7 +436,7 @@ fun Router.seenRoutes(
             exchange.respondJson(400, mapOf("error" to "No code provided"))
             return@post
         }
-        val result = executionService.execute(code)
+        val result = executionService.execute(code, body.language)
         exchange.respondJson(200, result)
     }
 }
