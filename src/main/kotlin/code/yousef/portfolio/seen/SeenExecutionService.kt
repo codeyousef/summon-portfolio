@@ -61,7 +61,7 @@ class SeenExecutionService(
                 workDir = Path.of(seenHomePath),
                 command = listOf(
                     "timeout", "${compileTimeoutSec}s",
-                    seenBinary, "build",
+                    seenBinary, "compile",
                     sourceFile.toAbsolutePath().toString(),
                     outputBinary.toAbsolutePath().toString()
                 )
