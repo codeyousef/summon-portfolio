@@ -56,7 +56,7 @@ data class LandingBranding(
 
         fun seen(playgroundUrl: String, githubUrl: String) = LandingBranding(
             name = "Seen",
-            logoPath = "",
+            logoPath = "/static/seen-logo.png",
             homeUrl = "/",
             docsUrl = playgroundUrl,
             apiReferenceUrl = githubUrl,

@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui.seen
 
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
@@ -105,6 +106,13 @@ fun SeenPlaygroundPage() {
                     .alignItems(AlignItems.Center)
                     .gap(12.px)
             ) {
+                Image(
+                    src = "/static/seen-logo.png",
+                    alt = "Seen",
+                    modifier = Modifier()
+                        .width(24.px)
+                        .height(24.px)
+                )
                 Text(
                     text = "Seen",
                     modifier = Modifier()

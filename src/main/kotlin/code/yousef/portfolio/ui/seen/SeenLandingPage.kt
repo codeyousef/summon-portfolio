@@ -8,6 +8,7 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Column
@@ -16,6 +17,8 @@ import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
+import codes.yousef.summon.extensions.vw
+import codes.yousef.summon.modifier.cssClamp
 import codes.yousef.summon.modifier.*
 
 private const val SEEN_ACCENT = "#58a6ff"
@@ -44,15 +47,30 @@ private fun SeenHero(playgroundUrl: String) {
                 .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
-            Text(
-                text = "Seen",
+            Row(
                 modifier = Modifier()
-                    .fontSize(4.rem)
-                    .fontWeight(900)
-                    .letterSpacing("-0.02em")
-                    .color(SEEN_ACCENT)
-                    .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
-            )
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .gap(PortfolioTheme.Spacing.md)
+            ) {
+                Image(
+                    src = "/static/seen-logo.png",
+                    alt = "Seen Logo",
+                    modifier = Modifier()
+                        .width(cssClamp(48.px, 10.vw, 96.px))
+                        .height(cssClamp(48.px, 10.vw, 96.px))
+                        .style("object-fit", "contain")
+                )
+                Text(
+                    text = "Seen",
+                    modifier = Modifier()
+                        .fontSize(cssClamp(48.px, 8.vw, 96.px))
+                        .fontWeight(900)
+                        .letterSpacing("-0.02em")
+                        .color(SEEN_ACCENT)
+                        .fontFamily(PortfolioTheme.Typography.FONT_SERIF)
+                )
+            }
             Paragraph(
                 text = "A multi-language systems programming language with a self-hosted compiler and LLVM backend. Write code using keywords in your native language.",
                 modifier = Modifier()
