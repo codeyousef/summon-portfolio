@@ -8,7 +8,8 @@ class SeenLandingRenderer {
     fun landingPage(): SummonPage = SummonPage(
         head = headBlock(),
         content = {
-            SeenLandingPage(playgroundUrl = "/playground")
+            val docsUrl = seenDocsBaseUrl()
+            SeenLandingPage(playgroundUrl = "/playground", docsUrl = docsUrl)
         }
     )
 

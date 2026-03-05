@@ -142,6 +142,14 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val sigilRenderer = SigilLandingRenderer()
     val aetherRenderer = AetherLandingRenderer()
 
+    // Docs Services - Seen
+    val seenDocsConfig = DocsConfig.seenFromEnv()
+    val seenDocsCache = DocsCache(seenDocsConfig.cacheTtlSeconds)
+    val seenDocsService = DocsService(seenDocsConfig, seenDocsCache)
+    val seenDocsRouter = DocsRouter(SeoExtractor(seenDocsConfig))
+    val seenDocsCatalog = DocsCatalog(seenDocsConfig)
+    val seenWebhookHandler = WebhookHandler(seenDocsService, seenDocsCache, seenDocsConfig, seenDocsCatalog)
+
     // Seen
     val seenExecutionService = SeenExecutionService()
     val seenPlaygroundRenderer = SeenPlaygroundRenderer()
@@ -233,6 +241,16 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 
     val seenRouter = router {
         seenRoutes(seenLandingRenderer, seenPlaygroundRenderer, seenExecutionService)
+        docsRoutes(
+            seenDocsService,
+            markdownRenderer,
+            linkRewriter,
+            seenDocsRouter,
+            seenWebhookHandler,
+            seenDocsConfig,
+            seenDocsCatalog,
+            basePath = "/docs"
+        )
     }
 
     val docsRouterHandler = router {

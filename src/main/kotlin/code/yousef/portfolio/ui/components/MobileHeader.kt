@@ -5,6 +5,7 @@ import code.yousef.portfolio.i18n.strings.NavigationStrings
 import code.yousef.portfolio.ssr.aetherMarketingUrl
 import code.yousef.portfolio.ssr.materiaMarketingUrl
 import code.yousef.portfolio.ssr.portfolioBaseUrl
+import code.yousef.portfolio.ssr.seenMarketingUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
@@ -133,9 +134,9 @@ fun MobileHeader(
                             )
                         }
                         
-                        // Projects section header
+                        // Kotlin Libraries section header
                         Text(
-                            text = NavigationStrings.projects.resolve(locale),
+                            text = "Kotlin Libraries",
                             modifier = Modifier()
                                 .fontSize(0.75.rem)
                                 .fontWeight(600)
@@ -145,123 +146,55 @@ fun MobileHeader(
                                 .textTransform(TextTransform.Uppercase)
                                 .letterSpacing(0.1.rem)
                         )
-                        
+
                         // Summon link with logo
-                        Row(
-                            modifier = Modifier()
-                                .display(Display.Flex)
-                                .alignItems(AlignItems.Center)
-                                .gap(8.px)
-                        ) {
-                            Image(
-                                src = "/static/summon-logo.png",
-                                alt = "",
-                                modifier = Modifier()
-                                    .width(20.px)
-                                    .height(20.px)
-                            )
-                            AnchorLink(
-                                label = "Summon",
-                                href = summonMarketingUrl(),
-                                modifier = baseNavModifier,
-                                target = null,
-                                rel = null,
-                                title = null,
-                                id = null,
-                                ariaLabel = null,
-                                ariaDescribedBy = null,
-                                dataHref = null,
-                                dataAttributes = mapOf("nav" to "summon"),
-                                navigationMode = LinkNavigationMode.Native,
-                            )
-                        }
+                        MobileProjectLink(
+                            logoSrc = "/static/summon-logo.png",
+                            label = "Summon",
+                            href = summonMarketingUrl(),
+                            modifier = baseNavModifier
+                        )
                         // Materia link with logo
-                        Row(
-                            modifier = Modifier()
-                                .display(Display.Flex)
-                                .alignItems(AlignItems.Center)
-                                .gap(8.px)
-                        ) {
-                            Image(
-                                src = "/static/materia-logo.png",
-                                alt = "",
-                                modifier = Modifier()
-                                    .width(20.px)
-                                    .height(20.px)
-                            )
-                            AnchorLink(
-                                label = "Materia",
-                                href = materiaMarketingUrl(),
-                                modifier = baseNavModifier,
-                                target = null,
-                                rel = null,
-                                title = null,
-                                id = null,
-                                ariaLabel = null,
-                                ariaDescribedBy = null,
-                                dataHref = null,
-                                dataAttributes = mapOf("nav" to "materia"),
-                                navigationMode = LinkNavigationMode.Native,
-                            )
-                        }
+                        MobileProjectLink(
+                            logoSrc = "/static/materia-logo.png",
+                            label = "Materia",
+                            href = materiaMarketingUrl(),
+                            modifier = baseNavModifier
+                        )
                         // Sigil link with logo
-                        Row(
-                            modifier = Modifier()
-                                .display(Display.Flex)
-                                .alignItems(AlignItems.Center)
-                                .gap(8.px)
-                        ) {
-                            Image(
-                                src = "/static/sigil-logo.png",
-                                alt = "",
-                                modifier = Modifier()
-                                    .width(20.px)
-                                    .height(20.px)
-                            )
-                            AnchorLink(
-                                label = "Sigil",
-                                href = sigilMarketingUrl(),
-                                modifier = baseNavModifier,
-                                target = null,
-                                rel = null,
-                                title = null,
-                                id = null,
-                                ariaLabel = null,
-                                ariaDescribedBy = null,
-                                dataHref = null,
-                                dataAttributes = mapOf("nav" to "sigil"),
-                                navigationMode = LinkNavigationMode.Native,
-                            )
-                        }
+                        MobileProjectLink(
+                            logoSrc = "/static/sigil-logo.png",
+                            label = "Sigil",
+                            href = sigilMarketingUrl(),
+                            modifier = baseNavModifier
+                        )
                         // Aether link with logo
-                        Row(
+                        MobileProjectLink(
+                            logoSrc = "/static/aether-logo.png",
+                            label = "Aether",
+                            href = aetherMarketingUrl(),
+                            modifier = baseNavModifier
+                        )
+
+                        // Seen section header
+                        Text(
+                            text = "Languages",
                             modifier = Modifier()
-                                .display(Display.Flex)
-                                .alignItems(AlignItems.Center)
-                                .gap(8.px)
-                        ) {
-                            Image(
-                                src = "/static/aether-logo.png",
-                                alt = "",
-                                modifier = Modifier()
-                                    .width(20.px)
-                                    .height(20.px)
-                            )
-                            AnchorLink(
-                                label = "Aether",
-                                href = aetherMarketingUrl(),
-                                modifier = baseNavModifier,
-                                target = null,
-                                rel = null,
-                                title = null,
-                                id = null,
-                                ariaLabel = null,
-                                ariaDescribedBy = null,
-                                dataHref = null,
-                                dataAttributes = mapOf("nav" to "aether"),
-                                navigationMode = LinkNavigationMode.Native,
-                            )
-                        }
+                                .fontSize(0.75.rem)
+                                .fontWeight(600)
+                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                                .marginTop(8.px)
+                                .marginBottom(4.px)
+                                .textTransform(TextTransform.Uppercase)
+                                .letterSpacing(0.1.rem)
+                        )
+                        // Seen link with logo
+                        MobileProjectLink(
+                            logoSrc = "/static/seen-logo.png",
+                            label = "Seen",
+                            href = seenMarketingUrl(),
+                            modifier = baseNavModifier
+                        )
 
                         if (chrome.isAdminSession) {
                             val adminHref = if (locale == PortfolioLocale.EN) "/admin" else "/${locale.code}/admin"
@@ -355,5 +288,42 @@ fun MobileHeader(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MobileProjectLink(
+    logoSrc: String,
+    label: String,
+    href: String,
+    modifier: Modifier
+) {
+    Row(
+        modifier = Modifier()
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+            .gap(8.px)
+    ) {
+        Image(
+            src = logoSrc,
+            alt = "",
+            modifier = Modifier()
+                .width(20.px)
+                .height(20.px)
+        )
+        AnchorLink(
+            label = label,
+            href = href,
+            modifier = modifier,
+            target = null,
+            rel = null,
+            title = null,
+            id = null,
+            ariaLabel = null,
+            ariaDescribedBy = null,
+            dataHref = null,
+            dataAttributes = mapOf("nav" to label.lowercase()),
+            navigationMode = LinkNavigationMode.Native,
+        )
     }
 }

@@ -2,6 +2,7 @@ package code.yousef.portfolio.docs
 
 import code.yousef.portfolio.ssr.aetherMarketingUrl
 import code.yousef.portfolio.ssr.materiaMarketingUrl
+import code.yousef.portfolio.ssr.seenMarketingUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 
@@ -44,6 +45,14 @@ data class DocsBranding(
             docsTitle = "Sigil Docs",
             accentColor = "#06b6d4", // Teal/cyan accent for Sigil
             logoPath = "/static/sigil-logo.png"
+        )
+
+        fun seen(homeUrlProvider: () -> String = ::seenMarketingUrl) = DocsBranding(
+            name = "Seen",
+            homeUrlProvider = homeUrlProvider,
+            docsTitle = "Seen Docs",
+            accentColor = "#58a6ff",
+            logoPath = "/static/seen-logo.png"
         )
 
         fun aether(homeUrlProvider: () -> String = ::aetherMarketingUrl) = DocsBranding(

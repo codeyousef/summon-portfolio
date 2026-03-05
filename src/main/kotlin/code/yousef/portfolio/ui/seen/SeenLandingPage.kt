@@ -25,10 +25,11 @@ private const val SEEN_ACCENT = "#58a6ff"
 private const val SEEN_GITHUB_URL = "https://github.com/YousefCodeworx/seen"
 
 @Composable
-fun SeenLandingPage(playgroundUrl: String) {
+fun SeenLandingPage(playgroundUrl: String, docsUrl: String) {
+    val apiReferenceUrl = "$docsUrl/api-reference"
     PageScaffold(locale = PortfolioLocale.EN) {
         LandingNavbar(
-            branding = LandingBranding.seen(playgroundUrl, SEEN_GITHUB_URL)
+            branding = LandingBranding.seen(docsUrl, apiReferenceUrl)
         )
         SeenHero(playgroundUrl)
         SeenFeatureGrid()
@@ -57,8 +58,8 @@ private fun SeenHero(playgroundUrl: String) {
                     src = "/static/seen-logo.png",
                     alt = "Seen Logo",
                     modifier = Modifier()
-                        .width(cssClamp(48.px, 10.vw, 96.px))
-                        .height(cssClamp(48.px, 10.vw, 96.px))
+                        .width(cssClamp(64.px, 12.vw, 128.px))
+                        .height(cssClamp(64.px, 12.vw, 128.px))
                         .style("object-fit", "contain")
                 )
                 Text(

@@ -54,12 +54,12 @@ data class LandingBranding(
             accentColor = "#06b6d4" // Teal/cyan accent for Sigil
         )
 
-        fun seen(playgroundUrl: String, githubUrl: String) = LandingBranding(
+        fun seen(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
             name = "Seen",
             logoPath = "/static/seen-logo.png",
             homeUrl = "/",
-            docsUrl = playgroundUrl,
-            apiReferenceUrl = githubUrl,
+            docsUrl = docsUrl,
+            apiReferenceUrl = apiReferenceUrl,
             accentColor = "#58a6ff"
         )
 
