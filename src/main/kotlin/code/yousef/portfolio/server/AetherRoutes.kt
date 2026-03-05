@@ -4,6 +4,7 @@ package code.yousef.portfolio.server
 import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.AdminAuthProvider.AuthResult
 import code.yousef.portfolio.admin.auth.AdminSession
+import code.yousef.portfolio.ai.AiProgressStore
 import code.yousef.portfolio.api.toDto
 import code.yousef.portfolio.contact.ContactRequest
 import code.yousef.portfolio.contact.ContactService
@@ -11,8 +12,9 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.i18n.PortfolioLocale
-import code.yousef.portfolio.ai.AiProgressStore
-import code.yousef.portfolio.ai.AiProgressUpdate
+import code.yousef.portfolio.seen.SeenExecutionService
+import code.yousef.portfolio.seen.SeenPlaygroundRenderer
+import code.yousef.portfolio.seen.SeenRunRequest
 import code.yousef.portfolio.ssr.*
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
@@ -404,6 +406,38 @@ fun Router.portfolioRoutes(
                 exchange.redirect("/admin")
             }
         }
+    }
+}
+
+fun Router.seenRoutes(
+    landingRenderer: SeenLandingRenderer,
+    playgroundRenderer: SeenPlaygroundRenderer,
+    executionService: SeenExecutionService
+) {
+    get("/") { exchange ->
+        val page = landingRenderer.landingPage()
+        exchange.respondSummonPage(page)
+    }
+
+    get("/playground") { exchange ->
+        val page = playgroundRenderer.playgroundPage()
+        exchange.respondSummonPage(page)
+    }
+
+    post("/api/seen/run") { exchange ->
+        val body = try {
+            json.decodeFromString<SeenRunRequest>(exchange.request.bodyText())
+        } catch (e: Exception) {
+            exchange.respondJson(400, mapOf("error" to "Invalid request body"))
+            return@post
+        }
+        val code = body.code.take(10_000)
+        if (code.isBlank()) {
+            exchange.respondJson(400, mapOf("error" to "No code provided"))
+            return@post
+        }
+        val result = executionService.execute(code)
+        exchange.respondJson(200, result)
     }
 }
 

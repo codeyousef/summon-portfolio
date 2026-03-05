@@ -9,6 +9,7 @@ import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.AdminAuthService
 import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
 import code.yousef.portfolio.admin.createAdminSite
+import code.yousef.portfolio.ai.AiCurriculumCatalog
 import code.yousef.portfolio.ai.AiProgressStore
 import code.yousef.portfolio.ai.FileAiProgressStore
 import code.yousef.portfolio.ai.FirestoreAiProgressStore
@@ -18,7 +19,6 @@ import code.yousef.portfolio.building.import.ExcelImportService
 import code.yousef.portfolio.building.repo.BuildingRepository
 import code.yousef.portfolio.building.repo.BuildingService
 import code.yousef.portfolio.building.server.createBuildingRouter
-import code.yousef.portfolio.ai.AiCurriculumCatalog
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.contact.InMemoryContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
@@ -26,6 +26,8 @@ import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.db.ContentStoreDriver
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
+import code.yousef.portfolio.seen.SeenExecutionService
+import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.server.*
 import code.yousef.portfolio.ssr.*
 import codes.yousef.aether.core.AetherDispatcher
@@ -140,6 +142,11 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val sigilRenderer = SigilLandingRenderer()
     val aetherRenderer = AetherLandingRenderer()
 
+    // Seen
+    val seenExecutionService = SeenExecutionService()
+    val seenPlaygroundRenderer = SeenPlaygroundRenderer()
+    val seenLandingRenderer = SeenLandingRenderer()
+
     // AI Curriculum
     val aiProgressStore: AiProgressStore = if (firestore != null)
         FirestoreAiProgressStore(firestore) else FileAiProgressStore()
@@ -224,6 +231,10 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         )
     }
 
+    val seenRouter = router {
+        seenRoutes(seenLandingRenderer, seenPlaygroundRenderer, seenExecutionService)
+    }
+
     val docsRouterHandler = router {
         docsRoutes(
             docsService,
@@ -246,6 +257,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         "sigil.yousef.codes" to sigilRouter.asMiddleware(),
         "aether.yousef.codes" to aetherRouter.asMiddleware(),
         "aether.dev.yousef.codes" to aetherRouter.asMiddleware(),
+        "seen.yousef.codes" to seenRouter.asMiddleware(),
+        "seen.dev.yousef.codes" to seenRouter.asMiddleware(),
         "localhost" to mainRouter.asMiddleware(),
         "docs.yousef.codes" to docsRouterHandler.asMiddleware()
     )

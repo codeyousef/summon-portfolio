@@ -20,6 +20,18 @@ RUN /workspace/gradlew -x test shadowJar --no-daemon
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
+# Install LLVM toolchain for Seen compiler (opt, llc, clang, lld)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    clang lld llvm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Seen compiler and runtime.
+# Before building this image, run: ./scripts/prepare-seen-tools.sh
+# This populates seen-tools/ with the compiler binary and runtime.
+COPY seen-tools/seen /opt/seen/seen
+COPY seen-tools/seen_runtime/ /opt/seen/seen_runtime/
+RUN chmod +x /opt/seen/seen
+
 # Copy application JAR (use the shadow/all JAR specifically)
 COPY --from=build /workspace/build/libs/*-all.jar /app/app.jar
 
@@ -36,6 +48,8 @@ RUN mkdir -p /app/storage && chmod 755 /app/storage
 ENV PORT=8080
 ENV PORTFOLIO_CONTENT_PATH=/app/storage/content.json
 ENV ADMIN_CREDENTIALS_PATH=/app/storage/admin-credentials.json
+ENV SEEN_HOME=/opt/seen
+ENV SEEN_BINARY_PATH=/opt/seen/seen
 
 # Mark /app/storage as a volume mount point
 VOLUME ["/app/storage"]
