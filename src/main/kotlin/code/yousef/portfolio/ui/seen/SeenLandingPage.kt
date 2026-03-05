@@ -215,22 +215,30 @@ private fun SeenCodeExample() {
                     .overflow(Overflow.Auto)
             ) {
                 Text(
-                    text = """class Animal {
-    var name: string
-    var sound: string
+                    text = """fun greet(name: String) {
+    println("Hello, " + name + "!")
+}
 
-    init(name: string, sound: string) {
-        self.name = name
-        self.sound = sound
-    }
-
-    func speak() {
-        print(self.name + " says " + self.sound)
+fun repeat(msg: String, n: Int) {
+    var i = 0
+    while i < n {
+        println(msg)
+        i = i + 1
     }
 }
 
-var cat = Animal("Cat", "Meow")
-cat.speak()  // Cat says Meow""",
+fun main() {
+    greet("World")
+
+    let lang = "Seen"
+    println(lang + " supports multiple human languages")
+
+    if true {
+        println("Conditions work!")
+    }
+
+    repeat("echo", 3)
+}""",
                     modifier = Modifier()
                         .fontFamily("'JetBrains Mono', 'Fira Code', monospace")
                         .fontSize(0.85.rem)
