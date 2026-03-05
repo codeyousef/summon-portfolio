@@ -53,32 +53,66 @@ class SeenExecutionService(
             val sourceFile = tempDir.resolve("main.seen")
             Files.writeString(sourceFile, code)
 
-            // `seen run` compiles to LLVM IR and JITs via lli (no linking/binary needed)
-            val start = System.currentTimeMillis()
-            val result = runProcess(
+            val outputBinary = tempDir.resolve("main")
+
+            // Compile with --no-cache (each playground run is a fresh program)
+            val compileStart = System.currentTimeMillis()
+            val compileResult = runProcess(
                 workDir = Path.of(seenHomePath),
                 command = listOf(
                     "timeout", "${compileTimeoutSec}s",
-                    seenBinary, "run",
-                    sourceFile.toAbsolutePath().toString()
+                    seenBinary, "compile", "--no-cache",
+                    sourceFile.toAbsolutePath().toString(),
+                    outputBinary.toAbsolutePath().toString()
                 )
             )
-            val totalMs = System.currentTimeMillis() - start
+            val compileTimeMs = System.currentTimeMillis() - compileStart
 
-            val timedOut = result.exitCode == 124
+            if (compileResult.exitCode != 0) {
+                val errorMsg = compileResult.stderr.ifBlank { compileResult.stdout }
+                return ExecutionResult(
+                    output = "",
+                    error = truncate(errorMsg, "Compilation error:\n"),
+                    exitCode = compileResult.exitCode,
+                    compileTimeMs = compileTimeMs,
+                    runTimeMs = 0
+                )
+            }
+
+            if (!Files.exists(outputBinary)) {
+                return ExecutionResult(
+                    output = "",
+                    error = "Compilation produced no output binary.",
+                    exitCode = 1,
+                    compileTimeMs = compileTimeMs,
+                    runTimeMs = 0
+                )
+            }
+
+            // Run the compiled binary
+            val runStart = System.currentTimeMillis()
+            val runResult = runProcess(
+                workDir = tempDir,
+                command = listOf(
+                    "timeout", "${runTimeoutSec}s",
+                    outputBinary.toAbsolutePath().toString()
+                )
+            )
+            val runTimeMs = System.currentTimeMillis() - runStart
+
+            val timedOut = runResult.exitCode == 124
             val errorOutput = if (timedOut) {
-                "Execution timed out after ${compileTimeoutSec}s"
+                "Execution timed out after ${runTimeoutSec}s"
             } else {
-                val errText = result.stderr.ifBlank { "" }
-                if (result.exitCode != 0 && errText.isNotBlank()) truncate(errText, "Error:\n") else truncate(errText)
+                truncate(runResult.stderr)
             }
 
             return ExecutionResult(
-                output = truncate(result.stdout),
+                output = truncate(runResult.stdout),
                 error = errorOutput,
-                exitCode = result.exitCode,
-                compileTimeMs = totalMs,
-                runTimeMs = 0
+                exitCode = runResult.exitCode,
+                compileTimeMs = compileTimeMs,
+                runTimeMs = runTimeMs
             )
         } catch (e: Exception) {
             log.error("Seen execution failed", e)
