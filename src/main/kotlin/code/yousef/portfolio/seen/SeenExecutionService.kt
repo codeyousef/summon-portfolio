@@ -63,8 +63,8 @@ class SeenExecutionService(
                 command = listOf(
                     "timeout", "${compileTimeoutSec}s",
                     seenBinary, "run",
-                    "--language", validatedLang,
-                    sourceFile.toAbsolutePath().toString()
+                    sourceFile.toAbsolutePath().toString(),
+                    "--language", validatedLang
                 )
             )
             val totalMs = System.currentTimeMillis() - start
