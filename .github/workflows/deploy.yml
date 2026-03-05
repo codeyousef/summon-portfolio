@@ -50,19 +50,7 @@ jobs:
           HOST="${GCP_REGION}-docker.pkg.dev"
           gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "https://${HOST}"
 
-      # Download Seen compiler tools from GCS for playground feature
-      # Upload new versions with: gsutil cp -r seen-tools/ gs://seen-compiler-tools/
-      - name: Download Seen compiler tools
-        shell: bash
-        run: |
-          mkdir -p seen-tools
-          gsutil -m cp -r gs://seen-compiler-tools/* seen-tools/ || {
-            echo "Warning: Seen tools not found in GCS. Playground will be disabled."
-            echo "Upload with: gsutil cp -r seen-tools/ gs://seen-compiler-tools/"
-          }
-          [ -f seen-tools/seen ] && chmod +x seen-tools/seen || true
-
-      # Build and push image with Docker
+      # Build and push image with Docker (no Cloud Build, no GCS bucket)
       - name: Build & Push
         id: bp
         shell: bash
