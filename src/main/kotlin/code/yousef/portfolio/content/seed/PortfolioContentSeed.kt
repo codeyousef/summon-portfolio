@@ -129,6 +129,47 @@ object PortfolioContentSeed {
 
     val blogPosts: List<BlogPost> = listOf(
         BlogPost(
+            id = "why-i-built-seen",
+            slug = "why-i-built-seen",
+            title = "Why I Built a Programming Language",
+            excerpt = "What if a programmer in Cairo didn't have to think in English to write code? That question led me to build Seen.",
+            content = """What if a programmer in Cairo didn't have to think in English to write code? What if someone in Tokyo could use `関数` instead of `fn`, or someone in Riyadh could write `متغير` instead of `let`, with zero performance cost?
+
+That question is what led me to build Seen, a systems programming language with Vale-style region-based memory safety, Kotlin-inspired syntax, and native multilingual keyword support. It ships with English, Arabic, Spanish, Japanese, Russian, and Chinese out of the box, with more languages coming.
+
+But the question came later. The story starts with a game.
+
+I've been working on a dream game for a while now, and I quickly realized I needed a custom engine. None of the existing ones could handle what I needed, and performance was critical. So I picked up Rust.
+
+Coming from Kotlin, the learning curve wasn't the problem. The problem was that I just wasn't having fun. Between the Vulkan API and Rust's own friction, all it did was push me to do something I've always wanted to do: create my own programming language.
+
+The idea started simple. Rust's features with Kotlin's syntax and idioms. That quickly felt very pointless, so I took a step back and actually researched language and syntax design. What's the most "fun" to write? What feels like a pleasure? Can Rust's memory model be improved?
+
+That last question led me to Vale, with its region-based memory safety. So now I had my syntax, grammar, and memory model. And just so I wouldn't feel like a quitter, I decided to use Rust to build the compiler.
+
+Then, early in the process, I had a thought. Why are all programming languages in English? I mean, I could guess why. It's probably the most spoken language in the world, at least as a second language. But why only English? What would it take to create a programming language that anyone can use in their native tongue, without the overhead of translating or memorizing keywords?
+
+The first idea I had was having the keywords in an external file, like a TOML file, one for each language. That way, all anyone would need to do to add their language is copy the English file and swap the keywords. Then the compiler loads the right set at compile time.
+
+That sounded perfect, so I didn't need any more ideas.
+
+Luckily for me, I'm fluent in two languages already, so I'm the perfect test subject. Along with the language you're reading right now, I also speak Arabic. Those were the first two I built and tested with. From there I added Spanish, Japanese, Russian, and Chinese, with more on the way.
+
+A simple language field in the `Seen.toml` project configuration file tells the compiler which TOML to load, and it worked. No performance issues either. And keep in mind, when I say something "worked," I'm never implying it worked on the first try or that it was easy. I mean eventually.
+
+Oh, and the name. "Seen" as in to be seen, because the whole point is that programmers who don't speak English shouldn't be invisible. It's also the name of س, a letter in the Arabic alphabet, which felt right for a language born from the question of why code only speaks one language.
+
+From there it was design decisions. Every project is restricted to a single language, no mixing and matching, for reasons I hope are obvious. I added a translate function, so if you clone a project that's written in Spanish, you can automatically translate it to your language based on the TOMLs. That also meant I had to translate the entire standard library, not just the keywords. But hey, that's what I signed up for.
+
+So that's the story on why any of this exists. Next post, I'm going to get into the memory model and how Seen handles regions differently from Vale. If the multilingual stuff is what got your attention, I'll be writing about that too, specifically how the translation pipeline works and what it took to make Arabic feel native and not bolted on.
+
+See you there.""".trimIndent(),
+            publishedAt = LocalDate.of(2026, 3, 6),
+            featured = true,
+            author = "Yousef",
+            tags = listOf("seen", "programming-languages", "multilingual", "rust", "compilers")
+        ),
+        BlogPost(
             id = "welcome",
             slug = "welcome-to-my-blog",
             title = "Welcome to My Blog",

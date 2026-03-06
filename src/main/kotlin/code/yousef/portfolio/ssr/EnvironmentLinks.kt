@@ -39,8 +39,8 @@ private val stageLinks = mapOf(
         seenDocsBase = "https://seen.dev.yousef.codes/docs"
     ),
     DeploymentStage.PROD to EnvironmentLinks(
-        portfolioBase = "https://yousef.codes",
-        blogBase = "https://yousef.codes/blog",
+        portfolioBase = "https://www.yousef.codes",
+        blogBase = "https://www.yousef.codes/blog",
         summonBase = "https://summon.yousef.codes",
         docsBase = "https://summon.yousef.codes/docs",
         materiaBase = "https://materia.yousef.codes",

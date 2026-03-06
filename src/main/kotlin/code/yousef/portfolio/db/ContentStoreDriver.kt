@@ -96,7 +96,8 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
         }
     }
 
-    private suspend fun performInsert(table: String, values: Map<String, Any?>): Map<String, Any?> {
+    private suspend fun performInsert(table: String, rawValues: Map<String, Any?>): Map<String, Any?> {
+        val values = fixFormEncoding(rawValues)
         return when (table) {
             "projects" -> { val m = values.toProject(); store.upsertProject(m); m.toMap() }
             "services" -> { val m = values.toService(); store.upsertService(m); m.toMap() }
@@ -131,7 +132,7 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
             
             val existingRow = (existingRows.first() as MapRow).toMap() // We need to expose map
             
-            val updates = query.assignments.mapValues { it.value.toValue() }
+            val updates = fixFormEncoding(query.assignments.mapValues { it.value.toValue() })
             val merged = existingRow + updates
             
             when (query.table) {
@@ -373,5 +374,24 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
             map[col] = this.getValue(col)
         }
         return map
+    }
+
+    // Fix mojibake from Aether admin's byte-by-byte URL decoder.
+    // The decoder treats each %XX as a Latin-1 char instead of grouping multi-byte UTF-8 sequences,
+    // so e.g. 関 (UTF-8: E9 96 A2) becomes é\u0096¢. Re-encoding as Latin-1 recovers the original
+    // UTF-8 bytes, which we then decode correctly.
+    private fun fixFormEncoding(values: Map<String, Any?>): Map<String, Any?> =
+        values.mapValues { (_, v) -> if (v is String) fixMojibake(v) else v }
+
+    private fun fixMojibake(s: String): String {
+        if (s.all { it.code < 128 }) return s       // Pure ASCII — nothing to fix
+        if (s.any { it.code > 255 }) return s        // Already valid Unicode, not mojibake
+        return try {
+            val bytes = s.toByteArray(Charsets.ISO_8859_1)
+            val fixed = String(bytes, Charsets.UTF_8)
+            if (fixed.contains('\uFFFD')) s else fixed
+        } catch (_: Exception) {
+            s
+        }
     }
 }
