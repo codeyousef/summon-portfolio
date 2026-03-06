@@ -94,7 +94,7 @@ object Testimonials : Model<TestimonialEntity>() {
 
 class TestimonialEntity : BaseEntity<TestimonialEntity>() {
     override fun getModel() = Testimonials
-    
+
     var id by Testimonials.id
     var quote by Testimonials.quote
     var author by Testimonials.author
@@ -102,4 +102,22 @@ class TestimonialEntity : BaseEntity<TestimonialEntity>() {
     var company by Testimonials.company
     var featured by Testimonials.featured
     var order by Testimonials.order
+}
+
+object ContactSubmissions : Model<ContactSubmissionEntity>() {
+    override val tableName = "contact_submissions"
+    override fun createInstance() = ContactSubmissionEntity()
+    val id = varchar("id", primaryKey = true)
+    val contact = varchar("contact")
+    val message = text("message")
+    val createdAt = varchar("createdAt")
+}
+
+class ContactSubmissionEntity : BaseEntity<ContactSubmissionEntity>() {
+    override fun getModel() = ContactSubmissions
+
+    var id by ContactSubmissions.id
+    var contact by ContactSubmissions.contact
+    var message by ContactSubmissions.message
+    var createdAt by ContactSubmissions.createdAt
 }

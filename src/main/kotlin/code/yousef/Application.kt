@@ -20,7 +20,7 @@ import code.yousef.portfolio.building.repo.BuildingRepository
 import code.yousef.portfolio.building.repo.BuildingService
 import code.yousef.portfolio.building.server.createBuildingRouter
 import code.yousef.portfolio.contact.ContactService
-import code.yousef.portfolio.contact.InMemoryContactRepository
+import code.yousef.portfolio.contact.FileContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.db.ContentStoreDriver
@@ -69,8 +69,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     }
     
     val contentService = PortfolioContentService(contentStore)
-    // Use InMemoryContactRepository for now as FirestoreContactRepository is missing
-    val contactService = ContactService(InMemoryContactRepository())
+    val contactService = ContactService(FileContactRepository(contentStore))
     
     // Admin auth - use Firestore in production, file-based locally
     val adminAuthService: AdminAuthProvider = if (firestore != null) {
