@@ -81,7 +81,18 @@ class SeenExecutionService(
             }
 
             if (result.exitCode != 0) {
-                val errorMsg = result.stderr.ifBlank { result.stdout }
+                // Dump the generated IR for debugging
+                val irDump = try {
+                    val irFile = Path.of("/tmp/seen_jit_module_0.ll")
+                    if (Files.exists(irFile)) {
+                        val content = Files.readString(irFile)
+                        val defines = content.lines().filter { it.trimStart().startsWith("define ") }
+                        val declares = content.lines().count { it.trimStart().startsWith("declare ") }
+                        "IR: ${content.length}b, ${defines.size} define, $declares declare" +
+                        if (defines.isEmpty()) "\nLast 5 lines:\n${content.lines().takeLast(5).joinToString("\n")}" else ""
+                    } else "No IR file"
+                } catch (_: Exception) { "IR check failed" }
+                val errorMsg = listOf(result.stdout, result.stderr, irDump).filter { it.isNotBlank() }.joinToString("\n---\n")
                 return ExecutionResult(
                     output = "",
                     error = truncate(errorMsg, "Error:\n"),
