@@ -82,7 +82,25 @@ class SeenExecutionService(
             }
 
             if (result.exitCode != 0) {
-                val errorMsg = listOf(result.stdout, result.stderr).filter { it.isNotBlank() }.joinToString("\n---\n")
+                // Debug: inspect generated IR and lli version
+                val debug = buildString {
+                    val lliVer = runProcess(Path.of(seenHomePath), listOf("lli", "--version"))
+                    appendLine("lli version: ${lliVer.stdout.lines().firstOrNull()}")
+                    // Check if IR file was generated
+                    val irFile = Path.of("/tmp/seen_jit_module_0.ll")
+                    if (Files.exists(irFile)) {
+                        val irLines = Files.readString(irFile)
+                        val mainDef = irLines.lines().filter { it.contains("@main") }
+                        appendLine("IR file exists (${Files.size(irFile)} bytes)")
+                        appendLine("@main references: ${mainDef.size}")
+                        mainDef.forEach { appendLine("  $it") }
+                        // Also dump first 5 lines for target triple
+                        irLines.lines().take(5).forEach { appendLine("  $it") }
+                    } else {
+                        appendLine("IR file NOT found at $irFile")
+                    }
+                }
+                val errorMsg = listOf(result.stdout, result.stderr, debug).filter { it.isNotBlank() }.joinToString("\n---\n")
                 return ExecutionResult(
                     output = "",
                     error = truncate(errorMsg, "Error:\n"),
