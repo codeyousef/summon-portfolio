@@ -215,20 +215,24 @@ private fun SeenCodeExample() {
                     .overflow(Overflow.Auto)
             ) {
                 Text(
-                    text = """fun fib(n: Int): Int {
-    if n <= 1 {
-        return n
+                    text = """class Animal {
+    var name: String
+    var sound: String
+
+    fun new(name: String, sound: String): Animal {
+        this.name = name
+        this.sound = sound
+        return this
     }
-    return fib(n - 1) + fib(n - 2)
+
+    fun speak() {
+        println(this.name + " says " + this.sound)
+    }
 }
 
 fun main() {
-    println("Fibonacci sequence:")
-    var i = 0
-    while i < 10 {
-        println(fib(i))
-        i = i + 1
-    }
+    let cat = Animal.new("Cat", "Meow")
+    cat.speak()  // Cat says Meow
 }""",
                     modifier = Modifier()
                         .fontFamily("'JetBrains Mono', 'Fira Code', monospace")
