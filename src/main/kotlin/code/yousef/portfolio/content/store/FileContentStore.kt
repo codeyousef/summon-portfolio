@@ -2,7 +2,6 @@ package code.yousef.portfolio.content.store
 
 import code.yousef.portfolio.contact.ContactSubmission
 import code.yousef.portfolio.content.ContentStore
-import code.yousef.portfolio.db.fixMojibake
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.HeroContent
@@ -194,27 +193,13 @@ class FileContentStore(
             } else {
                 snapshot
             }
-            // Repair mojibake in stored content (caused by Aether admin's URL decoder)
-            repairMojibake(versioned)
+            versioned
         }.getOrElse { e ->
             log.error("Failed to parse content file, initializing with seed data", e)
             createAndSaveSeedSnapshot()
         }
     }
     
-    private fun repairMojibake(snapshot: ContentSnapshot): ContentSnapshot {
-        val fixedPosts = snapshot.blogPosts.map { post ->
-            post.copy(
-                title = fixMojibake(post.title),
-                excerpt = fixMojibake(post.excerpt),
-                content = fixMojibake(post.content),
-                author = fixMojibake(post.author)
-            )
-        }
-        return if (fixedPosts == snapshot.blogPosts) snapshot
-        else snapshot.copy(blogPosts = fixedPosts)
-    }
-
     private fun createAndSaveSeedSnapshot(): ContentSnapshot {
         val snapshot = createSeedSnapshot()
         writeSnapshot(snapshot)
