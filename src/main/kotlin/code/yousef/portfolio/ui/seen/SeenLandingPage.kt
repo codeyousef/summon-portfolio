@@ -215,29 +215,20 @@ private fun SeenCodeExample() {
                     .overflow(Overflow.Auto)
             ) {
                 Text(
-                    text = """fun greet(name: String) {
-    println("Hello, " + name + "!")
-}
-
-fun repeat(msg: String, n: Int) {
-    var i = 0
-    while i < n {
-        println(msg)
-        i = i + 1
+                    text = """fun fib(n: Int): Int {
+    if n <= 1 {
+        return n
     }
+    return fib(n - 1) + fib(n - 2)
 }
 
 fun main() {
-    greet("World")
-
-    let lang = "Seen"
-    println(lang + " supports multiple human languages")
-
-    if true {
-        println("Conditions work!")
+    println("Fibonacci sequence:")
+    var i = 0
+    while i < 10 {
+        println(fib(i))
+        i = i + 1
     }
-
-    repeat("echo", 3)
 }""",
                     modifier = Modifier()
                         .fontFamily("'JetBrains Mono', 'Fira Code', monospace")
