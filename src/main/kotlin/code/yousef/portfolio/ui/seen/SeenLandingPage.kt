@@ -58,8 +58,8 @@ private fun SeenHero(playgroundUrl: String) {
                     src = "/static/seen-logo.png",
                     alt = "Seen Logo",
                     modifier = Modifier()
-                        .width(cssClamp(64.px, 12.vw, 128.px))
-                        .height(cssClamp(64.px, 12.vw, 128.px))
+                        .width(cssClamp(96.px, 18.vw, 192.px))
+                        .height(cssClamp(96.px, 18.vw, 192.px))
                         .style("object-fit", "contain")
                 )
                 Text(
