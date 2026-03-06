@@ -23,6 +23,7 @@ SEENLANG="$(cd "$SEENLANG" 2>/dev/null && pwd)" || {
 
 SEEN_BINARY="$SEENLANG/compiler_seen/target/seen"
 SEEN_RUNTIME="$SEENLANG/seen_runtime"
+SEEN_LANGUAGES="$SEENLANG/languages"
 
 if [ ! -f "$SEEN_BINARY" ]; then
     echo "Error: Seen compiler binary not found at: $SEEN_BINARY"
@@ -32,6 +33,11 @@ fi
 
 if [ ! -d "$SEEN_RUNTIME" ]; then
     echo "Error: seen_runtime/ not found at: $SEEN_RUNTIME"
+    exit 1
+fi
+
+if [ ! -d "$SEEN_LANGUAGES" ]; then
+    echo "Error: languages/ not found at: $SEEN_LANGUAGES"
     exit 1
 fi
 
@@ -48,8 +54,12 @@ chmod +x "$TOOLS_DIR/seen"
 # Copy runtime (C source + headers + precompiled objects)
 cp -r "$SEEN_RUNTIME" "$TOOLS_DIR/seen_runtime"
 
+# Copy language definitions (keyword/builtin mappings for multilingual support)
+cp -r "$SEEN_LANGUAGES" "$TOOLS_DIR/languages"
+
 echo "Done. Contents of seen-tools/:"
 ls -lh "$TOOLS_DIR/seen"
 echo "seen_runtime/: $(ls "$TOOLS_DIR/seen_runtime/" | wc -l) files"
+echo "languages/: $(ls -d "$TOOLS_DIR/languages"/*/ | wc -l) languages"
 echo ""
 echo "Now run: docker build -t portfolio ."

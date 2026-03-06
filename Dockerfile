@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget gnupg ca-c
 # This populates seen-tools/ with the compiler binary and runtime.
 COPY seen-tools/seen /opt/seen/seen
 COPY seen-tools/seen_runtime/ /opt/seen/seen_runtime/
+COPY seen-tools/languages/ /opt/seen/languages/
 RUN chmod +x /opt/seen/seen
 
 # Copy application JAR (use the shadow/all JAR specifically)
