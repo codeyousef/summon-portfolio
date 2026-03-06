@@ -208,6 +208,48 @@ data class DocsConfig(
                 localDocsRoot = localRoot
             )
         }
+        /**
+         * Creates a DocsConfig for Seen docs.
+         * Uses SEEN_* environment variables with fallbacks.
+         */
+        fun seenFromEnv(): DocsConfig {
+            val env = System.getenv()
+            val owner = env["SEEN_GITHUB_OWNER"] ?: "codeyousef"
+            val repo = env["SEEN_GITHUB_REPO"] ?: "SeenLang"
+            val branch = env["SEEN_DOCS_BRANCH"] ?: "main"
+            val root = env["SEEN_DOCS_ROOT"] ?: "docs"
+            val useApi = (env["SEEN_DOCS_USE_API"] ?: "false").toBooleanStrictOrNull() ?: false
+            val ttl = (env["DOCS_CACHE_TTL_SECONDS"] ?: "3600").toLongOrNull() ?: 3600L
+            val enableRedis = (env["DOCS_ENABLE_REDIS"] ?: "false").toBooleanStrictOrNull() ?: false
+            val localRoot = env["SEEN_DOCS_LOCAL_ROOT"]?.let { Paths.get(it) } ?: run {
+                val seenDocs = Paths.get("docs/private/seen-docs")
+                if (Files.exists(seenDocs)) seenDocs else Paths.get("docs")
+            }
+
+            val envSource = env["SEEN_DOCS_SOURCE"]
+            val docsSource = if (envSource != null) {
+                if (envSource.equals("local", ignoreCase = true)) DocsSource.LOCAL else DocsSource.REMOTE
+            } else {
+                val seenDocs = Paths.get("docs/private/seen-docs")
+                if (Files.exists(seenDocs)) DocsSource.LOCAL else DocsSource.REMOTE
+            }
+            val docsOrigin = env["PUBLIC_ORIGIN_SEEN_DOCS"] ?: "https://seen.yousef.codes"
+            val portfolioOrigin = env["PUBLIC_ORIGIN_PORTFOLIO"] ?: "https://www.yousef.codes"
+            return DocsConfig(
+                githubOwner = owner,
+                githubRepo = repo,
+                defaultBranch = branch,
+                docsRoot = root,
+                useContentsApi = useApi,
+                githubToken = env["GITHUB_TOKEN"],
+                cacheTtlSeconds = ttl,
+                enableRedis = enableRedis,
+                publicOriginDocs = docsOrigin,
+                publicOriginPortfolio = portfolioOrigin,
+                docsSource = docsSource,
+                localDocsRoot = localRoot
+            )
+        }
     }
 }
 

@@ -5,6 +5,7 @@ import code.yousef.portfolio.i18n.strings.NavigationStrings
 import code.yousef.portfolio.ssr.aetherMarketingUrl
 import code.yousef.portfolio.ssr.blogUrl
 import code.yousef.portfolio.ssr.materiaMarketingUrl
+import code.yousef.portfolio.ssr.seenMarketingUrl
 import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
@@ -87,29 +88,14 @@ fun DesktopHeader(
                     .opacity(0.9F)
                     .hover(Modifier().opacity(1.0F).backgroundColor(PortfolioTheme.Colors.SURFACE))
                 
-                // Ecosystem links
+                // Kotlin Libraries dropdown
+                KotlinLibrariesDropdown(baseNavModifier = baseNavModifier)
+
+                // Seen link (separate from Kotlin libraries)
                 EcosystemNavLink(
-                    logoSrc = "/static/summon-logo.png",
-                    label = "Summon",
-                    href = summonMarketingUrl(),
-                    modifier = baseNavModifier
-                )
-                EcosystemNavLink(
-                    logoSrc = "/static/sigil-logo.png",
-                    label = "Sigil",
-                    href = sigilMarketingUrl(),
-                    modifier = baseNavModifier
-                )
-                EcosystemNavLink(
-                    logoSrc = "/static/materia-logo.png",
-                    label = "Materia",
-                    href = materiaMarketingUrl(),
-                    modifier = baseNavModifier
-                )
-                EcosystemNavLink(
-                    logoSrc = "/static/aether-logo.png",
-                    label = "Aether",
-                    href = aetherMarketingUrl(),
+                    logoSrc = "/static/seen-logo.png",
+                    label = "Seen",
+                    href = seenMarketingUrl(),
                     modifier = baseNavModifier
                 )
             }
@@ -183,6 +169,51 @@ fun DesktopHeader(
                 LocaleToggle(current = locale, forceNativeLinks = forceNativeLinks, nativeBaseUrl = nativeBaseUrl)
             }
         }
+    }
+}
+
+/**
+ * Kotlin Libraries dropdown with Summon, Sigil, Materia, and Aether.
+ */
+@Composable
+private fun KotlinLibrariesDropdown(baseNavModifier: Modifier) {
+    Dropdown(
+        trigger = {
+            Row(
+                modifier = Modifier()
+                    .display(Display.InlineFlex)
+                    .alignItems(AlignItems.Center)
+                    .gap(4.px)
+                    .cursor(Cursor.Pointer)
+            ) {
+                Text(text = "Kotlin Libraries", modifier = baseNavModifier)
+                Text(text = "▼", modifier = Modifier().fontSize(0.6.rem).opacity(0.7F))
+            }
+        },
+        modifier = Modifier(),
+        triggerBehavior = DropdownTrigger.CLICK,
+        closeOnItemClick = true
+    ) {
+        ProjectDropdownLink(
+            logoSrc = "/static/summon-logo.png",
+            label = "Summon",
+            href = summonMarketingUrl()
+        )
+        ProjectDropdownLink(
+            logoSrc = "/static/sigil-logo.png",
+            label = "Sigil",
+            href = sigilMarketingUrl()
+        )
+        ProjectDropdownLink(
+            logoSrc = "/static/materia-logo.png",
+            label = "Materia",
+            href = materiaMarketingUrl()
+        )
+        ProjectDropdownLink(
+            logoSrc = "/static/aether-logo.png",
+            label = "Aether",
+            href = aetherMarketingUrl()
+        )
     }
 }
 

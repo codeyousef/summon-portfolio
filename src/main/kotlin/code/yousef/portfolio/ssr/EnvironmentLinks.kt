@@ -12,7 +12,9 @@ data class EnvironmentLinks(
     val sigilBase: String,
     val sigilDocsBase: String,
     val aetherBase: String,
-    val aetherDocsBase: String
+    val aetherDocsBase: String,
+    val seenBase: String,
+    val seenDocsBase: String
 )
 
 private enum class DeploymentStage {
@@ -32,7 +34,9 @@ private val stageLinks = mapOf(
         sigilBase = "https://sigil.dev.yousef.codes",
         sigilDocsBase = "https://sigil.dev.yousef.codes/docs",
         aetherBase = "https://aether.dev.yousef.codes",
-        aetherDocsBase = "https://aether.dev.yousef.codes/docs"
+        aetherDocsBase = "https://aether.dev.yousef.codes/docs",
+        seenBase = "https://seen.dev.yousef.codes",
+        seenDocsBase = "https://seen.dev.yousef.codes/docs"
     ),
     DeploymentStage.PROD to EnvironmentLinks(
         portfolioBase = "https://yousef.codes",
@@ -44,7 +48,9 @@ private val stageLinks = mapOf(
         sigilBase = "https://sigil.yousef.codes",
         sigilDocsBase = "https://sigil.yousef.codes/docs",
         aetherBase = "https://aether.yousef.codes",
-        aetherDocsBase = "https://aether.yousef.codes/docs"
+        aetherDocsBase = "https://aether.yousef.codes/docs",
+        seenBase = "https://seen.yousef.codes",
+        seenDocsBase = "https://seen.yousef.codes/docs"
     ),
     DeploymentStage.LOCAL to EnvironmentLinks(
         portfolioBase = "http://localhost:8080",
@@ -56,7 +62,9 @@ private val stageLinks = mapOf(
         sigilBase = "http://localhost:8080/sigil",
         sigilDocsBase = "http://localhost:8080/sigil/docs",
         aetherBase = "http://localhost:8080/aether",
-        aetherDocsBase = "http://localhost:8080/aether/docs"
+        aetherDocsBase = "http://localhost:8080/aether/docs",
+        seenBase = "http://localhost:8080/seen",
+        seenDocsBase = "http://localhost:8080/seen/docs"
     )
 )
 
@@ -68,6 +76,8 @@ private val sigilBaseOverride = System.getenv("SIGIL_MARKETING_URL")?.takeIf { i
 private val sigilDocsBaseOverride = System.getenv("SIGIL_DOCS_BASE_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
 private val aetherBaseOverride = System.getenv("AETHER_MARKETING_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
 private val aetherDocsBaseOverride = System.getenv("AETHER_DOCS_BASE_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
+private val seenBaseOverride = System.getenv("SEEN_MARKETING_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
+private val seenDocsBaseOverride = System.getenv("SEEN_DOCS_BASE_URL")?.takeIf { it.isNotBlank() }?.trimEnd('/')
 
 object EnvironmentLinksRegistry {
     private val threadLocal = ThreadLocal<EnvironmentLinks>()
@@ -110,7 +120,9 @@ fun resolveEnvironmentLinks(host: String?): EnvironmentLinks {
             sigilBase = "$base/sigil",
             sigilDocsBase = "$base/sigil/docs",
             aetherBase = "$base/aether",
-            aetherDocsBase = "$base/aether/docs"
+            aetherDocsBase = "$base/aether/docs",
+            seenBase = "$base/seen",
+            seenDocsBase = "$base/seen/docs"
         )
     }
 
@@ -122,6 +134,8 @@ fun resolveEnvironmentLinks(host: String?): EnvironmentLinks {
     val sigilDocsBase = sigilDocsBaseOverride ?: baseline.sigilDocsBase
     val aetherBase = aetherBaseOverride ?: baseline.aetherBase
     val aetherDocsBase = aetherDocsBaseOverride ?: baseline.aetherDocsBase
+    val seenBase = seenBaseOverride ?: baseline.seenBase
+    val seenDocsBase = seenDocsBaseOverride ?: baseline.seenDocsBase
     return baseline.copy(
         summonBase = summonBase,
         docsBase = docsBase,
@@ -130,7 +144,9 @@ fun resolveEnvironmentLinks(host: String?): EnvironmentLinks {
         sigilBase = sigilBase,
         sigilDocsBase = sigilDocsBase,
         aetherBase = aetherBase,
-        aetherDocsBase = aetherDocsBase
+        aetherDocsBase = aetherDocsBase,
+        seenBase = seenBase,
+        seenDocsBase = seenDocsBase
     )
 }
 
@@ -172,4 +188,13 @@ fun aetherDocsBaseUrl(): String {
     EnvironmentLinksRegistry.current()?.aetherDocsBase?.let { return it }
     aetherDocsBaseOverride?.let { return it }
     return aetherMarketingUrl().trimEnd('/') + "/docs"
+}
+
+fun seenMarketingUrl(): String =
+    EnvironmentLinksRegistry.current()?.seenBase ?: (seenBaseOverride ?: SEEN_MARKETING_URL)
+
+fun seenDocsBaseUrl(): String {
+    EnvironmentLinksRegistry.current()?.seenDocsBase?.let { return it }
+    seenDocsBaseOverride?.let { return it }
+    return seenMarketingUrl().trimEnd('/') + "/docs"
 }

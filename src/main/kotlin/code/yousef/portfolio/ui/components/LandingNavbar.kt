@@ -54,6 +54,15 @@ data class LandingBranding(
             accentColor = "#06b6d4" // Teal/cyan accent for Sigil
         )
 
+        fun seen(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
+            name = "Seen",
+            logoPath = "/static/seen-logo.png",
+            homeUrl = "/",
+            docsUrl = docsUrl,
+            apiReferenceUrl = apiReferenceUrl,
+            accentColor = "#58a6ff"
+        )
+
         fun aether(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
             name = "Aether",
             logoPath = "/static/aether-logo.png",
