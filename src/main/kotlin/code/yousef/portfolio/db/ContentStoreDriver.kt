@@ -300,10 +300,12 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
     private fun Map<String, Any?>.toBlogPost(): BlogPost {
         val rawId = this["id"] as? String
         val rawDate = this["publishedAt"] as? String
+        val rawSlug = this["slug"] as? String
+        val title = this["title"] as? String ?: ""
         return BlogPost(
             id = if (rawId.isNullOrBlank()) UUID.randomUUID().toString() else rawId,
-            slug = this["slug"] as? String ?: "",
-            title = this["title"] as? String ?: "",
+            slug = if (rawSlug.isNullOrBlank()) title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-') else rawSlug,
+            title = title,
             excerpt = this["excerpt"] as? String ?: "",
             content = this["content"] as? String ?: "",
             publishedAt = if (rawDate.isNullOrBlank()) java.time.LocalDate.now() else java.time.LocalDate.parse(rawDate),

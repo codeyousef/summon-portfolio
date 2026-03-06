@@ -21,7 +21,7 @@ fun createAdminSite(): AdminSite {
         override val listDisplay = listOf("slug", "publishedAt", "featured")
         override val searchFields = listOf("slug")
         override val multilineFields = listOf("content", "excerpt")
-        override val excludeFields = listOf("author", "id", "publishedAt")
+        override val excludeFields = listOf("author", "id", "slug", "publishedAt")
         override val defaultValues = mapOf("author" to "Yousef")
     })
 
