@@ -2,6 +2,7 @@ package code.yousef.portfolio.content.store
 
 import code.yousef.portfolio.contact.ContactSubmission
 import code.yousef.portfolio.content.ContentStore
+import code.yousef.portfolio.db.fixMojibake
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.HeroContent
@@ -185,7 +186,7 @@ class FileContentStore(
         return runCatching {
             val snapshot = json.decodeFromString(ContentSnapshot.serializer(), text)
             // If no version marker, this is old data - preserve it but add version
-            if (snapshot.version == null) {
+            val versioned = if (snapshot.version == null) {
                 log.info("Migrating content data to versioned format")
                 val migrated = snapshot.copy(version = ContentSnapshot.CURRENT_VERSION)
                 writeSnapshot(migrated)
@@ -193,12 +194,27 @@ class FileContentStore(
             } else {
                 snapshot
             }
+            // Repair mojibake in stored content (caused by Aether admin's URL decoder)
+            repairMojibake(versioned)
         }.getOrElse { e ->
             log.error("Failed to parse content file, initializing with seed data", e)
             createAndSaveSeedSnapshot()
         }
     }
     
+    private fun repairMojibake(snapshot: ContentSnapshot): ContentSnapshot {
+        val fixedPosts = snapshot.blogPosts.map { post ->
+            post.copy(
+                title = fixMojibake(post.title),
+                excerpt = fixMojibake(post.excerpt),
+                content = fixMojibake(post.content),
+                author = fixMojibake(post.author)
+            )
+        }
+        return if (fixedPosts == snapshot.blogPosts) snapshot
+        else snapshot.copy(blogPosts = fixedPosts)
+    }
+
     private fun createAndSaveSeedSnapshot(): ContentSnapshot {
         val snapshot = createSeedSnapshot()
         writeSnapshot(snapshot)
