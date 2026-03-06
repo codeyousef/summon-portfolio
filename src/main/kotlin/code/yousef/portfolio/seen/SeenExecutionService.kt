@@ -82,7 +82,7 @@ class SeenExecutionService(
             }
 
             if (result.exitCode != 0) {
-                val errorMsg = result.stderr.ifBlank { result.stdout }
+                val errorMsg = listOf(result.stdout, result.stderr).filter { it.isNotBlank() }.joinToString("\n---\n")
                 return ExecutionResult(
                     output = "",
                     error = truncate(errorMsg, "Error:\n"),
