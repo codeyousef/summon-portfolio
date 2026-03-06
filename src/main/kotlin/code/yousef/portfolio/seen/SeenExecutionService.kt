@@ -91,19 +91,17 @@ class SeenExecutionService(
                     if (Files.exists(irFile)) {
                         val irContent = Files.readString(irFile)
                         val irLines = irContent.lines()
-                        appendLine("IR file exists (${Files.size(irFile)} bytes, ${irLines.size} lines)")
-                        // Show all define lines (function definitions)
+                        appendLine("IR: ${Files.size(irFile)} bytes, ${irLines.size} lines")
                         val defines = irLines.filter { it.trimStart().startsWith("define ") }
-                        appendLine("Functions defined: ${defines.size}")
-                        defines.takeLast(5).forEach { appendLine("  ${it.take(100)}") }
-                        // Search for any "main" reference
-                        val mainRefs = irLines.filter { it.contains("main", ignoreCase = false) }
-                        appendLine("Lines containing 'main': ${mainRefs.size}")
-                        mainRefs.take(5).forEach { appendLine("  ${it.take(120)}") }
+                        val declares = irLines.filter { it.trimStart().startsWith("declare ") }
+                        appendLine("define: ${defines.size}, declare: ${declares.size}")
+                        defines.take(3).forEach { appendLine("  ${it.take(100)}") }
+                        // Show last 30 lines of IR to see if there's a truncation or error
+                        appendLine("--- Last 30 lines of IR ---")
+                        irLines.takeLast(30).forEach { appendLine("  ${it.take(120)}") }
                     } else {
-                        appendLine("IR file NOT found at $irFile")
-                        // Check what files are in /tmp
-                        val tmpFiles = Path.of("/tmp").toFile().listFiles()?.filter { it.name.startsWith("seen_") }?.map { "${it.name} (${it.length()})" }
+                        appendLine("IR file NOT found")
+                        val tmpFiles = Path.of("/tmp").toFile().listFiles()?.filter { it.name.startsWith("seen") }?.map { "${it.name} (${it.length()})" }
                         appendLine("Seen temp files: $tmpFiles")
                     }
                 }
