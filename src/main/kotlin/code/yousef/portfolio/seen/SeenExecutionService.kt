@@ -64,7 +64,6 @@ class SeenExecutionService(
                     "timeout", "${compileTimeoutSec}s",
                     seenBinary, "run",
                     sourceFile.toAbsolutePath().toString(),
-                    "--verbose",
                     "--language", validatedLang
                 )
             )
@@ -82,33 +81,7 @@ class SeenExecutionService(
             }
 
             if (result.exitCode != 0) {
-                // Debug: inspect generated IR and lli version
-                val debug = buildString {
-                    val lliVer = runProcess(Path.of(seenHomePath), listOf("lli", "--version"))
-                    appendLine("lli version: ${lliVer.stdout.lines().firstOrNull()}")
-                    // Check if IR file was generated
-                    // Check the source file that was written
-                    val srcContent = Files.readString(sourceFile)
-                    appendLine("Source file: ${sourceFile} (${srcContent.length} chars)")
-                    appendLine("Source hex first 40: ${srcContent.take(40).toByteArray().joinToString(" ") { "%02x".format(it) }}")
-                    appendLine("Source content: ${srcContent.take(200)}")
-                    // Check IR
-                    val irFile = Path.of("/tmp/seen_jit_module_0.ll")
-                    if (Files.exists(irFile)) {
-                        val irContent = Files.readString(irFile)
-                        val irLines = irContent.lines()
-                        appendLine("IR: ${Files.size(irFile)} bytes, ${irLines.size} lines")
-                        val defines = irLines.filter { it.trimStart().startsWith("define ") }
-                        appendLine("define: ${defines.size}, declare: ${irLines.count { it.trimStart().startsWith("declare ") }}")
-                        // Show lines containing "main" or "fun" to trace parsing
-                        val mainLines = irLines.filter { "main" in it || "fun_main" in it }
-                        appendLine("'main' in IR: ${mainLines.size}")
-                        mainLines.take(3).forEach { appendLine("  ${it.take(100)}") }
-                    } else {
-                        appendLine("IR file NOT found")
-                    }
-                }
-                val errorMsg = listOf(result.stdout, result.stderr, debug).filter { it.isNotBlank() }.joinToString("\n---\n")
+                val errorMsg = result.stderr.ifBlank { result.stdout }
                 return ExecutionResult(
                     output = "",
                     error = truncate(errorMsg, "Error:\n"),
