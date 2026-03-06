@@ -120,8 +120,8 @@ class SeenExecutionService(
             .redirectErrorStream(false)
             .start()
 
-        val stdout = process.inputStream.bufferedReader().readText()
-        val stderr = process.errorStream.bufferedReader().readText()
+        val stdout = process.inputStream.bufferedReader(Charsets.UTF_8).readText()
+        val stderr = process.errorStream.bufferedReader(Charsets.UTF_8).readText()
         val exitCode = process.waitFor()
 
         return ProcessResult(stdout, stderr, exitCode)
