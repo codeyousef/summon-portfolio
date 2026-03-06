@@ -64,6 +64,7 @@ class SeenExecutionService(
                     "timeout", "${compileTimeoutSec}s",
                     seenBinary, "run",
                     sourceFile.toAbsolutePath().toString(),
+                    "--verbose",
                     "--language", validatedLang
                 )
             )
