@@ -89,15 +89,22 @@ class SeenExecutionService(
                     // Check if IR file was generated
                     val irFile = Path.of("/tmp/seen_jit_module_0.ll")
                     if (Files.exists(irFile)) {
-                        val irLines = Files.readString(irFile)
-                        val mainDef = irLines.lines().filter { it.contains("@main") }
-                        appendLine("IR file exists (${Files.size(irFile)} bytes)")
-                        appendLine("@main references: ${mainDef.size}")
-                        mainDef.forEach { appendLine("  $it") }
-                        // Also dump first 5 lines for target triple
-                        irLines.lines().take(5).forEach { appendLine("  $it") }
+                        val irContent = Files.readString(irFile)
+                        val irLines = irContent.lines()
+                        appendLine("IR file exists (${Files.size(irFile)} bytes, ${irLines.size} lines)")
+                        // Show all define lines (function definitions)
+                        val defines = irLines.filter { it.trimStart().startsWith("define ") }
+                        appendLine("Functions defined: ${defines.size}")
+                        defines.takeLast(5).forEach { appendLine("  ${it.take(100)}") }
+                        // Search for any "main" reference
+                        val mainRefs = irLines.filter { it.contains("main", ignoreCase = false) }
+                        appendLine("Lines containing 'main': ${mainRefs.size}")
+                        mainRefs.take(5).forEach { appendLine("  ${it.take(120)}") }
                     } else {
                         appendLine("IR file NOT found at $irFile")
+                        // Check what files are in /tmp
+                        val tmpFiles = Path.of("/tmp").toFile().listFiles()?.filter { it.name.startsWith("seen_") }?.map { "${it.name} (${it.length()})" }
+                        appendLine("Seen temp files: $tmpFiles")
                     }
                 }
                 val errorMsg = listOf(result.stdout, result.stderr, debug).filter { it.isNotBlank() }.joinToString("\n---\n")
