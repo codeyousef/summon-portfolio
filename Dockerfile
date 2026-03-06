@@ -20,9 +20,19 @@ RUN /workspace/gradlew -x test shadowJar --no-daemon
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Install LLVM toolchain for Seen compiler (opt, llc, clang, lld)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    clang lld llvm \
+# Install LLVM 21 toolchain for Seen compiler (must match compiler's LLVM version)
+RUN apt-get update && apt-get install -y --no-install-recommends wget gnupg ca-certificates \
+    && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /usr/share/keyrings/llvm.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" \
+       > /etc/apt/sources.list.d/llvm-21.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+       llvm-21 clang-21 lld-21 \
+    && ln -sf /usr/bin/lli-21 /usr/bin/lli \
+    && ln -sf /usr/bin/llvm-link-21 /usr/bin/llvm-link \
+    && ln -sf /usr/bin/opt-21 /usr/bin/opt \
+    && ln -sf /usr/bin/llc-21 /usr/bin/llc \
+    && ln -sf /usr/bin/clang-21 /usr/bin/clang \
+    && ln -sf /usr/bin/ld.lld-21 /usr/bin/ld.lld \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Seen compiler and runtime.
