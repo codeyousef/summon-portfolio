@@ -26,7 +26,7 @@ fun BlogListPage(
 ) {
     val formatter = dateFormatter(locale)
     val sortedPosts = posts.sortedByDescending { it.publishedAt }
-    PageScaffold(locale = locale) {
+    PageScaffold(locale = locale, enableAuroraEffects = false) {
         AppHeader(locale = locale)
         Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
         ContentSection(surface = false) {

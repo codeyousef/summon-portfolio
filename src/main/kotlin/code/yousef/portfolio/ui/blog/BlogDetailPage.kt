@@ -25,7 +25,7 @@ fun BlogDetailPage(
     locale: PortfolioLocale
 ) {
     val formatter = detailDateFormatter(locale)
-    PageScaffold(locale = locale) {
+    PageScaffold(locale = locale, enableAuroraEffects = false) {
         AppHeader(locale = locale)
         Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
         ContentSection(surface = false) {
@@ -120,7 +120,7 @@ fun BlogDetailPage(
 
 @Composable
 fun BlogNotFoundPage(locale: PortfolioLocale) {
-    PageScaffold(locale = locale) {
+    PageScaffold(locale = locale, enableAuroraEffects = false) {
         AppHeader(locale = locale)
         Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
         ContentSection(surface = false) {
