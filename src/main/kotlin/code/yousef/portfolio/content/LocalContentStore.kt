@@ -1,5 +1,6 @@
 package code.yousef.portfolio.content
 
+import code.yousef.portfolio.contact.ContactSubmission
 import code.yousef.portfolio.content.model.*
 import code.yousef.portfolio.content.seed.PortfolioContentSeed
 
@@ -13,6 +14,7 @@ class LocalContentStore : ContentStore {
     private val services: MutableList<Service> = PortfolioContentSeed.services.toMutableList()
     private val blogPosts: MutableList<BlogPost> = PortfolioContentSeed.blogPosts.toMutableList()
     private val testimonials: MutableList<Testimonial> = PortfolioContentSeed.testimonials.toMutableList()
+    private val contactSubmissions: MutableList<ContactSubmission> = mutableListOf()
     private var hero = PortfolioContentSeed.hero
     
     override fun loadPortfolioContent(): PortfolioContent = PortfolioContent(
@@ -71,5 +73,16 @@ class LocalContentStore : ContentStore {
     
     override fun updateHero(newHero: HeroContent) {
         hero = newHero
+    }
+
+    override fun listContactSubmissions(): List<ContactSubmission> = contactSubmissions.sortedByDescending { it.createdAt }
+
+    override fun upsertContactSubmission(submission: ContactSubmission) {
+        contactSubmissions.removeIf { it.id == submission.id }
+        contactSubmissions.add(submission)
+    }
+
+    override fun deleteContactSubmission(id: String) {
+        contactSubmissions.removeIf { it.id == id }
     }
 }

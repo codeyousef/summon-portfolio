@@ -1,5 +1,6 @@
 package code.yousef.portfolio.content
 
+import code.yousef.portfolio.contact.ContactSubmission
 import code.yousef.portfolio.content.model.*
 
 /**
@@ -22,4 +23,7 @@ interface ContentStore {
     fun deleteTestimonial(id: String)
     fun getHero(): HeroContent
     fun updateHero(hero: HeroContent)
+    fun listContactSubmissions(): List<ContactSubmission>
+    fun upsertContactSubmission(submission: ContactSubmission)
+    fun deleteContactSubmission(id: String)
 }

@@ -1,5 +1,6 @@
 package code.yousef.portfolio.content.store
 
+import code.yousef.portfolio.contact.ContactSubmission
 import code.yousef.portfolio.content.ContentStore
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.content.model.BlogPost
@@ -27,6 +28,7 @@ data class ContentSnapshot(
     val services: List<Service> = PortfolioContentSeed.services,
     val blogPosts: List<BlogPost> = PortfolioContentSeed.blogPosts,
     val testimonials: List<Testimonial> = emptyList(),
+    val contactSubmissions: List<ContactSubmission> = emptyList(),
     /**
      * Version marker to distinguish intentionally-empty content from missing/corrupt files.
      * If null, data was migrated from an older format or newly created with defaults.
@@ -124,6 +126,19 @@ class FileContentStore(
 
     override fun updateHero(hero: HeroContent) = mutate { snap ->
         snap.copy(hero = hero)
+    }
+
+    override fun listContactSubmissions(): List<ContactSubmission> = snapshot().contactSubmissions.sortedByDescending { it.createdAt }
+
+    override fun upsertContactSubmission(submission: ContactSubmission) = mutate { snap ->
+        snap.copy(
+            contactSubmissions = (snap.contactSubmissions.filterNot { it.id == submission.id } + submission)
+                .sortedByDescending { it.createdAt }
+        )
+    }
+
+    override fun deleteContactSubmission(id: String) = mutate { snap ->
+        snap.copy(contactSubmissions = snap.contactSubmissions.filterNot { it.id == id })
     }
 
     private fun mutate(transform: (ContentSnapshot) -> ContentSnapshot) {

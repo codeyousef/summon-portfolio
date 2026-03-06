@@ -1,5 +1,6 @@
 package code.yousef.firestore
 
+import code.yousef.portfolio.contact.ContactSubmission
 import code.yousef.portfolio.content.ContentStore
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.content.model.*
@@ -9,6 +10,7 @@ import com.google.cloud.firestore.Firestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.LocalDate
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -20,6 +22,7 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
     private val blogPostsCollection = firestore.collection("blog_posts")
     private val testimonialsCollection = firestore.collection("testimonials")
     private val heroCollection = firestore.collection("hero")
+    private val contactSubmissionsCollection = firestore.collection("contact_submissions")
 
     private val lock = ReentrantLock()
 
@@ -177,6 +180,53 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
             runBlocking {
                 withContext(Dispatchers.IO) {
                     retry { heroCollection.document("main").set(hero.toMap()).get() }
+                }
+            }
+        }
+    }
+
+    // Contact Submissions
+    override fun listContactSubmissions(): List<ContactSubmission> = runBlocking {
+        withContext(Dispatchers.IO) {
+            retry {
+                contactSubmissionsCollection.get().get().documents.mapNotNull { doc ->
+                    val data = doc.data ?: return@mapNotNull null
+                    try {
+                        ContactSubmission(
+                            id = doc.id,
+                            contact = data["contact"] as? String ?: return@mapNotNull null,
+                            message = data["message"] as? String ?: "",
+                            createdAt = (data["createdAt"] as? String)?.let { Instant.parse(it) } ?: Instant.now()
+                        )
+                    } catch (e: Exception) { null }
+                }.sortedByDescending { it.createdAt }
+            }
+        }
+    }
+
+    override fun upsertContactSubmission(submission: ContactSubmission) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry {
+                        contactSubmissionsCollection.document(submission.id).set(
+                            mapOf(
+                                "contact" to submission.contact,
+                                "message" to submission.message,
+                                "createdAt" to submission.createdAt.toString()
+                            )
+                        ).get()
+                    }
+                }
+            }
+        }
+    }
+
+    override fun deleteContactSubmission(id: String) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { contactSubmissionsCollection.document(id).delete().get() }
                 }
             }
         }

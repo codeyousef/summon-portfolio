@@ -1,10 +1,13 @@
 package code.yousef.portfolio.db
 
+import code.yousef.portfolio.contact.ContactSubmission
 import code.yousef.portfolio.content.ContentStore
 import code.yousef.portfolio.content.model.*
 import codes.yousef.aether.db.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
+import java.time.Instant
+import java.util.UUID
 
 class MapRow(private val data: Map<String, Any?>) : Row {
     override fun getString(column: String): String? = data[column]?.toString()
@@ -28,6 +31,7 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
             "services" -> store.listServices().map { it.toMap() }
             "blog_posts" -> store.listBlogPosts().map { it.toMap() }
             "testimonials" -> store.listTestimonials().map { it.toMap() }
+            "contact_submissions" -> store.listContactSubmissions().map { it.toMap() }
             else -> emptyList()
         }
 
@@ -87,6 +91,7 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
             "services" -> store.upsertService(values.toService())
             "blog_posts" -> store.upsertBlogPost(values.toBlogPost())
             "testimonials" -> store.upsertTestimonial(values.toTestimonial())
+            "contact_submissions" -> store.upsertContactSubmission(values.toContactSubmission())
         }
         return 1
     }
@@ -123,6 +128,7 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
                 "services" -> store.upsertService(merged.toService())
                 "blog_posts" -> store.upsertBlogPost(merged.toBlogPost())
                 "testimonials" -> store.upsertTestimonial(merged.toTestimonial())
+                "contact_submissions" -> store.upsertContactSubmission(merged.toContactSubmission())
             }
             return 1
         }
@@ -142,6 +148,7 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
                 "services" -> store.deleteService(id)
                 "blog_posts" -> store.deleteBlogPost(id)
                 "testimonials" -> store.deleteTestimonial(id)
+                "contact_submissions" -> store.deleteContactSubmission(id)
             }
             return 1
         }
@@ -153,7 +160,7 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
     }
 
     override suspend fun getTables(): List<String> {
-        return listOf("projects", "services", "blog_posts", "testimonials")
+        return listOf("projects", "services", "blog_posts", "testimonials", "contact_submissions")
     }
 
     override suspend fun getColumns(table: String): List<ColumnDefinition> {
@@ -291,13 +298,15 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
     )
     
     private fun Map<String, Any?>.toBlogPost(): BlogPost {
+        val rawId = this["id"] as? String
+        val rawDate = this["publishedAt"] as? String
         return BlogPost(
-            id = this["id"] as? String ?: "",
+            id = if (rawId.isNullOrBlank()) UUID.randomUUID().toString() else rawId,
             slug = this["slug"] as? String ?: "",
             title = this["title"] as? String ?: "",
             excerpt = this["excerpt"] as? String ?: "",
             content = this["content"] as? String ?: "",
-            publishedAt = (this["publishedAt"] as? String)?.let { java.time.LocalDate.parse(it) } ?: java.time.LocalDate.now(),
+            publishedAt = if (rawDate.isNullOrBlank()) java.time.LocalDate.now() else java.time.LocalDate.parse(rawDate),
             featured = this["featured"] as? Boolean ?: false,
             author = this["author"] as? String ?: "",
             tags = (this["tags"] as? String)?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
@@ -326,6 +335,24 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
         )
     }
     
+    private fun ContactSubmission.toMap(): Map<String, Any?> = mapOf(
+        "id" to id,
+        "contact" to contact,
+        "message" to message,
+        "createdAt" to createdAt.toString()
+    )
+
+    private fun Map<String, Any?>.toContactSubmission(): ContactSubmission {
+        val rawId = this["id"] as? String
+        val rawCreatedAt = this["createdAt"] as? String
+        return ContactSubmission(
+            id = if (rawId.isNullOrBlank()) UUID.randomUUID().toString() else rawId,
+            contact = this["contact"] as? String ?: "",
+            message = this["message"] as? String ?: "",
+            createdAt = if (rawCreatedAt.isNullOrBlank()) Instant.now() else Instant.parse(rawCreatedAt)
+        )
+    }
+
     // Helper to expose map from MapRow
     private fun MapRow.toMap(): Map<String, Any?> {
         val map = mutableMapOf<String, Any?>()
