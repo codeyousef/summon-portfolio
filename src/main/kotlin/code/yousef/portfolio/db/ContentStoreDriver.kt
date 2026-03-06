@@ -23,49 +23,60 @@ class MapRow(private val data: Map<String, Any?>) : Row {
 class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
 
     override suspend fun executeQuery(query: QueryAST): List<Row> {
-        if (query !is SelectQuery) throw DatabaseException("Only SelectQuery supported in executeQuery")
-        
-        val table = query.from
-        val allRows = when (table) {
-            "projects" -> store.listProjects().map { it.toMap() }
-            "services" -> store.listServices().map { it.toMap() }
-            "blog_posts" -> store.listBlogPosts().map { it.toMap() }
-            "testimonials" -> store.listTestimonials().map { it.toMap() }
-            "contact_submissions" -> store.listContactSubmissions().map { it.toMap() }
-            else -> emptyList()
-        }
-
-        var filtered = if (query.where != null) {
-            allRows.filter { row -> evaluate(query.where!!, row) }
-        } else {
-            allRows
-        }
-
-        // Order By
-        if (query.orderBy.isNotEmpty()) {
-            // Simple single column sort for now
-            val order = query.orderBy.first()
-            val col = (order.expression as? Expression.ColumnRef)?.column
-            if (col != null) {
-                filtered = filtered.sortedWith { a, b ->
-                    val valA = a[col] as? Comparable<Any>
-                    val valB = b[col] as? Comparable<Any>
-                    if (valA == null || valB == null) 0
-                    else if (order.direction == OrderDirection.ASC) valA.compareTo(valB)
-                    else valB.compareTo(valA)
-                }
+        when (query) {
+            is InsertQuery -> {
+                val values = query.columns.zip(query.values).associate { (col, expr) -> col to expr.toValue() }
+                val finalValues = performInsert(query.table, values)
+                return listOf(MapRow(finalValues))
             }
-        }
+            is UpdateQuery -> {
+                handleUpdate(query)
+                return emptyList()
+            }
+            is SelectQuery -> {
+                val table = query.from
+                val allRows = when (table) {
+                    "projects" -> store.listProjects().map { it.toMap() }
+                    "services" -> store.listServices().map { it.toMap() }
+                    "blog_posts" -> store.listBlogPosts().map { it.toMap() }
+                    "testimonials" -> store.listTestimonials().map { it.toMap() }
+                    "contact_submissions" -> store.listContactSubmissions().map { it.toMap() }
+                    else -> emptyList()
+                }
 
-        // Limit/Offset
-        if (query.offset != null) {
-            filtered = filtered.drop(query.offset!!)
-        }
-        if (query.limit != null) {
-            filtered = filtered.take(query.limit!!)
-        }
+                var filtered = if (query.where != null) {
+                    allRows.filter { row -> evaluate(query.where!!, row) }
+                } else {
+                    allRows
+                }
 
-        return filtered.map { MapRow(it) }
+                // Order By
+                if (query.orderBy.isNotEmpty()) {
+                    val order = query.orderBy.first()
+                    val col = (order.expression as? Expression.ColumnRef)?.column
+                    if (col != null) {
+                        filtered = filtered.sortedWith { a, b ->
+                            val valA = a[col] as? Comparable<Any>
+                            val valB = b[col] as? Comparable<Any>
+                            if (valA == null || valB == null) 0
+                            else if (order.direction == OrderDirection.ASC) valA.compareTo(valB)
+                            else valB.compareTo(valA)
+                        }
+                    }
+                }
+
+                // Limit/Offset
+                if (query.offset != null) {
+                    filtered = filtered.drop(query.offset!!)
+                }
+                if (query.limit != null) {
+                    filtered = filtered.take(query.limit!!)
+                }
+
+                return filtered.map { MapRow(it) }
+            }
+            else -> throw DatabaseException("Unsupported query type: ${query::class.simpleName}")
+        }
     }
 
     override suspend fun executeQueryRaw(sql: String): List<Row> {
@@ -74,26 +85,26 @@ class ContentStoreDriver(private val store: ContentStore) : DatabaseDriver {
 
     override suspend fun executeUpdate(query: QueryAST): Int {
         return when (query) {
-            is InsertQuery -> handleInsert(query)
+            is InsertQuery -> {
+                val values = query.columns.zip(query.values).associate { (col, expr) -> col to expr.toValue() }
+                performInsert(query.table, values)
+                1
+            }
             is UpdateQuery -> handleUpdate(query)
             is DeleteQuery -> handleDelete(query)
             else -> 0
         }
     }
 
-    private suspend fun handleInsert(query: InsertQuery): Int {
-        val values = query.columns.zip(query.values).associate { (col, expr) ->
-            col to expr.toValue()
+    private suspend fun performInsert(table: String, values: Map<String, Any?>): Map<String, Any?> {
+        return when (table) {
+            "projects" -> { val m = values.toProject(); store.upsertProject(m); m.toMap() }
+            "services" -> { val m = values.toService(); store.upsertService(m); m.toMap() }
+            "blog_posts" -> { val m = values.toBlogPost(); store.upsertBlogPost(m); m.toMap() }
+            "testimonials" -> { val m = values.toTestimonial(); store.upsertTestimonial(m); m.toMap() }
+            "contact_submissions" -> { val m = values.toContactSubmission(); store.upsertContactSubmission(m); m.toMap() }
+            else -> values
         }
-        
-        when (query.table) {
-            "projects" -> store.upsertProject(values.toProject())
-            "services" -> store.upsertService(values.toService())
-            "blog_posts" -> store.upsertBlogPost(values.toBlogPost())
-            "testimonials" -> store.upsertTestimonial(values.toTestimonial())
-            "contact_submissions" -> store.upsertContactSubmission(values.toContactSubmission())
-        }
-        return 1
     }
 
     private suspend fun handleUpdate(query: UpdateQuery): Int {
