@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui.blog
 
 import code.yousef.portfolio.content.model.BlogPost
+import code.yousef.portfolio.docs.summon.components.Prose
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.BlogStrings
 import code.yousef.portfolio.theme.PortfolioTheme
@@ -22,6 +23,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun BlogDetailPage(
     post: BlogPost,
+    contentHtml: String,
     locale: PortfolioLocale
 ) {
     val formatter = detailDateFormatter(locale)
@@ -84,22 +86,7 @@ fun BlogDetailPage(
                     }
                 }
 
-                val paragraphs = post.content.split("\n\n")
-                Column(
-                    modifier = Modifier()
-                        .display(Display.Flex)
-                        .flexDirection(FlexDirection.Column)
-                        .gap(PortfolioTheme.Spacing.md)
-                ) {
-                    paragraphs.forEach { paragraph ->
-                        Text(
-                            text = paragraph.trim(),
-                            modifier = Modifier()
-                                .color(PortfolioTheme.Colors.TEXT_SECONDARY)
-                                .lineHeight(1.8)
-                        )
-                    }
-                }
+                Prose(contentHtml)
 
                 val backLabel = BlogStrings.Detail.back.resolve(locale)
                 AnchorLink(
