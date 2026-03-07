@@ -2,6 +2,7 @@ package code.yousef.portfolio.ssr
 
 import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.model.BlogPost
+import code.yousef.portfolio.docs.MarkdownRenderer
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.blog.BlogDetailPage
 import code.yousef.portfolio.ui.blog.BlogListPage
@@ -10,7 +11,8 @@ import codes.yousef.summon.seo.HeadScope
 import io.ktor.http.*
 
 class BlogRenderer(
-    private val contentService: PortfolioContentService
+    private val contentService: PortfolioContentService,
+    private val markdownRenderer: MarkdownRenderer
 ) {
     fun renderList(locale: PortfolioLocale): SummonPage {
         val posts = contentService.load().blogPosts
@@ -23,11 +25,14 @@ class BlogRenderer(
 
     fun renderDetail(locale: PortfolioLocale, slug: String): RenderResult {
         val post = contentService.load().blogPosts.firstOrNull { it.slug.equals(slug, ignoreCase = true) }
+        val contentHtml = post?.let {
+            markdownRenderer.render(it.content, "/blog/${it.slug}").html
+        }
         val page = SummonPage(
             head = detailHead(locale, post, slug),
             content = {
                 if (post != null) {
-                    BlogDetailPage(post = post, locale = locale)
+                    BlogDetailPage(post = post, contentHtml = contentHtml!!, locale = locale)
                 } else {
                     BlogNotFoundPage(locale = locale)
                 }

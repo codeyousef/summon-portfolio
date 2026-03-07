@@ -30,6 +30,7 @@ import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.server.*
 import code.yousef.portfolio.ssr.*
+import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.AetherDispatcher
 import codes.yousef.aether.core.jvm.VertxServer
 import codes.yousef.aether.core.jvm.VertxServerConfig
@@ -135,7 +136,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 
     // Renderers
     val portfolioRenderer = PortfolioRenderer(contentService)
-    val blogRenderer = BlogRenderer(contentService)
+    val blogRenderer = BlogRenderer(contentService, markdownRenderer)
     val scratchpadRenderer = ScratchpadRenderer()
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
@@ -340,6 +341,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 if (username == null) {
                     exchange.redirect("/admin/login")
                 } else {
+                    @Suppress("UNCHECKED_CAST")
+                    val hooks = exchange.attributes.getOrPut(Exchange.HtmlResponseHooksKey) {
+                        mutableListOf<(String) -> String>()
+                    } as MutableList<(String) -> String>
+                    hooks.add { html ->
+                        html.replace("</body>", """<script src="/static/markdown-preview.js"></script></body>""")
+                    }
                     adminRouter.asMiddleware()(exchange, next)
                 }
             } else if (!isBuildingSite && (path == "/ai" || path.startsWith("/ai/"))) {
