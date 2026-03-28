@@ -1,0 +1,536 @@
+{
+    "sessions": {
+        "eb53dbc3-3042-41b3-8820-5d93111d66cf": {
+            "sessionId": "eb53dbc3-3042-41b3-8820-5d93111d66cf",
+            "lastRevision": 3,
+            "updatedAtMs": 1774729127853,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729124094,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729124094,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                },
+                {
+                    "id": "ev-3",
+                    "type": "package_routed",
+                    "levelId": 1,
+                    "timestampMs": 1774729127853,
+                    "details": {
+                        "packageId": "pkg-12",
+                        "route": "Truck A",
+                        "accepted": "true",
+                        "color": "red",
+                        "shape": "cube",
+                        "weight": "1",
+                        "priorityBonus": "0",
+                        "processed": "1",
+                        "ruleShifted": "false",
+                        "priorityShifted": "false",
+                        "wasRuleShifted": "false",
+                        "wasPriorityShifted": "false"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 100,
+                "completedLevels": 0,
+                "sessionDurationMs": 3759,
+                "generatedAtMs": 1774729127853,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "b13102f0-20be-402e-a474-a026f584c6b9": {
+            "sessionId": "b13102f0-20be-402e-a474-a026f584c6b9",
+            "lastRevision": 2,
+            "updatedAtMs": 1774729465037,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729465037,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729465037,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 1,
+                "generatedAtMs": 1774729465037,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "c77fa1ff-a942-47ad-a8bc-f5fffb304040": {
+            "sessionId": "c77fa1ff-a942-47ad-a8bc-f5fffb304040",
+            "lastRevision": 2,
+            "updatedAtMs": 1774729901664,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729901664,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729901664,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 7,
+                "generatedAtMs": 1774729901664,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "40ebb8e2-264e-4dc1-8eca-9b25474b5b37": {
+            "sessionId": "40ebb8e2-264e-4dc1-8eca-9b25474b5b37",
+            "lastRevision": 3,
+            "updatedAtMs": 1774729928050,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729926665,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774729926665,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                },
+                {
+                    "id": "ev-3",
+                    "type": "package_routed",
+                    "levelId": 1,
+                    "timestampMs": 1774729928050,
+                    "details": {
+                        "packageId": "pkg-10",
+                        "route": "Truck B",
+                        "accepted": "true",
+                        "color": "blue",
+                        "shape": "cube",
+                        "weight": "15",
+                        "priorityBonus": "0",
+                        "processed": "1",
+                        "ruleShifted": "false",
+                        "priorityShifted": "false",
+                        "wasRuleShifted": "false",
+                        "wasPriorityShifted": "false"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 100,
+                "completedLevels": 0,
+                "sessionDurationMs": 1385,
+                "generatedAtMs": 1774729928050,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "5100a2d9-657d-4032-816d-10b665576278": {
+            "sessionId": "5100a2d9-657d-4032-816d-10b665576278",
+            "lastRevision": 2,
+            "updatedAtMs": 1774730932263,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774730932263,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774730932263,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1774730932263,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "57cd30be-e8ef-48e7-b0dc-f04aef06a5f5": {
+            "sessionId": "57cd30be-e8ef-48e7-b0dc-f04aef06a5f5",
+            "lastRevision": 2,
+            "updatedAtMs": 1774731474392,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774731474392,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774731474392,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1774731474392,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "3e9633b4-dcfc-4baf-aa30-382259e6d1cf": {
+            "sessionId": "3e9633b4-dcfc-4baf-aa30-382259e6d1cf",
+            "lastRevision": 2,
+            "updatedAtMs": 1774731494989,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774731494989,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774731494989,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1774731494989,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "e1273aae-a301-4376-b0d6-e841a70ebdbe": {
+            "sessionId": "e1273aae-a301-4376-b0d6-e841a70ebdbe",
+            "lastRevision": 2,
+            "updatedAtMs": 1774731515914,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774731515914,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774731515914,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1774731515914,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "227958c2-59b2-431d-a432-6c5ac72150c4": {
+            "sessionId": "227958c2-59b2-431d-a432-6c5ac72150c4",
+            "lastRevision": 5,
+            "updatedAtMs": 1774732180932,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1774732159840,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1774732159840,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                },
+                {
+                    "id": "ev-3",
+                    "type": "package_routed",
+                    "levelId": 1,
+                    "timestampMs": 1774732177960,
+                    "details": {
+                        "packageId": "pkg-10",
+                        "route": "Truck A",
+                        "accepted": "true",
+                        "color": "red",
+                        "shape": "cube",
+                        "weight": "13",
+                        "priorityBonus": "0",
+                        "processed": "1",
+                        "ruleShifted": "false",
+                        "priorityShifted": "false",
+                        "wasRuleShifted": "false",
+                        "wasPriorityShifted": "false"
+                    }
+                },
+                {
+                    "id": "ev-4",
+                    "type": "package_routed",
+                    "levelId": 1,
+                    "timestampMs": 1774732179715,
+                    "details": {
+                        "packageId": "pkg-11",
+                        "route": "Truck B",
+                        "accepted": "true",
+                        "color": "blue",
+                        "shape": "rect",
+                        "weight": "6",
+                        "priorityBonus": "0",
+                        "processed": "2",
+                        "ruleShifted": "false",
+                        "priorityShifted": "false",
+                        "wasRuleShifted": "false",
+                        "wasPriorityShifted": "false"
+                    }
+                },
+                {
+                    "id": "ev-5",
+                    "type": "package_routed",
+                    "levelId": 1,
+                    "timestampMs": 1774732180932,
+                    "details": {
+                        "packageId": "pkg-12",
+                        "route": "Truck A",
+                        "accepted": "false",
+                        "color": "gray",
+                        "shape": "cylinder",
+                        "weight": "11",
+                        "priorityBonus": "0",
+                        "processed": "3",
+                        "ruleShifted": "false",
+                        "priorityShifted": "false",
+                        "wasRuleShifted": "false",
+                        "wasPriorityShifted": "false"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 200,
+                "completedLevels": 0,
+                "sessionDurationMs": 21092,
+                "generatedAtMs": 1774732180932,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        }
+    }
+}
