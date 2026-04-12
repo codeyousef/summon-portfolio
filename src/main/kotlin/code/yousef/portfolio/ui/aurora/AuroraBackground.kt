@@ -67,8 +67,8 @@ fun AuroraBackground(
                 ShaderEffectData(
                     id = "aurora-effect",
                     name = "Aurora Background",
-                    fragmentShader = buildAuroraWGSLShader(palette),
-                    glslFragmentShader = buildAuroraGLSLShader(palette),
+                    fragmentShader = buildAuroraWGSLShader(palette, config),
+                    glslFragmentShader = buildAuroraGLSLShader(palette, config),
                     timeScale = config.timeScale,
                     enableMouseInteraction = config.enableMouseInteraction,
                     // Uniforms map tells Sigil what uniform fields exist in the shader.
@@ -98,7 +98,10 @@ fun AuroraBackground(
  * NOTE: Sigil auto-generates the Uniforms struct and @group(0) @binding(0) var<uniform> u: Uniforms;
  * We just use u.time, u.deltaTime, u.resolution, u.mouse in our fragment code.
  */
-private fun buildAuroraWGSLShader(palette: AuroraPalette): String = """
+private fun buildAuroraWGSLShader(
+    palette: AuroraPalette,
+    config: AuroraConfig
+): String = """
 // IQ Palette formula for aurora colors
 fn palette(t: f32) -> vec3<f32> {
     let a = vec3<f32>(${palette.a.first}, ${palette.a.second}, ${palette.a.third});
@@ -149,7 +152,7 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     let sky = vec3<f32>(0.01, 0.01, 0.03);
     
     // Final color - strong intensity
-    let color = sky + auroraColor * glow * 2.0;
+    let color = sky + auroraColor * glow * ${config.glowIntensity};
     
     return vec4<f32>(color, 1.0);
 }
@@ -160,7 +163,10 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
  * Creates flowing aurora ribbons using sine waves - consistent with WGSL version.
  * Uses IQ palette formula for colors.
  */
-private fun buildAuroraGLSLShader(palette: AuroraPalette): String = """
+private fun buildAuroraGLSLShader(
+    palette: AuroraPalette,
+    config: AuroraConfig
+): String = """
 precision highp float;
 
 uniform float time;
@@ -222,7 +228,7 @@ void main() {
     vec3 sky = vec3(0.01, 0.01, 0.03);
     
     // Final color - strong intensity
-    vec3 color = sky + auroraColor * glow * 2.0;
+    vec3 color = sky + auroraColor * glow * ${config.glowIntensity};
     
     gl_FragColor = vec4(color, 1.0);
 }

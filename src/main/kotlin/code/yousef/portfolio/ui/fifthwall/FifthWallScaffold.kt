@@ -1,7 +1,5 @@
 package code.yousef.portfolio.ui.fifthwall
 
-import code.yousef.portfolio.ui.aurora.AuroraBackground
-import code.yousef.portfolio.ui.aurora.AuroraConfig
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.styles.GlobalStyle
@@ -62,17 +60,6 @@ fun FifthWallScaffold(
             .overflow(Overflow.Hidden)
             .className("fw-shell")
     ) {
-        AuroraBackground(
-            config = AuroraConfig(
-                canvasId = "fifth-wall-aurora",
-                height = 2800,
-                initialPaletteIndex = 1,
-                enableMouseInteraction = false,
-                enableKeyboardCycle = false,
-                enableClickCycle = false,
-                timeScale = 0.35f
-            )
-        )
         Box(modifier = Modifier().className("fw-shell-inner")) {
             content()
         }

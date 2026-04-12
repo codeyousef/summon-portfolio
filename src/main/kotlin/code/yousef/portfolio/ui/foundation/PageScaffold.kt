@@ -102,6 +102,7 @@ fun PageScaffold(
                     canvasId = "aurora-canvas",
                     height = 3500,
                     initialPaletteIndex = 0,
+                    glowIntensity = 1.15f,
                     enableMouseInteraction = true,
                     enableKeyboardCycle = true,
                     enableClickCycle = true

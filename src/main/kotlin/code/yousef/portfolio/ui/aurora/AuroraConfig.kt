@@ -28,6 +28,9 @@ data class AuroraConfig(
     
     /** Animation speed multiplier */
     val timeScale: Float = 1.0f,
+
+    /** Overall glow strength multiplier */
+    val glowIntensity: Float = 2.0f,
     
     /** Noise scale for the aurora pattern */
     val noiseScale: Float = 1.0f
