@@ -45,9 +45,9 @@ import codes.yousef.aether.core.session.SessionMiddleware
 import codes.yousef.aether.core.session.session
 import codes.yousef.aether.db.DatabaseDriverRegistry
 import codes.yousef.aether.web.router
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
+import java.util.concurrent.CountDownLatch
 
 data class ApplicationResources(
     val pipeline: Pipeline,
@@ -382,23 +382,24 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 }
 
 fun main() {
-    runBlocking(AetherDispatcher.dispatcher) {
-        val appConfig = loadAppConfig()
-        val resources = buildApplication(appConfig)
+    val appConfig = loadAppConfig()
+    val resources = buildApplication(appConfig)
 
-        val config = VertxServerConfig(port = appConfig.port)
-        val server = VertxServer(config, resources.pipeline) { exchange ->
-            exchange.notFound("Route not found")
-        }
-
-        Runtime.getRuntime().addShutdownHook(Thread {
-            runBlocking {
-                server.stop()
-                resources.onShutdown()
-            }
-        })
-
-        server.start()
-        awaitCancellation()
+    val config = VertxServerConfig(port = appConfig.port)
+    val server = VertxServer(config, resources.pipeline) { exchange ->
+        exchange.notFound("Route not found")
     }
+
+    Runtime.getRuntime().addShutdownHook(Thread {
+        runBlocking {
+            server.stop()
+            resources.onShutdown()
+        }
+    })
+
+    runBlocking(AetherDispatcher.dispatcher) {
+        server.start()
+    }
+
+    CountDownLatch(1).await()
 }
