@@ -2,7 +2,6 @@ package code.yousef.portfolio.ui.fifthwall
 
 import codes.yousef.sigil.schema.GeometryParams
 import codes.yousef.sigil.schema.GeometryType
-import codes.yousef.sigil.schema.ModelMaterialOverride
 import codes.yousef.sigil.summon.canvas.MateriaCanvas
 import codes.yousef.sigil.summon.canvas.SceneConfig
 import codes.yousef.sigil.summon.components.SigilAmbientLight
@@ -48,8 +47,7 @@ private data class FifthWallModelSpec(
     val url: String,
     val position: List<Float> = listOf(0f, 0f, 0f),
     val rotation: List<Float> = listOf(0f, 0f, 0f),
-    val scale: List<Float> = listOf(1f, 1f, 1f),
-    val materialOverrides: List<ModelMaterialOverride> = emptyList()
+    val scale: List<Float> = listOf(1f, 1f, 1f)
 )
 
 @Composable
@@ -419,9 +417,18 @@ private fun ConveyorDeck(
             scale = listOf(13.6f, 3.2f, 11.2f),
             castShadow = true,
             receiveShadow = true,
-            name = "conveyor-model",
-            materialOverrides = if (state.glitchActive) tintAll(argb("#3a1519")) else emptyList()
+            name = "conveyor-model"
         )
+        if (state.glitchActive) {
+            SigilPointLight(
+                position = listOf(0f, 1.4f, 0f),
+                color = argb("#45121a"),
+                intensity = 1.3f,
+                distance = 8f,
+                decay = 2f,
+                name = "conveyor-glitch-light"
+            )
+        }
         state.visiblePackages().forEachIndexed { index, pkg ->
             val selected = state.selectedPackageId == pkg.id || (state.selectedPackageId == null && index == 0)
             PackageMesh(
@@ -483,8 +490,12 @@ private fun DeliveryTruck(
             scale = listOf(4.2f, 2.2f, 3.2f),
             castShadow = true,
             receiveShadow = true,
-            name = "$label-model",
-            materialOverrides = tintAll(accent)
+            name = "$label-model"
+        )
+        TruckAccentMarker(
+            accent = accent,
+            hidden = hidden,
+            name = label.lowercase().replace(" ", "-")
         )
         if (selected) {
             SigilMesh(
@@ -523,6 +534,50 @@ private fun DeliveryTruck(
 }
 
 @Composable
+private fun TruckAccentMarker(
+    accent: Int,
+    hidden: Boolean,
+    name: String
+) {
+    val panelColor = if (hidden) argb("#6b7485") else accent
+    val glow = if (hidden) 0.35f else 0.8f
+    listOf(-0.92f, 0.92f).forEachIndexed { index, z ->
+        SigilBox(
+            width = 1.38f,
+            height = 0.2f,
+            depth = 0.08f,
+            position = listOf(0.95f, 1.28f, z),
+            color = panelColor,
+            metalness = 0.34f,
+            roughness = 0.38f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-accent-panel-$index"
+        )
+    }
+    SigilSphere(
+        radius = 0.18f,
+        widthSegments = 12,
+        heightSegments = 10,
+        position = listOf(-1.05f, 1.74f, 0f),
+        color = panelColor,
+        metalness = 0.24f,
+        roughness = 0.34f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-accent-beacon"
+    )
+    SigilPointLight(
+        position = listOf(-1.05f, 1.96f, 0f),
+        color = panelColor,
+        intensity = glow,
+        distance = 5.5f,
+        decay = 1.9f,
+        name = "$name-accent-light"
+    )
+}
+
+@Composable
 private fun ReturnBinBay(
     selected: Boolean,
     routeAccepted: Boolean?,
@@ -538,8 +593,7 @@ private fun ReturnBinBay(
             scale = listOf(2.2f, 1.3f, 2.27f),
             castShadow = true,
             receiveShadow = true,
-            name = "return-bin-model",
-            materialOverrides = if (glitchActive) tintAll(argb("#30141a")) else emptyList()
+            name = "return-bin-model"
         )
         SigilMesh(
             geometryType = GeometryType.TORUS,
@@ -571,6 +625,16 @@ private fun ReturnBinBay(
             decay = 1.7f,
             name = "return-light"
         )
+        if (glitchActive) {
+            SigilPointLight(
+                position = listOf(0f, 1.55f, 0f),
+                color = argb("#5c1f2a"),
+                intensity = 1f,
+                distance = 5.5f,
+                decay = 1.8f,
+                name = "return-glitch-light"
+            )
+        }
         ""
     }
 }
@@ -684,8 +748,12 @@ private fun PackageMesh(
             scale = modelSpec.scale,
             castShadow = true,
             receiveShadow = true,
-            name = "pkg-body",
-            materialOverrides = modelSpec.materialOverrides
+            name = "pkg-body"
+        )
+        PackageColorAccent(
+            shape = pkg.shape,
+            color = baseColor,
+            hover = hover
         )
         PackageGeometryModel(pkg = pkg, hover = hover, elevated = enlarged)
 
@@ -737,8 +805,145 @@ private fun PackageGeometryModel(
         scale = modelSpec.scale,
         castShadow = false,
         receiveShadow = false,
-        name = "pkg-geometry-model",
-        materialOverrides = modelSpec.materialOverrides
+        name = "pkg-geometry-model"
+    )
+}
+
+@Composable
+private fun PackageColorAccent(
+    shape: String,
+    color: Int,
+    hover: Float
+) {
+    when (shape) {
+        "rect" -> {
+            SigilBox(
+                width = 1.38f,
+                height = 0.12f,
+                depth = 0.18f,
+                position = listOf(0f, 0.56f + hover, 0f),
+                color = color,
+                metalness = 0.24f,
+                roughness = 0.4f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-main"
+            )
+            SigilBox(
+                width = 0.16f,
+                height = 0.62f,
+                depth = 0.82f,
+                position = listOf(0f, 0.36f + hover, 0f),
+                color = color,
+                metalness = 0.24f,
+                roughness = 0.42f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-cross"
+            )
+        }
+
+        "sphere" -> {
+            SigilBox(
+                width = 0.88f,
+                height = 0.1f,
+                depth = 0.22f,
+                position = listOf(0f, 0.54f + hover, 0f),
+                color = color,
+                metalness = 0.22f,
+                roughness = 0.4f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-main"
+            )
+            SigilBox(
+                width = 0.22f,
+                height = 0.1f,
+                depth = 0.88f,
+                position = listOf(0f, 0.54f + hover, 0f),
+                color = color,
+                metalness = 0.22f,
+                roughness = 0.4f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-cross"
+            )
+            SigilSphere(
+                radius = 0.12f,
+                widthSegments = 10,
+                heightSegments = 8,
+                position = listOf(0f, 0.86f + hover, 0f),
+                color = color,
+                metalness = 0.2f,
+                roughness = 0.36f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-cap"
+            )
+        }
+
+        "cylinder" -> {
+            SigilBox(
+                width = 0.78f,
+                height = 0.11f,
+                depth = 0.22f,
+                position = listOf(0f, 0.64f + hover, 0f),
+                color = color,
+                metalness = 0.22f,
+                roughness = 0.4f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-main"
+            )
+            SigilBox(
+                width = 0.18f,
+                height = 0.78f,
+                depth = 0.18f,
+                position = listOf(0f, 0.44f + hover, 0f),
+                color = color,
+                metalness = 0.22f,
+                roughness = 0.42f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-cross"
+            )
+        }
+
+        else -> {
+            SigilBox(
+                width = 0.98f,
+                height = 0.12f,
+                depth = 0.18f,
+                position = listOf(0f, 0.6f + hover, 0f),
+                color = color,
+                metalness = 0.24f,
+                roughness = 0.4f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-main"
+            )
+            SigilBox(
+                width = 0.16f,
+                height = 0.72f,
+                depth = 0.9f,
+                position = listOf(0f, 0.38f + hover, 0f),
+                color = color,
+                metalness = 0.24f,
+                roughness = 0.42f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-color-band-cross"
+            )
+        }
+    }
+
+    SigilPointLight(
+        position = listOf(0f, 1.04f + hover, 0f),
+        color = color,
+        intensity = 0.42f,
+        distance = 2.9f,
+        decay = 2.1f,
+        name = "pkg-color-light"
     )
 }
 
@@ -894,18 +1099,6 @@ private fun GeometryAura(
 
 private fun fifthWallModelUrl(fileName: String): String = "/static/models/fifth-wall/$fileName"
 
-private fun tintAll(
-    color: Int,
-    metalness: Float? = null,
-    roughness: Float? = null
-): List<ModelMaterialOverride> = listOf(
-    ModelMaterialOverride(
-        color = color,
-        metalness = metalness,
-        roughness = roughness
-    )
-)
-
 private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
     pkg.labelText?.contains("SPECIAL DELIVERY", ignoreCase = true) == true -> FifthWallModelSpec(
         url = fifthWallModelUrl("special-delivery-package.glb"),
@@ -915,26 +1108,22 @@ private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
     pkg.shape == "rect" -> FifthWallModelSpec(
         url = fifthWallModelUrl("rectangular-parcel.glb"),
         position = listOf(0f, 0.12f, 0f),
-        scale = listOf(2f, 1.2f, 1.02f),
-        materialOverrides = tintAll(argb(pkg.color.hex))
+        scale = listOf(2f, 1.2f, 1.02f)
     )
     pkg.shape == "sphere" -> FifthWallModelSpec(
         url = fifthWallModelUrl("sphere-package-with-cradle.glb"),
         position = listOf(0f, 0.08f, 0f),
-        scale = listOf(1.16f, 1.16f, 1.16f),
-        materialOverrides = tintAll(argb(pkg.color.hex))
+        scale = listOf(1.16f, 1.16f, 1.16f)
     )
     pkg.shape == "cylinder" -> FifthWallModelSpec(
         url = fifthWallModelUrl("cylinder-drum.glb"),
         position = listOf(0f, 0.1f, 0f),
-        scale = listOf(1.12f, 1.4f, 1.08f),
-        materialOverrides = tintAll(argb(pkg.color.hex))
+        scale = listOf(1.12f, 1.4f, 1.08f)
     )
     else -> FifthWallModelSpec(
         url = fifthWallModelUrl("cube-crate.glb"),
         position = listOf(0f, 0.12f, 0f),
-        scale = listOf(1.14f, 1.08f, 1.27f),
-        materialOverrides = tintAll(argb(pkg.color.hex))
+        scale = listOf(1.14f, 1.08f, 1.27f)
     )
 }
 
@@ -950,29 +1139,25 @@ private fun geometryModelSpec(
             url = fifthWallModelUrl("valid-geometry-insert-set.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0f, 0.38f, 0f),
-            scale = if (elevated) listOf(1f, 2.6f, 0.85f) else listOf(0.78f, 2.1f, 0.66f),
-            materialOverrides = tintAll(SCENE_SUCCESS, metalness = 0.28f, roughness = 0.44f)
+            scale = if (elevated) listOf(1f, 2.6f, 0.85f) else listOf(0.78f, 2.1f, 0.66f)
         )
         pkg.geometry == "Penrose loop" -> FifthWallModelSpec(
             url = fifthWallModelUrl("penrose-loop.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.18f, 0.52f, 0f),
-            scale = if (elevated) listOf(0.9f, 0.9f, 0.9f) else listOf(0.66f, 0.66f, 0.66f),
-            materialOverrides = tintAll(SCENE_DANGER, metalness = 0.34f, roughness = 0.4f)
+            scale = if (elevated) listOf(0.9f, 0.9f, 0.9f) else listOf(0.66f, 0.66f, 0.66f)
         )
         pkg.geometry == "Escher stair" -> FifthWallModelSpec(
             url = fifthWallModelUrl("escher-stair.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.12f, 0.62f, 0f),
-            scale = if (elevated) listOf(1.15f, 1f, 0.84f) else listOf(0.9f, 0.78f, 0.66f),
-            materialOverrides = tintAll(SCENE_DANGER, metalness = 0.34f, roughness = 0.42f)
+            scale = if (elevated) listOf(1.15f, 1f, 0.84f) else listOf(0.9f, 0.78f, 0.66f)
         )
         else -> FifthWallModelSpec(
             url = fifthWallModelUrl("impossible-trident.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.14f, 0.48f, 0f),
-            scale = if (elevated) listOf(0.88f, 0.88f, 1f) else listOf(0.7f, 0.7f, 0.8f),
-            materialOverrides = tintAll(SCENE_DANGER, metalness = 0.34f, roughness = 0.42f)
+            scale = if (elevated) listOf(0.88f, 0.88f, 1f) else listOf(0.7f, 0.7f, 0.8f)
         )
     }
 }
