@@ -531,6 +531,1206 @@
                     "finalRqScore": 0.4666666666666667
                 }
             }
+        },
+        "504aa5d5-2634-4567-a0a6-bfe0cfda43ed": {
+            "sessionId": "504aa5d5-2634-4567-a0a6-bfe0cfda43ed",
+            "lastRevision": 2,
+            "updatedAtMs": 1776017945572,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776017945572,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776017945572,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776017945572,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "24e39558-bd55-48b5-b167-adaafbeff170": {
+            "sessionId": "24e39558-bd55-48b5-b167-adaafbeff170",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018233353,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018233353,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018233353,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018233353,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "dfa4fd85-44ae-4ad5-97cd-4739cc134bef": {
+            "sessionId": "dfa4fd85-44ae-4ad5-97cd-4739cc134bef",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018233557,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018233557,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018233557,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018233557,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "fbef3578-2058-4ef4-a092-d6a958f1d7c1": {
+            "sessionId": "fbef3578-2058-4ef4-a092-d6a958f1d7c1",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018252641,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018252641,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018252641,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018252641,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "6c0ae8a4-49bb-4864-9d2c-5f17716d0434": {
+            "sessionId": "6c0ae8a4-49bb-4864-9d2c-5f17716d0434",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018365828,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018365828,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018365828,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018365828,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "67736036-4109-4fb8-b5f8-75a5a72fde45": {
+            "sessionId": "67736036-4109-4fb8-b5f8-75a5a72fde45",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018401651,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018401651,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018401651,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018401651,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "debbb4c2-c828-420d-8687-77ad088f1e05": {
+            "sessionId": "debbb4c2-c828-420d-8687-77ad088f1e05",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018422468,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018422468,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018422468,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018422468,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "f8ee139c-04ac-448f-a5c9-b45c543f5d05": {
+            "sessionId": "f8ee139c-04ac-448f-a5c9-b45c543f5d05",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018422900,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018422900,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018422900,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018422900,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "9e95b488-ad24-434f-a4d1-437ae883a10b": {
+            "sessionId": "9e95b488-ad24-434f-a4d1-437ae883a10b",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018443859,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018443859,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018443859,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018443859,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "9c268d60-c84c-4470-89c7-8cf0610ab326": {
+            "sessionId": "9c268d60-c84c-4470-89c7-8cf0610ab326",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018443958,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018443958,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018443958,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018443958,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "5e973922-2e7c-4022-84ee-99140b38edb2": {
+            "sessionId": "5e973922-2e7c-4022-84ee-99140b38edb2",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018468874,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018468874,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018468874,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018468874,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "a5a0226e-d22b-421a-a135-386bf07e8bff": {
+            "sessionId": "a5a0226e-d22b-421a-a135-386bf07e8bff",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018469395,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018469395,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018469395,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018469395,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "0b2ee519-1fc7-426d-822e-f3cce20d42a8": {
+            "sessionId": "0b2ee519-1fc7-426d-822e-f3cce20d42a8",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018493665,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018493665,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018493665,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018493665,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "714248a4-e85b-4581-b802-99f28c2a5b07": {
+            "sessionId": "714248a4-e85b-4581-b802-99f28c2a5b07",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018493924,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018493924,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018493924,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018493924,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "39232365-b4e5-4818-896d-871d2c6ea29b": {
+            "sessionId": "39232365-b4e5-4818-896d-871d2c6ea29b",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018514710,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018514710,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018514710,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018514710,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "7a2b67b5-b642-4c98-a66e-0190fc2394c1": {
+            "sessionId": "7a2b67b5-b642-4c98-a66e-0190fc2394c1",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018534613,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018534613,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018534613,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018534613,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "88e03376-6ff3-4827-8d52-1cb794a6ea07": {
+            "sessionId": "88e03376-6ff3-4827-8d52-1cb794a6ea07",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018534930,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018534930,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018534930,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018534930,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "e2c3cc18-863a-4255-a5ab-3644069ea7c2": {
+            "sessionId": "e2c3cc18-863a-4255-a5ab-3644069ea7c2",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018561524,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018561524,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018561524,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018561524,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "7451b061-ea1a-46bb-a8c3-61f8d49aa5d1": {
+            "sessionId": "7451b061-ea1a-46bb-a8c3-61f8d49aa5d1",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018588050,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018588050,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018588050,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018588050,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "cb9934a8-b88e-451e-baec-d49fbc3ced1d": {
+            "sessionId": "cb9934a8-b88e-451e-baec-d49fbc3ced1d",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018611396,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018611396,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018611396,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018611396,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "1ee6b7cb-bf5e-48e6-a10e-91b330d9f683": {
+            "sessionId": "1ee6b7cb-bf5e-48e6-a10e-91b330d9f683",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018634130,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018634130,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018634130,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018634130,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "1c030c47-856b-4857-896d-3516829ebec4": {
+            "sessionId": "1c030c47-856b-4857-896d-3516829ebec4",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018781745,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018781745,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018781745,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018781745,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "e69b86b9-e814-4a32-9739-47ad6ecbf10c": {
+            "sessionId": "e69b86b9-e814-4a32-9739-47ad6ecbf10c",
+            "lastRevision": 2,
+            "updatedAtMs": 1776018843267,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018843267,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776018843267,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776018843267,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "3ebec029-da7c-4d8a-a816-75569e7256e5": {
+            "sessionId": "3ebec029-da7c-4d8a-a816-75569e7256e5",
+            "lastRevision": 2,
+            "updatedAtMs": 1776020403109,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776020403109,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776020403109,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 0,
+                "generatedAtMs": 1776020403109,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
+        },
+        "0fe12e25-cf18-4e6c-b1dd-890fff37df61": {
+            "sessionId": "0fe12e25-cf18-4e6c-b1dd-890fff37df61",
+            "lastRevision": 2,
+            "updatedAtMs": 1776020619346,
+            "events": [
+                {
+                    "id": "ev-1",
+                    "type": "session_started",
+                    "levelId": 1,
+                    "timestampMs": 1776020619345,
+                    "details": {
+                        "entry": "intro"
+                    }
+                },
+                {
+                    "id": "ev-2",
+                    "type": "level_started",
+                    "levelId": 1,
+                    "timestampMs": 1776020619345,
+                    "details": {
+                        "reason": "begin_shift"
+                    }
+                }
+            ],
+            "summary": {
+                "visibleScore": 0,
+                "completedLevels": 0,
+                "sessionDurationMs": 7,
+                "generatedAtMs": 1776020619346,
+                "metrics": {
+                    "explorationIndex": 0.0,
+                    "falsificationRate": 0.5,
+                    "calibrationAccuracy": 0.5,
+                    "probabilityIntuition": 0.5,
+                    "cognitiveFlexibility": 0.5,
+                    "impossibleGeometry": 0.5,
+                    "affectiveDecoupling": 0.5,
+                    "cognitiveDecouplingSocial": 0.5,
+                    "semanticPrecision": 0.5,
+                    "tribalResistance": 0.5,
+                    "falsificationSocial": 0.5,
+                    "updateSpeed": 0.5,
+                    "puzzleScore": 0.4166666666666667,
+                    "socialScore": 0.5,
+                    "finalRqScore": 0.4666666666666667
+                }
+            }
         }
     }
 }
