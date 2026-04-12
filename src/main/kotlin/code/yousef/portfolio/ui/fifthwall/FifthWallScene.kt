@@ -35,6 +35,7 @@ private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
 private val SCENE_TEXT = argb(FifthWallTheme.TEXT_PRIMARY)
 private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
+private const val FIFTH_WALL_MODEL_BASE = "static/models/fifth-wall"
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
     argb("#5aa9ff"),
@@ -892,7 +893,7 @@ private fun GeometryAura(
     }
 }
 
-private fun fifthWallModelUrl(fileName: String): String = fileName
+private fun fifthWallModelUrl(fileName: String): String = "$FIFTH_WALL_MODEL_BASE/$fileName"
 
 private fun tintAll(
     color: Int,
