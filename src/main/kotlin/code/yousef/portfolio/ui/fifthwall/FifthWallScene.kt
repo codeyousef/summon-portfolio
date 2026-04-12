@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.fifthwall
 
 import codes.yousef.sigil.schema.GeometryParams
 import codes.yousef.sigil.schema.GeometryType
+import codes.yousef.sigil.schema.ModelMaterialOverride
 import codes.yousef.sigil.summon.canvas.MateriaCanvas
 import codes.yousef.sigil.summon.canvas.SceneConfig
 import codes.yousef.sigil.summon.components.SigilAmbientLight
@@ -34,6 +35,21 @@ private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
 private val SCENE_TEXT = argb(FifthWallTheme.TEXT_PRIMARY)
 private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
+private val WAREHOUSE_MODEL_MATERIAL = uniformModelMaterial(WAREHOUSE_WALL, metalness = 0.18f, roughness = 0.82f)
+private val CONVEYOR_MODEL_MATERIAL = uniformModelMaterial(CONVEYOR_FRAME, metalness = 0.28f, roughness = 0.58f)
+private val TRUCK_MODEL_MATERIAL = uniformModelMaterial(argb("#243446"), metalness = 0.42f, roughness = 0.38f)
+private val RETURN_BIN_MODEL_MATERIAL = uniformModelMaterial(argb("#182433"), metalness = 0.24f, roughness = 0.72f)
+private val INSPECTION_MODEL_MATERIAL = uniformModelMaterial(argb("#223447"), metalness = 0.44f, roughness = 0.42f)
+private val SPECIAL_PACKAGE_MODEL_MATERIAL = uniformModelMaterial(argb("#7c8fa9"), metalness = 0.28f, roughness = 0.52f)
+private val RECT_PARCEL_MODEL_MATERIAL = uniformModelMaterial(argb("#a88357"), metalness = 0.08f, roughness = 0.82f)
+private val SPHERE_PACKAGE_MODEL_MATERIAL = uniformModelMaterial(argb("#6e7d8d"), metalness = 0.44f, roughness = 0.48f)
+private val CYLINDER_PACKAGE_MODEL_MATERIAL = uniformModelMaterial(argb("#4f6076"), metalness = 0.6f, roughness = 0.36f)
+private val CUBE_CRATE_MODEL_MATERIAL = uniformModelMaterial(argb("#89653f"), metalness = 0.12f, roughness = 0.8f)
+private val VALID_GEOMETRY_MODEL_MATERIAL = uniformModelMaterial(SCENE_SUCCESS, metalness = 0.78f, roughness = 0.18f)
+private val PENROSE_MODEL_MATERIAL = uniformModelMaterial(argb("#d7a06d"), metalness = 0.68f, roughness = 0.22f)
+private val ESCHER_MODEL_MATERIAL = uniformModelMaterial(argb("#7e9dff"), metalness = 0.76f, roughness = 0.18f)
+private val TRIDENT_MODEL_MATERIAL = uniformModelMaterial(argb("#b98cff"), metalness = 0.74f, roughness = 0.22f)
+private val WRENCH_MODEL_MATERIAL = uniformModelMaterial(argb("#8ea3ba"), metalness = 0.92f, roughness = 0.18f)
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
     argb("#5aa9ff"),
@@ -47,7 +63,8 @@ private data class FifthWallModelSpec(
     val url: String,
     val position: List<Float> = listOf(0f, 0f, 0f),
     val rotation: List<Float> = listOf(0f, 0f, 0f),
-    val scale: List<Float> = listOf(1f, 1f, 1f)
+    val scale: List<Float> = listOf(1f, 1f, 1f),
+    val materialOverrides: List<ModelMaterialOverride> = emptyList()
 )
 
 @Composable
@@ -167,7 +184,8 @@ private fun WarehouseShell() {
         scale = listOf(34f, 14f, 26f),
         castShadow = false,
         receiveShadow = true,
-        name = "warehouse-shell-model"
+        name = "warehouse-shell-model",
+        materialOverrides = WAREHOUSE_MODEL_MATERIAL
     )
 }
 
@@ -417,7 +435,8 @@ private fun ConveyorDeck(
             scale = listOf(13.6f, 3.2f, 11.2f),
             castShadow = true,
             receiveShadow = true,
-            name = "conveyor-model"
+            name = "conveyor-model",
+            materialOverrides = CONVEYOR_MODEL_MATERIAL
         )
         if (state.glitchActive) {
             SigilPointLight(
@@ -490,7 +509,8 @@ private fun DeliveryTruck(
             scale = listOf(4.2f, 2.2f, 3.2f),
             castShadow = true,
             receiveShadow = true,
-            name = "$label-model"
+            name = "$label-model",
+            materialOverrides = TRUCK_MODEL_MATERIAL
         )
         TruckAccentMarker(
             accent = accent,
@@ -593,7 +613,8 @@ private fun ReturnBinBay(
             scale = listOf(2.2f, 1.3f, 2.27f),
             castShadow = true,
             receiveShadow = true,
-            name = "return-bin-model"
+            name = "return-bin-model",
+            materialOverrides = RETURN_BIN_MODEL_MATERIAL
         )
         SigilMesh(
             geometryType = GeometryType.TORUS,
@@ -647,7 +668,8 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
             scale = listOf(4.8f, 1f, 4.3f),
             castShadow = true,
             receiveShadow = true,
-            name = "inspection-dock-model"
+            name = "inspection-dock-model",
+            materialOverrides = INSPECTION_MODEL_MATERIAL
         )
         SigilMesh(
             geometryType = GeometryType.RING,
@@ -679,7 +701,8 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
                 scale = listOf(1.36f, 1.22f, 1.24f),
                 castShadow = true,
                 receiveShadow = true,
-                name = "inspection-idle-package"
+                name = "inspection-idle-package",
+                materialOverrides = SPECIAL_PACKAGE_MODEL_MATERIAL
             )
         }
         ""
@@ -748,7 +771,8 @@ private fun PackageMesh(
             scale = modelSpec.scale,
             castShadow = true,
             receiveShadow = true,
-            name = "pkg-body"
+            name = "pkg-body",
+            materialOverrides = modelSpec.materialOverrides
         )
         PackageColorAccent(
             shape = pkg.shape,
@@ -805,7 +829,8 @@ private fun PackageGeometryModel(
         scale = modelSpec.scale,
         castShadow = false,
         receiveShadow = false,
-        name = "pkg-geometry-model"
+        name = "pkg-geometry-model",
+        materialOverrides = modelSpec.materialOverrides
     )
 }
 
@@ -961,7 +986,8 @@ private fun WrenchProp(visible: Boolean) {
             rotation = listOf(0f, 0.72f, 0f),
             castShadow = true,
             receiveShadow = false,
-            name = "repair-wrench-model"
+            name = "repair-wrench-model",
+            materialOverrides = WRENCH_MODEL_MATERIAL
         )
         SigilPointLight(
             position = listOf(0f, 0.8f, 0f),
@@ -1106,27 +1132,32 @@ private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
     pkg.labelText?.contains("SPECIAL DELIVERY", ignoreCase = true) == true -> FifthWallModelSpec(
         url = fifthWallModelUrl("special-delivery-package.glb"),
         position = listOf(0f, 0.1f, 0f),
-        scale = listOf(1.18f, 1.12f, 1.14f)
+        scale = listOf(1.18f, 1.12f, 1.14f),
+        materialOverrides = SPECIAL_PACKAGE_MODEL_MATERIAL
     )
     pkg.shape == "rect" -> FifthWallModelSpec(
         url = fifthWallModelUrl("rectangular-parcel.glb"),
         position = listOf(0f, 0.12f, 0f),
-        scale = listOf(2f, 1.2f, 1.02f)
+        scale = listOf(2f, 1.2f, 1.02f),
+        materialOverrides = RECT_PARCEL_MODEL_MATERIAL
     )
     pkg.shape == "sphere" -> FifthWallModelSpec(
         url = fifthWallModelUrl("sphere-package-with-cradle.glb"),
         position = listOf(0f, 0.08f, 0f),
-        scale = listOf(1.16f, 1.16f, 1.16f)
+        scale = listOf(1.16f, 1.16f, 1.16f),
+        materialOverrides = SPHERE_PACKAGE_MODEL_MATERIAL
     )
     pkg.shape == "cylinder" -> FifthWallModelSpec(
         url = fifthWallModelUrl("cylinder-drum.glb"),
         position = listOf(0f, 0.1f, 0f),
-        scale = listOf(1.12f, 1.4f, 1.08f)
+        scale = listOf(1.12f, 1.4f, 1.08f),
+        materialOverrides = CYLINDER_PACKAGE_MODEL_MATERIAL
     )
     else -> FifthWallModelSpec(
         url = fifthWallModelUrl("cube-crate.glb"),
         position = listOf(0f, 0.12f, 0f),
-        scale = listOf(1.14f, 1.08f, 1.27f)
+        scale = listOf(1.14f, 1.08f, 1.27f),
+        materialOverrides = CUBE_CRATE_MODEL_MATERIAL
     )
 }
 
@@ -1142,25 +1173,29 @@ private fun geometryModelSpec(
             url = fifthWallModelUrl("valid-geometry-insert-set.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0f, 0.38f, 0f),
-            scale = if (elevated) listOf(1f, 2.6f, 0.85f) else listOf(0.78f, 2.1f, 0.66f)
+            scale = if (elevated) listOf(1f, 2.6f, 0.85f) else listOf(0.78f, 2.1f, 0.66f),
+            materialOverrides = VALID_GEOMETRY_MODEL_MATERIAL
         )
         pkg.geometry == "Penrose loop" -> FifthWallModelSpec(
             url = fifthWallModelUrl("penrose-loop.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.18f, 0.52f, 0f),
-            scale = if (elevated) listOf(0.9f, 0.9f, 0.9f) else listOf(0.66f, 0.66f, 0.66f)
+            scale = if (elevated) listOf(0.9f, 0.9f, 0.9f) else listOf(0.66f, 0.66f, 0.66f),
+            materialOverrides = PENROSE_MODEL_MATERIAL
         )
         pkg.geometry == "Escher stair" -> FifthWallModelSpec(
             url = fifthWallModelUrl("escher-stair.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.12f, 0.62f, 0f),
-            scale = if (elevated) listOf(1.15f, 1f, 0.84f) else listOf(0.9f, 0.78f, 0.66f)
+            scale = if (elevated) listOf(1.15f, 1f, 0.84f) else listOf(0.9f, 0.78f, 0.66f),
+            materialOverrides = ESCHER_MODEL_MATERIAL
         )
         else -> FifthWallModelSpec(
             url = fifthWallModelUrl("impossible-trident.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.14f, 0.48f, 0f),
-            scale = if (elevated) listOf(0.88f, 0.88f, 1f) else listOf(0.7f, 0.7f, 0.8f)
+            scale = if (elevated) listOf(0.88f, 0.88f, 1f) else listOf(0.7f, 0.7f, 0.8f),
+            materialOverrides = TRIDENT_MODEL_MATERIAL
         )
     }
 }
@@ -1198,5 +1233,18 @@ private fun truckColor(index: Int, rule: FifthWallRule): Int = when (rule.kind) 
     }
     else -> listOf(SCENE_ACCENT, SCENE_WARM, SCENE_SUCCESS, argb("#b38cff"))[index % 4]
 }
+
+private fun uniformModelMaterial(
+    color: Int,
+    metalness: Float,
+    roughness: Float
+): List<ModelMaterialOverride> = listOf(
+    ModelMaterialOverride(
+        target = null,
+        color = color,
+        metalness = metalness,
+        roughness = roughness
+    )
+)
 
 private fun argb(hex: String): Int = (0xFF shl 24) or Color(hex).getHex()
