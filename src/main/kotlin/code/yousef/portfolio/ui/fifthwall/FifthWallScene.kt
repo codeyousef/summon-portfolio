@@ -1097,7 +1097,10 @@ private fun GeometryAura(
     }
 }
 
-private fun fifthWallModelUrl(fileName: String): String = "/static/models/fifth-wall/$fileName"
+private fun fifthWallModelUrl(fileName: String): String {
+    val baseName = fileName.removeSuffix(".glb")
+    return "/static/models/fifth-wall/$baseName/$baseName.gltf"
+}
 
 private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
     pkg.labelText?.contains("SPECIAL DELIVERY", ignoreCase = true) == true -> FifthWallModelSpec(
