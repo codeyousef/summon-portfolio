@@ -30,6 +30,7 @@ import codes.yousef.aether.web.Router
 import codes.yousef.aether.web.pathParam
 import codes.yousef.aether.web.pathParamOrThrow
 import org.slf4j.LoggerFactory
+import java.net.URLConnection
 import java.nio.file.Files
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -37,6 +38,23 @@ import kotlinx.serialization.decodeFromString
 import kotlin.time.toJavaInstant
 
 private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+private val fifthWallRootModelAliases = listOf(
+    "conveyor-deck.glb",
+    "cube-crate.glb",
+    "cylinder-drum.glb",
+    "delivery-truck.glb",
+    "escher-stair.glb",
+    "impossible-trident.glb",
+    "inspection-dock.glb",
+    "penrose-loop.glb",
+    "rectangular-parcel.glb",
+    "repair-wrench.glb",
+    "return-bin.glb",
+    "special-delivery-package.glb",
+    "sphere-package-with-cradle.glb",
+    "valid-geometry-insert-set.glb",
+    "warehouse-bay-shell-kit.glb"
+)
 
 fun Router.summonRoutes(
     portfolioRenderer: PortfolioRenderer,
@@ -94,6 +112,15 @@ internal fun Router.portfolioRoutes(
     fifthWallTelemetryStore: FifthWallTelemetryStore? = null,
     fifthWallSessionStore: FifthWallSessionStore = FifthWallSessionStore(),
 ) {
+    fifthWallRootModelAliases.forEach { fileName ->
+        get("/$fileName") { exchange ->
+            exchange.respondBundledAsset(
+                resourcePath = "static/models/fifth-wall/$fileName",
+                cacheControl = "public, max-age=31536000, immutable"
+            )
+        }
+    }
+
     get("/version") { exchange ->
         exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
     }
@@ -542,6 +569,27 @@ private suspend fun Exchange.setAdminSession(adminSession: AdminSession) {
     val session = session() ?: throw IllegalStateException("Session middleware not installed")
     session.set("username", adminSession.username)
     session.set("mustChangePassword", adminSession.mustChangePassword.toString())
+}
+
+private suspend fun Exchange.respondBundledAsset(
+    resourcePath: String,
+    cacheControl: String? = null
+) {
+    val resourceStream = Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
+        ?: javaClass.classLoader.getResourceAsStream(resourcePath)
+
+    if (resourceStream == null) {
+        respond(404, "Asset not found")
+        return
+    }
+
+    cacheControl?.let { response.setHeader("Cache-Control", it) }
+    val contentType = if (resourcePath.endsWith(".glb", ignoreCase = true)) {
+        "model/gltf-binary"
+    } else {
+        URLConnection.guessContentTypeFromName(resourcePath) ?: "application/octet-stream"
+    }
+    resourceStream.use { respondBytes(200, contentType, it.readBytes()) }
 }
 
 private fun adminLoginPage(errorMessage: String?, nextPath: String?): SummonPage =
