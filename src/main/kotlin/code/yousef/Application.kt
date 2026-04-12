@@ -30,6 +30,8 @@ import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.server.*
 import code.yousef.portfolio.ssr.*
+import code.yousef.portfolio.ui.fifthwall.FileFifthWallTelemetryStore
+import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryStore
 import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.AetherDispatcher
 import codes.yousef.aether.core.jvm.VertxServer
@@ -138,6 +140,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val portfolioRenderer = PortfolioRenderer(contentService)
     val blogRenderer = BlogRenderer(contentService, markdownRenderer)
     val scratchpadRenderer = ScratchpadRenderer()
+    val fifthWallRenderer = FifthWallRenderer()
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
     val aetherRenderer = AetherLandingRenderer()
@@ -160,6 +163,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         FirestoreAiProgressStore(firestore) else FileAiProgressStore()
     val aiCurriculumCatalog = AiCurriculumCatalog()
     val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer, aiCurriculumCatalog, aiProgressStore)
+    val fifthWallTelemetryStore: FifthWallTelemetryStore = FileFifthWallTelemetryStore()
 
     // Routers
     val mainRouter = router {
@@ -167,11 +171,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             portfolioRenderer,
             blogRenderer,
             scratchpadRenderer,
+            fifthWallRenderer,
             contactService,
             contentService,
             adminAuthService,
             aiCurriculumRenderer = aiCurriculumRenderer,
             aiProgressStore = aiProgressStore,
+            fifthWallTelemetryStore = fifthWallTelemetryStore,
         )
     }
 

@@ -16,6 +16,10 @@ import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.seen.SeenRunRequest
 import code.yousef.portfolio.ssr.*
+import code.yousef.portfolio.ui.fifthwall.FifthWallController
+import code.yousef.portfolio.ui.fifthwall.FifthWallSessionStore
+import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryPayload
+import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryStore
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
 import codes.yousef.aether.core.Exchange
@@ -29,6 +33,7 @@ import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.serialization.decodeFromString
 import kotlin.time.toJavaInstant
 
 private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
@@ -76,15 +81,18 @@ fun Router.summonRoutes(
     }
 }
 
-fun Router.portfolioRoutes(
+internal fun Router.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,
     blogRenderer: BlogRenderer,
     scratchpadRenderer: ScratchpadRenderer,
+    fifthWallRenderer: FifthWallRenderer,
     contactService: ContactService,
     contentService: PortfolioContentService,
     adminAuthService: AdminAuthProvider,
     aiCurriculumRenderer: AiCurriculumRenderer? = null,
     aiProgressStore: AiProgressStore? = null,
+    fifthWallTelemetryStore: FifthWallTelemetryStore? = null,
+    fifthWallSessionStore: FifthWallSessionStore = FifthWallSessionStore(),
 ) {
     get("/version") { exchange ->
         exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
@@ -145,6 +153,22 @@ fun Router.portfolioRoutes(
 
     get("/experiments/scratchpad") { exchange ->
         val page = scratchpadRenderer.scratchpadPage(locale = PortfolioLocale.EN)
+        exchange.respondSummonPage(page)
+    }
+
+    get("/fifth-wall") { exchange ->
+        val controller = fifthWallSessionStore.controllerFor(exchange)
+        val action = exchange.request.queryParameter("action")?.trim()
+        if (!action.isNullOrEmpty()) {
+            exchange.handleFifthWallAction(controller, action)
+            exchange.redirect("/fifth-wall")
+            return@get
+        }
+
+        val page = fifthWallRenderer.fifthWallPage(
+            state = controller.state.value,
+            locale = PortfolioLocale.EN
+        )
         exchange.respondSummonPage(page)
     }
 
@@ -267,6 +291,33 @@ fun Router.portfolioRoutes(
     get("/api/contacts") { exchange ->
         val contacts = contactService.list().map { it.toDto() }
         exchange.respondJson(200, contacts)
+    }
+
+    if (fifthWallTelemetryStore != null) {
+        post("/api/fifth-wall/telemetry") { exchange ->
+            val body = exchange.request.bodyText().trim()
+            if (body.isBlank()) {
+                exchange.respondJson(400, mapOf("error" to "Invalid request body"))
+                return@post
+            }
+
+            val payload = runCatching {
+                json.decodeFromString<FifthWallTelemetryPayload>(body)
+            }.getOrElse {
+                exchange.respondJson(400, mapOf("error" to "Invalid telemetry payload"))
+                return@post
+            }
+
+            fifthWallTelemetryStore.merge(payload)
+            exchange.respondJson(
+                202,
+                mapOf(
+                    "ok" to "true",
+                    "received" to payload.events.size.toString(),
+                    "revision" to payload.revision.toString()
+                )
+            )
+        }
     }
 
     // AI Curriculum Routes (auth-gated by middleware in Application.kt)
@@ -438,6 +489,45 @@ fun Router.seenRoutes(
         }
         val result = executionService.execute(code, body.language)
         exchange.respondJson(200, result)
+    }
+}
+
+private suspend fun Exchange.handleFifthWallAction(
+    controller: FifthWallController,
+    action: String
+) {
+    when (action) {
+        "start" -> controller.startShift()
+        "reset" -> controller.reset()
+        "fake-restart" -> controller.fakeRestart()
+        "advance" -> controller.advanceLevel()
+        "select" -> request.queryParameter("package")
+            ?.takeIf { it.isNotBlank() }
+            ?.let(controller::selectPackage)
+        "route-truck" -> request.queryParameter("truck")
+            ?.toIntOrNull()
+            ?.let(controller::routeToTruck)
+        "route-return" -> controller.routeToReturn()
+        "repair" -> controller.repairGlitch()
+        "confidence" -> request.queryParameter("value")
+            ?.takeIf { it.isNotBlank() }
+            ?.let(controller::recordConfidence)
+        "submit-prediction" -> {
+            controller.updatePredictionInput(request.queryParameter("value").orEmpty())
+            controller.submitPrediction()
+        }
+        "submit-rule-guess" -> {
+            controller.updateRuleGuess(request.queryParameter("value").orEmpty())
+            controller.submitRuleGuess()
+        }
+        "submit-discussion" -> {
+            controller.updateDiscussionReply(request.queryParameter("value").orEmpty())
+            controller.submitDiscussionReply()
+        }
+        "send-chat" -> {
+            controller.updateChatDraft(request.queryParameter("value").orEmpty())
+            controller.sendChatMessage()
+        }
     }
 }
 
