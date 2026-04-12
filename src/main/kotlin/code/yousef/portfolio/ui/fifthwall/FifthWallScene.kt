@@ -892,7 +892,7 @@ private fun GeometryAura(
     }
 }
 
-private fun fifthWallModelUrl(fileName: String): String = fileName
+private fun fifthWallModelUrl(fileName: String): String = "/static/models/fifth-wall/$fileName"
 
 private fun tintAll(
     color: Int,
