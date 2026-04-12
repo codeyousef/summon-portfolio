@@ -62,11 +62,10 @@ jobs:
           }
           if [ ! -f seen-tools/seen ]; then
             mkdir -p seen-tools/seen_runtime seen-tools/languages
-            cat > seen-tools/seen <<'EOF'
-            #!/usr/bin/env sh
-            echo "Seen playground unavailable: compiler tools were not downloaded for this build." >&2
-            exit 1
-            EOF
+            printf '%s\n' \
+              '#!/usr/bin/env sh' \
+              'echo "Seen playground unavailable: compiler tools were not downloaded for this build." >&2' \
+              'exit 1' > seen-tools/seen
           fi
           chmod +x seen-tools/seen
 
