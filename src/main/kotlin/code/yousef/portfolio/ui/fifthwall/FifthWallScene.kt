@@ -47,6 +47,8 @@ private data class FifthWallModelSpec(
     val scale: List<Float> = listOf(1f, 1f, 1f)
 )
 
+private fun uniformScale(value: Float): List<Float> = listOf(value, value, value)
+
 @Composable
 internal fun FifthWallScene(
     level: FifthWallLevel,
@@ -68,19 +70,19 @@ internal fun FifthWallScene(
             shadowsEnabled = true
         )
         SigilCamera(
-            position = listOf(0f, 8.55f, 14.75f),
-            lookAt = listOf(0f, 1.55f, 2.25f),
-            fov = 42f,
+            position = listOf(0f, 6.7f, 16.4f),
+            lookAt = listOf(0f, 1.85f, 2.35f),
+            fov = 44f,
             near = 0.1f,
             far = 100f,
             name = "dispatch-camera"
         )
         SigilOrbitControls(
-            target = listOf(0f, 1.65f, 2.25f),
+            target = listOf(0f, 1.85f, 2.35f),
             minDistance = 12.5f,
             maxDistance = 20f,
-            minPolarAngle = 0.68f,
-            maxPolarAngle = 1.3f,
+            minPolarAngle = 0.9f,
+            maxPolarAngle = 1.36f,
             enablePan = false,
             autoRotate = focusedPackage?.geometry != null || state.prompt == FifthWallPrompt.Intro,
             autoRotateSpeed = 0.55f,
@@ -160,8 +162,8 @@ private fun WarehouseShell() {
     )
     SigilModel(
         url = fifthWallModelUrl("warehouse-bay-shell-kit.glb"),
-        position = listOf(0f, 0.02f, 0f),
-        scale = listOf(34f, 14f, 26f),
+        position = listOf(0f, 0.02f, -7f),
+        scale = uniformScale(17f),
         castShadow = false,
         receiveShadow = false,
         name = "warehouse-shell-model"
@@ -411,7 +413,7 @@ private fun ConveyorDeck(
     SigilGroup(position = listOf(-2.2f, 0f, 0.5f), name = "conveyor-group") {
         SigilModel(
             url = fifthWallModelUrl("conveyor-deck.glb"),
-            scale = listOf(13.6f, 3.2f, 11.2f),
+            scale = uniformScale(10.6f),
             castShadow = false,
             receiveShadow = false,
             name = "conveyor-model"
@@ -430,7 +432,7 @@ private fun ConveyorDeck(
             val selected = state.selectedPackageId == pkg.id || (state.selectedPackageId == null && index == 0)
             PackageMesh(
                 pkg = pkg,
-                position = listOf(-4.9f + (index * 3.2f), 1.36f, 0f),
+                position = listOf(-4.9f + (index * 3.2f), 2.34f, 0f),
                 selected = selected,
                 emphasized = index == 0,
                 beltIndex = index,
@@ -484,7 +486,7 @@ private fun DeliveryTruck(
         SigilModel(
             url = fifthWallModelUrl("delivery-truck.glb"),
             position = listOf(0.1f, 0f, 0f),
-            scale = listOf(4.2f, 2.2f, 3f),
+            scale = uniformScale(4.2f),
             castShadow = false,
             receiveShadow = false,
             name = "$label-model"
@@ -543,7 +545,7 @@ private fun TruckAccentMarker(
             width = 0.58f,
             height = 0.08f,
             depth = 0.08f,
-            position = listOf(-0.36f, 1.74f, z),
+            position = listOf(-0.36f, 2.86f, z),
             color = panelColor,
             metalness = 0.18f,
             roughness = 0.72f,
@@ -556,7 +558,7 @@ private fun TruckAccentMarker(
         radius = 0.14f,
         widthSegments = 12,
         heightSegments = 10,
-        position = listOf(-1.1f, 1.86f, 0f),
+        position = listOf(-1.1f, 3.02f, 0f),
         color = panelColor,
         metalness = 0.18f,
         roughness = 0.68f,
@@ -565,7 +567,7 @@ private fun TruckAccentMarker(
         name = "$name-accent-beacon"
     )
     SigilPointLight(
-        position = listOf(-1.1f, 2.08f, 0f),
+        position = listOf(-1.1f, 3.2f, 0f),
         color = panelColor,
         intensity = glow,
         distance = 5.5f,
@@ -587,7 +589,7 @@ private fun ReturnBinBay(
     ) {
         SigilModel(
             url = fifthWallModelUrl("return-bin.glb"),
-            scale = listOf(2.2f, 1.3f, 2.27f),
+            scale = uniformScale(2.25f),
             castShadow = false,
             receiveShadow = false,
             name = "return-bin-model"
@@ -595,7 +597,7 @@ private fun ReturnBinBay(
         SigilMesh(
             geometryType = GeometryType.TORUS,
             geometryParams = GeometryParams(radius = 0.96f, tube = 0.08f, radialSegments = 16, tubularSegments = 48),
-            position = listOf(0f, 1.08f, 0f),
+            position = listOf(0f, 1.72f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = when {
                 !selected -> SCENE_WARM
@@ -610,7 +612,7 @@ private fun ReturnBinBay(
             name = "return-ring"
         )
         SigilPointLight(
-            position = listOf(0f, 2.1f, 0f),
+            position = listOf(0f, 2.8f, 0f),
             color = when {
                 !selected -> SCENE_WARM
                 routeAccepted == true -> SCENE_SUCCESS
@@ -624,7 +626,7 @@ private fun ReturnBinBay(
         )
         if (glitchActive) {
             SigilPointLight(
-                position = listOf(0f, 1.55f, 0f),
+                position = listOf(0f, 2.3f, 0f),
                 color = argb("#5c1f2a"),
                 intensity = 1f,
                 distance = 5.5f,
@@ -641,7 +643,7 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
     SigilGroup(position = listOf(8.2f, 0f, -5.5f), name = "inspection-dock") {
         SigilModel(
             url = fifthWallModelUrl("inspection-dock.glb"),
-            scale = listOf(4.8f, 1f, 4.3f),
+            scale = uniformScale(4.1f),
             castShadow = false,
             receiveShadow = false,
             name = "inspection-dock-model"
@@ -649,7 +651,7 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
         SigilMesh(
             geometryType = GeometryType.RING,
             geometryParams = GeometryParams(innerRadius = 0.95f, outerRadius = 1.22f, radialSegments = 48),
-            position = listOf(0f, 0.74f, 0f),
+            position = listOf(0f, 2.38f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = if (pkg?.validGeometry == false) SCENE_DANGER else SCENE_ACCENT,
             metalness = 0.74f,
@@ -661,7 +663,7 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
         if (pkg != null) {
             PackageMesh(
                 pkg = pkg,
-                position = listOf(0f, 1.65f, 0f),
+                position = listOf(0f, 3.18f, 0f),
                 selected = true,
                 emphasized = true,
                 beltIndex = -1,
@@ -671,9 +673,9 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
         } else {
             SigilModel(
                 url = fifthWallModelUrl("special-delivery-package.glb"),
-                position = listOf(0f, 1.12f, 0f),
+                position = listOf(0f, 2.9f, 0f),
                 rotation = listOf(0f, 0.35f, 0f),
-                scale = listOf(1.36f, 1.22f, 1.24f),
+                scale = uniformScale(1.28f),
                 castShadow = false,
                 receiveShadow = false,
                 name = "inspection-idle-package"
@@ -812,133 +814,41 @@ private fun PackageColorAccent(
     color: Int,
     hover: Float
 ) {
-    when (shape) {
-        "rect" -> {
-            SigilBox(
-                width = 1.38f,
-                height = 0.12f,
-                depth = 0.18f,
-                position = listOf(0f, 0.56f + hover, 0f),
-                color = color,
-                metalness = 0.24f,
-                roughness = 0.4f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-main"
-            )
-            SigilBox(
-                width = 0.16f,
-                height = 0.62f,
-                depth = 0.82f,
-                position = listOf(0f, 0.36f + hover, 0f),
-                color = color,
-                metalness = 0.24f,
-                roughness = 0.42f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-cross"
-            )
-        }
-
-        "sphere" -> {
-            SigilBox(
-                width = 0.88f,
-                height = 0.1f,
-                depth = 0.22f,
-                position = listOf(0f, 0.54f + hover, 0f),
-                color = color,
-                metalness = 0.22f,
-                roughness = 0.4f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-main"
-            )
-            SigilBox(
-                width = 0.22f,
-                height = 0.1f,
-                depth = 0.88f,
-                position = listOf(0f, 0.54f + hover, 0f),
-                color = color,
-                metalness = 0.22f,
-                roughness = 0.4f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-cross"
-            )
-            SigilSphere(
-                radius = 0.12f,
-                widthSegments = 10,
-                heightSegments = 8,
-                position = listOf(0f, 0.86f + hover, 0f),
-                color = color,
-                metalness = 0.2f,
-                roughness = 0.36f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-cap"
-            )
-        }
-
-        "cylinder" -> {
-            SigilBox(
-                width = 0.78f,
-                height = 0.11f,
-                depth = 0.22f,
-                position = listOf(0f, 0.64f + hover, 0f),
-                color = color,
-                metalness = 0.22f,
-                roughness = 0.4f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-main"
-            )
-            SigilBox(
-                width = 0.18f,
-                height = 0.78f,
-                depth = 0.18f,
-                position = listOf(0f, 0.44f + hover, 0f),
-                color = color,
-                metalness = 0.22f,
-                roughness = 0.42f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-cross"
-            )
-        }
-
-        else -> {
-            SigilBox(
-                width = 0.98f,
-                height = 0.12f,
-                depth = 0.18f,
-                position = listOf(0f, 0.6f + hover, 0f),
-                color = color,
-                metalness = 0.24f,
-                roughness = 0.4f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-main"
-            )
-            SigilBox(
-                width = 0.16f,
-                height = 0.72f,
-                depth = 0.9f,
-                position = listOf(0f, 0.38f + hover, 0f),
-                color = color,
-                metalness = 0.24f,
-                roughness = 0.42f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-color-band-cross"
-            )
-        }
-    }
+    val markerY = when (shape) {
+        "cylinder" -> 1.22f
+        "sphere" -> 1.14f
+        else -> 1.04f
+    } + hover
+    SigilSphere(
+        radius = 0.13f,
+        widthSegments = 12,
+        heightSegments = 10,
+        position = listOf(-0.72f, markerY, 0.56f),
+        color = color,
+        metalness = 0.18f,
+        roughness = 0.48f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "pkg-color-marker"
+    )
+    SigilBox(
+        width = 0.42f,
+        height = 0.05f,
+        depth = 0.06f,
+        position = listOf(-0.72f, markerY - 0.18f, 0.56f),
+        color = color,
+        metalness = 0.2f,
+        roughness = 0.5f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "pkg-color-marker-stem"
+    )
 
     SigilPointLight(
-        position = listOf(0f, 1.04f + hover, 0f),
+        position = listOf(-0.72f, markerY + 0.18f, 0.56f),
         color = color,
-        intensity = 0.42f,
-        distance = 2.9f,
+        intensity = 0.24f,
+        distance = 2.25f,
         decay = 2.1f,
         name = "pkg-color-light"
     )
@@ -1103,27 +1013,27 @@ private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
     pkg.labelText?.contains("SPECIAL DELIVERY", ignoreCase = true) == true -> FifthWallModelSpec(
         url = fifthWallModelUrl("special-delivery-package.glb"),
         position = listOf(0f, 0.1f, 0f),
-        scale = listOf(1.18f, 1.12f, 1.14f)
+        scale = uniformScale(1.18f)
     )
     pkg.shape == "rect" -> FifthWallModelSpec(
         url = fifthWallModelUrl("rectangular-parcel.glb"),
         position = listOf(0f, 0.12f, 0f),
-        scale = listOf(2f, 1.2f, 1.02f)
+        scale = uniformScale(1.36f)
     )
     pkg.shape == "sphere" -> FifthWallModelSpec(
         url = fifthWallModelUrl("sphere-package-with-cradle.glb"),
         position = listOf(0f, 0.08f, 0f),
-        scale = listOf(1.16f, 1.16f, 1.16f)
+        scale = uniformScale(1.16f)
     )
     pkg.shape == "cylinder" -> FifthWallModelSpec(
         url = fifthWallModelUrl("cylinder-drum.glb"),
         position = listOf(0f, 0.1f, 0f),
-        scale = listOf(1.12f, 1.4f, 1.08f)
+        scale = uniformScale(1.24f)
     )
     else -> FifthWallModelSpec(
         url = fifthWallModelUrl("cube-crate.glb"),
         position = listOf(0f, 0.12f, 0f),
-        scale = listOf(1.14f, 1.08f, 1.27f)
+        scale = uniformScale(1.18f)
     )
 }
 
@@ -1139,25 +1049,25 @@ private fun geometryModelSpec(
             url = fifthWallModelUrl("valid-geometry-insert-set.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0f, 0.38f, 0f),
-            scale = if (elevated) listOf(1f, 2.6f, 0.85f) else listOf(0.78f, 2.1f, 0.66f)
+            scale = uniformScale(if (elevated) 1.05f else 0.82f)
         )
         pkg.geometry == "Penrose loop" -> FifthWallModelSpec(
             url = fifthWallModelUrl("penrose-loop.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.18f, 0.52f, 0f),
-            scale = if (elevated) listOf(0.9f, 0.9f, 0.9f) else listOf(0.66f, 0.66f, 0.66f)
+            scale = uniformScale(if (elevated) 0.9f else 0.66f)
         )
         pkg.geometry == "Escher stair" -> FifthWallModelSpec(
             url = fifthWallModelUrl("escher-stair.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.12f, 0.62f, 0f),
-            scale = if (elevated) listOf(1.15f, 1f, 0.84f) else listOf(0.9f, 0.78f, 0.66f)
+            scale = uniformScale(if (elevated) 1f else 0.78f)
         )
         else -> FifthWallModelSpec(
             url = fifthWallModelUrl("impossible-trident.glb"),
             position = listOf(0f, lift, 0f),
             rotation = listOf(0.14f, 0.48f, 0f),
-            scale = if (elevated) listOf(0.88f, 0.88f, 1f) else listOf(0.7f, 0.7f, 0.8f)
+            scale = uniformScale(if (elevated) 0.92f else 0.72f)
         )
     }
 }
