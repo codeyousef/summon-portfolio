@@ -162,7 +162,7 @@ private fun WarehouseShell() {
     )
     SigilModel(
         url = fifthWallModelUrl("warehouse-bay-shell-kit.glb"),
-        position = listOf(0f, 0.02f, -12.4f),
+        position = listOf(0f, 0.02f, -7f),
         scale = uniformScale(17f),
         castShadow = false,
         receiveShadow = false,
