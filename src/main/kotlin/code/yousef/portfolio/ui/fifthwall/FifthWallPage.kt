@@ -35,22 +35,11 @@ internal fun FifthWallPage(state: FifthWallUiState) {
                     ) {
                         FifthWallScene(level = level, state = state, focusedPackage = focusedPackage)
                         SceneOverlay(level = level, state = state, focusedPackage = focusedPackage)
+                        SceneControlDeck(level = level, state = state, focusedPackage = focusedPackage)
                         if (state.wrenchVisible) {
                             WrenchButton()
                         }
                     }
-
-                    FeedbackBanner(state = state)
-                    QueueDeck(state = state, focusedPackage = focusedPackage)
-                    RouteConsole(level = level, state = state, focusedPackage = focusedPackage)
-                }
-
-                Column(modifier = Modifier().className("fw-side")) {
-                    MissionPanel(level = level, state = state, focusedPackage = focusedPackage)
-                    RuleBoard(level = level, state = state)
-                    ManifestCard(selectedPackage = focusedPackage)
-                    ChatCard(state = state)
-                    LogCard(entries = state.logMessages)
                 }
             }
 
@@ -81,18 +70,6 @@ private fun TopBar(
         }
 
         Box(modifier = Modifier().className("fw-actions")) {
-            if (state.glitchActive) {
-                ActionControl(
-                    label = "Restart console",
-                    action = "fake-restart",
-                    classes = "fw-action-link fw-ui-btn-danger"
-                )
-            }
-            ActionControl(
-                label = "Reset shift",
-                action = "reset",
-                classes = "fw-action-link fw-ui-btn"
-            )
             AnchorLink(
                 label = "Exit",
                 href = "/experiments",
@@ -138,6 +115,47 @@ private fun SceneOverlay(
             text = "Queue card -> Manifest -> Rule Board -> Routing Console",
             modifier = Modifier().className("fw-scene-copy is-muted")
         )
+    }
+}
+
+@Composable
+private fun SceneControlDeck(
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    focusedPackage: FifthWallPackage?
+) {
+    Box(modifier = Modifier().className("fw-scene-control-deck")) {
+        Box(modifier = Modifier().className("fw-scene-feedback-row")) {
+            FeedbackBanner(state = state)
+            Box(modifier = Modifier().className("fw-scene-utility-actions")) {
+                if (state.glitchActive) {
+                    ActionControl(
+                        label = "Restart console",
+                        action = "fake-restart",
+                        classes = "fw-action-link fw-ui-btn-danger"
+                    )
+                }
+                ActionControl(
+                    label = "Reset shift",
+                    action = "reset",
+                    classes = "fw-action-link fw-ui-btn"
+                )
+            }
+        }
+        Box(modifier = Modifier().className("fw-scene-control-grid")) {
+            Box(modifier = Modifier().className("fw-scene-control-panel is-queue")) {
+                QueueDeck(state = state, focusedPackage = focusedPackage)
+            }
+            Box(modifier = Modifier().className("fw-scene-control-panel is-manifest")) {
+                ManifestCard(selectedPackage = focusedPackage)
+            }
+            Box(modifier = Modifier().className("fw-scene-control-panel is-rules")) {
+                RuleBoard(level = level, state = state)
+            }
+            Box(modifier = Modifier().className("fw-scene-control-panel is-routing")) {
+                RouteConsole(level = level, state = state, focusedPackage = focusedPackage)
+            }
+        }
     }
 }
 
