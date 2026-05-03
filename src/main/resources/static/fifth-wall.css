@@ -439,7 +439,7 @@
 }
 
 .fw-scene-control-deck .fw-manifest-row {
-    grid-template-columns: 68px minmax(0, 1fr);
+    grid-template-columns: 92px minmax(0, 1fr);
     gap: 8px;
     padding: 5px 0;
 }
@@ -1024,10 +1024,23 @@ input.fw-input:focus {
         left: 14px;
         right: 14px;
         bottom: 14px;
+        max-height: calc(100dvh - 210px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        padding: 8px;
+        border-radius: 16px;
+        border: 1px solid rgba(107, 214, 255, 0.16);
+        background:
+            linear-gradient(180deg, rgba(8, 14, 23, 0.9) 0%, rgba(7, 12, 19, 0.96) 100%);
+        box-shadow: 0 24px 54px rgba(3, 8, 18, 0.46);
+        backdrop-filter: blur(14px);
     }
 
     .fw-scene-feedback-row {
         grid-template-columns: 1fr;
+        position: sticky;
+        top: 0;
+        z-index: 3;
     }
 
     .fw-scene-utility-actions {
@@ -1043,28 +1056,85 @@ input.fw-input:focus {
         flex-direction: column;
         align-items: stretch;
     }
+
+    .fw-scene-control-panel > .fw-panel,
+    .fw-scene-control-panel .fw-panel {
+        height: auto;
+    }
+
+    .fw-scene-control-panel.is-routing {
+        order: 2;
+    }
+
+    .fw-scene-control-panel.is-manifest {
+        order: 3;
+    }
+
+    .fw-scene-control-panel.is-rules {
+        order: 4;
+    }
 }
 
 @media (max-width: 620px) {
+    .fw-root {
+        padding: 16px 16px 32px;
+        gap: 16px;
+    }
+
+    .fw-topbar {
+        gap: 14px;
+        padding: 16px;
+        border-radius: 20px;
+    }
+
+    .fw-title {
+        font-size: 0.72rem;
+        letter-spacing: 0.34rem;
+    }
+
+    .fw-subtitle {
+        font-size: 1.16rem;
+    }
+
     .fw-stats {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .fw-stat {
+        min-width: 0;
+        padding: 9px 8px;
+        border-radius: 12px;
+    }
+
+    .fw-stat-label {
+        font-size: 0.56rem;
+        letter-spacing: 0.08rem;
+    }
+
+    .fw-stat-value {
+        font-size: 0.92rem;
+    }
+
+    .fw-actions > * {
+        width: 100%;
     }
 
     .fw-scene-shell,
     #fifth-wall-scene-container {
-        min-height: 1180px;
+        min-height: 1040px;
     }
 
     .fw-scene-hud {
         max-width: none;
-        padding: 12px;
+        padding: 10px;
         gap: 6px;
     }
 
     .fw-scene-hud-left {
-        top: 14px;
-        left: 14px;
-        right: 14px;
+        top: 12px;
+        left: 12px;
+        right: 12px;
     }
 
     .fw-scene-hud-right {
@@ -1101,16 +1171,76 @@ input.fw-input:focus {
 
     .fw-scene-control-grid {
         grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .fw-scene-control-deck {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        max-height: min(640px, calc(100dvh - 190px));
+        gap: 8px;
+        padding: 7px;
+    }
+
+    .fw-scene-control-deck .fw-panel {
+        padding: 11px;
+        gap: 8px;
+    }
+
+    .fw-scene-control-deck .fw-feedback {
+        min-height: 0;
+        padding: 10px 11px;
+    }
+
+    .fw-scene-control-deck .fw-panel-title {
+        font-size: 0.62rem;
+        letter-spacing: 0.14rem;
     }
 
     .fw-scene-control-deck .fw-queue-grid,
     .fw-scene-control-deck .fw-rule-list {
-        max-height: 150px;
+        max-height: 124px;
     }
 
     .fw-scene-control-deck .fw-route-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        max-height: 220px;
+        max-height: 230px;
+        gap: 8px;
+    }
+
+    .fw-scene-control-deck .fw-queue-card,
+    .fw-scene-control-deck .fw-route-card,
+    .fw-scene-control-deck .fw-rule-card {
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .fw-scene-control-deck .fw-manifest-row {
+        grid-template-columns: 88px minmax(0, 1fr);
+        gap: 7px;
+        padding: 5px 0;
+    }
+
+    .fw-scene-control-deck .fw-manifest-label {
+        font-size: 0.62rem;
+        letter-spacing: 0.05rem;
+    }
+
+    .fw-scene-control-deck .fw-panel-copy,
+    .fw-scene-control-deck .fw-queue-copy,
+    .fw-scene-control-deck .fw-route-copy,
+    .fw-scene-control-deck .fw-rule-text,
+    .fw-scene-control-deck .fw-empty,
+    .fw-scene-control-deck .fw-manifest-value {
+        font-size: 0.74rem;
+        line-height: 1.32;
+    }
+
+    .fw-scene-control-deck a.fw-action-link,
+    .fw-scene-control-deck .fw-action-link.is-disabled {
+        padding: 8px 9px !important;
+        font-size: 0.7rem !important;
     }
 
     .fw-scene-target-grid {
