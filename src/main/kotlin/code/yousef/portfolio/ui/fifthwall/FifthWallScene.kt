@@ -28,7 +28,7 @@ private val SCENE_ACCENT = argb(FifthWallTheme.ACCENT)
 private val SCENE_WARM = argb(FifthWallTheme.ACCENT_WARM)
 private val SCENE_SUCCESS = argb(FifthWallTheme.SUCCESS)
 private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
-private val SCENE_TEXT = argb(FifthWallTheme.TEXT_PRIMARY)
+private val SCENE_NEUTRAL_LIGHT = argb("#f6fbff")
 private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
 private val TRUCK_COLOR_FALLBACKS = listOf(
@@ -61,25 +61,25 @@ internal fun FifthWallScene(
     ) {
         SceneConfig(
             backgroundColor = argb(FifthWallTheme.BASE),
-            fogEnabled = true,
-            fogColor = argb("#09131d"),
-            fogNear = 24f,
-            fogFar = 58f,
+            fogEnabled = false,
+            fogColor = argb("#0d1620"),
+            fogNear = 36f,
+            fogFar = 82f,
             shadowsEnabled = true
         )
         SigilCamera(
-            position = listOf(0f, 9.35f, 15.2f),
-            lookAt = listOf(0f, 1.8f, 1.65f),
-            fov = 40f,
+            position = listOf(0f, 8.55f, 14.75f),
+            lookAt = listOf(0f, 1.55f, 2.25f),
+            fov = 42f,
             near = 0.1f,
             far = 100f,
             name = "dispatch-camera"
         )
         SigilOrbitControls(
-            target = listOf(0f, 1.9f, 1.7f),
+            target = listOf(0f, 1.65f, 2.25f),
             minDistance = 12.5f,
             maxDistance = 20f,
-            minPolarAngle = 0.72f,
+            minPolarAngle = 0.68f,
             maxPolarAngle = 1.3f,
             enablePan = false,
             autoRotate = focusedPackage?.geometry != null || state.prompt == FifthWallPrompt.Intro,
@@ -89,18 +89,18 @@ internal fun FifthWallScene(
             name = "dispatch-orbit"
         )
 
-        SigilAmbientLight(color = SCENE_TEXT, intensity = 0.82f, name = "ambient-fill")
+        SigilAmbientLight(color = SCENE_NEUTRAL_LIGHT, intensity = 1.18f, name = "ambient-fill")
         SigilDirectionalLight(
-            position = listOf(4f, 13f, 10f),
+            position = listOf(4f, 12f, 9f),
             target = listOf(0f, 0f, 1f),
-            intensity = 1.85f,
-            castShadow = true,
+            intensity = 0.62f,
+            castShadow = false,
             name = "bay-sun"
         )
         SigilPointLight(
             position = listOf(-3f, 5.5f, -1f),
             color = SCENE_ACCENT,
-            intensity = 1.8f,
+            intensity = 0.28f,
             distance = 24f,
             decay = 1.6f,
             name = "belt-glow"
@@ -108,7 +108,7 @@ internal fun FifthWallScene(
         SigilPointLight(
             position = listOf(7f, 6.5f, -5.5f),
             color = if (focusedPackage?.validGeometry == false) SCENE_DANGER else SCENE_WARM,
-            intensity = 1.55f,
+            intensity = 0.26f,
             distance = 20f,
             decay = 1.7f,
             name = "inspection-glow"
@@ -116,7 +116,7 @@ internal fun FifthWallScene(
         SigilPointLight(
             position = listOf(0f, 5f, 8.4f),
             color = SCENE_WARM,
-            intensity = 1.15f,
+            intensity = 0.2f,
             distance = 18f,
             decay = 1.8f,
             name = "route-glow"
@@ -125,7 +125,7 @@ internal fun FifthWallScene(
             SigilPointLight(
                 position = listOf(0f, 8f, 5f),
                 color = SCENE_DANGER,
-                intensity = 3.4f,
+                intensity = 1.8f,
                 distance = 28f,
                 decay = 1.2f,
                 name = "glitch-alert"
@@ -163,7 +163,7 @@ private fun WarehouseShell() {
         position = listOf(0f, 0.02f, 0f),
         scale = listOf(34f, 14f, 26f),
         castShadow = false,
-        receiveShadow = true,
+        receiveShadow = false,
         name = "warehouse-shell-model"
     )
 }
@@ -217,7 +217,7 @@ private fun RoutingGuides(
             else -> truckColor(index, rule)
         }
         DockGuidePad(
-            position = listOf(x, 0f, 6.55f),
+            position = listOf(x, 0f, 4.65f),
             width = 4.4f,
             depth = 2.6f,
             color = color,
@@ -228,7 +228,7 @@ private fun RoutingGuides(
             startX = hubX,
             startZ = hubZ,
             endX = x,
-            endZ = 5.35f,
+            endZ = 4.15f,
             color = color,
             thickness = 0.17f,
             name = "truck-guide-$index"
@@ -241,7 +241,7 @@ private fun RoutingGuides(
         else -> SCENE_WARM
     }
     DockGuidePad(
-        position = listOf(9.2f, 0f, 6.3f),
+        position = listOf(9.2f, 0f, 4.85f),
         width = 3.1f,
         depth = 3.1f,
         color = returnColor,
@@ -252,7 +252,7 @@ private fun RoutingGuides(
         startX = hubX,
         startZ = hubZ,
         endX = 8.45f,
-        endZ = 5.2f,
+        endZ = 4.25f,
         color = returnColor,
         thickness = 0.17f,
         name = "return-guide"
@@ -412,8 +412,8 @@ private fun ConveyorDeck(
         SigilModel(
             url = fifthWallModelUrl("conveyor-deck.glb"),
             scale = listOf(13.6f, 3.2f, 11.2f),
-            castShadow = true,
-            receiveShadow = true,
+            castShadow = false,
+            receiveShadow = false,
             name = "conveyor-model"
         )
         if (state.glitchActive) {
@@ -455,7 +455,7 @@ private fun TruckBay(
         val routeLabel = "Truck ${'A' + index}"
         DeliveryTruck(
             label = routeLabel,
-            position = listOf(x, 0f, 6.6f),
+            position = listOf(x, 0f, 4.7f),
             color = truckColor(index, rule),
             selected = state.lastRouteTarget == routeLabel,
             routeAccepted = if (state.lastRouteTarget == routeLabel) state.lastRouteAccepted else null,
@@ -484,9 +484,9 @@ private fun DeliveryTruck(
         SigilModel(
             url = fifthWallModelUrl("delivery-truck.glb"),
             position = listOf(0.1f, 0f, 0f),
-            scale = listOf(4.2f, 2.2f, 3.2f),
-            castShadow = true,
-            receiveShadow = true,
+            scale = listOf(4.2f, 2.2f, 3f),
+            castShadow = false,
+            receiveShadow = false,
             name = "$label-model"
         )
         TruckAccentMarker(
@@ -537,35 +537,35 @@ private fun TruckAccentMarker(
     name: String
 ) {
     val panelColor = if (hidden) argb("#6b7485") else accent
-    val glow = if (hidden) 0.35f else 0.8f
-    listOf(-0.92f, 0.92f).forEachIndexed { index, z ->
+    val glow = if (hidden) 0.16f else 0.34f
+    listOf(-0.36f, 0.36f).forEachIndexed { index, z ->
         SigilBox(
-            width = 1.38f,
-            height = 0.2f,
+            width = 0.58f,
+            height = 0.08f,
             depth = 0.08f,
-            position = listOf(0.95f, 1.28f, z),
+            position = listOf(-0.36f, 1.74f, z),
             color = panelColor,
-            metalness = 0.34f,
-            roughness = 0.38f,
+            metalness = 0.18f,
+            roughness = 0.72f,
             castShadow = false,
             receiveShadow = false,
-            name = "$name-accent-panel-$index"
+            name = "$name-roof-rule-tag-$index"
         )
     }
     SigilSphere(
-        radius = 0.18f,
+        radius = 0.14f,
         widthSegments = 12,
         heightSegments = 10,
-        position = listOf(-1.05f, 1.74f, 0f),
+        position = listOf(-1.1f, 1.86f, 0f),
         color = panelColor,
-        metalness = 0.24f,
-        roughness = 0.34f,
+        metalness = 0.18f,
+        roughness = 0.68f,
         castShadow = false,
         receiveShadow = false,
         name = "$name-accent-beacon"
     )
     SigilPointLight(
-        position = listOf(-1.05f, 1.96f, 0f),
+        position = listOf(-1.1f, 2.08f, 0f),
         color = panelColor,
         intensity = glow,
         distance = 5.5f,
@@ -581,15 +581,15 @@ private fun ReturnBinBay(
     glitchActive: Boolean
 ) {
     SigilGroup(
-        position = listOf(9.2f, 0f, 6.3f),
+        position = listOf(9.2f, 0f, 4.85f),
         scale = listOf(1.08f, 1.08f, 1.08f),
         name = "return-bin"
     ) {
         SigilModel(
             url = fifthWallModelUrl("return-bin.glb"),
             scale = listOf(2.2f, 1.3f, 2.27f),
-            castShadow = true,
-            receiveShadow = true,
+            castShadow = false,
+            receiveShadow = false,
             name = "return-bin-model"
         )
         SigilMesh(
@@ -642,8 +642,8 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
         SigilModel(
             url = fifthWallModelUrl("inspection-dock.glb"),
             scale = listOf(4.8f, 1f, 4.3f),
-            castShadow = true,
-            receiveShadow = true,
+            castShadow = false,
+            receiveShadow = false,
             name = "inspection-dock-model"
         )
         SigilMesh(
@@ -674,8 +674,8 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
                 position = listOf(0f, 1.12f, 0f),
                 rotation = listOf(0f, 0.35f, 0f),
                 scale = listOf(1.36f, 1.22f, 1.24f),
-                castShadow = true,
-                receiveShadow = true,
+                castShadow = false,
+                receiveShadow = false,
                 name = "inspection-idle-package"
             )
         }
@@ -743,8 +743,8 @@ private fun PackageMesh(
             ),
             rotation = modelSpec.rotation,
             scale = modelSpec.scale,
-            castShadow = true,
-            receiveShadow = true,
+            castShadow = false,
+            receiveShadow = false,
             name = "pkg-body"
         )
         PackageColorAccent(
@@ -956,7 +956,7 @@ private fun WrenchProp(visible: Boolean) {
             url = fifthWallModelUrl("repair-wrench.glb"),
             scale = listOf(1.2f, 1.2f, 1.2f),
             rotation = listOf(0f, 0.72f, 0f),
-            castShadow = true,
+            castShadow = false,
             receiveShadow = false,
             name = "repair-wrench-model"
         )
