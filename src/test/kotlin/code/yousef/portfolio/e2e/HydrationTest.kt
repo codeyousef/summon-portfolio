@@ -14,6 +14,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.URI
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -78,5 +79,55 @@ class HydrationTest {
         if (response.statusCode() == 200) {
              assertEquals("application/wasm", response.headers().firstValue("Content-Type").orElse(""))
         }
+    }
+
+    @Test
+    fun `fifth wall serves client game shell`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/fifth-wall"))
+            .GET()
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode())
+
+        val body = response.body()
+        assertTrue(body.contains("id=\"fifth-wall-game-root\""), "Should expose the client game mount")
+        assertTrue(body.contains("model-viewer.min.js"), "Should load the 3D model runtime")
+        assertTrue(body.contains("/static/fifth-wall-client-game.js"), "Should load the client-owned game runtime")
+        assertFalse(body.contains("fw-scene-control-deck"), "Should not render SSR gameplay controls")
+    }
+
+    @Test
+    fun `fifth wall action query stays on client game shell`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/fifth-wall?action=start"))
+            .GET()
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode(), "Normal gameplay action queries should not redirect")
+        assertFalse(response.headers().firstValue("Location").isPresent, "Should not send a redirect location")
+        assertTrue(response.body().contains("id=\"fifth-wall-game-root\""), "Should still serve the static game shell")
+    }
+
+    @Test
+    fun `fifth wall client runtime is served as static javascript`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/static/fifth-wall-client-game.js"))
+            .GET()
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode())
+        assertTrue(
+            response.headers().firstValue("Content-Type").orElse("").contains("javascript"),
+            "Should serve JavaScript content"
+        )
+        assertTrue(response.body().contains("package_delivered"), "Should include client gameplay telemetry events")
+        assertTrue(response.body().contains(".glb"), "Should reference local Fifth Wall GLB assets")
     }
 }

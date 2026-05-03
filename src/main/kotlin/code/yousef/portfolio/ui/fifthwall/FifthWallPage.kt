@@ -16,39 +16,33 @@ private const val FifthWallActionPath = "/fifth-wall"
 
 @Composable
 internal fun FifthWallPage(state: FifthWallUiState) {
-    val level = FifthWallLevels[state.levelIndex]
-    val focusedPackage = state.focusPackage()
-
     FifthWallScaffold {
         Box(modifier = Modifier().className("fw-root")) {
-            TopBar(level = level, state = state)
-
-            Box(modifier = Modifier().className("fw-stage")) {
-                Column(modifier = Modifier().className("fw-primary")) {
-                    Box(
-                        modifier = Modifier().className(
-                            buildString {
-                                append("fw-scene-shell")
-                                if (state.glitchActive) append(" is-glitched")
-                            }
-                        )
-                    ) {
-                        FifthWallScene(level = level, state = state, focusedPackage = focusedPackage)
-                        SceneOverlay(level = level, state = state, focusedPackage = focusedPackage)
-                        SceneControlDeck(level = level, state = state, focusedPackage = focusedPackage)
-                        if (state.wrenchVisible) {
-                            WrenchButton()
-                        }
-                    }
-                }
-            }
-
-            if (state.prompt != FifthWallPrompt.None) {
-                PromptOverlay(state = state, level = level)
-            }
-
-            TelemetryBridge(state = state)
+            ClientGameShell(state = state)
         }
+    }
+}
+
+@Composable
+private fun ClientGameShell(state: FifthWallUiState) {
+    Box(modifier = Modifier().className("fw-client-shell")) {
+        RawHtml(
+            html = """
+                <main
+                    id="fifth-wall-game-root"
+                    class="fw-game-root"
+                    data-assets-base="/static/models/fifth-wall"
+                    data-telemetry-session="${htmlEscape(state.telemetrySessionId)}"
+                    aria-live="polite"
+                >
+                    <section class="fw-game-loading" data-fw-loading>
+                        <span class="fw-game-loading-kicker">Fifth Wall</span>
+                        <h1>Courier Protocol 3D</h1>
+                        <p>Booting the warehouse simulation...</p>
+                    </section>
+                </main>
+            """.trimIndent()
+        )
     }
 }
 
