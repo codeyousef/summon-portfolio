@@ -84,8 +84,8 @@ internal fun FifthWallScene(
             minPolarAngle = 0.9f,
             maxPolarAngle = 1.36f,
             enablePan = false,
-            autoRotate = focusedPackage?.geometry != null || state.prompt == FifthWallPrompt.Intro,
-            autoRotateSpeed = 0.55f,
+            autoRotate = focusedPackage?.geometry != null,
+            autoRotateSpeed = 0.36f,
             rotateSpeed = 0.7f,
             zoomSpeed = 0.9f,
             name = "dispatch-orbit"
@@ -162,7 +162,7 @@ private fun WarehouseShell() {
     )
     SigilModel(
         url = fifthWallModelUrl("warehouse-bay-shell-kit.glb"),
-        position = listOf(0f, 0.02f, -7f),
+        position = listOf(0f, 0.02f, -12.4f),
         scale = uniformScale(17f),
         castShadow = false,
         receiveShadow = false,
