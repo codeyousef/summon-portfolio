@@ -82,7 +82,7 @@ class HydrationTest {
     }
 
     @Test
-    fun `fifth wall serves client game shell`() {
+    fun `fifth wall serves Materia Sigil scene shell`() {
         val request = HttpRequest.newBuilder()
             .uri(URI.create("$baseUrl/fifth-wall"))
             .GET()
@@ -93,14 +93,21 @@ class HydrationTest {
         assertEquals(200, response.statusCode())
 
         val body = response.body()
-        assertTrue(body.contains("id=\"fifth-wall-game-root\""), "Should expose the client game mount")
-        assertTrue(body.contains("model-viewer.min.js"), "Should load the 3D model runtime")
-        assertTrue(body.contains("/static/fifth-wall-client-game.js"), "Should load the client-owned game runtime")
-        assertFalse(body.contains("fw-scene-control-deck"), "Should not render SSR gameplay controls")
+        assertTrue(body.contains("fifth-wall-scene"), "Should expose the Materia/Sigil scene mount")
+        assertTrue(body.contains("warehouse-bay-shell-kit"), "Should render the warehouse GLTF scene content")
+        assertTrue(body.contains("conveyor-deck"), "Should render the conveyor as scene content")
+        assertTrue(body.contains("delivery-truck"), "Should render trucks as scene content")
+        assertTrue(body.contains("/static/fifth-wall-sigil-hydration.js"), "Should load the textured Sigil runtime for this demo")
+        assertTrue(body.contains("Accessibility fallback"), "Should keep non-primary native fallback controls")
+        assertFalse(body.contains("id=\"fifth-wall-game-root\""), "Should not expose the temporary client game mount")
+        assertFalse(body.contains("model-viewer.min.js"), "Should not load model-viewer")
+        assertFalse(body.contains("/static/fifth-wall-client-game.js"), "Should not load the temporary JS runtime")
+        assertFalse(body.contains("Conveyor Queue"), "Should not render queue cards as primary website UI")
+        assertFalse(body.contains("Routing Console"), "Should not render a website routing console")
     }
 
     @Test
-    fun `fifth wall action query stays on client game shell`() {
+    fun `fifth wall action query stays on Materia Sigil shell`() {
         val request = HttpRequest.newBuilder()
             .uri(URI.create("$baseUrl/fifth-wall?action=start"))
             .GET()
@@ -110,24 +117,24 @@ class HydrationTest {
 
         assertEquals(200, response.statusCode(), "Normal gameplay action queries should not redirect")
         assertFalse(response.headers().firstValue("Location").isPresent, "Should not send a redirect location")
-        assertTrue(response.body().contains("id=\"fifth-wall-game-root\""), "Should still serve the static game shell")
+        assertTrue(response.body().contains("fifth-wall-scene"), "Should still serve the Materia/Sigil game shell")
+        assertFalse(response.body().contains("id=\"fifth-wall-game-root\""), "Should not fall back to the temporary client shell")
     }
 
     @Test
-    fun `fifth wall client runtime is served as static javascript`() {
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("$baseUrl/static/fifth-wall-client-game.js"))
-            .GET()
-            .build()
+    fun `fifth wall client runtime is not required as static javascript`() {
+        listOf(
+            "/static/fifth-wall-client-game.js",
+            "/static/fifth-wall-interactions.js"
+        ).forEach { path ->
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$baseUrl$path"))
+                .GET()
+                .build()
 
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-        assertEquals(200, response.statusCode())
-        assertTrue(
-            response.headers().firstValue("Content-Type").orElse("").contains("javascript"),
-            "Should serve JavaScript content"
-        )
-        assertTrue(response.body().contains("package_delivered"), "Should include client gameplay telemetry events")
-        assertTrue(response.body().contains(".glb"), "Should reference local Fifth Wall GLB assets")
+            assertEquals(404, response.statusCode(), "Temporary app-authored gameplay JS should be removed: $path")
+        }
     }
 }

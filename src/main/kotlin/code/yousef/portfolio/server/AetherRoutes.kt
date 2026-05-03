@@ -158,6 +158,9 @@ internal fun Router.portfolioRoutes(
 
     get("/fifth-wall") { exchange ->
         val controller = fifthWallSessionStore.controllerFor(exchange)
+        exchange.request.queryParameter("action")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { action -> exchange.handleFifthWallAction(controller, action) }
         val page = fifthWallRenderer.fifthWallPage(
             state = controller.state.value,
             locale = PortfolioLocale.EN

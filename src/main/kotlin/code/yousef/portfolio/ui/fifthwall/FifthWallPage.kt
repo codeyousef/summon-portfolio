@@ -16,33 +16,49 @@ private const val FifthWallActionPath = "/fifth-wall"
 
 @Composable
 internal fun FifthWallPage(state: FifthWallUiState) {
+    val level = FifthWallLevels[state.levelIndex.coerceIn(FifthWallLevels.indices)]
+    val focusedPackage = state.focusPackage()
+    val sceneClasses = buildString {
+        append("fw-scene-shell")
+        if (state.glitchActive) append(" is-glitched")
+        if (state.ruleShifted || state.priorityShifted) append(" is-shifted")
+    }
+
     FifthWallScaffold {
         Box(modifier = Modifier().className("fw-root")) {
-            ClientGameShell(state = state)
+            TopBar(level = level, state = state)
+            Box(modifier = Modifier().className("fw-stage")) {
+                Box(modifier = Modifier().className("fw-primary")) {
+                    Box(modifier = Modifier().className(sceneClasses)) {
+                        FifthWallScene(
+                            level = level,
+                            state = state,
+                            focusedPackage = focusedPackage
+                        )
+                        SceneOverlay(
+                            level = level,
+                            state = state,
+                            focusedPackage = focusedPackage
+                        )
+                        SceneDashboard(
+                            level = level,
+                            state = state,
+                            focusedPackage = focusedPackage
+                        )
+                        SceneFeedback(state = state)
+                        if (state.prompt != FifthWallPrompt.None) {
+                            PromptOverlay(state = state, level = level)
+                        }
+                        TelemetryBridge(state = state)
+                    }
+                    AccessibilityFallbackPanel(
+                        level = level,
+                        state = state,
+                        focusedPackage = focusedPackage
+                    )
+                }
+            }
         }
-    }
-}
-
-@Composable
-private fun ClientGameShell(state: FifthWallUiState) {
-    Box(modifier = Modifier().className("fw-client-shell")) {
-        RawHtml(
-            html = """
-                <main
-                    id="fifth-wall-game-root"
-                    class="fw-game-root"
-                    data-assets-base="/static/models/fifth-wall"
-                    data-telemetry-session="${htmlEscape(state.telemetrySessionId)}"
-                    aria-live="polite"
-                >
-                    <section class="fw-game-loading" data-fw-loading>
-                        <span class="fw-game-loading-kicker">Fifth Wall</span>
-                        <h1>Courier Protocol 3D</h1>
-                        <p>Booting the warehouse simulation...</p>
-                    </section>
-                </main>
-            """.trimIndent()
-        )
     }
 }
 
@@ -103,52 +119,116 @@ private fun SceneOverlay(
         }
     }
 
-    Column(modifier = Modifier().className("fw-scene-hud fw-scene-hud-right")) {
-        Text(text = "Current Loop", modifier = Modifier().className("fw-scene-badge"))
-        Text(
-            text = "Queue card -> Manifest -> Rule Board -> Routing Console",
-            modifier = Modifier().className("fw-scene-copy is-muted")
-        )
-    }
 }
 
 @Composable
-private fun SceneControlDeck(
+private fun SceneDashboard(
     level: FifthWallLevel,
     state: FifthWallUiState,
     focusedPackage: FifthWallPackage?
 ) {
-    Box(modifier = Modifier().className("fw-scene-control-deck")) {
-        Box(modifier = Modifier().className("fw-scene-feedback-row")) {
-            FeedbackBanner(state = state)
-            Box(modifier = Modifier().className("fw-scene-utility-actions")) {
-                if (state.glitchActive) {
-                    ActionControl(
-                        label = "Restart console",
-                        action = "fake-restart",
-                        classes = "fw-action-link fw-ui-btn-danger"
-                    )
-                }
+    Box(modifier = Modifier().className("fw-scene-dashboard")) {
+        Box(modifier = Modifier().className("fw-scene-dashboard-panel is-manifest")) {
+            ManifestCard(selectedPackage = focusedPackage)
+        }
+        Box(modifier = Modifier().className("fw-scene-dashboard-panel is-rules")) {
+            RuleBoard(level = level, state = state)
+        }
+        Box(modifier = Modifier().className("fw-scene-dashboard-panel is-chat")) {
+            ChatCard(state = state)
+        }
+    }
+}
+
+@Composable
+private fun SceneFeedback(state: FifthWallUiState) {
+    Box(modifier = Modifier().className("fw-scene-feedback")) {
+        FeedbackBanner(state = state)
+    }
+}
+
+@Composable
+private fun AccessibilityFallbackPanel(
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    focusedPackage: FifthWallPackage?
+) {
+    val controlsBlocked = state.prompt != FifthWallPrompt.None
+
+    Box(modifier = Modifier().className("fw-accessibility-fallback")) {
+        Text(text = "Accessibility fallback", modifier = Modifier().className("fw-panel-title"))
+        Text(
+            text = "The primary game surface is the Materia/Sigil scene above. These native controls remain for keyboard and screen-reader fallback.",
+            modifier = Modifier().className("fw-panel-copy")
+        )
+        Box(modifier = Modifier().className("fw-fallback-row")) {
+            if (state.prompt == FifthWallPrompt.Intro) {
                 ActionControl(
-                    label = "Reset shift",
-                    action = "reset",
-                    classes = "fw-action-link fw-ui-btn"
+                    label = "Enter bay",
+                    action = "start",
+                    classes = "fw-action-link fw-ui-btn-accent"
                 )
             }
+            if (state.prompt == FifthWallPrompt.LevelComplete) {
+                ActionControl(
+                    label = "Next level",
+                    action = "advance",
+                    classes = "fw-action-link fw-ui-btn-accent"
+                )
+            }
+            if (state.glitchActive) {
+                ActionControl(
+                    label = "Restart console",
+                    action = "fake-restart",
+                    classes = "fw-action-link fw-ui-btn-danger"
+                )
+            }
+            if (state.wrenchVisible) {
+                ActionControl(
+                    label = "Repair with wrench",
+                    action = "repair",
+                    classes = "fw-action-link fw-ui-btn-accent"
+                )
+            }
+            ActionControl(
+                label = "Reset shift",
+                action = "reset",
+                classes = "fw-action-link fw-ui-btn-outline"
+            )
         }
-        Box(modifier = Modifier().className("fw-scene-control-grid")) {
-            Box(modifier = Modifier().className("fw-scene-control-panel is-queue")) {
-                QueueDeck(state = state, focusedPackage = focusedPackage)
+        if (state.visiblePackages().isNotEmpty()) {
+            Box(modifier = Modifier().className("fw-fallback-row")) {
+                state.visiblePackages().forEachIndexed { index, pkg ->
+                    ActionControl(
+                        label = if (focusedPackage?.id == pkg.id) "Focused P${index + 1}" else "Focus P${index + 1}",
+                        action = "select",
+                        classes = if (focusedPackage?.id == pkg.id) {
+                            "fw-action-link fw-ui-btn-accent"
+                        } else {
+                            "fw-action-link fw-ui-btn"
+                        },
+                        disabled = controlsBlocked,
+                        params = arrayOf("package" to pkg.id)
+                    )
+                }
             }
-            Box(modifier = Modifier().className("fw-scene-control-panel is-manifest")) {
-                ManifestCard(selectedPackage = focusedPackage)
+        }
+        Box(modifier = Modifier().className("fw-fallback-row")) {
+            state.activeTrucks(level).forEachIndexed { index, _ ->
+                ActionControl(
+                    label = "Truck ${'A' + index}",
+                    action = "route-truck",
+                    classes = "fw-action-link fw-ui-btn",
+                    disabled = focusedPackage == null || controlsBlocked,
+                    params = arrayOf("truck" to index.toString())
+                )
             }
-            Box(modifier = Modifier().className("fw-scene-control-panel is-rules")) {
-                RuleBoard(level = level, state = state)
-            }
-            Box(modifier = Modifier().className("fw-scene-control-panel is-routing")) {
-                RouteConsole(level = level, state = state, focusedPackage = focusedPackage)
-            }
+            ActionControl(
+                label = "Return Bin",
+                action = "route-return",
+                classes = "fw-action-link fw-ui-btn-outline",
+                disabled = focusedPackage == null || controlsBlocked
+            )
         }
     }
 }
@@ -165,73 +245,6 @@ private fun StatCell(label: String, value: String) {
     Box(modifier = Modifier().className("fw-stat")) {
         Text(text = label, modifier = Modifier().className("fw-stat-label"))
         Text(text = value, modifier = Modifier().className("fw-stat-value"))
-    }
-}
-
-@Composable
-private fun MissionPanel(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?
-) {
-    val guidance = level.guidance()
-    val truckTargets = state.activeTrucks(level).indices.joinToString(" / ") { "Truck ${'A' + it}" }
-
-    Box(modifier = Modifier().className("fw-panel fw-mission-panel")) {
-        Text(text = "Bay Plan", modifier = Modifier().className("fw-panel-title"))
-        Text(text = "${level.id}. ${level.name}", modifier = Modifier().className("fw-panel-headline"))
-        Text(text = guidance.objective, modifier = Modifier().className("fw-panel-copy"))
-        Box(modifier = Modifier().className("fw-mission-callout")) {
-            Text(
-                text = guidance.mechanic,
-                modifier = Modifier().className("fw-mission-callout-copy")
-            )
-        }
-        Column(modifier = Modifier().className("fw-play-list")) {
-            PlayStep(
-                number = "1",
-                text = if (focusedPackage == null) {
-                    "Focus a package from Conveyor Queue."
-                } else {
-                    "Focused now: ${focusedPackage.summaryLabel()}."
-                }
-            )
-            PlayStep(
-                number = "2",
-                text = "Inspect Package Manifest for color, shape, weight, volume, pattern, and destination."
-            )
-            PlayStep(
-                number = "3",
-                text = "Compare against Rule Board targets: $truckTargets."
-            )
-            PlayStep(
-                number = "4",
-                text = "Route by dragging to a target or using Routing Console; Return Bin only when no truck matches."
-            )
-        }
-        Text(text = guidance.twist, modifier = Modifier().className("fw-panel-copy fw-twist-copy"))
-        Box(modifier = Modifier().className("fw-chip-cloud")) {
-            state.activePriorityRule?.let { Chip(text = "Priority ${it.badgeLabel()}") }
-            if (state.ruleShifted) Chip(text = "Rule board changed")
-            if (state.glitchActive) Chip(text = "Physical override")
-            Chip(text = "Cube = crate")
-            Chip(text = "Rect = parcel")
-            Chip(text = "Cylinder = drum")
-            Chip(text = "Sphere = orb")
-        }
-    }
-}
-
-@Composable
-private fun PlayStep(
-    number: String,
-    text: String
-) {
-    Box(modifier = Modifier().className("fw-play-step")) {
-        Box(modifier = Modifier().className("fw-play-step-index")) {
-            Text(text = number)
-        }
-        Text(text = text, modifier = Modifier().className("fw-play-step-copy"))
     }
 }
 
@@ -253,134 +266,6 @@ private fun RuleBoard(
             Box(modifier = Modifier().className("fw-rule-card is-return")) {
                 Text(text = "Return Bin", modifier = Modifier().className("fw-rule-name"))
                 Text(text = "Use when no truck rule matches.", modifier = Modifier().className("fw-rule-text"))
-            }
-        }
-    }
-}
-
-@Composable
-private fun QueueDeck(
-    state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?
-) {
-    Box(modifier = Modifier().className("fw-panel")) {
-        Text(text = "Conveyor Queue", modifier = Modifier().className("fw-panel-title"))
-        Text(
-            text = "Front cards can be focused or dragged to Routing Console targets.",
-            modifier = Modifier().className("fw-panel-copy fw-panel-copy-tight")
-        )
-        if (state.visiblePackages().isEmpty()) {
-            Text(text = "Lane clear. No packages waiting.", modifier = Modifier().className("fw-empty"))
-        } else {
-            Column(modifier = Modifier().className("fw-queue-grid")) {
-                state.visiblePackages().forEachIndexed { index, pkg ->
-                    val classes = buildString {
-                        append("fw-queue-card")
-                        if (focusedPackage?.id == pkg.id) append(" is-focused")
-                    }
-                    Box(
-                        modifier = Modifier()
-                            .className(classes)
-                            .dataAttribute("fw-package-id", pkg.id)
-                            .dataAttribute("fw-package-label", pkg.summaryLabel())
-                            .attribute("draggable", "true")
-                    ) {
-                        Box(modifier = Modifier().className("fw-queue-head")) {
-                            Text(text = "Slot ${index + 1}", modifier = Modifier().className("fw-slot-label"))
-                            Text(
-                                text = pkg.color.name.replaceFirstChar { it.uppercase() },
-                                modifier = Modifier().className("fw-slot-accent")
-                            )
-                        }
-                        Text(text = pkg.summaryLabel(), modifier = Modifier().className("fw-queue-title"))
-                        Text(
-                            text = "${pkg.weight}kg · ${pkg.volume}L · ${pkg.destination.replaceFirstChar { it.uppercase() }}",
-                            modifier = Modifier().className("fw-queue-copy")
-                        )
-                        ActionControl(
-                            label = if (focusedPackage?.id == pkg.id) "Focused" else "Focus package",
-                            action = "select",
-                            classes = if (focusedPackage?.id == pkg.id) {
-                                "fw-action-link fw-ui-btn-accent"
-                            } else {
-                                "fw-action-link fw-ui-btn-outline"
-                            },
-                            params = arrayOf("package" to pkg.id)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RouteConsole(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?
-) {
-    val controlsBlocked = state.prompt != FifthWallPrompt.None
-    val trucks = state.activeTrucks(level)
-
-    Box(modifier = Modifier().className("fw-panel")) {
-        Text(text = "Routing Console", modifier = Modifier().className("fw-panel-title"))
-        Text(
-            text = if (focusedPackage == null) {
-                "Focus a package from the queue, then route it through the bay."
-            } else {
-                "Send ${focusedPackage.summaryLabel()} to a matching truck, or Return Bin if no rule matches."
-            },
-            modifier = Modifier().className("fw-panel-copy")
-        )
-        Box(modifier = Modifier().className("fw-route-grid")) {
-            trucks.forEachIndexed { index, rule ->
-                val label = "Truck ${'A' + index}"
-                val cardClasses = routeCardClasses(
-                    isActive = state.lastRouteTarget == label,
-                    wasAccepted = state.lastRouteAccepted
-                )
-                Box(
-                    modifier = Modifier()
-                        .className(cardClasses)
-                        .dataAttribute("fw-drop-target", "truck")
-                        .dataAttribute("fw-truck-index", index.toString())
-                        .dataAttribute("fw-disabled", (focusedPackage == null || controlsBlocked).toString())
-                ) {
-                    Text(text = "Truck ${'A' + index}", modifier = Modifier().className("fw-route-name"))
-                    Text(
-                        text = rule.label(level.hiddenRuleIndex != index || state.hiddenRuleRevealed || state.ruleShifted),
-                        modifier = Modifier().className("fw-route-copy")
-                    )
-                    ActionControl(
-                        label = if (state.glitchActive) "Attempt route" else "Route to Truck ${'A' + index}",
-                        action = "route-truck",
-                        classes = "fw-action-link fw-ui-btn",
-                        disabled = focusedPackage == null || controlsBlocked,
-                        params = arrayOf("truck" to index.toString())
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier()
-                    .className(
-                        routeCardClasses(
-                            isActive = state.lastRouteTarget == "Return Bin",
-                            wasAccepted = state.lastRouteAccepted,
-                            isReturn = true
-                        )
-                    )
-                    .dataAttribute("fw-drop-target", "return")
-                    .dataAttribute("fw-disabled", (focusedPackage == null || controlsBlocked).toString())
-            ) {
-                Text(text = "Return Bin", modifier = Modifier().className("fw-route-name"))
-                Text(text = "Only valid when no truck rule matches the current package.", modifier = Modifier().className("fw-route-copy"))
-                ActionControl(
-                    label = if (state.glitchActive) "Attempt return" else "Return package",
-                    action = "route-return",
-                    classes = "fw-action-link fw-ui-btn-outline",
-                    disabled = focusedPackage == null || controlsBlocked
-                )
             }
         }
     }
@@ -411,8 +296,8 @@ private fun ManifestCard(selectedPackage: FifthWallPackage?) {
         ManifestRow(label = "Volume", value = selectedPackage?.volume?.let { "$it L" } ?: "--")
         ManifestRow(label = "Pattern", value = selectedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--")
         ManifestRow(label = "Destination", value = selectedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--")
-        ManifestRow(label = "Geometry", value = selectedPackage?.geometry ?: "--")
-        ManifestRow(label = "Label", value = selectedPackage?.labelText ?: "--")
+        selectedPackage?.geometry?.let { ManifestRow(label = "Geometry", value = it) }
+        selectedPackage?.labelText?.let { ManifestRow(label = "Label", value = it) }
     }
 }
 
@@ -421,24 +306,6 @@ private fun ManifestRow(label: String, value: String) {
     Box(modifier = Modifier().className("fw-manifest-row")) {
         Text(text = label, modifier = Modifier().className("fw-manifest-label"))
         Text(text = value, modifier = Modifier().className("fw-manifest-value"))
-    }
-}
-
-@Composable
-private fun LogCard(entries: List<String>) {
-    Box(modifier = Modifier().className("fw-panel")) {
-        Text(text = "Shift Log", modifier = Modifier().className("fw-panel-title"))
-        if (entries.isEmpty()) {
-            Text(text = "No routing events yet.", modifier = Modifier().className("fw-empty"))
-        } else {
-            Column(modifier = Modifier().className("fw-log-list")) {
-                entries.reversed().forEach { entry ->
-                    Box(modifier = Modifier().className("fw-log-item")) {
-                        Text(text = entry)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -488,7 +355,7 @@ private fun PromptOverlay(
                 FifthWallPrompt.Intro -> {
                     PromptTitle("Courier Protocol 3D")
                     Paragraph(
-                        text = "Play loop: focus a package in Conveyor Queue, inspect Package Manifest, compare it to Rule Board, then drag it to a target or use Routing Console. Use Return Bin only when no truck rule matches. The focused package is enlarged on the inspection dock.",
+                        text = "Play loop: focus a package mesh on the conveyor, inspect its manifest, compare it to the Rule Board, then route it to a truck or the Return Bin. Use Return Bin only when no truck rule matches. The focused package is enlarged on the inspection dock.",
                         modifier = Modifier().className("fw-modal-copy")
                     )
                     PromptActionRow(
@@ -628,22 +495,6 @@ private fun ConfidenceAction(label: String) {
 }
 
 @Composable
-private fun Chip(text: String) {
-    Box(modifier = Modifier().className("fw-chip")) {
-        Text(text = text)
-    }
-}
-
-@Composable
-private fun WrenchButton() {
-    ActionControl(
-        label = "Wrench",
-        action = "repair",
-        classes = "fw-action-link fw-wrench-btn"
-    )
-}
-
-@Composable
 private fun TelemetryBridge(state: FifthWallUiState) {
     Box(
         modifier = Modifier()
@@ -733,17 +584,3 @@ private fun htmlEscape(value: String): String = value
     .replace("\"", "&quot;")
     .replace("<", "&lt;")
     .replace(">", "&gt;")
-
-private fun routeCardClasses(
-    isActive: Boolean,
-    wasAccepted: Boolean?,
-    isReturn: Boolean = false
-): String =
-    buildString {
-        append("fw-route-card")
-        if (isReturn) append(" is-return")
-        when {
-            isActive && wasAccepted == false -> append(" is-rejected")
-            isActive -> append(" is-accepted")
-        }
-    }

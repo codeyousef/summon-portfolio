@@ -28,7 +28,7 @@ private val SCENE_ACCENT = argb(FifthWallTheme.ACCENT)
 private val SCENE_WARM = argb(FifthWallTheme.ACCENT_WARM)
 private val SCENE_SUCCESS = argb(FifthWallTheme.SUCCESS)
 private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
-private val SCENE_NEUTRAL_LIGHT = argb("#f6fbff")
+private val SCENE_NEUTRAL_LIGHT = argb("#d9ddd8")
 private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
 private val TRUCK_COLOR_FALLBACKS = listOf(
@@ -91,18 +91,19 @@ internal fun FifthWallScene(
             name = "dispatch-orbit"
         )
 
-        SigilAmbientLight(color = SCENE_NEUTRAL_LIGHT, intensity = 1.18f, name = "ambient-fill")
+        SigilAmbientLight(color = SCENE_NEUTRAL_LIGHT, intensity = 0.58f, name = "ambient-fill")
         SigilDirectionalLight(
             position = listOf(4f, 12f, 9f),
             target = listOf(0f, 0f, 1f),
-            intensity = 0.62f,
+            color = argb("#fff2d3"),
+            intensity = 0.88f,
             castShadow = false,
             name = "bay-sun"
         )
         SigilPointLight(
             position = listOf(-3f, 5.5f, -1f),
             color = SCENE_ACCENT,
-            intensity = 0.28f,
+            intensity = 0.16f,
             distance = 24f,
             decay = 1.6f,
             name = "belt-glow"
@@ -110,7 +111,7 @@ internal fun FifthWallScene(
         SigilPointLight(
             position = listOf(7f, 6.5f, -5.5f),
             color = if (focusedPackage?.validGeometry == false) SCENE_DANGER else SCENE_WARM,
-            intensity = 0.26f,
+            intensity = 0.14f,
             distance = 20f,
             decay = 1.7f,
             name = "inspection-glow"
@@ -118,7 +119,7 @@ internal fun FifthWallScene(
         SigilPointLight(
             position = listOf(0f, 5f, 8.4f),
             color = SCENE_WARM,
-            intensity = 0.2f,
+            intensity = 0.12f,
             distance = 18f,
             decay = 1.8f,
             name = "route-glow"

@@ -40,15 +40,7 @@ class FifthWallRenderer {
         )
 
         head.link("stylesheet", "/static/fifth-wall.css", null, null, null, null)
+        head.script("/static/fifth-wall-sigil-hydration.js", "sigil-hydration-runtime", "application/javascript", false, false, null)
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
-        head.script(
-            "https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js",
-            "model-viewer-runtime",
-            "module",
-            false,
-            true,
-            null
-        )
-        head.script("/static/fifth-wall-client-game.js", "fifth-wall-client-game", "application/javascript", false, false, null)
     }
 }
