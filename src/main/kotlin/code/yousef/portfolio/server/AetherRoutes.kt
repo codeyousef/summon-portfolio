@@ -508,6 +508,10 @@ private suspend fun Exchange.handleFifthWallAction(
             ?.toIntOrNull()
             ?.let(controller::routeToTruck)
         "route-return" -> controller.routeToReturn()
+        "drop-truck" -> request.queryParameter("truck")
+            ?.toIntOrNull()
+            ?.let { index -> controller.dropOnTruck(index, request.queryParameter("package")) }
+        "drop-return" -> controller.dropOnReturn(request.queryParameter("package"))
         "repair" -> controller.repairGlitch()
         "confidence" -> request.queryParameter("value")
             ?.takeIf { it.isNotBlank() }

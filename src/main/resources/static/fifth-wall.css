@@ -93,7 +93,7 @@
 
 .fw-stage {
     display: grid;
-    grid-template-columns: minmax(0, 1.58fr) 360px;
+    grid-template-columns: minmax(0, 1.52fr) 390px;
     gap: 24px;
     align-items: start;
 }
@@ -111,8 +111,8 @@
 
 .fw-scene-shell {
     position: relative;
-    min-height: 660px;
-    border-radius: 26px;
+    min-height: 620px;
+    border-radius: 18px;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
@@ -157,7 +157,7 @@
 }
 
 #fifth-wall-scene-container {
-    min-height: 660px;
+    min-height: 620px;
 }
 
 #fifth-wall-scene {
@@ -169,8 +169,14 @@
     z-index: 5;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    max-width: 310px;
+    gap: 8px;
+    max-width: 360px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(7, 12, 19, 0.68);
+    box-shadow: 0 14px 28px rgba(3, 8, 18, 0.24);
+    backdrop-filter: blur(10px);
     pointer-events: none;
 }
 
@@ -184,6 +190,7 @@
     right: 18px;
     align-items: flex-end;
     text-align: right;
+    max-width: 270px;
 }
 
 .fw-scene-flow {
@@ -282,15 +289,15 @@
 
 .fw-scene-heading {
     font-family: var(--fw-font-display);
-    font-size: 1.1rem;
+    font-size: 1.18rem;
     font-weight: 700;
-    letter-spacing: 0.12rem;
+    letter-spacing: 0;
 }
 
 .fw-scene-copy {
     color: rgba(230, 241, 255, 0.88);
-    line-height: 1.55;
-    font-size: 0.93rem;
+    line-height: 1.45;
+    font-size: 0.88rem;
 }
 
 .fw-scene-copy.is-muted {
@@ -298,8 +305,8 @@
 }
 
 .fw-scene-badge {
-    padding: 7px 11px;
-    border-radius: 999px;
+    padding: 6px 9px;
+    border-radius: 6px;
     background: rgba(8, 13, 21, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--fw-accent);
@@ -318,7 +325,7 @@
 .fw-scene-chip,
 .fw-chip {
     padding: 6px 10px;
-    border-radius: 999px;
+    border-radius: 6px;
     border: 1px solid rgba(107, 214, 255, 0.18);
     background: rgba(107, 214, 255, 0.08);
     color: var(--fw-accent);
@@ -329,7 +336,7 @@
 
 .fw-panel {
     padding: 18px;
-    border-radius: 20px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.07);
     background:
         linear-gradient(180deg, rgba(13, 20, 31, 0.94) 0%, rgba(9, 14, 22, 0.96) 100%);
@@ -358,6 +365,32 @@
     font-size: 0.95rem;
 }
 
+.fw-panel-copy-tight {
+    margin-top: -4px;
+    font-size: 0.86rem;
+}
+
+.fw-mission-panel {
+    border-color: rgba(107, 214, 255, 0.16);
+}
+
+.fw-mission-callout {
+    padding: 12px 13px;
+    border-radius: 8px;
+    border: 1px solid rgba(247, 185, 85, 0.22);
+    background: rgba(247, 185, 85, 0.08);
+}
+
+.fw-mission-callout-copy {
+    color: rgba(255, 230, 188, 0.92);
+    line-height: 1.5;
+    font-size: 0.9rem;
+}
+
+.fw-twist-copy {
+    color: rgba(230, 241, 255, 0.68);
+}
+
 .fw-play-list {
     display: flex;
     flex-direction: column;
@@ -370,7 +403,7 @@
     gap: 12px;
     align-items: start;
     padding: 12px 13px;
-    border-radius: 16px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.03);
 }
@@ -378,7 +411,7 @@
 .fw-play-step-index {
     width: 30px;
     height: 30px;
-    border-radius: 999px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -414,7 +447,7 @@
 .fw-chat-message,
 .fw-discussion-line {
     padding: 13px 14px;
-    border-radius: 16px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.03);
 }
@@ -422,6 +455,25 @@
 .fw-rule-card.is-return,
 .fw-route-card.is-return {
     border-style: dashed;
+}
+
+.fw-route-card.is-accepted {
+    border-color: rgba(69, 224, 168, 0.36);
+    box-shadow: inset 0 0 0 1px rgba(69, 224, 168, 0.14);
+}
+
+.fw-route-card.is-rejected {
+    border-color: rgba(255, 107, 107, 0.36);
+    box-shadow: inset 0 0 0 1px rgba(255, 107, 107, 0.12);
+}
+
+.fw-route-card.is-drop-ready {
+    border-color: rgba(107, 214, 255, 0.46);
+    background: rgba(107, 214, 255, 0.09);
+}
+
+.fw-route-card[data-fw-disabled="true"] {
+    opacity: 0.68;
 }
 
 .fw-rule-name,
@@ -448,6 +500,20 @@
     gap: 10px;
     display: flex;
     flex-direction: column;
+}
+
+.fw-queue-card[draggable="true"] {
+    cursor: grab;
+}
+
+.fw-queue-card[draggable="true"]:active,
+.fw-queue-card.is-dragging {
+    cursor: grabbing;
+}
+
+.fw-queue-card.is-dragging {
+    opacity: 0.72;
+    border-color: rgba(247, 185, 85, 0.34);
 }
 
 .fw-queue-card.is-focused {
@@ -627,7 +693,7 @@ a.fw-wrench-btn,
 button.fw-wrench-btn {
     position: absolute !important;
     right: 18px;
-    bottom: 124px;
+    bottom: 18px;
     z-index: 6;
     background: linear-gradient(135deg, rgba(247, 185, 85, 0.94), rgba(255, 145, 64, 0.94)) !important;
     border-color: rgba(255, 179, 92, 0.48) !important;
@@ -720,7 +786,7 @@ input.fw-input:focus {
 .fw-modal-card {
     width: min(560px, 100%);
     padding: 24px;
-    border-radius: 24px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
         linear-gradient(180deg, rgba(14, 22, 33, 0.98) 0%, rgba(9, 15, 23, 0.98) 100%);
@@ -828,15 +894,47 @@ input.fw-input:focus {
 
     .fw-scene-shell,
     #fifth-wall-scene-container {
-        min-height: 480px;
+        min-height: 500px;
     }
 
     .fw-scene-hud {
-        max-width: calc(100% - 32px);
+        max-width: none;
+        padding: 12px;
+        gap: 6px;
+    }
+
+    .fw-scene-hud-left {
+        top: 14px;
+        left: 14px;
+        right: 14px;
     }
 
     .fw-scene-hud-right {
-        display: none;
+        display: none !important;
+    }
+
+    .fw-scene-heading {
+        font-size: 1rem;
+    }
+
+    .fw-scene-copy {
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+
+    .fw-scene-badge {
+        padding: 5px 7px;
+        font-size: 0.64rem;
+    }
+
+    .fw-scene-chip-row {
+        gap: 6px;
+    }
+
+    .fw-scene-chip {
+        padding: 5px 7px;
+        font-size: 0.62rem;
+        letter-spacing: 0.06rem;
     }
 
     .fw-scene-flow {
@@ -849,7 +947,7 @@ input.fw-input:focus {
 
     a.fw-wrench-btn,
     button.fw-wrench-btn {
-        bottom: 182px;
+        bottom: 18px;
     }
 
     .fw-modal {

@@ -69,6 +69,13 @@ internal data class FifthWallLevel(
     val glitchAfterProcessed: Int? = null
 )
 
+internal data class FifthWallLevelGuidance(
+    val phase: String,
+    val objective: String,
+    val mechanic: String,
+    val twist: String
+)
+
 internal data class FifthWallPackage(
     val id: String,
     val color: FifthWallColor,
@@ -410,6 +417,129 @@ internal val FifthWallLevels = listOf(
         ),
         rejectRate = 0.24,
         glitchAfterProcessed = 6
+    )
+)
+
+private val FifthWallGuidanceByLevel = mapOf(
+    1 to FifthWallLevelGuidance(
+        phase = "Solo Orientation",
+        objective = "Route red and blue packages; return the package that matches no truck.",
+        mechanic = "Focus a queue card, read its manifest, then choose a bay target.",
+        twist = "Return Bin is a valid route when every truck rejects the manifest."
+    ),
+    2 to FifthWallLevelGuidance(
+        phase = "Solo Sorting",
+        objective = "Split the lane by package weight.",
+        mechanic = "Compare the manifest weight against the two truck thresholds.",
+        twist = "Both trucks cover the full rule, so Return Bin should be rare."
+    ),
+    3 to FifthWallLevelGuidance(
+        phase = "Solo Sorting",
+        objective = "Route packages across color, shape, and weight rules.",
+        mechanic = "Use the first matching truck rule you can prove from the manifest.",
+        twist = "Different manifest fields can matter on consecutive packages."
+    ),
+    4 to FifthWallLevelGuidance(
+        phase = "Solo Sorting",
+        objective = "Balance pattern, destination, and volume rules.",
+        mechanic = "Read the whole manifest before committing.",
+        twist = "This is the last quiet bay before dispatch chat unlocks."
+    ),
+    5 to FifthWallLevelGuidance(
+        phase = "Team Dispatch",
+        objective = "Discover Truck A's hidden rule by testing packages.",
+        mechanic = "Use accepted and rejected routes as evidence, then name the rule.",
+        twist = "After enough tests the bay pauses until the rule is named."
+    ),
+    6 to FifthWallLevelGuidance(
+        phase = "Team Dispatch",
+        objective = "Route normally and record confidence after each result.",
+        mechanic = "Choose Low, Medium, or High before the next package.",
+        twist = "The line waits for the confidence check."
+    ),
+    7 to FifthWallLevelGuidance(
+        phase = "Team Dispatch",
+        objective = "Keep routing while dispatch commentary gets sharper.",
+        mechanic = "Use the same manifest-to-rule loop under social pressure.",
+        twist = "Chat can react to mistakes, but routing rules do not change."
+    ),
+    8 to FifthWallLevelGuidance(
+        phase = "Probability Bay",
+        objective = "Predict and route through a probabilistic truck.",
+        mechanic = "Lock a count, then observe how many packages Truck A accepts.",
+        twist = "Correct play is about expectation, not controlling each result."
+    ),
+    9 to FifthWallLevelGuidance(
+        phase = "Team Dispatch",
+        objective = "Answer or skip the dispatch prompt, then resume routing.",
+        mechanic = "The bay pauses for chat before the conveyor reopens.",
+        twist = "The package rules are ordinary; the interruption is the hard part."
+    ),
+    10 to FifthWallLevelGuidance(
+        phase = "Multi-Rule Bay",
+        objective = "Route through four overlapping truck rules.",
+        mechanic = "Scan manifest fields in a consistent order before choosing.",
+        twist = "Return Bin matters when none of four rules applies."
+    ),
+    11 to FifthWallLevelGuidance(
+        phase = "Geometry Bay",
+        objective = "Ship valid geometry and return impossible forms.",
+        mechanic = "Use the manifest geometry field and the inspection dock model.",
+        twist = "The focused package appears enlarged for visual inspection."
+    ),
+    12 to FifthWallLevelGuidance(
+        phase = "Geometry Bay",
+        objective = "Resolve geometry, color, and destination rules together.",
+        mechanic = "A valid geometry can still match a non-geometry truck.",
+        twist = "Impossible geometry still belongs in Return Bin unless another rule applies."
+    ),
+    13 to FifthWallLevelGuidance(
+        phase = "Language Bay",
+        objective = "Route precisely while labels become less direct.",
+        mechanic = "Use manifest fields for routing; use label text as context.",
+        twist = "Dispatch chat debates wording while the rules stay concrete."
+    ),
+    14 to FifthWallLevelGuidance(
+        phase = "Rule-Shift Bay",
+        objective = "Adapt when the rule board changes midstream.",
+        mechanic = "Re-read Truck A and Truck B after the board update.",
+        twist = "The cue is subtle, but the active rules update in the Rule Board."
+    ),
+    15 to FifthWallLevelGuidance(
+        phase = "Rule-Shift Bay",
+        objective = "Handle a larger midstream rule swap.",
+        mechanic = "Treat the current board as source of truth after every route.",
+        twist = "Old rules become wrong the moment the board changes."
+    ),
+    16 to FifthWallLevelGuidance(
+        phase = "Discovery Bay",
+        objective = "Test dispatch's theory before naming the hidden rule.",
+        mechanic = "Look for edge cases that could prove the theory wrong.",
+        twist = "The chat has a guess, but the bay only accepts evidence."
+    ),
+    17 to FifthWallLevelGuidance(
+        phase = "Priority Bay",
+        objective = "Route correctly while the bonus color changes.",
+        mechanic = "Keep truck rules separate from the score priority.",
+        twist = "When the priority flips, the best strategy flips too."
+    ),
+    18 to FifthWallLevelGuidance(
+        phase = "Pressure Bay",
+        objective = "Route four-rule packages after a dispatch pause.",
+        mechanic = "Resume the same focus, inspect, compare, route loop.",
+        twist = "The lane feels louder, but the control grammar is unchanged."
+    ),
+    19 to FifthWallLevelGuidance(
+        phase = "Pressure Bay",
+        objective = "Clear a larger four-rule queue with more rejects.",
+        mechanic = "Use Return Bin confidently when no truck rule matches.",
+        twist = "Speed pressure should not override the manifest."
+    ),
+    20 to FifthWallLevelGuidance(
+        phase = "Fault Bay",
+        objective = "Clear the final bay and recover if the console fails.",
+        mechanic = "Route as usual until the room asks for a physical override.",
+        twist = "A visible wrench repairs the jammed routing controls."
     )
 )
 
@@ -1625,6 +1755,14 @@ internal fun FifthWallUiState.visiblePackages(): List<FifthWallPackage> =
 
 internal fun FifthWallUiState.processedCount(level: FifthWallLevel): Int =
     level.packageCount - queue.size
+
+internal fun FifthWallLevel.guidance(): FifthWallLevelGuidance =
+    FifthWallGuidanceByLevel[id] ?: FifthWallLevelGuidance(
+        phase = "Dispatch Bay",
+        objective = briefing,
+        mechanic = "Focus, inspect, compare, then route or return.",
+        twist = "Use the current Rule Board as source of truth."
+    )
 
 internal fun FifthWallRule.label(isRevealed: Boolean): String =
     if (!isRevealed) {
