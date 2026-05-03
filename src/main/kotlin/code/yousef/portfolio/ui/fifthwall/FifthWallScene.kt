@@ -70,17 +70,17 @@ internal fun FifthWallScene(
             shadowsEnabled = true
         )
         SigilCamera(
-            position = listOf(0f, 6.7f, 16.4f),
-            lookAt = listOf(0f, 1.85f, 2.35f),
-            fov = 44f,
+            position = listOf(0.6f, 7.4f, 11.4f),
+            lookAt = listOf(0.8f, 1.85f, 1.6f),
+            fov = 56f,
             near = 0.1f,
             far = 100f,
             name = "dispatch-camera"
         )
         SigilOrbitControls(
-            target = listOf(0f, 1.85f, 2.35f),
-            minDistance = 12.5f,
-            maxDistance = 20f,
+            target = listOf(0.8f, 1.85f, 1.6f),
+            minDistance = 8.5f,
+            maxDistance = 15f,
             minPolarAngle = 0.9f,
             maxPolarAngle = 1.36f,
             enablePan = false,
@@ -162,8 +162,8 @@ private fun WarehouseShell() {
     )
     SigilModel(
         url = fifthWallModelUrl("warehouse-bay-shell-kit.glb"),
-        position = listOf(0f, 0.02f, -7f),
-        scale = uniformScale(17f),
+        position = listOf(0f, 0.02f, 0f),
+        scale = listOf(34f, 14f, 26f),
         castShadow = false,
         receiveShadow = false,
         name = "warehouse-shell-model"
