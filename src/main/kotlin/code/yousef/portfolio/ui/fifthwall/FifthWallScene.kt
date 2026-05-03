@@ -2,6 +2,17 @@ package code.yousef.portfolio.ui.fifthwall
 
 import codes.yousef.sigil.schema.GeometryParams
 import codes.yousef.sigil.schema.GeometryType
+import codes.yousef.sigil.schema.AnimationEasing
+import codes.yousef.sigil.schema.AnimationKind
+import codes.yousef.sigil.schema.AnimationTrigger
+import codes.yousef.sigil.schema.CursorHint
+import codes.yousef.sigil.schema.DragConstraintMode
+import codes.yousef.sigil.schema.DragMetadata
+import codes.yousef.sigil.schema.DropTargetMetadata
+import codes.yousef.sigil.schema.HitVolumeData
+import codes.yousef.sigil.schema.HitVolumeShape
+import codes.yousef.sigil.schema.InteractionMetadata
+import codes.yousef.sigil.schema.SceneAnimationData
 import codes.yousef.sigil.summon.canvas.MateriaCanvas
 import codes.yousef.sigil.summon.canvas.SceneConfig
 import codes.yousef.sigil.summon.components.SigilAmbientLight
@@ -31,6 +42,9 @@ private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
 private val SCENE_NEUTRAL_LIGHT = argb("#d9ddd8")
 private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
+private val PACKAGE_DROP_GROUP = listOf("fifth-wall-package")
+private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
+private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click", "dragstart", "drag", "dragenter", "dragleave", "drop", "pointerup")
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
     argb("#5aa9ff"),
@@ -457,6 +471,7 @@ private fun TruckBay(
         val x = origin + (spacing * index)
         val routeLabel = "Truck ${'A' + index}"
         DeliveryTruck(
+            index = index,
             label = routeLabel,
             position = listOf(x, 0f, 4.7f),
             color = truckColor(index, rule),
@@ -470,6 +485,7 @@ private fun TruckBay(
 
 @Composable
 private fun DeliveryTruck(
+    index: Int,
     label: String,
     position: List<Float>,
     color: Int,
@@ -482,7 +498,10 @@ private fun DeliveryTruck(
     SigilGroup(
         position = position,
         scale = listOf(1.08f, 1.08f, 1.08f),
-        name = label.lowercase().replace(" ", "-")
+        name = label.lowercase().replace(" ", "-"),
+        interaction = truckInteraction(index, label),
+        animations = listOf(targetPulseAnimation("truck-$index-ready", delayMs = index * 80)),
+        id = "truck-$index"
     ) {
         SigilModel(
             url = fifthWallModelUrl("delivery-truck.glb"),
@@ -586,7 +605,10 @@ private fun ReturnBinBay(
     SigilGroup(
         position = listOf(9.2f, 0f, 4.85f),
         scale = listOf(1.08f, 1.08f, 1.08f),
-        name = "return-bin"
+        name = "return-bin",
+        interaction = returnBinInteraction(),
+        animations = listOf(targetPulseAnimation("return-bin-ready", delayMs = 260)),
+        id = "return-bin-target"
     ) {
         SigilModel(
             url = fifthWallModelUrl("return-bin.glb"),
@@ -641,7 +663,13 @@ private fun ReturnBinBay(
 
 @Composable
 private fun InspectionDock(pkg: FifthWallPackage?) {
-    SigilGroup(position = listOf(8.2f, 0f, -5.5f), name = "inspection-dock") {
+    SigilGroup(
+        position = listOf(8.2f, 0f, -5.5f),
+        name = "inspection-dock",
+        interaction = inspectionDockInteraction(),
+        animations = listOf(targetPulseAnimation("inspection-dock-ready", delayMs = 180)),
+        id = "inspection-dock-target"
+    ) {
         SigilModel(
             url = fifthWallModelUrl("inspection-dock.glb"),
             scale = uniformScale(4.1f),
@@ -714,7 +742,10 @@ private fun PackageMesh(
         position = position,
         rotation = listOf(0f, yaw + (beltIndex.coerceAtLeast(0) * 0.08f), 0f),
         scale = listOf(scale, scale, scale),
-        name = "package-${pkg.id}"
+        name = "package-${pkg.id}",
+        interaction = packageInteraction(pkg, enlarged),
+        animations = packageAnimations(pkg, beltIndex, selected, emphasized, enlarged),
+        id = "package-${pkg.id}"
     ) {
         SigilBox(
             width = when (pkg.shape) {
@@ -861,7 +892,23 @@ private fun WrenchProp(visible: Boolean) {
     SigilGroup(
         position = listOf(13.1f, 0.06f, 9.2f),
         rotation = listOf(0f, -0.42f, 0f),
-        name = "repair-wrench-prop"
+        name = "repair-wrench-prop",
+        interaction = wrenchInteraction(),
+        animations = listOf(
+            SceneAnimationData(
+                id = "repair-wrench-pulse",
+                trigger = AnimationTrigger.SCENE_LOAD,
+                kind = AnimationKind.PULSE,
+                durationMs = 1400,
+                delayMs = 0,
+                easing = AnimationEasing.EASE_IN_OUT,
+                vector = null,
+                color = null,
+                intensity = 0.72f,
+                repeat = 24
+            )
+        ),
+        id = "repair-wrench"
     ) {
         SigilModel(
             url = fifthWallModelUrl("repair-wrench.glb"),
@@ -1009,6 +1056,171 @@ private fun fifthWallModelUrl(fileName: String): String {
     val baseName = fileName.removeSuffix(".glb")
     return "/static/models/fifth-wall/$baseName/$baseName.gltf"
 }
+
+private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): InteractionMetadata =
+    InteractionMetadata(
+        interactionId = "package:${pkg.id}",
+        cursor = CursorHint.GRAB,
+        hitVolume = boxHitVolume(
+            width = when (pkg.shape) {
+                "rect" -> 2.28f
+                "cylinder" -> 1.58f
+                else -> 1.74f
+            } * if (enlarged) 1.25f else 1f,
+            height = if (enlarged) 2.45f else 1.85f,
+            depth = when (pkg.shape) {
+                "rect" -> 1.28f
+                "sphere" -> 1.55f
+                else -> 1.62f
+            } * if (enlarged) 1.2f else 1f,
+            centerY = if (enlarged) 1.1f else 0.82f
+        ),
+        actions = listOf("package", "focus", "inspect", "drag"),
+        events = PACKAGE_POINTER_EVENTS,
+        enabled = true,
+        drag = DragMetadata(
+            enabled = true,
+            mode = DragConstraintMode.HORIZONTAL,
+            planeNormal = listOf(0f, 1f, 0f),
+            planePoint = listOf(0f, if (enlarged) 3.18f else 2.34f, 0f),
+            laneAxis = listOf(1f, 0f, 0f),
+            min = -7.5f,
+            max = 13.5f,
+            dropGroups = PACKAGE_DROP_GROUP
+        ),
+        dropTarget = null
+    )
+
+private fun truckInteraction(index: Int, label: String): InteractionMetadata =
+    routingTargetInteraction(
+        interactionId = "truck:$index",
+        targetId = "truck:$index",
+        actions = listOf("route", "truck", "truck:$index", label.lowercase().replace(" ", "-")),
+        cursor = CursorHint.POINTER,
+        hitVolume = boxHitVolume(width = 4.4f, height = 3.35f, depth = 2.45f, centerY = 1.55f)
+    )
+
+private fun returnBinInteraction(): InteractionMetadata =
+    routingTargetInteraction(
+        interactionId = "return-bin",
+        targetId = "return-bin",
+        actions = listOf("route", "return", "return-bin"),
+        cursor = CursorHint.POINTER,
+        hitVolume = boxHitVolume(width = 2.8f, height = 2.7f, depth = 2.8f, centerY = 1.25f)
+    )
+
+private fun inspectionDockInteraction(): InteractionMetadata =
+    routingTargetInteraction(
+        interactionId = "inspection-dock",
+        targetId = "inspection-dock",
+        actions = listOf("inspect", "inspection-dock"),
+        cursor = CursorHint.CROSSHAIR,
+        hitVolume = boxHitVolume(width = 4.8f, height = 3.2f, depth = 4.6f, centerY = 1.45f)
+    )
+
+private fun wrenchInteraction(): InteractionMetadata =
+    InteractionMetadata(
+        interactionId = "repair-wrench",
+        cursor = CursorHint.POINTER,
+        hitVolume = sphereHitVolume(radius = 1.05f, centerY = 0.5f),
+        actions = listOf("repair", "glitch", "wrench"),
+        events = listOf("pointerdown", "click"),
+        enabled = true,
+        drag = null,
+        dropTarget = null
+    )
+
+private fun routingTargetInteraction(
+    interactionId: String,
+    targetId: String,
+    actions: List<String>,
+    cursor: CursorHint,
+    hitVolume: HitVolumeData
+): InteractionMetadata =
+    InteractionMetadata(
+        interactionId = interactionId,
+        cursor = cursor,
+        hitVolume = hitVolume,
+        actions = actions + listOf("drop-target"),
+        events = listOf("pointerdown", "click", "dragenter", "dragleave", "drop"),
+        enabled = true,
+        drag = null,
+        dropTarget = DropTargetMetadata(
+            enabled = true,
+            targetId = targetId,
+            groups = ROUTING_TARGET_GROUP,
+            accepts = listOf("package")
+        )
+    )
+
+private fun packageAnimations(
+    pkg: FifthWallPackage,
+    beltIndex: Int,
+    selected: Boolean,
+    emphasized: Boolean,
+    enlarged: Boolean
+): List<SceneAnimationData> {
+    val sceneLoadAnimation = SceneAnimationData(
+        id = "package-${pkg.id}-bob",
+        trigger = AnimationTrigger.SCENE_LOAD,
+        kind = AnimationKind.BOB,
+        durationMs = if (emphasized || enlarged) 1300 else 1700,
+        delayMs = beltIndex.coerceAtLeast(0) * 120,
+        easing = AnimationEasing.EASE_IN_OUT,
+        vector = listOf(0f, if (enlarged) 0.055f else 0.035f, 0f),
+        color = null,
+        intensity = if (selected) 1.2f else 0.8f,
+        repeat = if (enlarged) 12 else 18
+    )
+    val interactionAnimation = SceneAnimationData(
+        id = "package-${pkg.id}-grab-feedback",
+        trigger = AnimationTrigger.INTERACTION,
+        kind = AnimationKind.BOUNCE,
+        durationMs = 220,
+        delayMs = 0,
+        easing = AnimationEasing.EASE_OUT,
+        vector = null,
+        color = null,
+        intensity = if (selected) 0.7f else 0.5f,
+        repeat = 0
+    )
+    return listOf(sceneLoadAnimation, interactionAnimation)
+}
+
+private fun targetPulseAnimation(id: String, delayMs: Int): SceneAnimationData =
+    SceneAnimationData(
+        id = id,
+        trigger = AnimationTrigger.INTERACTION,
+        kind = AnimationKind.PULSE,
+        durationMs = 260,
+        delayMs = delayMs,
+        easing = AnimationEasing.EASE_OUT,
+        vector = null,
+        color = null,
+        intensity = 0.5f,
+        repeat = 0
+    )
+
+private fun boxHitVolume(
+    width: Float,
+    height: Float,
+    depth: Float,
+    centerY: Float
+): HitVolumeData =
+    HitVolumeData(
+        shape = HitVolumeShape.BOX,
+        center = listOf(0f, centerY, 0f),
+        size = listOf(width, height, depth),
+        radius = null
+    )
+
+private fun sphereHitVolume(radius: Float, centerY: Float): HitVolumeData =
+    HitVolumeData(
+        shape = HitVolumeShape.SPHERE,
+        center = listOf(0f, centerY, 0f),
+        size = emptyList(),
+        radius = radius
+    )
 
 private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
     pkg.labelText?.contains("SPECIAL DELIVERY", ignoreCase = true) == true -> FifthWallModelSpec(

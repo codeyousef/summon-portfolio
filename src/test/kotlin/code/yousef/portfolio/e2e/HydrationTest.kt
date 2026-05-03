@@ -97,11 +97,19 @@ class HydrationTest {
         assertTrue(body.contains("warehouse-bay-shell-kit"), "Should render the warehouse GLTF scene content")
         assertTrue(body.contains("conveyor-deck"), "Should render the conveyor as scene content")
         assertTrue(body.contains("delivery-truck"), "Should render trucks as scene content")
-        assertTrue(body.contains("/static/fifth-wall-sigil-hydration.js"), "Should load the textured Sigil runtime for this demo")
+        assertTrue(body.contains("/sigil-hydration.js"), "Should load the generic Sigil 0.4 runtime")
+        assertTrue(body.contains("\"interactionId\":\"package:"), "Packages should expose Sigil interaction IDs")
+        assertTrue(body.contains("\"interactionId\":\"truck:0\""), "Trucks should expose Sigil drop-target interaction IDs")
+        assertTrue(body.contains("\"interactionId\":\"return-bin\""), "Return bin should expose a Sigil drop-target interaction ID")
+        assertTrue(body.contains("\"interactionId\":\"inspection-dock\""), "Inspection dock should expose a Sigil drop-target interaction ID")
+        assertTrue(body.contains("\"drag\":{\"enabled\":true"), "Packages should declare Sigil drag metadata")
+        assertTrue(body.contains("\"dropTarget\":{\"enabled\":true"), "Routing targets should declare Sigil drop-target metadata")
+        assertTrue(body.contains("\"kind\":\"bob\""), "Scene should declare Sigil animation metadata")
         assertTrue(body.contains("Accessibility fallback"), "Should keep non-primary native fallback controls")
         assertFalse(body.contains("id=\"fifth-wall-game-root\""), "Should not expose the temporary client game mount")
         assertFalse(body.contains("model-viewer.min.js"), "Should not load model-viewer")
         assertFalse(body.contains("/static/fifth-wall-client-game.js"), "Should not load the temporary JS runtime")
+        assertFalse(body.contains("/static/fifth-wall-sigil-hydration.js"), "Should not pin Fifth Wall to the old custom Sigil bundle")
         assertFalse(body.contains("Conveyor Queue"), "Should not render queue cards as primary website UI")
         assertFalse(body.contains("Routing Console"), "Should not render a website routing console")
     }
@@ -125,7 +133,8 @@ class HydrationTest {
     fun `fifth wall client runtime is not required as static javascript`() {
         listOf(
             "/static/fifth-wall-client-game.js",
-            "/static/fifth-wall-interactions.js"
+            "/static/fifth-wall-interactions.js",
+            "/static/fifth-wall-sigil-hydration.js"
         ).forEach { path ->
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$baseUrl$path"))
