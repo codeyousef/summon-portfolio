@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ssr
 
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.ui.fifthwall.FifthWallController
 import code.yousef.portfolio.ui.fifthwall.FifthWallPage
 import code.yousef.portfolio.ui.fifthwall.FifthWallUiState
 import codes.yousef.summon.seo.HeadScope
@@ -8,13 +9,14 @@ import codes.yousef.summon.seo.HeadScope
 class FifthWallRenderer {
 
     internal fun fifthWallPage(
+        controller: FifthWallController,
         state: FifthWallUiState,
         locale: PortfolioLocale = PortfolioLocale.EN
     ): SummonPage {
         return SummonPage(
             head = headBlock(),
             content = {
-                FifthWallPage(state)
+                FifthWallPage(controller, state)
             },
             locale = locale
         )

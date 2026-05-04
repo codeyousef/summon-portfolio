@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.fifthwall
 
 import codes.yousef.sigil.schema.GeometryParams
 import codes.yousef.sigil.schema.GeometryType
+import codes.yousef.sigil.schema.HighlightPatch
 import codes.yousef.sigil.schema.AnimationEasing
 import codes.yousef.sigil.schema.AnimationKind
 import codes.yousef.sigil.schema.AnimationTrigger
@@ -13,8 +14,15 @@ import codes.yousef.sigil.schema.HitVolumeData
 import codes.yousef.sigil.schema.HitVolumeShape
 import codes.yousef.sigil.schema.InteractionMetadata
 import codes.yousef.sigil.schema.SceneAnimationData
+import codes.yousef.sigil.schema.SceneNodePatch
+import codes.yousef.sigil.schema.ScenePatch
 import codes.yousef.sigil.summon.canvas.MateriaCanvas
 import codes.yousef.sigil.summon.canvas.SceneConfig
+import codes.yousef.sigil.summon.canvas.SigilDomPatch
+import codes.yousef.sigil.summon.canvas.SigilDomPatchMode
+import codes.yousef.sigil.summon.canvas.SigilSceneEventCallbackResponse
+import codes.yousef.sigil.summon.canvas.SigilSceneEventHandler
+import codes.yousef.sigil.summon.canvas.SigilSceneEventMatch
 import codes.yousef.sigil.summon.components.SigilAmbientLight
 import codes.yousef.sigil.summon.components.SigilBox
 import codes.yousef.sigil.summon.components.SigilCamera
@@ -42,7 +50,7 @@ private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
 private val SCENE_NEUTRAL_LIGHT = argb("#d9ddd8")
 private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
-private val PACKAGE_DROP_GROUP = listOf("fifth-wall-package")
+private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
 private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
 private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click", "dragstart", "drag", "dragenter", "dragleave", "drop", "pointerup")
 private val TRUCK_COLOR_FALLBACKS = listOf(
@@ -65,6 +73,7 @@ private fun uniformScale(value: Float): List<Float> = listOf(value, value, value
 
 @Composable
 internal fun FifthWallScene(
+    controller: FifthWallController,
     level: FifthWallLevel,
     state: FifthWallUiState,
     focusedPackage: FifthWallPackage?
@@ -73,7 +82,8 @@ internal fun FifthWallScene(
         id = "fifth-wall-scene",
         width = "100%",
         height = "100%",
-        backgroundColor = argb(FifthWallTheme.BASE)
+        backgroundColor = argb(FifthWallTheme.BASE),
+        sceneEventHandlers = fifthWallSceneEventHandlers(controller, level, state)
     ) {
         SceneConfig(
             backgroundColor = argb(FifthWallTheme.BASE),
@@ -163,6 +173,176 @@ internal fun FifthWallScene(
         ""
     }
 }
+
+private fun fifthWallSceneEventHandlers(
+    controller: FifthWallController,
+    level: FifthWallLevel,
+    state: FifthWallUiState
+): List<SigilSceneEventHandler> {
+    val handlers = mutableListOf<SigilSceneEventHandler>()
+    val renderedPackageIds = state.queue.map { it.id }
+    val patchResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
+
+    state.queue.forEach { pkg ->
+        handlers += SigilSceneEventHandler(
+            match = SigilSceneEventMatch(type = "pointerdown", interactionId = "package:${pkg.id}"),
+            onEvent = { controller.selectPackage(pkg.id) },
+            onResponse = patchResponse
+        )
+
+        state.activeTrucks(level).forEachIndexed { index, _ ->
+            handlers += SigilSceneEventHandler(
+                match = SigilSceneEventMatch(
+                    type = "drop",
+                    sourceInteractionId = "package:${pkg.id}",
+                    targetInteractionId = "truck:$index",
+                    accepted = true
+                ),
+                onEvent = { controller.dropOnTruck(index, pkg.id) },
+                onResponse = patchResponse
+            )
+        }
+
+        handlers += SigilSceneEventHandler(
+            match = SigilSceneEventMatch(
+                type = "drop",
+                sourceInteractionId = "package:${pkg.id}",
+                targetInteractionId = "return-bin",
+                accepted = true
+            ),
+            onEvent = { controller.dropOnReturn(pkg.id) },
+            onResponse = patchResponse
+        )
+
+        handlers += SigilSceneEventHandler(
+            match = SigilSceneEventMatch(
+                type = "drop",
+                sourceInteractionId = "package:${pkg.id}",
+                targetInteractionId = "inspection-dock",
+                accepted = true
+            ),
+            onEvent = { controller.selectPackage(pkg.id) },
+            onResponse = patchResponse
+        )
+    }
+
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(type = "click", interactionId = "repair-wrench"),
+        onEvent = controller::repairGlitch,
+        onResponse = patchResponse
+    )
+
+    return handlers
+}
+
+private fun fifthWallSceneCallbackResponse(
+    controller: FifthWallController,
+    renderedPackageIds: List<String>
+): SigilSceneEventCallbackResponse {
+    val nextState = controller.state.value
+    val nextLevel = FifthWallLevels[nextState.levelIndex.coerceIn(FifthWallLevels.indices)]
+    return SigilSceneEventCallbackResponse(
+        action = "patch",
+        status = "ok",
+        scenePatch = fifthWallScenePatch(
+            level = nextLevel,
+            state = nextState,
+            renderedPackageIds = renderedPackageIds
+        ),
+        domPatches = fifthWallDomPatches(level = nextLevel, state = nextState)
+    )
+}
+
+private fun fifthWallScenePatch(
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    renderedPackageIds: List<String>
+): ScenePatch {
+    val visiblePackages = state.visiblePackages()
+    val visibleIds = visiblePackages.map { it.id }
+    val focusedId = state.focusPackage()?.id
+    val nodes = mutableListOf<SceneNodePatch>()
+
+    renderedPackageIds.forEach { packageId ->
+        val visibleIndex = visibleIds.indexOf(packageId)
+        val isVisible = visibleIndex >= 0
+        val focused = isVisible && packageId == focusedId
+        nodes += SceneNodePatch(
+            id = "package-$packageId",
+            position = if (isVisible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
+            visible = isVisible,
+            highlight = HighlightPatch(
+                active = focused,
+                color = SCENE_ACCENT,
+                intensity = if (focused) 0.75f else 0f
+            )
+        )
+    }
+
+    state.activeTrucks(level).forEachIndexed { index, rule ->
+        val routeLabel = "Truck ${'A' + index}"
+        val selected = state.lastRouteTarget == routeLabel
+        nodes += SceneNodePatch(
+            id = "truck-$index",
+            highlight = HighlightPatch(
+                active = selected,
+                color = when {
+                    !selected -> truckColor(index, rule)
+                    state.lastRouteAccepted == true -> SCENE_SUCCESS
+                    state.lastRouteAccepted == false -> SCENE_DANGER
+                    else -> truckColor(index, rule)
+                },
+                intensity = if (selected) 0.82f else 0f
+            )
+        )
+    }
+
+    val returnSelected = state.lastRouteTarget == "Return Bin"
+    nodes += SceneNodePatch(
+        id = "return-bin-target",
+        highlight = HighlightPatch(
+            active = returnSelected,
+            color = when {
+                !returnSelected -> SCENE_WARM
+                state.lastRouteAccepted == true -> SCENE_SUCCESS
+                state.lastRouteAccepted == false -> SCENE_DANGER
+                else -> SCENE_WARM
+            },
+            intensity = if (returnSelected) 0.82f else 0f
+        )
+    )
+    nodes += SceneNodePatch(id = "repair-wrench", visible = state.wrenchVisible)
+
+    return ScenePatch(nodes)
+}
+
+private fun fifthWallDomPatches(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+): List<SigilDomPatch> {
+    val focusedPackage = state.focusPackage()
+    return listOf(
+        textPatch("#fw-stat-level", "${level.id}/${FifthWallLevels.size}"),
+        textPatch("#fw-stat-score", state.score.toString()),
+        textPatch("#fw-stat-processed", "${state.processedCount(level)}/${level.packageCount}"),
+        textPatch("#fw-feedback-text", state.feedback),
+        textPatch("#fw-manifest-color", focusedPackage?.color?.name?.replaceFirstChar { it.uppercase() } ?: "--"),
+        textPatch("#fw-manifest-shape", focusedPackage?.shapeDisplayLabel() ?: "--"),
+        textPatch("#fw-manifest-weight", focusedPackage?.weight?.let { "$it kg" } ?: "--"),
+        textPatch("#fw-manifest-volume", focusedPackage?.volume?.let { "$it L" } ?: "--"),
+        textPatch("#fw-manifest-pattern", focusedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--"),
+        textPatch("#fw-manifest-destination", focusedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--"),
+        textPatch("#fw-manifest-geometry", focusedPackage?.geometry ?: "--"),
+        textPatch("#fw-manifest-label", focusedPackage?.labelText ?: "--")
+    )
+}
+
+private fun textPatch(selector: String, value: String): SigilDomPatch =
+    SigilDomPatch(
+        selector = selector,
+        text = value,
+        mode = SigilDomPatchMode.TEXT_CONTENT
+    )
 
 @Composable
 private fun WarehouseShell() {
@@ -443,20 +623,27 @@ private fun ConveyorDeck(
                 name = "conveyor-glitch-light"
             )
         }
-        state.visiblePackages().forEachIndexed { index, pkg ->
-            val selected = state.selectedPackageId == pkg.id || (state.selectedPackageId == null && index == 0)
+        val visiblePackageIds = state.visiblePackages().map { it.id }
+        state.queue.forEach { pkg ->
+            val visibleIndex = visiblePackageIds.indexOf(pkg.id)
+            val visible = visibleIndex >= 0
+            val selected = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
             PackageMesh(
                 pkg = pkg,
-                position = listOf(-4.9f + (index * 3.2f), 2.34f, 0f),
+                position = if (visible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
                 selected = selected,
-                emphasized = index == 0,
-                beltIndex = index,
-                level = level
+                emphasized = visibleIndex == 0,
+                beltIndex = visibleIndex,
+                level = level,
+                visible = visible
             )
         }
         ""
     }
 }
+
+private fun packageBeltPosition(index: Int): List<Float> =
+    listOf(-4.9f + (index * 3.2f), 2.34f, 0f)
 
 @Composable
 private fun TruckBay(
@@ -697,7 +884,9 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
                 emphasized = true,
                 beltIndex = -1,
                 level = null,
-                enlarged = true
+                enlarged = true,
+                interactive = false,
+                nodeId = "inspection-package-${pkg.id}"
             )
         } else {
             SigilModel(
@@ -722,7 +911,10 @@ private fun PackageMesh(
     emphasized: Boolean,
     beltIndex: Int,
     level: FifthWallLevel?,
-    enlarged: Boolean = false
+    enlarged: Boolean = false,
+    visible: Boolean = true,
+    interactive: Boolean = true,
+    nodeId: String = "package-${pkg.id}"
 ) {
     val baseColor = argb(pkg.color.hex)
     val scale = when {
@@ -742,10 +934,11 @@ private fun PackageMesh(
         position = position,
         rotation = listOf(0f, yaw + (beltIndex.coerceAtLeast(0) * 0.08f), 0f),
         scale = listOf(scale, scale, scale),
-        name = "package-${pkg.id}",
-        interaction = packageInteraction(pkg, enlarged),
+        visible = visible,
+        name = nodeId,
+        interaction = if (interactive) packageInteraction(pkg, enlarged) else null,
         animations = packageAnimations(pkg, beltIndex, selected, emphasized, enlarged),
-        id = "package-${pkg.id}"
+        id = nodeId
     ) {
         SigilBox(
             width = when (pkg.shape) {
@@ -888,10 +1081,10 @@ private fun PackageColorAccent(
 
 @Composable
 private fun WrenchProp(visible: Boolean) {
-    if (!visible) return
     SigilGroup(
         position = listOf(13.1f, 0.06f, 9.2f),
         rotation = listOf(0f, -0.42f, 0f),
+        visible = visible,
         name = "repair-wrench-prop",
         interaction = wrenchInteraction(),
         animations = listOf(
@@ -1086,7 +1279,7 @@ private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): Intera
             laneAxis = listOf(1f, 0f, 0f),
             min = -7.5f,
             max = 13.5f,
-            dropGroups = PACKAGE_DROP_GROUP
+            dropGroups = ROUTING_TARGET_GROUP
         ),
         dropTarget = null
     )

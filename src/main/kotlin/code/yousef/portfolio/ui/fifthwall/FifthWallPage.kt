@@ -15,7 +15,10 @@ import java.nio.charset.StandardCharsets
 private const val FifthWallActionPath = "/fifth-wall"
 
 @Composable
-internal fun FifthWallPage(state: FifthWallUiState) {
+internal fun FifthWallPage(
+    controller: FifthWallController,
+    state: FifthWallUiState
+) {
     val level = FifthWallLevels[state.levelIndex.coerceIn(FifthWallLevels.indices)]
     val focusedPackage = state.focusPackage()
     val sceneClasses = buildString {
@@ -31,6 +34,7 @@ internal fun FifthWallPage(state: FifthWallUiState) {
                 Box(modifier = Modifier().className("fw-primary")) {
                     Box(modifier = Modifier().className(sceneClasses)) {
                         FifthWallScene(
+                            controller = controller,
                             level = level,
                             state = state,
                             focusedPackage = focusedPackage
@@ -74,9 +78,13 @@ private fun TopBar(
         }
 
         Box(modifier = Modifier().className("fw-stats")) {
-            StatCell(label = "Level", value = "${level.id}/${FifthWallLevels.size}")
-            StatCell(label = "Score", value = state.score.toString())
-            StatCell(label = "Processed", value = "${state.processedCount(level)}/${level.packageCount}")
+            StatCell(label = "Level", value = "${level.id}/${FifthWallLevels.size}", valueId = "fw-stat-level")
+            StatCell(label = "Score", value = state.score.toString(), valueId = "fw-stat-score")
+            StatCell(
+                label = "Processed",
+                value = "${state.processedCount(level)}/${level.packageCount}",
+                valueId = "fw-stat-processed"
+            )
         }
 
         Box(modifier = Modifier().className("fw-actions")) {
@@ -241,10 +249,14 @@ private fun SceneChip(text: String) {
 }
 
 @Composable
-private fun StatCell(label: String, value: String) {
+private fun StatCell(label: String, value: String, valueId: String? = null) {
     Box(modifier = Modifier().className("fw-stat")) {
         Text(text = label, modifier = Modifier().className("fw-stat-label"))
-        Text(text = value, modifier = Modifier().className("fw-stat-value"))
+        Text(
+            text = value,
+            modifier = valueId?.let { Modifier().className("fw-stat-value").id(it) }
+                ?: Modifier().className("fw-stat-value")
+        )
     }
 }
 
@@ -282,7 +294,7 @@ private fun FeedbackBanner(state: FifthWallUiState) {
         }
     }
     Box(modifier = Modifier().className(classes)) {
-        Text(text = state.feedback)
+        Text(text = state.feedback, modifier = Modifier().id("fw-feedback-text"))
     }
 }
 
@@ -290,22 +302,50 @@ private fun FeedbackBanner(state: FifthWallUiState) {
 private fun ManifestCard(selectedPackage: FifthWallPackage?) {
     Box(modifier = Modifier().className("fw-panel")) {
         Text(text = "Package Manifest", modifier = Modifier().className("fw-panel-title"))
-        ManifestRow(label = "Color", value = selectedPackage?.color?.name?.replaceFirstChar { it.uppercase() } ?: "--")
-        ManifestRow(label = "Shape", value = selectedPackage?.shapeDisplayLabel() ?: "--")
-        ManifestRow(label = "Weight", value = selectedPackage?.weight?.let { "$it kg" } ?: "--")
-        ManifestRow(label = "Volume", value = selectedPackage?.volume?.let { "$it L" } ?: "--")
-        ManifestRow(label = "Pattern", value = selectedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--")
-        ManifestRow(label = "Destination", value = selectedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--")
-        selectedPackage?.geometry?.let { ManifestRow(label = "Geometry", value = it) }
-        selectedPackage?.labelText?.let { ManifestRow(label = "Label", value = it) }
+        ManifestRow(
+            label = "Color",
+            value = selectedPackage?.color?.name?.replaceFirstChar { it.uppercase() } ?: "--",
+            valueId = "fw-manifest-color"
+        )
+        ManifestRow(
+            label = "Shape",
+            value = selectedPackage?.shapeDisplayLabel() ?: "--",
+            valueId = "fw-manifest-shape"
+        )
+        ManifestRow(
+            label = "Weight",
+            value = selectedPackage?.weight?.let { "$it kg" } ?: "--",
+            valueId = "fw-manifest-weight"
+        )
+        ManifestRow(
+            label = "Volume",
+            value = selectedPackage?.volume?.let { "$it L" } ?: "--",
+            valueId = "fw-manifest-volume"
+        )
+        ManifestRow(
+            label = "Pattern",
+            value = selectedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--",
+            valueId = "fw-manifest-pattern"
+        )
+        ManifestRow(
+            label = "Destination",
+            value = selectedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--",
+            valueId = "fw-manifest-destination"
+        )
+        ManifestRow(label = "Geometry", value = selectedPackage?.geometry ?: "--", valueId = "fw-manifest-geometry")
+        ManifestRow(label = "Label", value = selectedPackage?.labelText ?: "--", valueId = "fw-manifest-label")
     }
 }
 
 @Composable
-private fun ManifestRow(label: String, value: String) {
+private fun ManifestRow(label: String, value: String, valueId: String? = null) {
     Box(modifier = Modifier().className("fw-manifest-row")) {
         Text(text = label, modifier = Modifier().className("fw-manifest-label"))
-        Text(text = value, modifier = Modifier().className("fw-manifest-value"))
+        Text(
+            text = value,
+            modifier = valueId?.let { Modifier().className("fw-manifest-value").id(it) }
+                ?: Modifier().className("fw-manifest-value")
+        )
     }
 }
 

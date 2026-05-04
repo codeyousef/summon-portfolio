@@ -29,11 +29,16 @@ import codes.yousef.aether.core.session.session
 import codes.yousef.aether.web.Router
 import codes.yousef.aether.web.pathParam
 import codes.yousef.aether.web.pathParamOrThrow
+import codes.yousef.sigil.schema.SigilJson
+import codes.yousef.sigil.summon.canvas.SigilSceneCallbackRegistry
+import codes.yousef.sigil.summon.canvas.SigilSceneEventCallbackResponse
+import codes.yousef.summon.runtime.CallbackRegistry
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlin.time.toJavaInstant
 
 private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
@@ -162,10 +167,42 @@ internal fun Router.portfolioRoutes(
             ?.takeIf { it.isNotBlank() }
             ?.let { action -> exchange.handleFifthWallAction(controller, action) }
         val page = fifthWallRenderer.fifthWallPage(
+            controller = controller,
             state = controller.state.value,
             locale = PortfolioLocale.EN
         )
         exchange.respondSummonPage(page)
+    }
+
+    post("/summon/callback/:callbackId") { exchange ->
+        val callbackId = exchange.pathParam("callbackId").orEmpty()
+        if (callbackId.isBlank()) {
+            exchange.respondJson(400, mapOf("error" to "Missing callback id"))
+            return@post
+        }
+
+        val executed = CallbackRegistry.executeCallback(callbackId)
+        if (executed) {
+            exchange.respondJson(200, mapOf("ok" to true))
+        } else {
+            exchange.respondJson(404, mapOf("error" to "Callback not found"))
+        }
+    }
+
+    post("/sigil/callback/:callbackId") { exchange ->
+        val callbackId = exchange.pathParam("callbackId").orEmpty()
+        if (callbackId.isBlank()) {
+            exchange.respondJson(400, mapOf("error" to "Missing callback id"))
+            return@post
+        }
+
+        val result = SigilSceneCallbackRegistry.executeCallback(callbackId)
+        val body = SigilJson.encodeToString(
+            SigilSceneEventCallbackResponse.serializer(),
+            result.response
+        )
+        exchange.response.setHeader("Content-Type", "application/json")
+        exchange.respond(result.statusCode, body)
     }
 
     // Legacy redirects
