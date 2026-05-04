@@ -3,9 +3,21 @@ package code.yousef.portfolio.building.server
 import code.yousef.portfolio.building.auth.BuildingAuthProvider
 import code.yousef.portfolio.building.auth.BuildingSession
 import code.yousef.portfolio.building.auth.PasswordResetService
+import code.yousef.portfolio.building.bulk.BulkDateMode
+import code.yousef.portfolio.building.bulk.BulkDateUnit
+import code.yousef.portfolio.building.bulk.BulkDateUpdate
+import code.yousef.portfolio.building.bulk.BulkOperationResult
+import code.yousef.portfolio.building.bulk.BuildingBulkFormParser
+import code.yousef.portfolio.building.bulk.parseBulkDate
 import code.yousef.portfolio.building.import.ExcelImportService
+import code.yousef.portfolio.building.model.Apartment
+import code.yousef.portfolio.building.model.ApartmentWithDetails
 import code.yousef.portfolio.building.model.Building
+import code.yousef.portfolio.building.model.Lease
+import code.yousef.portfolio.building.model.Payment
+import code.yousef.portfolio.building.model.PaymentWithDetails
 import code.yousef.portfolio.building.model.PaymentStatus
+import code.yousef.portfolio.building.model.Tenant
 import code.yousef.portfolio.building.repo.BuildingRepository
 import code.yousef.portfolio.building.repo.BuildingService
 import code.yousef.portfolio.building.ui.*
@@ -333,7 +345,202 @@ fun Router.buildingRoutes(
         
         exchange.redirect("/buildings")
     }
-    
+
+    // Bulk building review
+    post("/buildings/bulk/review") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val params = exchange.receiveParameters()
+        val action = normalizeBulkAction(params["bulkAction"], allowDates = false)
+        val ids = BuildingBulkFormParser.selectedIds(params)
+
+        if (ids.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_REVIEW, BuildingStrings.SELECT_AT_LEAST_ONE, "/buildings"),
+                400
+            )
+            return@post
+        }
+
+        val buildings = service.getBuildingsByIds(ids)
+        if (buildings.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_REVIEW, "السجلات المحددة لم تعد موجودة", "/buildings"),
+                400
+            )
+            return@post
+        }
+
+        exchange.respondSummonPage(
+            bulkBuildingsReviewPage(
+                username = session.username,
+                action = action,
+                buildings = buildings,
+                cascadePlan = if (action == "delete") service.planBuildingDeletion(ids) else null,
+                errorMessage = null
+            )
+        )
+    }
+
+    // Bulk building apply
+    post("/buildings/bulk/apply") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val params = exchange.receiveParameters()
+        val action = normalizeBulkAction(params["bulkAction"], allowDates = false)
+        val ids = BuildingBulkFormParser.recordIds(params)
+
+        if (ids.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_RESULT, BuildingStrings.SELECT_AT_LEAST_ONE, "/buildings"),
+                400
+            )
+            return@post
+        }
+
+        if (action == "delete") {
+            val result = service.deleteBuildingsCascade(ids)
+            exchange.respondSummonPage(
+                bulkResultPage(session.username, result, "/buildings", "تم حذف العمارات المحددة")
+            )
+            return@post
+        }
+
+        val buildings = service.getBuildingsByIds(ids)
+        val updates = try {
+            buildBuildingUpdates(buildings, params)
+        } catch (e: IllegalArgumentException) {
+            exchange.respondSummonPage(
+                bulkBuildingsReviewPage(session.username, "edit", buildings, null, e.message ?: "المدخلات غير صالحة"),
+                400
+            )
+            return@post
+        }
+        val result = service.bulkUpdateBuildings(updates).withRequestedIds(ids)
+        exchange.respondSummonPage(
+            bulkResultPage(session.username, result, "/buildings", "تم تحديث العمارات المحددة")
+        )
+    }
+
+    // Bulk apartment/unit review
+    post("/buildings/:id/units/bulk/review") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val buildingId = exchange.pathParam("id") ?: ""
+        val building = repository.getBuilding(buildingId)
+
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@post
+        }
+
+        val params = exchange.receiveParameters()
+        val action = normalizeBulkAction(params["bulkAction"], allowDates = true)
+        val ids = BuildingBulkFormParser.selectedIds(params)
+
+        if (ids.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_REVIEW, BuildingStrings.SELECT_AT_LEAST_ONE, "/buildings/$buildingId"),
+                400
+            )
+            return@post
+        }
+
+        val apartments = service.getApartmentsWithDetailsByIds(ids)
+            .filter { it.apartment.buildingId == buildingId }
+        if (apartments.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_REVIEW, "الشقق المحددة لم تعد موجودة", "/buildings/$buildingId"),
+                400
+            )
+            return@post
+        }
+
+        exchange.respondSummonPage(
+            bulkApartmentsReviewPage(
+                username = session.username,
+                building = building,
+                action = action,
+                apartments = apartments,
+                cascadePlan = if (action == "delete") service.planApartmentDeletion(apartments.map { it.apartment.id }) else null,
+                errorMessage = null
+            )
+        )
+    }
+
+    // Bulk apartment/unit apply
+    post("/buildings/:id/units/bulk/apply") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val buildingId = exchange.pathParam("id") ?: ""
+        val building = repository.getBuilding(buildingId)
+
+        if (building == null) {
+            exchange.redirect("/buildings")
+            return@post
+        }
+
+        val params = exchange.receiveParameters()
+        val action = normalizeBulkAction(params["bulkAction"], allowDates = true)
+        val ids = BuildingBulkFormParser.recordIds(params)
+        val apartments = service.getApartmentsWithDetailsByIds(ids)
+            .filter { it.apartment.buildingId == buildingId }
+        val apartmentIds = apartments.map { it.apartment.id }
+
+        if (ids.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_RESULT, BuildingStrings.SELECT_AT_LEAST_ONE, "/buildings/$buildingId"),
+                400
+            )
+            return@post
+        }
+
+        when (action) {
+            "delete" -> {
+                val result = service.deleteApartmentsCascade(apartmentIds).withRequestedIds(ids)
+                exchange.respondSummonPage(
+                    bulkResultPage(session.username, result, "/buildings/$buildingId", "تم حذف الشقق المحددة")
+                )
+            }
+            "dates" -> {
+                val fields = selectedDateFields(params)
+                val update = try {
+                    if (fields.isEmpty()) throw IllegalArgumentException("اختر حقل تاريخ واحداً على الأقل")
+                    parseBulkDateUpdate(params)
+                } catch (e: IllegalArgumentException) {
+                    exchange.respondSummonPage(
+                        bulkApartmentsReviewPage(session.username, building, "dates", apartments, null, e.message ?: "المدخلات غير صالحة"),
+                        400
+                    )
+                    return@post
+                }
+                val result = try {
+                    service.bulkUpdateLeaseDatesForApartments(apartmentIds, fields, update).withRequestedIds(ids)
+                } catch (e: IllegalArgumentException) {
+                    exchange.respondSummonPage(
+                        bulkApartmentsReviewPage(session.username, building, "dates", apartments, null, e.message ?: "المدخلات غير صالحة"),
+                        400
+                    )
+                    return@post
+                }
+                exchange.respondSummonPage(
+                    bulkResultPage(session.username, result, "/buildings/$buildingId", "تم تحديث تواريخ العقود المحددة")
+                )
+            }
+            else -> {
+                val payload = try {
+                    buildApartmentUpdates(apartments, params)
+                } catch (e: IllegalArgumentException) {
+                    exchange.respondSummonPage(
+                        bulkApartmentsReviewPage(session.username, building, "edit", apartments, null, e.message ?: "المدخلات غير صالحة"),
+                        400
+                    )
+                    return@post
+                }
+                val result = service.bulkUpdateApartments(payload.apartments, payload.tenants, payload.leases).withRequestedIds(ids)
+                exchange.respondSummonPage(
+                    bulkResultPage(session.username, result, "/buildings/$buildingId", "تم تحديث الشقق المحددة")
+                )
+            }
+        }
+    }
+
     // Payments list
     get("/payments") { exchange ->
         val session = exchange.requireAuth() ?: return@get
@@ -343,6 +550,107 @@ fun Router.buildingRoutes(
         }
         val payments = service.getPaymentsWithDetails(statusFilter = statusFilter)
         exchange.respondSummonPage(paymentsListPage(session.username, payments, statusParam))
+    }
+
+    // Bulk payment review
+    post("/payments/bulk/review") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val params = exchange.receiveParameters()
+        val action = normalizeBulkAction(params["bulkAction"], allowDates = true)
+        val ids = BuildingBulkFormParser.selectedIds(params)
+
+        if (ids.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_REVIEW, BuildingStrings.SELECT_AT_LEAST_ONE, "/payments"),
+                400
+            )
+            return@post
+        }
+
+        val payments = service.getPaymentsWithDetailsByIds(ids)
+        if (payments.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_REVIEW, "الدفعات المحددة لم تعد موجودة", "/payments"),
+                400
+            )
+            return@post
+        }
+
+        exchange.respondSummonPage(
+            bulkPaymentsReviewPage(
+                username = session.username,
+                action = action,
+                payments = payments,
+                cascadePlan = if (action == "delete") service.planPaymentDeletion(ids) else null,
+                errorMessage = null
+            )
+        )
+    }
+
+    // Bulk payment apply
+    post("/payments/bulk/apply") { exchange ->
+        val session = exchange.requireAuth() ?: return@post
+        val params = exchange.receiveParameters()
+        val action = normalizeBulkAction(params["bulkAction"], allowDates = true)
+        val ids = BuildingBulkFormParser.recordIds(params)
+        val payments = service.getPaymentsWithDetailsByIds(ids)
+
+        if (ids.isEmpty()) {
+            exchange.respondSummonPage(
+                bulkErrorPage(session.username, BuildingStrings.BULK_RESULT, BuildingStrings.SELECT_AT_LEAST_ONE, "/payments"),
+                400
+            )
+            return@post
+        }
+
+        when (action) {
+            "delete" -> {
+                val result = service.deletePayments(ids)
+                exchange.respondSummonPage(
+                    bulkResultPage(session.username, result, "/payments", "تم حذف الدفعات المحددة")
+                )
+            }
+            "dates" -> {
+                val fields = selectedDateFields(params)
+                val update = try {
+                    if (fields.isEmpty()) throw IllegalArgumentException("اختر حقل تاريخ واحداً على الأقل")
+                    parseBulkDateUpdate(params)
+                } catch (e: IllegalArgumentException) {
+                    exchange.respondSummonPage(
+                        bulkPaymentsReviewPage(session.username, "dates", payments, null, e.message ?: "المدخلات غير صالحة"),
+                        400
+                    )
+                    return@post
+                }
+                val result = try {
+                    service.bulkUpdatePaymentDates(ids, fields, update)
+                } catch (e: IllegalArgumentException) {
+                    exchange.respondSummonPage(
+                        bulkPaymentsReviewPage(session.username, "dates", payments, null, e.message ?: "المدخلات غير صالحة"),
+                        400
+                    )
+                    return@post
+                }
+                exchange.respondSummonPage(
+                    bulkResultPage(session.username, result, "/payments", "تم تحديث تواريخ الدفعات المحددة")
+                )
+            }
+            else -> {
+                val updates = try {
+                    buildPaymentUpdates(payments, params)
+                } catch (e: IllegalArgumentException) {
+                    exchange.respondSummonPage(
+                        bulkPaymentsReviewPage(session.username, "edit", payments, null, e.message ?: "المدخلات غير صالحة"),
+                        400
+                    )
+                    return@post
+                }
+                val result = service.bulkUpdatePayments(updates).withRequestedIds(ids)
+                exchange.respondSummonPage(
+                    bulkResultPage(session.username, result, "/payments", "تم تحديث الدفعات المحددة")
+                )
+            }
+        }
     }
     
     // Apartment payments
@@ -711,6 +1019,138 @@ private fun paymentsListPage(
     content = { PaymentsListPage(username = username, payments = payments, currentFilter = currentFilter) }
 )
 
+private fun bulkErrorPage(
+    username: String,
+    title: String,
+    message: String,
+    returnHref: String
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("$title - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = { BulkErrorPage(username = username, title = title, message = message, returnHref = returnHref) }
+)
+
+private fun bulkResultPage(
+    username: String,
+    result: BulkOperationResult,
+    returnHref: String,
+    message: String
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.BULK_RESULT} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = {
+        BulkResultPage(
+            username = username,
+            title = BuildingStrings.BULK_RESULT,
+            result = result,
+            returnHref = returnHref,
+            message = message
+        )
+    }
+)
+
+private fun bulkBuildingsReviewPage(
+    username: String,
+    action: String,
+    buildings: List<Building>,
+    cascadePlan: code.yousef.portfolio.building.bulk.BulkCascadePlan?,
+    errorMessage: String?
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = {
+        BulkBuildingsReviewPage(
+            username = username,
+            action = action,
+            buildings = buildings,
+            cascadePlan = cascadePlan,
+            errorMessage = errorMessage
+        )
+    }
+)
+
+private fun bulkApartmentsReviewPage(
+    username: String,
+    building: Building,
+    action: String,
+    apartments: List<ApartmentWithDetails>,
+    cascadePlan: code.yousef.portfolio.building.bulk.BulkCascadePlan?,
+    errorMessage: String?
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = {
+        BulkApartmentsReviewPage(
+            username = username,
+            building = building,
+            action = action,
+            apartments = apartments,
+            cascadePlan = cascadePlan,
+            errorMessage = errorMessage
+        )
+    }
+)
+
+private fun bulkPaymentsReviewPage(
+    username: String,
+    action: String,
+    payments: List<PaymentWithDetails>,
+    cascadePlan: code.yousef.portfolio.building.bulk.BulkCascadePlan?,
+    errorMessage: String?
+): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.style(BuildingTheme.globalStyles)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = {
+        BulkPaymentsReviewPage(
+            username = username,
+            action = action,
+            payments = payments,
+            cascadePlan = cascadePlan,
+            errorMessage = errorMessage
+        )
+    }
+)
+
 private fun importPage(
     username: String,
     successMessage: String?,
@@ -794,6 +1234,163 @@ private fun editApartmentPage(
         )
     }
 )
+
+private data class ApartmentBulkUpdatePayload(
+    val apartments: List<Apartment>,
+    val tenants: List<Tenant>,
+    val leases: List<Lease>
+)
+
+private fun normalizeBulkAction(action: String?, allowDates: Boolean): String {
+    return when (action) {
+        "delete" -> "delete"
+        "dates" -> if (allowDates) "dates" else "edit"
+        else -> "edit"
+    }
+}
+
+private fun selectedDateFields(params: Map<String, String>): Set<String> = params.keys
+    .filter { it.startsWith("field_") }
+    .map { it.removePrefix("field_") }
+    .filter { it.isNotBlank() }
+    .toSet()
+
+private fun BulkOperationResult.withRequestedIds(ids: Collection<String>): BulkOperationResult {
+    val requested = ids.toSet().size
+    return copy(
+        requested = requested,
+        skipped = (requested - applied).coerceAtLeast(0)
+    )
+}
+
+private fun parseBulkDateUpdate(params: Map<String, String>): BulkDateUpdate {
+    return if (params["dateMode"] == "shift") {
+        val amount = params["shiftAmount"]?.trim()?.toLongOrNull()
+            ?: throw IllegalArgumentException("${BuildingStrings.SHIFT_AMOUNT} مطلوب كرقم صحيح")
+        val unit = when (params["shiftUnit"]) {
+            "months" -> BulkDateUnit.MONTHS
+            else -> BulkDateUnit.DAYS
+        }
+        BulkDateUpdate(
+            mode = BulkDateMode.SHIFT,
+            shiftAmount = amount,
+            shiftUnit = unit
+        )
+    } else {
+        BulkDateUpdate(
+            mode = BulkDateMode.SET,
+            setDate = parseBulkDate(params["setDate"].orEmpty(), BuildingStrings.SET_DATE)
+        )
+    }
+}
+
+private fun buildBuildingUpdates(buildings: List<Building>, params: Map<String, String>): List<Building> =
+    buildings.map { building ->
+        val name = params["name_${building.id}"]?.trim().orEmpty()
+        if (name.isBlank()) throw IllegalArgumentException("اسم العمارة مطلوب")
+        building.copy(
+            name = name,
+            address = params["address_${building.id}"]?.trim().orEmpty()
+        )
+    }
+
+private fun buildApartmentUpdates(
+    details: List<ApartmentWithDetails>,
+    params: Map<String, String>
+): ApartmentBulkUpdatePayload {
+    val apartments = mutableListOf<Apartment>()
+    val tenants = mutableListOf<Tenant>()
+    val leases = mutableListOf<Lease>()
+
+    details.forEach { detail ->
+        val id = detail.apartment.id
+        val unitNumber = params["unitNumber_$id"]?.trim().orEmpty()
+        if (unitNumber.isBlank()) throw IllegalArgumentException("رقم الشقة مطلوب")
+
+        val floorText = params["floor_$id"]?.trim().orEmpty()
+        val floor = if (floorText.isBlank()) {
+            null
+        } else {
+            floorText.toIntOrNull() ?: throw IllegalArgumentException("الدور يجب أن يكون رقماً صحيحاً")
+        }
+
+        apartments += detail.apartment.copy(
+            unitNumber = unitNumber,
+            floor = floor,
+            notes = params["apartmentNotes_$id"]?.trim().orEmpty()
+        )
+
+        detail.tenant?.let { tenant ->
+            val tenantName = params["tenantName_$id"]?.trim().orEmpty()
+            if (tenantName.isBlank()) throw IllegalArgumentException("اسم المستأجر مطلوب")
+            tenants += tenant.copy(
+                name = tenantName,
+                phone = params["tenantPhone_$id"]?.trim().orEmpty(),
+                email = params["tenantEmail_$id"]?.trim().orEmpty(),
+                nationalId = params["tenantNationalId_$id"]?.trim().orEmpty(),
+                notes = params["tenantNotes_$id"]?.trim().orEmpty()
+            )
+        }
+
+        detail.currentLease?.let { lease ->
+            val annualRent = params["annualRent_$id"]?.trim()?.toDoubleOrNull()
+                ?: throw IllegalArgumentException("الإيجار السنوي يجب أن يكون رقماً")
+            if (annualRent < 0) throw IllegalArgumentException("الإيجار السنوي لا يمكن أن يكون سالباً")
+            val startDate = params["startDate_$id"]?.trim().orEmpty()
+            val endDate = params["endDate_$id"]?.trim().orEmpty()
+            parseBulkDate(startDate, BuildingStrings.START_DATE)
+            parseBulkDate(endDate, BuildingStrings.END_DATE)
+
+            leases += lease.copy(
+                annualRent = annualRent,
+                startDate = startDate,
+                endDate = endDate,
+                notes = params["leaseNotes_$id"]?.trim().orEmpty()
+            )
+        }
+    }
+
+    return ApartmentBulkUpdatePayload(apartments = apartments, tenants = tenants, leases = leases)
+}
+
+private fun buildPaymentUpdates(details: List<PaymentWithDetails>, params: Map<String, String>): List<Payment> =
+    details.map { detail ->
+        val payment = detail.payment
+        val id = payment.id
+        val paymentNumber = params["paymentNumber_$id"]?.trim()?.toIntOrNull()
+            ?: throw IllegalArgumentException("رقم الدفعة يجب أن يكون رقماً صحيحاً")
+        if (paymentNumber <= 0) throw IllegalArgumentException("رقم الدفعة يجب أن يكون أكبر من صفر")
+
+        val amount = params["amount_$id"]?.trim()?.toDoubleOrNull()
+            ?: throw IllegalArgumentException("مبلغ الدفعة يجب أن يكون رقماً")
+        if (amount < 0) throw IllegalArgumentException("مبلغ الدفعة لا يمكن أن يكون سالباً")
+
+        val periodStart = params["periodStart_$id"]?.trim().orEmpty()
+        val periodEnd = params["periodEnd_$id"]?.trim().orEmpty()
+        val dueDate = params["dueDate_$id"]?.trim().orEmpty()
+        val paidDate = params["paidDate_$id"]?.trim().orEmpty().ifBlank { null }
+        parseBulkDate(periodStart, "${BuildingStrings.PERIOD} - ${BuildingStrings.FROM}")
+        parseBulkDate(periodEnd, "${BuildingStrings.PERIOD} - ${BuildingStrings.TO}")
+        parseBulkDate(dueDate, BuildingStrings.DUE_DATE)
+        paidDate?.let { parseBulkDate(it, BuildingStrings.PAID_DATE) }
+
+        val status = try {
+            PaymentStatus.valueOf(params["status_$id"].orEmpty())
+        } catch (_: Exception) {
+            throw IllegalArgumentException("حالة الدفعة غير صالحة")
+        }
+
+        payment.copy(
+            paymentNumber = paymentNumber,
+            amount = amount,
+            periodStart = periodStart,
+            periodEnd = periodEnd,
+            dueDate = dueDate,
+            paidDate = paidDate,
+            status = status,
+            notes = params["notes_$id"]?.trim().orEmpty()
+        )
+    }
 
 // Multipart parsing helpers
 private fun extractBoundary(contentType: String): String? {

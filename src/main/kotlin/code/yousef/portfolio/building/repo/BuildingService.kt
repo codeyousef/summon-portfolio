@@ -1,5 +1,14 @@
 package code.yousef.portfolio.building.repo
 
+import code.yousef.portfolio.building.bulk.BulkCascadePlan
+import code.yousef.portfolio.building.bulk.BulkDateUpdate
+import code.yousef.portfolio.building.bulk.BulkOperationResult
+import code.yousef.portfolio.building.bulk.applyBulkDateUpdate
+import code.yousef.portfolio.building.bulk.normalizePaymentStatusForDueDate
+import code.yousef.portfolio.building.bulk.orphanedTenantIdsAfterRemovingLeases
+import code.yousef.portfolio.building.bulk.planApartmentCascadeDelete
+import code.yousef.portfolio.building.bulk.planBuildingCascadeDelete
+import code.yousef.portfolio.building.bulk.planPaymentDelete
 import code.yousef.portfolio.building.model.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -202,5 +211,223 @@ class BuildingService(private val repository: BuildingRepository) {
                 paidDate = paidDate
             )
         )
+    }
+
+    fun getBuildingsByIds(ids: Collection<String>): List<Building> {
+        val requested = ids.toSet()
+        return repository.listBuildings().filter { it.id in requested }
+    }
+
+    fun getApartmentsWithDetailsByIds(ids: Collection<String>): List<ApartmentWithDetails> {
+        val requested = ids.toSet()
+        val apartments = repository.listApartments().filter { it.id in requested }
+        val buildings = repository.listBuildings().associateBy { it.id }
+        val leases = repository.listLeases()
+        val tenants = repository.listTenants().associateBy { it.id }
+        val payments = repository.listPayments()
+        val today = LocalDate.now()
+
+        return apartments.map { apartment ->
+            val currentLease = leases
+                .filter { it.unitId == apartment.id }
+                .filter { lease ->
+                    try {
+                        val endDate = LocalDate.parse(lease.endDate, dateFormatter)
+                        !endDate.isBefore(today)
+                    } catch (_: Exception) {
+                        lease.annualRent > 0
+                    }
+                }
+                .maxByOrNull { it.endDate.ifBlank { "9999-99-99" } }
+            ApartmentWithDetails(
+                apartment = apartment,
+                building = buildings[apartment.buildingId],
+                currentLease = currentLease,
+                tenant = currentLease?.let { tenants[it.tenantId] },
+                payments = currentLease?.let { lease ->
+                    payments.filter { it.leaseId == lease.id }.sortedBy { it.paymentNumber }
+                } ?: emptyList()
+            )
+        }.sortedBy { it.apartment.unitNumber }
+    }
+
+    fun getPaymentsWithDetailsByIds(ids: Collection<String>): List<PaymentWithDetails> {
+        val requested = ids.toSet()
+        return getPaymentsWithDetails().filter { it.payment.id in requested }
+    }
+
+    fun planBuildingDeletion(ids: Collection<String>): BulkCascadePlan =
+        planBuildingCascadeDelete(
+            selectedIds = ids,
+            buildings = repository.listBuildings(),
+            apartments = repository.listApartments(),
+            leases = repository.listLeases(),
+            payments = repository.listPayments()
+        )
+
+    fun planApartmentDeletion(ids: Collection<String>): BulkCascadePlan =
+        planApartmentCascadeDelete(
+            selectedIds = ids,
+            apartments = repository.listApartments(),
+            leases = repository.listLeases(),
+            payments = repository.listPayments()
+        )
+
+    fun planPaymentDeletion(ids: Collection<String>): BulkCascadePlan =
+        planPaymentDelete(ids, repository.listPayments())
+
+    fun bulkUpdateBuildings(updates: List<Building>): BulkOperationResult {
+        val existingIds = repository.listBuildings().map { it.id }.toSet()
+        val applicable = updates.filter { it.id in existingIds }
+        applicable.forEach(repository::upsertBuilding)
+        return BulkOperationResult(
+            requested = updates.map { it.id }.distinct().size,
+            applied = applicable.size,
+            skipped = updates.map { it.id }.distinct().size - applicable.size
+        )
+    }
+
+    fun bulkUpdateApartments(
+        apartments: List<Apartment>,
+        tenants: List<Tenant>,
+        leases: List<Lease>
+    ): BulkOperationResult {
+        val existingApartmentIds = repository.listApartments().map { it.id }.toSet()
+        val applicableApartments = apartments.filter { it.id in existingApartmentIds }
+        val existingTenantIds = repository.listTenants().map { it.id }.toSet()
+        val existingLeaseIds = repository.listLeases().map { it.id }.toSet()
+
+        applicableApartments.forEach(repository::upsertApartment)
+        tenants.filter { it.id in existingTenantIds }.forEach(repository::upsertTenant)
+        leases.filter { it.id in existingLeaseIds }.forEach(repository::upsertLease)
+
+        return BulkOperationResult(
+            requested = apartments.map { it.id }.distinct().size,
+            applied = applicableApartments.size,
+            skipped = apartments.map { it.id }.distinct().size - applicableApartments.size
+        )
+    }
+
+    fun bulkUpdatePayments(updates: List<Payment>): BulkOperationResult {
+        val existingIds = repository.listPayments().map { it.id }.toSet()
+        val applicable = updates.filter { it.id in existingIds }
+        applicable.forEach(repository::upsertPayment)
+        return BulkOperationResult(
+            requested = updates.map { it.id }.distinct().size,
+            applied = applicable.size,
+            skipped = updates.map { it.id }.distinct().size - applicable.size
+        )
+    }
+
+    fun bulkUpdatePaymentDates(
+        ids: Collection<String>,
+        fields: Set<String>,
+        update: BulkDateUpdate,
+        today: LocalDate = LocalDate.now()
+    ): BulkOperationResult {
+        val requested = ids.toSet()
+        val payments = repository.listPayments().filter { it.id in requested }
+        val updates = payments.map { payment ->
+            var updated = payment
+            var dueDateChanged = false
+            fields.forEach { field ->
+                updated = when (field) {
+                    "periodStart" -> updated.copy(periodStart = applyBulkDateUpdate(updated.periodStart, update, "بداية الفترة"))
+                    "periodEnd" -> updated.copy(periodEnd = applyBulkDateUpdate(updated.periodEnd, update, "نهاية الفترة"))
+                    "dueDate" -> {
+                        dueDateChanged = true
+                        updated.copy(dueDate = applyBulkDateUpdate(updated.dueDate, update, "تاريخ الاستحقاق"))
+                    }
+                    "paidDate" -> updated.copy(paidDate = applyBulkDateUpdate(updated.paidDate, update, "تاريخ السداد"))
+                    else -> updated
+                }
+            }
+            if (dueDateChanged) {
+                updated = updated.copy(status = normalizePaymentStatusForDueDate(updated, today))
+            }
+            updated
+        }
+        updates.forEach(repository::upsertPayment)
+        return BulkOperationResult(
+            requested = requested.size,
+            applied = payments.size,
+            skipped = requested.size - payments.size
+        )
+    }
+
+    fun bulkUpdateLeaseDatesForApartments(
+        apartmentIds: Collection<String>,
+        fields: Set<String>,
+        update: BulkDateUpdate
+    ): BulkOperationResult {
+        val requested = apartmentIds.toSet()
+        val leases = repository.listLeases()
+            .filter { it.unitId in requested }
+            .groupBy { it.unitId }
+            .mapNotNull { (_, unitLeases) -> unitLeases.maxByOrNull { it.endDate.ifBlank { "9999-99-99" } } }
+
+        val updates = leases.map { lease ->
+            var updated = lease
+            fields.forEach { field ->
+                updated = when (field) {
+                    "startDate" -> updated.copy(startDate = applyBulkDateUpdate(updated.startDate, update, "تاريخ بداية العقد"))
+                    "endDate" -> updated.copy(endDate = applyBulkDateUpdate(updated.endDate, update, "تاريخ نهاية العقد"))
+                    else -> updated
+                }
+            }
+            updated
+        }
+        updates.forEach(repository::upsertLease)
+
+        return BulkOperationResult(
+            requested = requested.size,
+            applied = leases.size,
+            skipped = requested.size - leases.size
+        )
+    }
+
+    fun deleteBuildingsCascade(ids: Collection<String>): BulkOperationResult {
+        val requested = ids.toSet()
+        val buildings = repository.listBuildings().filter { it.id in requested }
+        val apartments = repository.listApartments()
+        val leases = repository.listLeases()
+        val payments = repository.listPayments()
+        val removedApartmentIds = apartments.filter { it.buildingId in buildings.map(Building::id).toSet() }.map(Apartment::id).toSet()
+        val removedLeases = leases.filter { it.unitId in removedApartmentIds }
+        val removedLeaseIds = removedLeases.map(Lease::id).toSet()
+        val removedTenantIds = orphanedTenantIdsAfterRemovingLeases(removedLeases, leases)
+
+        payments.filter { it.leaseId in removedLeaseIds }.forEach { repository.deletePayment(it.id) }
+        removedLeases.forEach { repository.deleteLease(it.id) }
+        removedApartmentIds.forEach(repository::deleteApartment)
+        removedTenantIds.forEach(repository::deleteTenant)
+        buildings.forEach { repository.deleteBuilding(it.id) }
+
+        return BulkOperationResult(requested.size, buildings.size, requested.size - buildings.size)
+    }
+
+    fun deleteApartmentsCascade(ids: Collection<String>): BulkOperationResult {
+        val requested = ids.toSet()
+        val apartments = repository.listApartments().filter { it.id in requested }
+        val leases = repository.listLeases()
+        val payments = repository.listPayments()
+        val removedApartmentIds = apartments.map(Apartment::id).toSet()
+        val removedLeases = leases.filter { it.unitId in removedApartmentIds }
+        val removedLeaseIds = removedLeases.map(Lease::id).toSet()
+        val removedTenantIds = orphanedTenantIdsAfterRemovingLeases(removedLeases, leases)
+
+        payments.filter { it.leaseId in removedLeaseIds }.forEach { repository.deletePayment(it.id) }
+        removedLeases.forEach { repository.deleteLease(it.id) }
+        apartments.forEach { repository.deleteApartment(it.id) }
+        removedTenantIds.forEach(repository::deleteTenant)
+
+        return BulkOperationResult(requested.size, apartments.size, requested.size - apartments.size)
+    }
+
+    fun deletePayments(ids: Collection<String>): BulkOperationResult {
+        val requested = ids.toSet()
+        val payments = repository.listPayments().filter { it.id in requested }
+        payments.forEach { repository.deletePayment(it.id) }
+        return BulkOperationResult(requested.size, payments.size, requested.size - payments.size)
     }
 }

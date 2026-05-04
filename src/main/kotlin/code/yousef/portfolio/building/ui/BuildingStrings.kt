@@ -97,6 +97,27 @@ object BuildingStrings {
     const val NOTES = "ملاحظات"
     const val NO_PAYMENTS = "لا توجد دفعات مسجلة"
     const val MARK_AS_PAID = "تسجيل السداد"
+
+    // Bulk actions
+    const val BULK_ACTIONS = "إجراءات جماعية"
+    const val BULK_EDIT = "تعديل المحدد"
+    const val BULK_DELETE = "حذف المحدد"
+    const val BULK_UPDATE_DATES = "تحديث التواريخ"
+    const val BULK_REVIEW = "مراجعة الإجراء"
+    const val BULK_APPLY = "تنفيذ الإجراء"
+    const val BULK_RESULT = "نتيجة الإجراء الجماعي"
+    const val SELECT = "تحديد"
+    const val SELECT_AT_LEAST_ONE = "اختر سجلاً واحداً على الأقل"
+    const val AFFECTED_RECORDS = "السجلات المتأثرة"
+    const val SKIPPED_RECORDS = "سجلات تم تجاوزها"
+    const val DATE_FIELDS = "حقول التاريخ"
+    const val DATE_MODE = "طريقة التحديث"
+    const val SET_DATE = "تعيين تاريخ محدد"
+    const val SHIFT_DATE = "إزاحة التاريخ"
+    const val SHIFT_AMOUNT = "مقدار الإزاحة"
+    const val SHIFT_UNIT = "وحدة الإزاحة"
+    const val DAYS_UNIT = "أيام"
+    const val MONTHS_UNIT = "أشهر"
     
     // Payment statuses
     const val PAID = "تم السداد"
