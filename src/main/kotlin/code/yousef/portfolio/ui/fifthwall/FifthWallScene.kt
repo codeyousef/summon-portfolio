@@ -1246,8 +1246,7 @@ private fun GeometryAura(
 }
 
 private fun fifthWallModelUrl(fileName: String): String {
-    val baseName = fileName.removeSuffix(".glb")
-    return "/static/models/fifth-wall/$baseName/$baseName.gltf"
+    return "/static/models/fifth-wall/$fileName"
 }
 
 private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): InteractionMetadata =
