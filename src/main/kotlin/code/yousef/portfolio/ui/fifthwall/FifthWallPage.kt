@@ -5,7 +5,6 @@ import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.foundation.RawHtml
 import codes.yousef.summon.components.layout.Box
-import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.modifier.*
@@ -105,7 +104,7 @@ private fun SceneOverlay(
     focusedPackage: FifthWallPackage?
 ) {
     val guidance = level.guidance()
-    Column(modifier = Modifier().className("fw-scene-hud fw-scene-hud-left")) {
+    Box(modifier = Modifier().className("fw-scene-hud fw-scene-hud-left")) {
         Text(text = guidance.phase, modifier = Modifier().className("fw-scene-badge"))
         Text(text = level.name, modifier = Modifier().className("fw-scene-heading"))
         Text(
@@ -267,7 +266,7 @@ private fun RuleBoard(
 ) {
     Box(modifier = Modifier().className("fw-panel")) {
         Text(text = "Rule Board", modifier = Modifier().className("fw-panel-title"))
-        Column(modifier = Modifier().className("fw-rule-list")) {
+        Box(modifier = Modifier().className("fw-rule-list")) {
             state.activeTrucks(level).forEachIndexed { index, rule ->
                 val revealed = level.hiddenRuleIndex != index || state.hiddenRuleRevealed || state.ruleShifted
                 Box(modifier = Modifier().className("fw-rule-card")) {
@@ -356,7 +355,7 @@ private fun ChatCard(state: FifthWallUiState) {
         if (state.chatMessages.isEmpty()) {
             Text(text = "Dispatch is still quiet.", modifier = Modifier().className("fw-empty"))
         } else {
-            Column(modifier = Modifier().className("fw-chat-log")) {
+            Box(modifier = Modifier().className("fw-chat-log")) {
                 state.chatMessages.forEach { message ->
                     val classes = if (message.self) "fw-chat-message is-self" else "fw-chat-message"
                     Box(modifier = Modifier().className(classes)) {
@@ -428,7 +427,7 @@ private fun PromptOverlay(
                         text = "The lane is paused for a team prompt. Reply if you want, or resume the shift and leave the message unsent.",
                         modifier = Modifier().className("fw-modal-copy")
                     )
-                    Column(modifier = Modifier().className("fw-discussion-stack")) {
+                    Box(modifier = Modifier().className("fw-discussion-stack")) {
                         state.chatMessages.takeLast(3).forEach { message ->
                             Box(modifier = Modifier().className("fw-discussion-line")) {
                                 Text(text = message.author, modifier = Modifier().className("fw-chat-author"))
