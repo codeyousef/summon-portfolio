@@ -97,6 +97,8 @@ object BuildingStrings {
     const val NOTES = "ملاحظات"
     const val NO_PAYMENTS = "لا توجد دفعات مسجلة"
     const val MARK_AS_PAID = "تسجيل السداد"
+    const val UPDATE_STATUS = "تحديث الحالة"
+    const val PAST_DUE_UNPAID = "متأخر عن تاريخ الاستحقاق"
 
     // Bulk actions
     const val BULK_ACTIONS = "إجراءات جماعية"

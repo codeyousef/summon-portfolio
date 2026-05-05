@@ -3,6 +3,7 @@ package code.yousef.portfolio.building.ui
 import code.yousef.portfolio.building.bulk.BulkCascadePlan
 import code.yousef.portfolio.building.bulk.BulkOperationResult
 import code.yousef.portfolio.building.model.*
+import code.yousef.portfolio.building.payment.isUnpaidPastDue
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
@@ -779,6 +780,11 @@ fun PaymentsListPage(
                     EmptyState(BuildingStrings.NO_PAYMENTS)
                 }
             } else {
+                val redirectPath = if (currentFilter.isNullOrBlank()) {
+                    "/payments"
+                } else {
+                    "/payments?status=$currentFilter"
+                }
                 Form(
                     action = "/payments/bulk/review",
                     method = FormMethod.Post,
@@ -792,9 +798,10 @@ fun PaymentsListPage(
                         )
                     )
                     Card(modifier = Modifier().fillMaxWidth()) {
-                        PaymentTable(payments, selectable = true)
+                        PaymentTable(payments, selectable = true, showStatusActions = true)
                     }
                 }
+                RawHtml(html = paymentStatusFormsHtml(payments, redirectPath))
             }
         }
     }
@@ -819,11 +826,18 @@ private fun FilterButton(label: String, filter: String?, currentFilter: String?)
 }
 
 @Composable
-private fun PaymentTable(payments: List<PaymentWithDetails>, selectable: Boolean = false) {
-    val gridColumns = if (selectable) {
-        "52px 1fr 80px 1fr 80px 100px 100px 80px 1fr"
-    } else {
-        "1fr 80px 1fr 80px 100px 100px 80px 1fr"
+private fun PaymentTable(
+    payments: List<PaymentWithDetails>,
+    selectable: Boolean = false,
+    showStatusActions: Boolean = false
+) {
+    val gridColumns = when {
+        selectable && showStatusActions ->
+            "52px minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr) 170px"
+        selectable ->
+            "52px minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr)"
+        else ->
+            "minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr)"
     }
     // Payment table using CSS Grid
     Column(modifier = Modifier().fillMaxWidth()) {
@@ -845,6 +859,7 @@ private fun PaymentTable(payments: List<PaymentWithDetails>, selectable: Boolean
             GridHeaderCell(BuildingStrings.DUE_DATE)
             GridHeaderCell(BuildingStrings.PAYMENT_STATUS)
             GridHeaderCell(BuildingStrings.NOTES)
+            if (showStatusActions) GridHeaderCell(BuildingStrings.UPDATE_STATUS)
         }
         // Data rows
         payments.forEach { detail ->
@@ -862,11 +877,38 @@ private fun PaymentTable(payments: List<PaymentWithDetails>, selectable: Boolean
                 GridCell { Text(BuildingStrings.formatPaymentNumber(detail.payment.paymentNumber)) }
                 GridCell { Text(BuildingStrings.formatCurrency(detail.payment.amount)) }
                 GridCell { Text(detail.payment.dueDate) }
-                GridCell { StatusBadge(detail.payment.status) }
+                GridCell {
+                    Column(modifier = Modifier().style("gap", BuildingTheme.Spacing.xs)) {
+                        StatusBadge(detail.payment.status)
+                        if (isUnpaidPastDue(detail.payment)) {
+                            PastDueWarningBadge()
+                        }
+                    }
+                }
                 GridCell { Text(detail.payment.notes) }
+                if (showStatusActions) {
+                    GridCell {
+                        RawHtml(html = paymentStatusButtonsHtml(detail.payment))
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun PastDueWarningBadge() {
+    Text(
+        text = BuildingStrings.PAST_DUE_UNPAID,
+        modifier = Modifier()
+            .backgroundColor(BuildingTheme.Colors.DANGER_BG)
+            .color(BuildingTheme.Colors.DANGER_TEXT)
+            .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.sm)
+            .borderRadius(BuildingTheme.BorderRadius.full)
+            .fontSize(BuildingTheme.FontSize.xs)
+            .fontWeight("500")
+            .margin(BuildingTheme.Spacing.xs, "0", "0", "0")
+    )
 }
 
 // ===================== Bulk Review Pages =====================
@@ -1676,6 +1718,47 @@ private fun paymentDateFormHtml(payments: List<PaymentWithDetails>): String = bu
         returnHref = "/payments"
     ))
     append("</form>")
+}
+
+private fun paymentStatusFormsHtml(payments: List<PaymentWithDetails>, redirectPath: String): String = buildString {
+    val statuses = listOf(PaymentStatus.PAID, PaymentStatus.OVERDUE, PaymentStatus.PENDING)
+    payments.forEach { detail ->
+        statuses.forEach { status ->
+            append("""<form id="${attr(paymentStatusFormId(detail.payment, status))}" method="post" action="/payments/${attr(detail.payment.id)}/status" style="display:none">""")
+            append("""<input type="hidden" name="status" value="${attr(status.name)}">""")
+            append("""<input type="hidden" name="redirect" value="${attr(redirectPath)}">""")
+            append("</form>")
+        }
+    }
+}
+
+private fun paymentStatusButtonsHtml(payment: Payment): String = buildString {
+    val statuses = listOf(PaymentStatus.PAID, PaymentStatus.OVERDUE, PaymentStatus.PENDING)
+    append("""<div style="display:flex;gap:6px;flex-wrap:wrap">""")
+    statuses.forEach { status ->
+        val isCurrent = status == payment.status
+        val background = statusActionBackground(status)
+        val color = statusActionColor(status)
+        append(
+            """<button type="submit" form="${attr(paymentStatusFormId(payment, status))}" style="border:0;border-radius:8px;padding:7px 9px;background:$background;color:$color;font-size:12px;font-weight:700;cursor:pointer;${if (isCurrent) "opacity:.72;box-shadow:inset 0 0 0 2px rgba(0,0,0,.08);" else ""}" title="${attr(BuildingStrings.UPDATE_STATUS)}">${html(BuildingStrings.formatStatus(status))}</button>"""
+        )
+    }
+    append("</div>")
+}
+
+private fun paymentStatusFormId(payment: Payment, status: PaymentStatus): String =
+    "payment-status-${payment.id}-${status.name}"
+
+private fun statusActionBackground(status: PaymentStatus): String = when (status) {
+    PaymentStatus.PAID -> BuildingTheme.Colors.SUCCESS
+    PaymentStatus.PENDING -> BuildingTheme.Colors.WARNING
+    PaymentStatus.OVERDUE -> BuildingTheme.Colors.DANGER
+}
+
+private fun statusActionColor(status: PaymentStatus): String = when (status) {
+    PaymentStatus.PENDING -> BuildingTheme.Colors.TEXT_PRIMARY
+    PaymentStatus.PAID,
+    PaymentStatus.OVERDUE -> BuildingTheme.Colors.TEXT_WHITE
 }
 
 private fun apartmentDateFormHtml(buildingId: String, apartments: List<ApartmentWithDetails>): String = buildString {

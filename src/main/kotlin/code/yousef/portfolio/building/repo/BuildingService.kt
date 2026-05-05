@@ -4,14 +4,17 @@ import code.yousef.portfolio.building.bulk.BulkCascadePlan
 import code.yousef.portfolio.building.bulk.BulkDateUpdate
 import code.yousef.portfolio.building.bulk.BulkOperationResult
 import code.yousef.portfolio.building.bulk.applyBulkDateUpdate
-import code.yousef.portfolio.building.bulk.normalizePaymentStatusForDueDate
 import code.yousef.portfolio.building.bulk.orphanedTenantIdsAfterRemovingLeases
 import code.yousef.portfolio.building.bulk.planApartmentCascadeDelete
 import code.yousef.portfolio.building.bulk.planBuildingCascadeDelete
 import code.yousef.portfolio.building.bulk.planPaymentDelete
 import code.yousef.portfolio.building.model.*
+import code.yousef.portfolio.building.payment.buildPaymentSyncUpdates
+import code.yousef.portfolio.building.payment.isUnpaidPastDue
+import code.yousef.portfolio.building.payment.withManualPaymentStatus
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 /**
  * Service layer for building management operations.
@@ -21,7 +24,27 @@ class BuildingService(private val repository: BuildingRepository) {
     
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
+    fun syncCurrentYearPayments(year: Int = LocalDate.now().year): Int {
+        val leases = repository.listLeases()
+        val payments = repository.listPayments()
+        val paymentsByLease = payments.groupBy { it.leaseId }
+        val existingById = payments.associateBy { it.id }
+        val updates = leases.flatMap { lease ->
+            buildPaymentSyncUpdates(
+                lease = lease,
+                existingPayments = paymentsByLease[lease.id].orEmpty(),
+                year = year,
+                idFactory = { UUID.randomUUID().toString() }
+            )
+        }
+        val changed = updates.filter { payment -> existingById[payment.id] != payment }
+        changed.forEach(repository::upsertPayment)
+        return changed.size
+    }
+
     fun getDashboardSummary(): DashboardSummary {
+        syncCurrentYearPayments()
+
         val buildings = repository.listBuildings()
         val apartments = repository.listApartments()
         val leases = repository.listLeases()
@@ -53,22 +76,8 @@ class BuildingService(private val repository: BuildingRepository) {
             .map { it.unitId }
             .toSet()
 
-        // Update payment statuses based on current date
-        val updatedPayments = payments.map { payment ->
-            if (payment.status == PaymentStatus.PENDING) {
-                try {
-                    val dueDate = LocalDate.parse(payment.dueDate, dateFormatter)
-                    if (dueDate.isBefore(today)) {
-                        payment.copy(status = PaymentStatus.OVERDUE)
-                    } else payment
-                } catch (_: Exception) {
-                    payment
-                }
-            } else payment
-        }
-
         // Get upcoming payments (pending, due within 30 days)
-        val upcomingPayments = updatedPayments
+        val upcomingPayments = payments
             .filter { it.status == PaymentStatus.PENDING }
             .filter { payment ->
                 try {
@@ -87,9 +96,9 @@ class BuildingService(private val repository: BuildingRepository) {
                 PaymentWithDetails(payment, lease, apartment, building, tenant)
             }
 
-        // Get overdue payments
-        val overduePayments = updatedPayments
-            .filter { it.status == PaymentStatus.OVERDUE }
+        // Get explicit late payments plus unpaid payments with due dates in the past.
+        val overduePayments = payments
+            .filter { it.status == PaymentStatus.OVERDUE || isUnpaidPastDue(it, today) }
             .sortedBy { it.dueDate }
             .map { payment ->
                 val lease = leaseMap[payment.leaseId]
@@ -116,6 +125,8 @@ class BuildingService(private val repository: BuildingRepository) {
     }
 
     fun getApartmentsWithDetails(buildingId: String? = null): List<ApartmentWithDetails> {
+        syncCurrentYearPayments()
+
         val apartments = if (buildingId != null) {
             repository.listApartmentsByBuilding(buildingId)
         } else {
@@ -160,33 +171,21 @@ class BuildingService(private val repository: BuildingRepository) {
         buildingId: String? = null,
         statusFilter: PaymentStatus? = null
     ): List<PaymentWithDetails> {
+        syncCurrentYearPayments()
+
         val payments = repository.listPayments()
         val leases = repository.listLeases().associateBy { it.id }
         val apartments = repository.listApartments().associateBy { it.id }
         val buildings = repository.listBuildings().associateBy { it.id }
         val tenants = repository.listTenants().associateBy { it.id }
 
-        val today = LocalDate.now()
-
         return payments
             .map { payment ->
-                // Update status if overdue
-                val updatedPayment = if (payment.status == PaymentStatus.PENDING) {
-                    try {
-                        val dueDate = LocalDate.parse(payment.dueDate, dateFormatter)
-                        if (dueDate.isBefore(today)) {
-                            payment.copy(status = PaymentStatus.OVERDUE)
-                        } else payment
-                    } catch (_: Exception) {
-                        payment
-                    }
-                } else payment
-
-                val lease = leases[updatedPayment.leaseId]
+                val lease = leases[payment.leaseId]
                 val apartment = lease?.let { apartments[it.unitId] }
                 val building = apartment?.let { buildings[it.buildingId] }
                 val tenant = lease?.let { tenants[it.tenantId] }
-                PaymentWithDetails(updatedPayment, lease, apartment, building, tenant)
+                PaymentWithDetails(payment, lease, apartment, building, tenant)
             }
             .filter { detail ->
                 if (buildingId != null) {
@@ -208,9 +207,19 @@ class BuildingService(private val repository: BuildingRepository) {
         repository.upsertPayment(
             payment.copy(
                 status = PaymentStatus.PAID,
-                paidDate = paidDate
+                paidDate = payment.paidDate?.takeIf { it.isNotBlank() } ?: paidDate
             )
         )
+    }
+
+    fun updatePaymentStatus(
+        paymentId: String,
+        status: PaymentStatus,
+        paidDate: LocalDate = LocalDate.now()
+    ): Boolean {
+        val payment = repository.listPayments().find { it.id == paymentId } ?: return false
+        repository.upsertPayment(withManualPaymentStatus(payment, status, paidDate))
+        return true
     }
 
     fun getBuildingsByIds(ids: Collection<String>): List<Building> {
@@ -322,28 +331,20 @@ class BuildingService(private val repository: BuildingRepository) {
     fun bulkUpdatePaymentDates(
         ids: Collection<String>,
         fields: Set<String>,
-        update: BulkDateUpdate,
-        today: LocalDate = LocalDate.now()
+        update: BulkDateUpdate
     ): BulkOperationResult {
         val requested = ids.toSet()
         val payments = repository.listPayments().filter { it.id in requested }
         val updates = payments.map { payment ->
             var updated = payment
-            var dueDateChanged = false
             fields.forEach { field ->
                 updated = when (field) {
                     "periodStart" -> updated.copy(periodStart = applyBulkDateUpdate(updated.periodStart, update, "بداية الفترة"))
                     "periodEnd" -> updated.copy(periodEnd = applyBulkDateUpdate(updated.periodEnd, update, "نهاية الفترة"))
-                    "dueDate" -> {
-                        dueDateChanged = true
-                        updated.copy(dueDate = applyBulkDateUpdate(updated.dueDate, update, "تاريخ الاستحقاق"))
-                    }
+                    "dueDate" -> updated.copy(dueDate = applyBulkDateUpdate(updated.dueDate, update, "تاريخ الاستحقاق"))
                     "paidDate" -> updated.copy(paidDate = applyBulkDateUpdate(updated.paidDate, update, "تاريخ السداد"))
                     else -> updated
                 }
-            }
-            if (dueDateChanged) {
-                updated = updated.copy(status = normalizePaymentStatusForDueDate(updated, today))
             }
             updated
         }

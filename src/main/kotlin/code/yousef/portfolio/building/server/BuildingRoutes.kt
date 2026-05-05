@@ -652,6 +652,23 @@ fun Router.buildingRoutes(
             }
         }
     }
+
+    // Quick payment status update
+    post("/payments/:id/status") { exchange ->
+        exchange.requireAuth() ?: return@post
+        val paymentId = exchange.pathParam("id") ?: ""
+        val params = exchange.receiveParameters()
+        val redirectPath = safeRedirectPath(params["redirect"])
+        val status = try {
+            PaymentStatus.valueOf(params["status"].orEmpty())
+        } catch (_: Exception) {
+            exchange.redirect(redirectPath)
+            return@post
+        }
+
+        service.updatePaymentStatus(paymentId, status)
+        exchange.redirect(redirectPath)
+    }
     
     // Apartment payments
     get("/apartments/:id/payments") { exchange ->
@@ -777,6 +794,7 @@ fun Router.buildingRoutes(
             }
         }
 
+        service.syncCurrentYearPayments()
         exchange.redirect("/buildings/${building.id}")
     }
 
@@ -819,6 +837,7 @@ fun Router.buildingRoutes(
             val result = importService.importFromExcel(ByteArrayInputStream(fileBytes))
             
             if (result.success) {
+                service.syncCurrentYearPayments()
                 val message = "تم استيراد ${result.unitsImported} شقة و ${result.paymentsImported} دفعة من ${result.buildingName}"
                 exchange.respondSummonPage(importPage(session.username, message, null))
             } else {
@@ -1254,6 +1273,11 @@ private fun selectedDateFields(params: Map<String, String>): Set<String> = param
     .map { it.removePrefix("field_") }
     .filter { it.isNotBlank() }
     .toSet()
+
+private fun safeRedirectPath(value: String?): String {
+    val redirect = value?.trim().orEmpty()
+    return if (redirect.startsWith("/") && !redirect.startsWith("//")) redirect else "/payments"
+}
 
 private fun BulkOperationResult.withRequestedIds(ids: Collection<String>): BulkOperationResult {
     val requested = ids.toSet().size

@@ -4,7 +4,6 @@ import code.yousef.portfolio.building.model.Apartment
 import code.yousef.portfolio.building.model.Building
 import code.yousef.portfolio.building.model.Lease
 import code.yousef.portfolio.building.model.Payment
-import code.yousef.portfolio.building.model.PaymentStatus
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -85,16 +84,6 @@ fun applyBulkDateUpdate(currentValue: String?, update: BulkDateUpdate, label: St
             shifted.format(bulkDateFormatter)
         }
     }
-}
-
-fun normalizePaymentStatusForDueDate(payment: Payment, today: LocalDate = LocalDate.now()): PaymentStatus {
-    if (payment.status == PaymentStatus.PAID) return PaymentStatus.PAID
-    val dueDate = try {
-        LocalDate.parse(payment.dueDate, bulkDateFormatter)
-    } catch (_: DateTimeParseException) {
-        return payment.status
-    }
-    return if (dueDate.isBefore(today)) PaymentStatus.OVERDUE else PaymentStatus.PENDING
 }
 
 fun planBuildingCascadeDelete(

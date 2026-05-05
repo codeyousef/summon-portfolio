@@ -69,18 +69,6 @@ class BuildingBulkOperationsTest {
     }
 
     @Test
-    fun `payment status normalization keeps paid payments paid`() {
-        val paid = payment("p1", "lease-1", dueDate = "2026-01-01", status = PaymentStatus.PAID)
-        val pending = payment("p2", "lease-1", dueDate = "2026-01-01", status = PaymentStatus.PENDING)
-        val future = payment("p3", "lease-1", dueDate = "2026-06-01", status = PaymentStatus.OVERDUE)
-        val today = LocalDate.parse("2026-05-04")
-
-        assertEquals(PaymentStatus.PAID, normalizePaymentStatusForDueDate(paid, today))
-        assertEquals(PaymentStatus.OVERDUE, normalizePaymentStatusForDueDate(pending, today))
-        assertEquals(PaymentStatus.PENDING, normalizePaymentStatusForDueDate(future, today))
-    }
-
-    @Test
     fun `building delete cascade counts related apartments leases payments and only orphan tenants`() {
         val plan = planBuildingCascadeDelete(
             selectedIds = listOf("building-1", "missing"),
