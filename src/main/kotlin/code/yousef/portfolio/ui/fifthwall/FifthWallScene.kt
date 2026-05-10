@@ -53,6 +53,7 @@ private val PACKAGE_SHADE = argb("#0b1219")
 private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
 private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
 private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click", "dragstart", "drag", "dragenter", "dragleave", "drop", "pointerup")
+private const val MODEL_ASSET_VERSION = "20260510-small-glb"
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
     argb("#5aa9ff"),
@@ -1246,7 +1247,7 @@ private fun GeometryAura(
 }
 
 private fun fifthWallModelUrl(fileName: String): String {
-    return "/static/models/fifth-wall/$fileName"
+    return "/static/models/fifth-wall/$fileName?v=$MODEL_ASSET_VERSION"
 }
 
 private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): InteractionMetadata =
