@@ -32,14 +32,11 @@ import codes.yousef.sigil.summon.components.SigilMesh
 import codes.yousef.sigil.summon.components.SigilModel
 import codes.yousef.sigil.summon.components.SigilOrbitControls
 import codes.yousef.sigil.summon.components.SigilPlane
-import codes.yousef.sigil.summon.components.SigilPointLight
 import codes.yousef.sigil.summon.components.SigilSphere
 import codes.yousef.summon.annotation.Composable
 import io.materia.core.math.Color
 import kotlin.math.PI
 import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 private val WAREHOUSE_FLOOR = argb("#0d1721")
@@ -92,7 +89,7 @@ internal fun FifthWallScene(
             fogColor = argb("#0d1620"),
             fogNear = 36f,
             fogFar = 82f,
-            shadowsEnabled = true
+            shadowsEnabled = false
         )
         SigilCamera(
             position = listOf(0.6f, 7.4f, 11.4f),
@@ -125,41 +122,6 @@ internal fun FifthWallScene(
             castShadow = false,
             name = "bay-sun"
         )
-        SigilPointLight(
-            position = listOf(-3f, 5.5f, -1f),
-            color = SCENE_ACCENT,
-            intensity = 0.16f,
-            distance = 24f,
-            decay = 1.6f,
-            name = "belt-glow"
-        )
-        SigilPointLight(
-            position = listOf(7f, 6.5f, -5.5f),
-            color = if (focusedPackage?.validGeometry == false) SCENE_DANGER else SCENE_WARM,
-            intensity = 0.14f,
-            distance = 20f,
-            decay = 1.7f,
-            name = "inspection-glow"
-        )
-        SigilPointLight(
-            position = listOf(0f, 5f, 8.4f),
-            color = SCENE_WARM,
-            intensity = 0.12f,
-            distance = 18f,
-            decay = 1.8f,
-            name = "route-glow"
-        )
-        if (state.glitchActive) {
-            SigilPointLight(
-                position = listOf(0f, 8f, 5f),
-                color = SCENE_DANGER,
-                intensity = 1.8f,
-                distance = 28f,
-                decay = 1.2f,
-                name = "glitch-alert"
-            )
-        }
-
         WarehouseShell()
         RoutingGuides(level = level, state = state)
         ConveyorDeck(level = level, state = state)
@@ -170,7 +132,9 @@ internal fun FifthWallScene(
             glitchActive = state.glitchActive
         )
         InspectionDock(pkg = focusedPackage)
-        WrenchProp(visible = state.wrenchVisible)
+        if (state.wrenchVisible) {
+            WrenchProp(visible = true)
+        }
         ""
     }
 }
@@ -181,10 +145,10 @@ private fun fifthWallSceneEventHandlers(
     state: FifthWallUiState
 ): List<SigilSceneEventHandler> {
     val handlers = mutableListOf<SigilSceneEventHandler>()
-    val renderedPackageIds = state.queue.map { it.id }
+    val renderedPackageIds = state.visiblePackages().map { it.id }
     val patchResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
 
-    state.queue.forEach { pkg ->
+    state.visiblePackages().forEach { pkg ->
         handlers += SigilSceneEventHandler(
             match = SigilSceneEventMatch(type = "pointerdown", interactionId = "package:${pkg.id}"),
             onEvent = { controller.selectPackage(pkg.id) },
@@ -200,7 +164,8 @@ private fun fifthWallSceneEventHandlers(
                     accepted = true
                 ),
                 onEvent = { controller.dropOnTruck(index, pkg.id) },
-                onResponse = patchResponse
+                onResponse = patchResponse,
+                reloadOnSuccess = true
             )
         }
 
@@ -212,7 +177,8 @@ private fun fifthWallSceneEventHandlers(
                 accepted = true
             ),
             onEvent = { controller.dropOnReturn(pkg.id) },
-            onResponse = patchResponse
+            onResponse = patchResponse,
+            reloadOnSuccess = true
         )
 
         handlers += SigilSceneEventHandler(
@@ -469,74 +435,16 @@ private fun DockGuidePad(
     SigilGroup(position = position, name = name) {
         SigilBox(
             width = width,
-            height = 0.06f,
+            height = if (selected) 0.08f else 0.05f,
             depth = depth,
             position = listOf(0f, 0.03f, 0f),
-            color = argb("#101827"),
-            metalness = 0.22f,
-            roughness = 0.9f,
+            color = if (selected) color else argb("#152132"),
+            metalness = if (selected) 0.42f else 0.18f,
+            roughness = 0.76f,
             castShadow = false,
             receiveShadow = true,
             name = "$name-base"
         )
-        SigilBox(
-            width = width - 0.38f,
-            height = 0.03f,
-            depth = 0.12f,
-            position = listOf(0f, 0.07f, (depth / 2f) - 0.2f),
-            color = color,
-            metalness = 0.72f,
-            roughness = 0.16f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "$name-front-edge"
-        )
-        SigilBox(
-            width = width - 0.38f,
-            height = 0.03f,
-            depth = 0.12f,
-            position = listOf(0f, 0.07f, -(depth / 2f) + 0.2f),
-            color = color,
-            metalness = 0.72f,
-            roughness = 0.16f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "$name-back-edge"
-        )
-        SigilBox(
-            width = 0.12f,
-            height = 0.03f,
-            depth = depth - 0.38f,
-            position = listOf((width / 2f) - 0.2f, 0.07f, 0f),
-            color = color,
-            metalness = 0.72f,
-            roughness = 0.16f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "$name-right-edge"
-        )
-        SigilBox(
-            width = 0.12f,
-            height = 0.03f,
-            depth = depth - 0.38f,
-            position = listOf(-(width / 2f) + 0.2f, 0.07f, 0f),
-            color = color,
-            metalness = 0.72f,
-            roughness = 0.16f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "$name-left-edge"
-        )
-        if (selected) {
-            SigilPointLight(
-                position = listOf(0f, 0.9f, 0f),
-                color = color,
-                intensity = 1.2f,
-                distance = 6f,
-                decay = 1.8f,
-                name = "$name-light"
-            )
-        }
         ""
     }
 }
@@ -557,8 +465,6 @@ private fun GuideStrip(
     val angle = atan2(dz.toDouble(), dx.toDouble()).toFloat()
     val midX = (startX + endX) / 2f
     val midZ = (startZ + endZ) / 2f
-    val headBackX = endX - (cos(angle.toDouble()).toFloat() * 0.28f)
-    val headBackZ = endZ - (sin(angle.toDouble()).toFloat() * 0.28f)
 
     SigilBox(
         width = length,
@@ -572,32 +478,6 @@ private fun GuideStrip(
         castShadow = false,
         receiveShadow = false,
         name = name
-    )
-    SigilBox(
-        width = 0.44f,
-        height = 0.045f,
-        depth = 0.09f,
-        position = listOf(headBackX, 0.04f, headBackZ),
-        rotation = listOf(0f, angle + 0.62f, 0f),
-        color = color,
-        metalness = 0.64f,
-        roughness = 0.2f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-head-a"
-    )
-    SigilBox(
-        width = 0.44f,
-        height = 0.045f,
-        depth = 0.09f,
-        position = listOf(headBackX, 0.04f, headBackZ),
-        rotation = listOf(0f, angle - 0.62f, 0f),
-        color = color,
-        metalness = 0.64f,
-        roughness = 0.2f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-head-b"
     )
 }
 
@@ -614,29 +494,16 @@ private fun ConveyorDeck(
             receiveShadow = false,
             name = "conveyor-model"
         )
-        if (state.glitchActive) {
-            SigilPointLight(
-                position = listOf(0f, 1.4f, 0f),
-                color = argb("#45121a"),
-                intensity = 1.3f,
-                distance = 8f,
-                decay = 2f,
-                name = "conveyor-glitch-light"
-            )
-        }
-        val visiblePackageIds = state.visiblePackages().map { it.id }
-        state.queue.forEach { pkg ->
-            val visibleIndex = visiblePackageIds.indexOf(pkg.id)
-            val visible = visibleIndex >= 0
-            val selected = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
+        state.visiblePackages().forEachIndexed { visibleIndex, pkg ->
+            val selected = state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0)
             PackageMesh(
                 pkg = pkg,
-                position = if (visible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
+                position = packageBeltPosition(visibleIndex),
                 selected = selected,
                 emphasized = visibleIndex == 0,
                 beltIndex = visibleIndex,
                 level = level,
-                visible = visible
+                visible = true
             )
         }
         ""
@@ -747,7 +614,6 @@ private fun TruckAccentMarker(
     name: String
 ) {
     val panelColor = if (hidden) argb("#6b7485") else accent
-    val glow = if (hidden) 0.16f else 0.34f
     listOf(-0.36f, 0.36f).forEachIndexed { index, z ->
         SigilBox(
             width = 0.58f,
@@ -773,14 +639,6 @@ private fun TruckAccentMarker(
         castShadow = false,
         receiveShadow = false,
         name = "$name-accent-beacon"
-    )
-    SigilPointLight(
-        position = listOf(-1.1f, 3.2f, 0f),
-        color = panelColor,
-        intensity = glow,
-        distance = 5.5f,
-        decay = 1.9f,
-        name = "$name-accent-light"
     )
 }
 
@@ -822,29 +680,6 @@ private fun ReturnBinBay(
             receiveShadow = false,
             name = "return-ring"
         )
-        SigilPointLight(
-            position = listOf(0f, 2.8f, 0f),
-            color = when {
-                !selected -> SCENE_WARM
-                routeAccepted == true -> SCENE_SUCCESS
-                routeAccepted == false -> SCENE_DANGER
-                else -> SCENE_ACCENT
-            },
-            intensity = 1.3f,
-            distance = 8f,
-            decay = 1.7f,
-            name = "return-light"
-        )
-        if (glitchActive) {
-            SigilPointLight(
-                position = listOf(0f, 2.3f, 0f),
-                color = argb("#5c1f2a"),
-                intensity = 1f,
-                distance = 5.5f,
-                decay = 1.8f,
-                name = "return-glitch-light"
-            )
-        }
         ""
     }
 }
@@ -938,7 +773,11 @@ private fun PackageMesh(
         visible = visible,
         name = nodeId,
         interaction = if (interactive) packageInteraction(pkg, enlarged) else null,
-        animations = packageAnimations(pkg, beltIndex, selected, emphasized, enlarged),
+        animations = if (visible || enlarged) {
+            packageAnimations(pkg, selected)
+        } else {
+            emptyList()
+        },
         id = nodeId
     ) {
         SigilBox(
@@ -975,15 +814,16 @@ private fun PackageMesh(
             receiveShadow = false,
             name = "pkg-body"
         )
-        PackageColorAccent(
-            shape = pkg.shape,
-            color = baseColor,
-            hover = hover
-        )
-        PackageGeometryModel(pkg = pkg, hover = hover, elevated = enlarged)
-
-        PackageBadge(pkg = pkg, hover = hover)
-        GeometryAura(pkg = pkg, level = level, elevated = enlarged)
+        if (visible || enlarged) {
+            PackageColorAccent(
+                shape = pkg.shape,
+                color = baseColor,
+                hover = hover
+            )
+            PackageGeometryModel(pkg = pkg, hover = hover, elevated = enlarged)
+            PackageBadge(pkg = pkg, hover = hover)
+            GeometryAura(pkg = pkg, level = level, elevated = enlarged)
+        }
         if (selected) {
             SigilMesh(
                 geometryType = GeometryType.TORUS,
@@ -1070,14 +910,6 @@ private fun PackageColorAccent(
         name = "pkg-color-marker-stem"
     )
 
-    SigilPointLight(
-        position = listOf(-0.72f, markerY + 0.18f, 0.56f),
-        color = color,
-        intensity = 0.24f,
-        distance = 2.25f,
-        decay = 2.1f,
-        name = "pkg-color-light"
-    )
 }
 
 @Composable
@@ -1111,14 +943,6 @@ private fun WrenchProp(visible: Boolean) {
             castShadow = false,
             receiveShadow = false,
             name = "repair-wrench-model"
-        )
-        SigilPointLight(
-            position = listOf(0f, 0.8f, 0f),
-            color = SCENE_ACCENT,
-            intensity = 1.2f,
-            distance = 6f,
-            decay = 1.9f,
-            name = "repair-wrench-light"
         )
         ""
     }
@@ -1348,23 +1172,8 @@ private fun routingTargetInteraction(
 
 private fun packageAnimations(
     pkg: FifthWallPackage,
-    beltIndex: Int,
-    selected: Boolean,
-    emphasized: Boolean,
-    enlarged: Boolean
+    selected: Boolean
 ): List<SceneAnimationData> {
-    val sceneLoadAnimation = SceneAnimationData(
-        id = "package-${pkg.id}-bob",
-        trigger = AnimationTrigger.SCENE_LOAD,
-        kind = AnimationKind.BOB,
-        durationMs = if (emphasized || enlarged) 1300 else 1700,
-        delayMs = beltIndex.coerceAtLeast(0) * 120,
-        easing = AnimationEasing.EASE_IN_OUT,
-        vector = listOf(0f, if (enlarged) 0.055f else 0.035f, 0f),
-        color = null,
-        intensity = if (selected) 1.2f else 0.8f,
-        repeat = if (enlarged) 12 else 18
-    )
     val interactionAnimation = SceneAnimationData(
         id = "package-${pkg.id}-grab-feedback",
         trigger = AnimationTrigger.INTERACTION,
@@ -1377,7 +1186,7 @@ private fun packageAnimations(
         intensity = if (selected) 0.7f else 0.5f,
         repeat = 0
     )
-    return listOf(sceneLoadAnimation, interactionAnimation)
+    return listOf(interactionAnimation)
 }
 
 private fun targetPulseAnimation(id: String, delayMs: Int): SceneAnimationData =
