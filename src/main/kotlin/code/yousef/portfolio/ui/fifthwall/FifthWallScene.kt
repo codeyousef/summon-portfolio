@@ -154,42 +154,42 @@ private fun fifthWallSceneEventHandlers(
             onEvent = { controller.selectPackage(pkg.id) },
             onResponse = patchResponse
         )
+    }
 
-        state.activeTrucks(level).forEachIndexed { index, _ ->
-            handlers += SigilSceneEventHandler(
-                match = SigilSceneEventMatch(
-                    type = "drop",
-                    sourceInteractionId = "package:${pkg.id}",
-                    targetInteractionId = "truck:$index",
-                    accepted = true
-                ),
-                onEvent = { controller.dropOnTruck(index, pkg.id) },
-                onResponse = patchResponse
-            )
-        }
-
+    state.activeTrucks(level).forEachIndexed { index, _ ->
         handlers += SigilSceneEventHandler(
             match = SigilSceneEventMatch(
                 type = "drop",
-                sourceInteractionId = "package:${pkg.id}",
-                targetInteractionId = "return-bin",
+                sourceInteractionIdPrefix = "package:",
+                targetInteractionId = "truck:$index",
                 accepted = true
             ),
-            onEvent = { controller.dropOnReturn(pkg.id) },
-            onResponse = patchResponse
-        )
-
-        handlers += SigilSceneEventHandler(
-            match = SigilSceneEventMatch(
-                type = "drop",
-                sourceInteractionId = "package:${pkg.id}",
-                targetInteractionId = "inspection-dock",
-                accepted = true
-            ),
-            onEvent = { controller.selectPackage(pkg.id) },
+            onEvent = { controller.routeToTruck(index) },
             onResponse = patchResponse
         )
     }
+
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(
+            type = "drop",
+            sourceInteractionIdPrefix = "package:",
+            targetInteractionId = "return-bin",
+            accepted = true
+        ),
+        onEvent = controller::routeToReturn,
+        onResponse = patchResponse
+    )
+
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(
+            type = "drop",
+            sourceInteractionIdPrefix = "package:",
+            targetInteractionId = "inspection-dock",
+            accepted = true
+        ),
+        onEvent = { controller.state.value.selectedPackageId?.let(controller::selectPackage) },
+        onResponse = patchResponse
+    )
 
     handlers += SigilSceneEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = "repair-wrench"),
@@ -229,18 +229,26 @@ private fun fifthWallScenePatch(
     val nodes = mutableListOf<SceneNodePatch>()
 
     renderedPackageIds.forEach { packageId ->
+        val pkg = state.queue.firstOrNull { it.id == packageId }
         val visibleIndex = visibleIds.indexOf(packageId)
         val isVisible = visibleIndex >= 0
         val focused = isVisible && packageId == focusedId
         nodes += SceneNodePatch(
             id = "package-$packageId",
             position = if (isVisible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
+            rotation = pkg?.let { packageRotation(it, visibleIndex) },
+            scale = pkg?.let { packageScaleVector(enlarged = false, emphasized = visibleIndex == 0) },
             visible = isVisible,
             highlight = HighlightPatch(
                 active = focused,
                 color = SCENE_ACCENT,
                 intensity = if (focused) 0.75f else 0f
             )
+        )
+        nodes += SceneNodePatch(
+            id = "package-$packageId-body",
+            position = if (isVisible && pkg != null) packageBodyPosition(pkg, packageHover(enlarged = false, emphasized = visibleIndex == 0)) else null,
+            visible = isVisible
         )
     }
 
@@ -514,6 +522,39 @@ private fun ConveyorDeck(
 private fun packageBeltPosition(index: Int): List<Float> =
     listOf(-4.9f + (index * 3.2f), 2.34f, 0f)
 
+private fun packageScale(enlarged: Boolean, emphasized: Boolean): Float = when {
+    enlarged -> 1.38f
+    emphasized -> 1.08f
+    else -> 1f
+}
+
+private fun packageScaleVector(enlarged: Boolean, emphasized: Boolean): List<Float> {
+    val scale = packageScale(enlarged = enlarged, emphasized = emphasized)
+    return listOf(scale, scale, scale)
+}
+
+private fun packageRotation(pkg: FifthWallPackage, beltIndex: Int): List<Float> {
+    val yaw = when (pkg.shape) {
+        "rect" -> 0.18f
+        "cylinder" -> 0.08f
+        "sphere" -> 0.22f
+        else -> -0.12f
+    }
+    return listOf(0f, yaw + (beltIndex.coerceAtLeast(0) * 0.08f), 0f)
+}
+
+private fun packageHover(enlarged: Boolean, emphasized: Boolean): Float =
+    if (enlarged) 0.18f else if (emphasized) 0.1f else 0f
+
+private fun packageBodyPosition(pkg: FifthWallPackage, hover: Float): List<Float> {
+    val modelSpec = packageModelSpec(pkg)
+    return listOf(
+        modelSpec.position[0],
+        modelSpec.position[1] + hover,
+        modelSpec.position[2]
+    )
+}
+
 @Composable
 private fun TruckBay(
     level: FifthWallLevel,
@@ -754,22 +795,12 @@ private fun PackageMesh(
     nodeId: String = "package-${pkg.id}"
 ) {
     val baseColor = argb(pkg.color.hex)
-    val scale = when {
-        enlarged -> 1.38f
-        emphasized -> 1.08f
-        else -> 1f
-    }
-    val yaw = when (pkg.shape) {
-        "rect" -> 0.18f
-        "cylinder" -> 0.08f
-        "sphere" -> 0.22f
-        else -> -0.12f
-    }
-    val hover = if (enlarged) 0.18f else if (emphasized) 0.1f else 0f
+    val scale = packageScale(enlarged = enlarged, emphasized = emphasized)
+    val hover = packageHover(enlarged = enlarged, emphasized = emphasized)
 
     SigilGroup(
         position = position,
-        rotation = listOf(0f, yaw + (beltIndex.coerceAtLeast(0) * 0.08f), 0f),
+        rotation = packageRotation(pkg, beltIndex),
         scale = listOf(scale, scale, scale),
         visible = visible,
         name = nodeId,
@@ -781,50 +812,50 @@ private fun PackageMesh(
         },
         id = nodeId
     ) {
-        SigilBox(
-            width = when (pkg.shape) {
-                "rect" -> 2.08f
-                "cylinder" -> 1.18f
-                else -> 1.34f
-            },
-            height = 0.04f,
-            depth = when (pkg.shape) {
-                "rect" -> 1.08f
-                "sphere" -> 1.2f
-                else -> 1.34f
-            },
-            position = listOf(0f, 0.04f, 0f),
-            color = PACKAGE_SHADE,
-            metalness = 0.06f,
-            roughness = 0.98f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "pkg-shadow"
-        )
+        if (visible || enlarged) {
+            SigilBox(
+                width = when (pkg.shape) {
+                    "rect" -> 2.08f
+                    "cylinder" -> 1.18f
+                    else -> 1.34f
+                },
+                height = 0.04f,
+                depth = when (pkg.shape) {
+                    "rect" -> 1.08f
+                    "sphere" -> 1.2f
+                    else -> 1.34f
+                },
+                position = listOf(0f, 0.04f, 0f),
+                color = PACKAGE_SHADE,
+                metalness = 0.06f,
+                roughness = 0.98f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-shadow"
+            )
+        }
         val modelSpec = packageModelSpec(pkg)
         SigilModel(
             url = modelSpec.url,
-            position = listOf(
-                modelSpec.position[0],
-                modelSpec.position[1] + hover,
-                modelSpec.position[2]
-            ),
+            position = packageBodyPosition(pkg, hover),
             rotation = modelSpec.rotation,
             scale = modelSpec.scale,
+            visible = visible || enlarged,
             castShadow = false,
             receiveShadow = false,
-            name = "pkg-body"
-        )
-        PackageColorAccent(
-            shape = pkg.shape,
-            color = baseColor,
-            hover = hover
+            name = "pkg-body",
+            id = "$nodeId-body"
         )
         if (visible || enlarged) {
+            PackageColorAccent(
+                shape = pkg.shape,
+                color = baseColor,
+                hover = hover
+            )
             PackageGeometryModel(pkg = pkg, hover = hover, elevated = enlarged)
+            PackageBadge(pkg = pkg, hover = hover)
+            GeometryAura(pkg = pkg, level = level, elevated = enlarged)
         }
-        PackageBadge(pkg = pkg, hover = hover)
-        GeometryAura(pkg = pkg, level = level, elevated = enlarged)
         if (selected) {
             SigilMesh(
                 geometryType = GeometryType.TORUS,
