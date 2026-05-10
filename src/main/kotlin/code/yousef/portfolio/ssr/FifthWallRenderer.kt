@@ -42,7 +42,8 @@ class FifthWallRenderer {
         )
 
         head.link("stylesheet", "/static/fifth-wall.css", null, null, null, null)
-        head.script("/sigil-hydration.js", "sigil-hydration-runtime", "application/javascript", false, false, null)
-        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+        head.script("/sigil-hydration.js", "sigil-hydration-runtime", "application/javascript", false, true, null)
+        head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
+        head.script("/static/fifth-wall-telemetry.js", "fifth-wall-telemetry", "application/javascript", false, true, null)
     }
 }

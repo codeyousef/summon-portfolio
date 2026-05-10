@@ -25,6 +25,7 @@ internal fun FifthWallPage(
         if (state.glitchActive) append(" is-glitched")
         if (state.ruleShifted || state.priorityShifted) append(" is-shifted")
     }
+    val sceneReady = state.prompt != FifthWallPrompt.Intro
 
     FifthWallScaffold {
         Box(modifier = Modifier().className("fw-root")) {
@@ -32,23 +33,25 @@ internal fun FifthWallPage(
             Box(modifier = Modifier().className("fw-stage")) {
                 Box(modifier = Modifier().className("fw-primary")) {
                     Box(modifier = Modifier().className(sceneClasses)) {
-                        FifthWallScene(
-                            controller = controller,
-                            level = level,
-                            state = state,
-                            focusedPackage = focusedPackage
-                        )
-                        SceneOverlay(
-                            level = level,
-                            state = state,
-                            focusedPackage = focusedPackage
-                        )
-                        SceneDashboard(
-                            level = level,
-                            state = state,
-                            focusedPackage = focusedPackage
-                        )
-                        SceneFeedback(state = state)
+                        if (sceneReady) {
+                            FifthWallScene(
+                                controller = controller,
+                                level = level,
+                                state = state,
+                                focusedPackage = focusedPackage
+                            )
+                            SceneOverlay(
+                                level = level,
+                                state = state,
+                                focusedPackage = focusedPackage
+                            )
+                            SceneDashboard(
+                                level = level,
+                                state = state,
+                                focusedPackage = focusedPackage
+                            )
+                            SceneFeedback(state = state)
+                        }
                         if (state.prompt != FifthWallPrompt.None) {
                             PromptOverlay(state = state, level = level)
                         }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import java.net.URLConnection
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Workaround for Aether 0.2.0.0 bug - sets Content-Length to avoid Vert.x chunked encoding error.
@@ -32,6 +33,15 @@ class StaticResourceHandler(
     private val resourcePackage: String,
     private val urlPrefix: String = "/"
 ) {
+    private data class StaticAsset(
+        val bytes: ByteArray,
+        val contentType: String,
+        val cacheControl: String,
+        val etag: String
+    )
+
+    private val assetCache = ConcurrentHashMap<String, StaticAsset>()
+
     suspend fun handle(exchange: Exchange, next: suspend () -> Unit) {
         val path = exchange.request.path
         if (path.startsWith(urlPrefix)) {
@@ -42,16 +52,76 @@ class StaticResourceHandler(
             }
             
             val resourcePath = if (resourcePackage.isEmpty()) relativePath else "$resourcePackage/$relativePath"
-            val resourceStream = Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
-                ?: javaClass.classLoader.getResourceAsStream(resourcePath)
+            val asset = loadAsset(resourcePath, relativePath)
 
-            if (resourceStream != null) {
-                val contentType = URLConnection.guessContentTypeFromName(relativePath) ?: "application/octet-stream"
-                exchange.respondBytes(200, contentType, resourceStream.readBytes())
+            if (asset != null) {
+                exchange.response.setHeader("Cache-Control", asset.cacheControl)
+                exchange.response.setHeader("ETag", asset.etag)
+                exchange.response.setHeader("X-Content-Type-Options", "nosniff")
+
+                val requestEtags = exchange.request.headers["If-None-Match"]
+                    ?.split(',')
+                    ?.map { it.trim() }
+                    .orEmpty()
+                if ("*" in requestEtags || asset.etag in requestEtags) {
+                    exchange.response.statusCode = 304
+                    exchange.response.end()
+                    return
+                }
+
+                exchange.respondBytes(200, asset.contentType, asset.bytes)
                 return
             }
         }
         next()
+    }
+
+    private fun loadAsset(resourcePath: String, relativePath: String): StaticAsset? {
+        assetCache[resourcePath]?.let { return it }
+
+        val bytes = (Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
+            ?: javaClass.classLoader.getResourceAsStream(resourcePath))
+            ?.use { it.readBytes() }
+            ?: return null
+
+        val loaded = StaticAsset(
+            bytes = bytes,
+            contentType = contentTypeFor(relativePath),
+            cacheControl = cacheControlFor(relativePath),
+            etag = "W/\"${bytes.size}-${bytes.contentHashCode().toUInt().toString(16)}\""
+        )
+        return assetCache.putIfAbsent(resourcePath, loaded) ?: loaded
+    }
+
+    private fun contentTypeFor(relativePath: String): String {
+        return when (relativePath.substringAfterLast('.', "").lowercase()) {
+            "css" -> "text/css; charset=utf-8"
+            "js" -> "application/javascript; charset=utf-8"
+            "json", "map" -> "application/json; charset=utf-8"
+            "gltf" -> "model/gltf+json"
+            "glb" -> "model/gltf-binary"
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "svg" -> "image/svg+xml"
+            "ico" -> "image/x-icon"
+            "webp" -> "image/webp"
+            "wasm" -> "application/wasm"
+            "bin" -> "application/octet-stream"
+            else -> URLConnection.guessContentTypeFromName(relativePath) ?: "application/octet-stream"
+        }
+    }
+
+    private fun cacheControlFor(relativePath: String): String {
+        val normalizedPath = relativePath.lowercase()
+        val extension = normalizedPath.substringAfterLast('.', "")
+        return when {
+            normalizedPath.startsWith("models/") -> "public, max-age=604800"
+            extension in setOf("jpg", "jpeg", "png", "gif", "svg", "ico", "webp", "glb", "gltf", "bin") ->
+                "public, max-age=604800"
+            extension in setOf("css", "js") -> "public, max-age=3600, must-revalidate"
+            else -> "public, max-age=3600"
+        }
     }
 }
 
@@ -131,4 +201,3 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
         clearPlatformRenderer()
     }
 }
-
