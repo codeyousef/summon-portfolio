@@ -145,10 +145,10 @@ private fun fifthWallSceneEventHandlers(
     state: FifthWallUiState
 ): List<SigilSceneEventHandler> {
     val handlers = mutableListOf<SigilSceneEventHandler>()
-    val renderedPackageIds = state.visiblePackages().map { it.id }
+    val renderedPackageIds = state.queue.map { it.id }
     val patchResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
 
-    state.visiblePackages().forEach { pkg ->
+    state.queue.forEach { pkg ->
         handlers += SigilSceneEventHandler(
             match = SigilSceneEventMatch(type = "pointerdown", interactionId = "package:${pkg.id}"),
             onEvent = { controller.selectPackage(pkg.id) },
@@ -164,8 +164,7 @@ private fun fifthWallSceneEventHandlers(
                     accepted = true
                 ),
                 onEvent = { controller.dropOnTruck(index, pkg.id) },
-                onResponse = patchResponse,
-                reloadOnSuccess = true
+                onResponse = patchResponse
             )
         }
 
@@ -177,8 +176,7 @@ private fun fifthWallSceneEventHandlers(
                 accepted = true
             ),
             onEvent = { controller.dropOnReturn(pkg.id) },
-            onResponse = patchResponse,
-            reloadOnSuccess = true
+            onResponse = patchResponse
         )
 
         handlers += SigilSceneEventHandler(
@@ -494,16 +492,19 @@ private fun ConveyorDeck(
             receiveShadow = false,
             name = "conveyor-model"
         )
-        state.visiblePackages().forEachIndexed { visibleIndex, pkg ->
-            val selected = state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0)
+        val visiblePackageIds = state.visiblePackages().map { it.id }
+        state.queue.forEach { pkg ->
+            val visibleIndex = visiblePackageIds.indexOf(pkg.id)
+            val visible = visibleIndex >= 0
+            val selected = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
             PackageMesh(
                 pkg = pkg,
-                position = packageBeltPosition(visibleIndex),
+                position = if (visible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
                 selected = selected,
                 emphasized = visibleIndex == 0,
                 beltIndex = visibleIndex,
                 level = level,
-                visible = true
+                visible = visible
             )
         }
         ""
@@ -800,20 +801,7 @@ private fun PackageMesh(
             receiveShadow = false,
             name = "pkg-shadow"
         )
-        val modelSpec = packageModelSpec(pkg)
-        SigilModel(
-            url = modelSpec.url,
-            position = listOf(
-                modelSpec.position[0],
-                modelSpec.position[1] + hover,
-                modelSpec.position[2]
-            ),
-            rotation = modelSpec.rotation,
-            scale = modelSpec.scale,
-            castShadow = false,
-            receiveShadow = false,
-            name = "pkg-body"
-        )
+        PackageBodyPrimitive(shape = pkg.shape, color = baseColor, hover = hover)
         if (visible || enlarged) {
             PackageColorAccent(
                 shape = pkg.shape,
@@ -849,6 +837,72 @@ private fun PackageMesh(
             )
         }
         ""
+    }
+}
+
+@Composable
+private fun PackageBodyPrimitive(
+    shape: String,
+    color: Int,
+    hover: Float
+) {
+    when (shape) {
+        "rect" -> SigilBox(
+            width = 1.92f,
+            height = 0.78f,
+            depth = 0.94f,
+            position = listOf(0f, 0.52f + hover, 0f),
+            color = color,
+            metalness = 0.08f,
+            roughness = 0.74f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body-rect"
+        )
+
+        "cylinder" -> SigilMesh(
+            geometryType = GeometryType.CYLINDER,
+            geometryParams = GeometryParams(
+                radiusTop = 0.58f,
+                radiusBottom = 0.58f,
+                height = 0.96f,
+                radialSegments = 24
+            ),
+            position = listOf(0f, 0.62f + hover, 0f),
+            rotation = listOf(0f, 0f, PI.toFloat() / 2f),
+            color = color,
+            metalness = 0.1f,
+            roughness = 0.7f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body-cylinder"
+        )
+
+        "sphere" -> SigilSphere(
+            radius = 0.62f,
+            widthSegments = 20,
+            heightSegments = 14,
+            position = listOf(0f, 0.72f + hover, 0f),
+            color = color,
+            metalness = 0.1f,
+            roughness = 0.72f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body-sphere"
+        )
+
+        else -> SigilBox(
+            width = 1.24f,
+            height = 1.02f,
+            depth = 1.18f,
+            position = listOf(0f, 0.64f + hover, 0f),
+            color = color,
+            metalness = 0.08f,
+            roughness = 0.74f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body-cube"
+        )
     }
 }
 
@@ -1223,34 +1277,6 @@ private fun sphereHitVolume(radius: Float, centerY: Float): HitVolumeData =
         size = emptyList(),
         radius = radius
     )
-
-private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
-    pkg.labelText?.contains("SPECIAL DELIVERY", ignoreCase = true) == true -> FifthWallModelSpec(
-        url = fifthWallModelUrl("special-delivery-package.glb"),
-        position = listOf(0f, 0.1f, 0f),
-        scale = uniformScale(1.18f)
-    )
-    pkg.shape == "rect" -> FifthWallModelSpec(
-        url = fifthWallModelUrl("rectangular-parcel.glb"),
-        position = listOf(0f, 0.12f, 0f),
-        scale = uniformScale(1.36f)
-    )
-    pkg.shape == "sphere" -> FifthWallModelSpec(
-        url = fifthWallModelUrl("sphere-package-with-cradle.glb"),
-        position = listOf(0f, 0.08f, 0f),
-        scale = uniformScale(1.16f)
-    )
-    pkg.shape == "cylinder" -> FifthWallModelSpec(
-        url = fifthWallModelUrl("cylinder-drum.glb"),
-        position = listOf(0f, 0.1f, 0f),
-        scale = uniformScale(1.24f)
-    )
-    else -> FifthWallModelSpec(
-        url = fifthWallModelUrl("cube-crate.glb"),
-        position = listOf(0f, 0.12f, 0f),
-        scale = uniformScale(1.18f)
-    )
-}
 
 private fun geometryModelSpec(
     pkg: FifthWallPackage,
