@@ -1226,7 +1226,7 @@ input.fw-input:focus {
 
     .fw-scene-shell,
     #fifth-wall-scene-container {
-        min-height: 1040px;
+        min-height: 1180px;
     }
 
     .fw-scene-hud {
@@ -1243,6 +1243,37 @@ input.fw-input:focus {
 
     .fw-scene-hud-right {
         display: none !important;
+    }
+
+    .fw-scene-dashboard {
+        top: 226px;
+        right: 12px;
+        bottom: 12px;
+        left: 12px;
+        width: auto;
+        grid-template-rows: minmax(330px, 0.95fr) minmax(220px, 0.7fr) minmax(128px, 0.4fr);
+        gap: 10px;
+    }
+
+    .fw-scene-dashboard-panel > .fw-panel,
+    .fw-scene-dashboard-panel .fw-panel {
+        padding: 12px;
+    }
+
+    .fw-scene-dashboard-panel .fw-chat-log {
+        max-height: 120px;
+    }
+
+    .fw-scene-dashboard-panel .fw-manifest-row {
+        grid-template-columns: 92px minmax(0, 1fr);
+        gap: 7px;
+    }
+
+    .fw-scene-feedback {
+        top: 146px;
+        right: 12px;
+        bottom: auto;
+        left: 12px;
     }
 
     .fw-scene-heading {
