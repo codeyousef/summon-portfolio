@@ -34,6 +34,8 @@ import codes.yousef.sigil.summon.canvas.SigilSceneCallbackRegistry
 import codes.yousef.sigil.summon.canvas.SigilSceneEventCallbackResponse
 import codes.yousef.summon.runtime.CallbackRegistry
 import org.slf4j.LoggerFactory
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -535,6 +537,7 @@ private suspend fun Exchange.handleFifthWallAction(
         "fake-restart" -> controller.fakeRestart()
         "advance" -> controller.advanceLevel()
         "select" -> request.queryParameter("package")
+            .decodeQueryComponent()
             ?.takeIf { it.isNotBlank() }
             ?.let(controller::selectPackage)
         "route-truck" -> request.queryParameter("truck")
@@ -543,30 +546,38 @@ private suspend fun Exchange.handleFifthWallAction(
         "route-return" -> controller.routeToReturn()
         "drop-truck" -> request.queryParameter("truck")
             ?.toIntOrNull()
-            ?.let { index -> controller.dropOnTruck(index, request.queryParameter("package")) }
-        "drop-return" -> controller.dropOnReturn(request.queryParameter("package"))
+            ?.let { index -> controller.dropOnTruck(index, request.queryParameter("package").decodeQueryComponent()) }
+        "drop-return" -> controller.dropOnReturn(request.queryParameter("package").decodeQueryComponent())
         "repair" -> controller.repairGlitch()
         "confidence" -> request.queryParameter("value")
+            .decodeQueryComponent()
             ?.takeIf { it.isNotBlank() }
             ?.let(controller::recordConfidence)
         "submit-prediction" -> {
-            controller.updatePredictionInput(request.queryParameter("value").orEmpty())
+            controller.updatePredictionInput(request.queryParameter("value").decodeQueryComponent().orEmpty())
             controller.submitPrediction()
         }
         "submit-rule-guess" -> {
-            controller.updateRuleGuess(request.queryParameter("value").orEmpty())
+            controller.updateRuleGuess(request.queryParameter("value").decodeQueryComponent().orEmpty())
             controller.submitRuleGuess()
         }
         "submit-discussion" -> {
-            controller.updateDiscussionReply(request.queryParameter("value").orEmpty())
+            controller.updateDiscussionReply(request.queryParameter("value").decodeQueryComponent().orEmpty())
             controller.submitDiscussionReply()
         }
         "send-chat" -> {
-            controller.updateChatDraft(request.queryParameter("value").orEmpty())
+            controller.updateChatDraft(request.queryParameter("value").decodeQueryComponent().orEmpty())
             controller.sendChatMessage()
         }
     }
 }
+
+private fun String?.decodeQueryComponent(): String? =
+    this?.let { encoded ->
+        runCatching {
+            URLDecoder.decode(encoded, StandardCharsets.UTF_8)
+        }.getOrDefault(encoded)
+    }
 
 private suspend fun Exchange.getAdminSession(): AdminSession? {
     val session = session() ?: return null

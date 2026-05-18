@@ -130,6 +130,30 @@ class HydrationTest {
     }
 
     @Test
+    fun `fifth wall action state persists across requests`() {
+        val start = httpClient.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create("$baseUrl/fifth-wall?action=start"))
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString()
+        )
+        val cookie = start.headers().allValues("Set-Cookie")
+            .firstOrNull { it.startsWith("fifth_wall_session=") }
+            ?.substringBefore(";")
+
+        assertEquals(200, start.statusCode())
+        assertTrue(cookie != null, "Should set a Fifth Wall session cookie before writing the page")
+        assertEquals("0/10", fifthWallProcessedCount(start.body()))
+
+        val firstRoute = fifthWallAction("route-truck&truck=0", cookie)
+        assertEquals("1/10", fifthWallProcessedCount(firstRoute.body()))
+
+        val secondRoute = fifthWallAction("route-truck&truck=0", cookie)
+        assertEquals("2/10", fifthWallProcessedCount(secondRoute.body()))
+    }
+
+    @Test
     fun `fifth wall client runtime is not required as static javascript`() {
         listOf(
             "/static/fifth-wall-client-game.js",
@@ -145,5 +169,24 @@ class HydrationTest {
 
             assertEquals(404, response.statusCode(), "Temporary app-authored gameplay JS should be removed: $path")
         }
+    }
+
+    private fun fifthWallAction(action: String, cookie: String): HttpResponse<String> =
+        httpClient.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create("$baseUrl/fifth-wall?action=$action"))
+                .header("Cookie", cookie)
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString()
+        )
+
+    private fun fifthWallProcessedCount(body: String): String {
+        val marker = "id=\"fw-stat-processed\""
+        val markerIndex = body.indexOf(marker)
+        assertTrue(markerIndex >= 0, "Should render processed stat")
+        val valueStart = body.indexOf('>', markerIndex) + 1
+        val valueEnd = body.indexOf('<', valueStart)
+        return body.substring(valueStart, valueEnd)
     }
 }
