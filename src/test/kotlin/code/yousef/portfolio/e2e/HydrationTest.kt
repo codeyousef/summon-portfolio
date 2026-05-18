@@ -125,8 +125,21 @@ class HydrationTest {
 
         assertEquals(200, response.statusCode(), "Normal gameplay action queries should not redirect")
         assertFalse(response.headers().firstValue("Location").isPresent, "Should not send a redirect location")
-        assertTrue(response.body().contains("fifth-wall-scene"), "Should still serve the Materia/Sigil game shell")
-        assertFalse(response.body().contains("id=\"fifth-wall-game-root\""), "Should not fall back to the temporary client shell")
+        val body = response.body()
+        assertTrue(body.contains("fifth-wall-scene"), "Should still serve the Materia/Sigil game shell")
+        assertFalse(body.contains("id=\"fifth-wall-game-root\""), "Should not fall back to the temporary client shell")
+        listOf(
+            "cube-crate.glb",
+            "cylinder-drum.glb",
+            "rectangular-parcel.glb",
+            "sphere-package-with-cradle.glb",
+            "valid-geometry-insert-set.glb",
+            "penrose-loop.glb",
+            "escher-stair.glb",
+            "impossible-trident.glb"
+        ).forEach { asset ->
+            assertFalse(body.contains(asset), "Package meshes should use lightweight primitives instead of repeated GLB asset: $asset")
+        }
     }
 
     @Test

@@ -111,7 +111,7 @@
 
 .fw-scene-shell {
     position: relative;
-    min-height: 860px;
+    min-height: 760px;
     border-radius: 18px;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -164,7 +164,7 @@
 }
 
 #fifth-wall-scene-container {
-    min-height: 860px;
+    min-height: 760px;
 }
 
 #fifth-wall-scene {
@@ -562,6 +562,30 @@
     border-radius: 8px;
     background: rgba(7, 12, 19, 0.82);
     backdrop-filter: blur(12px);
+}
+
+.fw-scene-shell .fw-scene-hud,
+.fw-scene-shell .fw-scene-flow-step,
+.fw-scene-shell .fw-scene-target-strip,
+.fw-scene-shell .fw-scene-dashboard-panel > .fw-panel,
+.fw-scene-shell .fw-scene-dashboard-panel .fw-panel,
+.fw-scene-shell .fw-scene-feedback .fw-feedback,
+.fw-scene-shell .fw-scene-control-deck,
+.fw-scene-shell .fw-scene-control-deck .fw-panel,
+.fw-scene-shell .fw-scene-control-deck .fw-feedback {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.fw-scene-shell .fw-scene-hud,
+.fw-scene-shell .fw-scene-flow-step,
+.fw-scene-shell .fw-scene-target-strip,
+.fw-scene-shell .fw-scene-dashboard-panel > .fw-panel,
+.fw-scene-shell .fw-scene-dashboard-panel .fw-panel,
+.fw-scene-shell .fw-scene-feedback .fw-feedback,
+.fw-scene-shell .fw-scene-control-deck .fw-panel,
+.fw-scene-shell .fw-scene-control-deck .fw-feedback {
+    background: rgba(7, 12, 19, 0.9);
 }
 
 .fw-panel {
@@ -1108,7 +1132,7 @@ input.fw-input:focus {
 
     .fw-scene-shell,
     #fifth-wall-scene-container {
-        min-height: 980px;
+        min-height: 860px;
     }
 
     .fw-scene-flow {
@@ -1226,7 +1250,7 @@ input.fw-input:focus {
 
     .fw-scene-shell,
     #fifth-wall-scene-container {
-        min-height: 1180px;
+        min-height: 940px;
     }
 
     .fw-scene-hud {

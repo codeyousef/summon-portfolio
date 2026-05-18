@@ -60,13 +60,6 @@ private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#b690ff")
 )
 
-private data class FifthWallModelSpec(
-    val url: String,
-    val position: List<Float> = listOf(0f, 0f, 0f),
-    val rotation: List<Float> = listOf(0f, 0f, 0f),
-    val scale: List<Float> = listOf(1f, 1f, 1f)
-)
-
 private fun uniformScale(value: Float): List<Float> = listOf(value, value, value)
 
 @Composable
@@ -101,6 +94,7 @@ internal fun FifthWallScene(
         )
         SigilOrbitControls(
             target = listOf(0.8f, 1.85f, 1.6f),
+            enableDamping = false,
             minDistance = 8.5f,
             maxDistance = 15f,
             minPolarAngle = 0.9f,
@@ -547,12 +541,13 @@ private fun packageHover(enlarged: Boolean, emphasized: Boolean): Float =
     if (enlarged) 0.18f else if (emphasized) 0.1f else 0f
 
 private fun packageBodyPosition(pkg: FifthWallPackage, hover: Float): List<Float> {
-    val modelSpec = packageModelSpec(pkg)
-    return listOf(
-        modelSpec.position[0],
-        modelSpec.position[1] + hover,
-        modelSpec.position[2]
-    )
+    val y = when (pkg.shape) {
+        "rect" -> 0.5f
+        "cylinder" -> 0.66f
+        "sphere" -> 0.74f
+        else -> 0.62f
+    }
+    return listOf(0f, y + hover, 0f)
 }
 
 @Composable
@@ -834,16 +829,10 @@ private fun PackageMesh(
                 name = "pkg-shadow"
             )
         }
-        val modelSpec = packageModelSpec(pkg)
-        SigilModel(
-            url = modelSpec.url,
+        PackageBodyMesh(
+            pkg = pkg,
             position = packageBodyPosition(pkg, hover),
-            rotation = modelSpec.rotation,
-            scale = modelSpec.scale,
             visible = visible || enlarged,
-            castShadow = false,
-            receiveShadow = false,
-            name = "pkg-body",
             id = "$nodeId-body"
         )
         if (visible || enlarged) {
@@ -852,7 +841,6 @@ private fun PackageMesh(
                 color = baseColor,
                 hover = hover
             )
-            PackageGeometryModel(pkg = pkg, hover = hover, elevated = enlarged)
             PackageBadge(pkg = pkg, hover = hover)
             GeometryAura(pkg = pkg, level = level, elevated = enlarged)
         }
@@ -885,25 +873,79 @@ private fun PackageMesh(
 }
 
 @Composable
-private fun PackageGeometryModel(
+private fun PackageBodyMesh(
     pkg: FifthWallPackage,
-    hover: Float,
-    elevated: Boolean
+    position: List<Float>,
+    visible: Boolean,
+    id: String
 ) {
-    val modelSpec = geometryModelSpec(pkg, elevated) ?: return
-    SigilModel(
-        url = modelSpec.url,
-        position = listOf(
-            modelSpec.position[0],
-            modelSpec.position[1] + hover,
-            modelSpec.position[2]
-        ),
-        rotation = modelSpec.rotation,
-        scale = modelSpec.scale,
-        castShadow = false,
-        receiveShadow = false,
-        name = "pkg-geometry-model"
-    )
+    val color = argb(pkg.color.hex)
+    when (pkg.shape) {
+        "rect" -> SigilBox(
+            width = 2.08f,
+            height = 0.78f,
+            depth = 1.08f,
+            position = position,
+            color = color,
+            metalness = 0.18f,
+            roughness = 0.58f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+
+        "cylinder" -> SigilMesh(
+            geometryType = GeometryType.CYLINDER,
+            geometryParams = GeometryParams(
+                radiusTop = 0.62f,
+                radiusBottom = 0.62f,
+                height = 1.18f,
+                radialSegments = 18
+            ),
+            position = position,
+            rotation = listOf(0f, 0f, PI.toFloat() / 2f),
+            color = color,
+            metalness = 0.2f,
+            roughness = 0.54f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+
+        "sphere" -> SigilSphere(
+            radius = 0.72f,
+            widthSegments = 18,
+            heightSegments = 12,
+            position = position,
+            color = color,
+            metalness = 0.16f,
+            roughness = 0.5f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+
+        else -> SigilBox(
+            width = 1.34f,
+            height = 1.08f,
+            depth = 1.34f,
+            position = position,
+            color = color,
+            metalness = 0.18f,
+            roughness = 0.56f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+    }
 }
 
 @Composable
@@ -1255,69 +1297,6 @@ private fun sphereHitVolume(radius: Float, centerY: Float): HitVolumeData =
         size = emptyList(),
         radius = radius
     )
-
-private fun packageModelSpec(pkg: FifthWallPackage): FifthWallModelSpec = when {
-    pkg.labelText?.contains("SPECIAL DELIVERY", ignoreCase = true) == true -> FifthWallModelSpec(
-        url = fifthWallModelUrl("special-delivery-package.glb"),
-        position = listOf(0f, 0.1f, 0f),
-        scale = uniformScale(1.18f)
-    )
-    pkg.shape == "rect" -> FifthWallModelSpec(
-        url = fifthWallModelUrl("rectangular-parcel.glb"),
-        position = listOf(0f, 0.12f, 0f),
-        scale = uniformScale(1.36f)
-    )
-    pkg.shape == "sphere" -> FifthWallModelSpec(
-        url = fifthWallModelUrl("sphere-package-with-cradle.glb"),
-        position = listOf(0f, 0.08f, 0f),
-        scale = uniformScale(1.16f)
-    )
-    pkg.shape == "cylinder" -> FifthWallModelSpec(
-        url = fifthWallModelUrl("cylinder-drum.glb"),
-        position = listOf(0f, 0.1f, 0f),
-        scale = uniformScale(1.24f)
-    )
-    else -> FifthWallModelSpec(
-        url = fifthWallModelUrl("cube-crate.glb"),
-        position = listOf(0f, 0.12f, 0f),
-        scale = uniformScale(1.18f)
-    )
-}
-
-private fun geometryModelSpec(
-    pkg: FifthWallPackage,
-    elevated: Boolean
-): FifthWallModelSpec? {
-    if (pkg.geometry == null) return null
-
-    val lift = if (elevated) 1.3f else 1.08f
-    return when {
-        pkg.validGeometry -> FifthWallModelSpec(
-            url = fifthWallModelUrl("valid-geometry-insert-set.glb"),
-            position = listOf(0f, lift, 0f),
-            rotation = listOf(0f, 0.38f, 0f),
-            scale = uniformScale(if (elevated) 1.05f else 0.82f)
-        )
-        pkg.geometry == "Penrose loop" -> FifthWallModelSpec(
-            url = fifthWallModelUrl("penrose-loop.glb"),
-            position = listOf(0f, lift, 0f),
-            rotation = listOf(0.18f, 0.52f, 0f),
-            scale = uniformScale(if (elevated) 0.9f else 0.66f)
-        )
-        pkg.geometry == "Escher stair" -> FifthWallModelSpec(
-            url = fifthWallModelUrl("escher-stair.glb"),
-            position = listOf(0f, lift, 0f),
-            rotation = listOf(0.12f, 0.62f, 0f),
-            scale = uniformScale(if (elevated) 1f else 0.78f)
-        )
-        else -> FifthWallModelSpec(
-            url = fifthWallModelUrl("impossible-trident.glb"),
-            position = listOf(0f, lift, 0f),
-            rotation = listOf(0.14f, 0.48f, 0f),
-            scale = uniformScale(if (elevated) 0.92f else 0.72f)
-        )
-    }
-}
 
 private fun truckSpacing(count: Int): Float = when (count) {
     1 -> 0f
