@@ -100,7 +100,6 @@ fun PageScaffold(
             AuroraBackground(
                 config = AuroraConfig(
                     canvasId = "aurora-canvas",
-                    height = 3500,
                     initialPaletteIndex = 0,
                     glowIntensity = 1.15f,
                     enableMouseInteraction = true,

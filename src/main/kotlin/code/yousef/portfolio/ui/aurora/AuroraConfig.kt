@@ -11,8 +11,8 @@ data class AuroraConfig(
     /** Canvas element ID */
     val canvasId: String = "aurora-canvas",
     
-    /** Canvas height in pixels */
-    val height: Int = 3500,
+    /** Fixed background height in viewport units. */
+    val heightVh: Int = 100,
     
     /** Initial color palette index (0-6) */
     val initialPaletteIndex: Int = 0,

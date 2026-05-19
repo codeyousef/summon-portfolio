@@ -4,6 +4,7 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.vh
 import codes.yousef.summon.modifier.*
 import codes.yousef.sigil.summon.effects.SigilEffectCanvas
 import codes.yousef.sigil.summon.effects.SigilEffect
@@ -38,7 +39,7 @@ fun AuroraBackground(
             .top(0.px)
             .left(0.px)
             .width(100.percent)
-            .height(config.height.px)
+            .height(config.heightVh.vh)
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {
@@ -49,7 +50,7 @@ fun AuroraBackground(
             height = "100%",
             config = SigilCanvasConfig(
                 id = config.canvasId,
-                respectDevicePixelRatio = true,
+                respectDevicePixelRatio = false,
                 fallbackToWebGL = true,  // Enable WebGL fallback for Firefox
                 fallbackToCSS = true
             ),
