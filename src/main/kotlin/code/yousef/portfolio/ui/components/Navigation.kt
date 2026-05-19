@@ -21,8 +21,7 @@ data class NavItem(
 )
 
 val defaultNavItems = listOf(
-    NavItem(NavigationStrings.blog, NavTarget.Page("/blog")),
-    NavItem(NavigationStrings.experiments, NavTarget.Page("/experiments"))
+    NavItem(NavigationStrings.blog, NavTarget.Page("/blog"))
 )
 
 val projectsLabel = NavigationStrings.projects

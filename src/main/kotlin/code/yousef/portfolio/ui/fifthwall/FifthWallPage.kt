@@ -92,7 +92,7 @@ private fun TopBar(
         Box(modifier = Modifier().className("fw-actions")) {
             AnchorLink(
                 label = "Exit",
-                href = "/experiments",
+                href = "/",
                 modifier = Modifier().className("fw-link-btn"),
                 navigationMode = LinkNavigationMode.Native
             )

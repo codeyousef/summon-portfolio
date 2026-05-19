@@ -60,26 +60,6 @@ fun PortfolioFooter(locale: PortfolioLocale) {
                         .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                         .fontSize(0.85.rem)
                 )
-                // Hidden entry to scratchpad - nearly invisible "?" symbol
-                AnchorLink(
-                    label = "?",
-                    href = "/experiments/scratchpad",
-                    modifier = Modifier()
-                        .color("rgba(255, 255, 255, 0.03)") // Nearly invisible
-                        .textDecoration(TextDecoration.None)
-                        .fontSize(0.7.rem)
-                        .cursor("default") // Don't hint that it's clickable
-                        .hover(Modifier().color("rgba(255, 255, 255, 0.08)")), // Slightly more visible on hover
-                    navigationMode = LinkNavigationMode.Native,
-                    target = null,
-                    rel = null,
-                    title = null,
-                    id = null,
-                    ariaLabel = "hidden",
-                    ariaDescribedBy = null,
-                    dataHref = null,
-                    dataAttributes = mapOf("void" to "true")
-                )
             }
         }
     }

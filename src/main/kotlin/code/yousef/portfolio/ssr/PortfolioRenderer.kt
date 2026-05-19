@@ -1,13 +1,8 @@
 package code.yousef.portfolio.ssr
 
 import code.yousef.portfolio.content.PortfolioContentService
-import code.yousef.portfolio.content.seed.ArtworkSeed
-import code.yousef.portfolio.content.seed.MusicSeed
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
-import code.yousef.portfolio.ui.art.ArtPage
-import code.yousef.portfolio.ui.experiments.ExperimentsPage
-import code.yousef.portfolio.ui.music.MusicPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
 import code.yousef.portfolio.ui.summon.SummonLandingPage
 import code.yousef.portfolio.ui.workwithme.FullTimePage
@@ -95,48 +90,6 @@ class PortfolioRenderer(
         )
     }
 
-    fun artPage(locale: PortfolioLocale): SummonPage {
-        return SummonPage(
-            head = headBlockFor(
-                locale = locale,
-                pageTitle = "Art & Visual Work | Yousef",
-                description = "Digital explorations, procedural generations, and visual experiments at the intersection of code and creativity."
-            ),
-            content = {
-                ArtPage(artworks = ArtworkSeed.artworks, locale = locale)
-            },
-            locale = locale
-        )
-    }
-
-    fun experimentsPage(locale: PortfolioLocale): SummonPage {
-        return SummonPage(
-            head = headBlockFor(
-                locale = locale,
-                pageTitle = "Experiments | Yousef",
-                description = "Side quests, creative detours, and things that didn't fit anywhere else."
-            ),
-            content = {
-                ExperimentsPage(locale = locale)
-            },
-            locale = locale
-        )
-    }
-
-    fun musicPage(locale: PortfolioLocale): SummonPage {
-        return SummonPage(
-            head = headBlockFor(
-                locale = locale,
-                pageTitle = "Music & Audio | Yousef",
-                description = "Compositions, soundscapes, and audio experiments. From ambient explorations to orchestral arrangements."
-            ),
-            content = {
-                MusicPage(tracks = MusicSeed.tracks, locale = locale)
-            },
-            locale = locale
-        )
-    }
-
     private fun headBlockFor(
         locale: PortfolioLocale,
         pageTitle: String,
@@ -167,8 +120,6 @@ class PortfolioRenderer(
         // Sigil hydration bundle auto-loads via sigilStaticAssets() - no manual script needed
         // Non-critical cleanup script (async)
         head.script("/static/textarea-cleanup.js", "textarea-cleanup", "application/javascript", true, false, null)
-        // Konami code for scratchpad access (async, deferred)
-        head.script("/static/konami.js", "konami-code", "application/javascript", true, true, null)
         // (Structured data currently omitted until HeadScope gains inline support)
     }
 

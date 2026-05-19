@@ -34,7 +34,7 @@ fun ScratchpadPage(
         ) {
             AnchorLink(
                 label = "[ EXIT ]",
-                href = "/experiments",
+                href = "/",
                 modifier = Modifier()
                     .color(ScratchpadTheme.TEXT_PRIMARY)
                     .fontSize(0.9.rem)

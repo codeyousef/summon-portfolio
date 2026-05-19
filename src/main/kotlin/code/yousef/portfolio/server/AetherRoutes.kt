@@ -91,7 +91,6 @@ fun Router.summonRoutes(
 internal fun Router.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,
     blogRenderer: BlogRenderer,
-    scratchpadRenderer: ScratchpadRenderer,
     fifthWallRenderer: FifthWallRenderer,
     contactService: ContactService,
     contentService: PortfolioContentService,
@@ -143,26 +142,6 @@ internal fun Router.portfolioRoutes(
         exchange.respondSummonPage(page)
     }
 
-    get("/experiments") { exchange ->
-        val page = portfolioRenderer.experimentsPage(locale = PortfolioLocale.EN)
-        exchange.respondSummonPage(page)
-    }
-
-    get("/experiments/art") { exchange ->
-        val page = portfolioRenderer.artPage(locale = PortfolioLocale.EN)
-        exchange.respondSummonPage(page)
-    }
-
-    get("/experiments/music") { exchange ->
-        val page = portfolioRenderer.musicPage(locale = PortfolioLocale.EN)
-        exchange.respondSummonPage(page)
-    }
-
-    get("/experiments/scratchpad") { exchange ->
-        val page = scratchpadRenderer.scratchpadPage(locale = PortfolioLocale.EN)
-        exchange.respondSummonPage(page)
-    }
-
     get("/fifth-wall") { exchange ->
         val controller = fifthWallSessionStore.controllerFor(exchange)
         exchange.request.queryParameter("action")
@@ -207,11 +186,6 @@ internal fun Router.portfolioRoutes(
         exchange.respond(result.statusCode, body)
     }
 
-    // Legacy redirects
-    get("/art") { exchange -> exchange.redirect("/experiments/art") }
-    get("/music") { exchange -> exchange.redirect("/experiments/music") }
-    get("/scratchpad") { exchange -> exchange.redirect("/experiments/scratchpad") }
-
     get("/blog") { exchange ->
         val page = blogRenderer.renderList(PortfolioLocale.EN)
         exchange.respondSummonPage(page)
@@ -251,25 +225,6 @@ internal fun Router.portfolioRoutes(
         val page = portfolioRenderer.fullTimePage(locale = PortfolioLocale.AR)
         exchange.respondSummonPage(page)
     }
-
-    get("/ar/experiments") { exchange ->
-        val page = portfolioRenderer.experimentsPage(locale = PortfolioLocale.AR)
-        exchange.respondSummonPage(page)
-    }
-
-    get("/ar/experiments/art") { exchange ->
-        val page = portfolioRenderer.artPage(locale = PortfolioLocale.AR)
-        exchange.respondSummonPage(page)
-    }
-
-    get("/ar/experiments/music") { exchange ->
-        val page = portfolioRenderer.musicPage(locale = PortfolioLocale.AR)
-        exchange.respondSummonPage(page)
-    }
-
-    // Arabic legacy redirects
-    get("/ar/art") { exchange -> exchange.redirect("/ar/experiments/art") }
-    get("/ar/music") { exchange -> exchange.redirect("/ar/experiments/music") }
 
     post("/contact") { exchange ->
         val contentType = exchange.request.headers["Content-Type"] ?: ""
