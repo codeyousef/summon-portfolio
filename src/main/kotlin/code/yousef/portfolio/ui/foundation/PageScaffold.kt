@@ -24,15 +24,24 @@ fun PageScaffold(
     InjectFontAssets()
     PostHogAnalytics()
 
-    // Global styles to prevent zoom and horizontal overflow on mobile
-    // When aurora is enabled, set dark body background so the effect shows through transparent scaffold
-    val bodyBackground = if (enableAuroraEffects) "#001a2c" else "inherit"
+    // Global styles to prevent zoom and horizontal overflow on mobile.
+    // When aurora is enabled, keep a matching gradient underlay so canvas or section
+    // boundaries never expose a flat color seam.
+    val bodyBackground = if (enableAuroraEffects) {
+        """
+            background-color: #02030a;
+            background-image: ${PortfolioTheme.Gradients.HERO};
+            background-attachment: fixed;
+        """.trimIndent()
+    } else {
+        "background-color: inherit;"
+    }
     GlobalStyle(
         """
         html, body {
             overflow-x: hidden;
             max-width: 100vw;
-            background-color: $bodyBackground;
+            $bodyBackground
         }
         
         * {
