@@ -5,7 +5,6 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.aurora.AuroraBackground
 import code.yousef.portfolio.ui.aurora.AuroraConfig
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.foundation.Canvas
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.styles.GlobalStyle
@@ -24,15 +23,24 @@ fun PageScaffold(
     InjectFontAssets()
     PostHogAnalytics()
 
-    // Global styles to prevent zoom and horizontal overflow on mobile
-    // When aurora is enabled, set dark body background so the effect shows through transparent scaffold
-    val bodyBackground = if (enableAuroraEffects) "#001a2c" else "inherit"
+    // Global styles to prevent zoom and horizontal overflow on mobile.
+    // When aurora is enabled, keep a matching gradient underlay so canvas or section
+    // boundaries never expose a flat color seam.
+    val bodyBackground = if (enableAuroraEffects) {
+        """
+            background-color: #02030a;
+            background-image: ${PortfolioTheme.Gradients.HERO};
+            background-attachment: fixed;
+        """.trimIndent()
+    } else {
+        "background-color: inherit;"
+    }
     GlobalStyle(
         """
         html, body {
             overflow-x: hidden;
             max-width: 100vw;
-            background-color: $bodyBackground;
+            $bodyBackground
         }
         
         * {
@@ -100,13 +108,14 @@ fun PageScaffold(
             AuroraBackground(
                 config = AuroraConfig(
                     canvasId = "aurora-canvas",
-                    height = 3500,
                     initialPaletteIndex = 0,
+                    glowIntensity = 1.15f,
                     enableMouseInteraction = true,
                     enableKeyboardCycle = true,
                     enableClickCycle = true
                 )
             )
+            AuroraBlendLayer()
             GrainLayer()
         }
         val columnModifier = Modifier()
@@ -127,6 +136,25 @@ fun PageScaffold(
             content()
         }
     }
+}
+
+@Composable
+private fun AuroraBlendLayer() {
+    Box(
+        modifier = Modifier()
+            .position(Position.Fixed)
+            .left(0.px)
+            .right(0.px)
+            .top("64vh")
+            .height("56vh")
+            .pointerEvents(PointerEvents.None)
+            .style(
+                "background",
+                "linear-gradient(180deg, rgba(2,3,10,0) 0%, rgba(2,3,10,0.18) 34%, rgba(0,18,31,0.72) 74%, rgba(0,26,44,0.96) 100%)"
+            )
+            .zIndex(1)
+            .dataAttribute("aurora-blend", "true")
+    ) {}
 }
 
 @Composable

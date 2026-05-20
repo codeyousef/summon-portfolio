@@ -35,8 +35,6 @@ fun DesktopHeader(
     forcePortfolioAnchors: Boolean
 ) {
     val chrome = LocalPageChrome.current
-    val navItems = defaultNavItems
-    val docsHref = resolveDocsHref(docsBaseUrl)
 
     Row(
         modifier = modifier
@@ -133,14 +131,6 @@ fun DesktopHeader(
                     href = blogHref,
                     modifier = baseNavModifier,
                     dataAttributes = mapOf("nav" to "blog"),
-                    navigationMode = LinkNavigationMode.Native
-                )
-
-                navLink(
-                    label = NavigationStrings.experiments.resolve(locale),
-                    href = "/experiments",
-                    modifier = baseNavModifier,
-                    dataAttributes = mapOf("nav" to "experiments"),
                     navigationMode = LinkNavigationMode.Native
                 )
 

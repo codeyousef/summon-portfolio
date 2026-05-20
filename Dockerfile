@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget gnupg ca-c
        > /etc/apt/sources.list.d/llvm-21.list \
     && apt-get update && apt-get install -y --no-install-recommends \
        llvm-21 clang-21 lld-21 \
+       libvulkan1 libsdl3-0 \
     && ln -sf /usr/bin/lli-21 /usr/bin/lli \
     && ln -sf /usr/bin/llvm-link-21 /usr/bin/llvm-link \
     && ln -sf /usr/bin/opt-21 /usr/bin/opt \
@@ -41,7 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget gnupg ca-c
 COPY seen-tools/seen /opt/seen/seen
 COPY seen-tools/seen_runtime/ /opt/seen/seen_runtime/
 COPY seen-tools/languages/ /opt/seen/languages/
-RUN chmod +x /opt/seen/seen
+RUN chmod +x /opt/seen/seen \
+    && ldd /opt/seen/seen \
+    && /opt/seen/seen --version
 
 # Copy application JAR (use the shadow/all JAR specifically)
 COPY --from=build /workspace/build/libs/*-all.jar /app/app.jar

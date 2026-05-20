@@ -30,6 +30,8 @@ import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.server.*
 import code.yousef.portfolio.ssr.*
+import code.yousef.portfolio.ui.fifthwall.FileFifthWallTelemetryStore
+import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryStore
 import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.AetherDispatcher
 import codes.yousef.aether.core.jvm.VertxServer
@@ -45,6 +47,7 @@ import codes.yousef.aether.db.DatabaseDriverRegistry
 import codes.yousef.aether.web.router
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
+import java.util.concurrent.CountDownLatch
 
 data class ApplicationResources(
     val pipeline: Pipeline,
@@ -137,7 +140,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     // Renderers
     val portfolioRenderer = PortfolioRenderer(contentService)
     val blogRenderer = BlogRenderer(contentService, markdownRenderer)
-    val scratchpadRenderer = ScratchpadRenderer()
+    val fifthWallRenderer = FifthWallRenderer()
     val materiaRenderer = MateriaLandingRenderer()
     val sigilRenderer = SigilLandingRenderer()
     val aetherRenderer = AetherLandingRenderer()
@@ -160,18 +163,20 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         FirestoreAiProgressStore(firestore) else FileAiProgressStore()
     val aiCurriculumCatalog = AiCurriculumCatalog()
     val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer, aiCurriculumCatalog, aiProgressStore)
+    val fifthWallTelemetryStore: FifthWallTelemetryStore = FileFifthWallTelemetryStore()
 
     // Routers
     val mainRouter = router {
         portfolioRoutes(
             portfolioRenderer,
             blogRenderer,
-            scratchpadRenderer,
+            fifthWallRenderer,
             contactService,
             contentService,
             adminAuthService,
             aiCurriculumRenderer = aiCurriculumRenderer,
             aiProgressStore = aiProgressStore,
+            fifthWallTelemetryStore = fifthWallTelemetryStore,
         )
     }
 
@@ -374,7 +379,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     }
 }
 
-fun main() = runBlocking(AetherDispatcher.dispatcher) {
+fun main() {
     val appConfig = loadAppConfig()
     val resources = buildApplication(appConfig)
 
@@ -390,5 +395,9 @@ fun main() = runBlocking(AetherDispatcher.dispatcher) {
         }
     })
 
-    server.start()
+    runBlocking(AetherDispatcher.dispatcher) {
+        server.start()
+    }
+
+    CountDownLatch(1).await()
 }

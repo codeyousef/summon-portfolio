@@ -13,6 +13,7 @@ import java.util.*
  * Initial users (seeded on first run):
  * - waleed / waleed (must change password)
  * - raghad / raghad (must change password)
+ * - abdu / abdu (must change password)
  * - admin / admin (must change password)
  */
 class BuildingAuthProvider(
@@ -30,6 +31,7 @@ class BuildingAuthProvider(
         val seedUsers = listOf(
             SeedUser("waleed", "waleed"),
             SeedUser("raghad", "raghad"),
+            SeedUser("abdu", "abdu"),
             SeedUser("admin", "admin")
         )
 

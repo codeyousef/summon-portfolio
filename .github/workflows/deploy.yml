@@ -60,7 +60,14 @@ jobs:
             echo "Warning: Seen tools not found in GCS. Playground will be disabled."
             echo "Upload with: gsutil cp -r seen-tools/ gs://seen-compiler-tools/"
           }
-          [ -f seen-tools/seen ] && chmod +x seen-tools/seen || true
+          if [ ! -f seen-tools/seen ]; then
+            mkdir -p seen-tools/seen_runtime seen-tools/languages
+            printf '%s\n' \
+              '#!/usr/bin/env sh' \
+              'echo "Seen playground unavailable: compiler tools were not downloaded for this build." >&2' \
+              'exit 1' > seen-tools/seen
+          fi
+          chmod +x seen-tools/seen
 
       # Build and push image with Docker
       - name: Build & Push

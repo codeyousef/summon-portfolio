@@ -11,8 +11,8 @@ data class AuroraConfig(
     /** Canvas element ID */
     val canvasId: String = "aurora-canvas",
     
-    /** Canvas height in pixels */
-    val height: Int = 3500,
+    /** Fixed background height in viewport units, with bounded overscan to avoid a hard fold cut-off. */
+    val heightVh: Int = 120,
     
     /** Initial color palette index (0-6) */
     val initialPaletteIndex: Int = 0,
@@ -28,6 +28,9 @@ data class AuroraConfig(
     
     /** Animation speed multiplier */
     val timeScale: Float = 1.0f,
+
+    /** Overall glow strength multiplier */
+    val glowIntensity: Float = 2.0f,
     
     /** Noise scale for the aurora pattern */
     val noiseScale: Float = 1.0f

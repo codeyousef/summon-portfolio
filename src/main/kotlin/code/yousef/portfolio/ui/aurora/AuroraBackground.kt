@@ -1,16 +1,17 @@
 package code.yousef.portfolio.ui.aurora
 
-import codes.yousef.sigil.schema.effects.InteractionConfig
-import codes.yousef.sigil.schema.effects.ShaderEffectData
-import codes.yousef.sigil.schema.effects.SigilCanvasConfig
-import codes.yousef.sigil.summon.effects.SigilEffect
-import codes.yousef.sigil.summon.effects.SigilEffectCanvas
+import code.yousef.portfolio.theme.PortfolioTheme
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
+import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.vh
-import codes.yousef.summon.extensions.vw
 import codes.yousef.summon.modifier.*
+import codes.yousef.sigil.summon.effects.SigilEffectCanvas
+import codes.yousef.sigil.summon.effects.SigilEffect
+import codes.yousef.sigil.schema.effects.SigilCanvasConfig
+import codes.yousef.sigil.schema.effects.InteractionConfig
+import codes.yousef.sigil.schema.effects.ShaderEffectData
 
 /**
  * Aurora background effect component using Sigil.
@@ -38,19 +39,20 @@ fun AuroraBackground(
             .position(Position.Fixed)
             .top(0.px)
             .left(0.px)
-            .width(100.vw)
-            .height(100.vh)
+            .width(100.percent)
+            .height(config.heightVh.vh)
+            .style("background", PortfolioTheme.Gradients.HERO)
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {
         // Sigil effect canvas with aurora shader
         SigilEffectCanvas(
             id = config.canvasId,
-            width = "100vw",
-            height = "100vh",
+            width = "100%",
+            height = "${config.heightVh}vh",
             config = SigilCanvasConfig(
                 id = config.canvasId,
-                respectDevicePixelRatio = true,
+                respectDevicePixelRatio = false,
                 fallbackToWebGL = true,  // Enable WebGL fallback for Firefox
                 fallbackToCSS = true
             ),
@@ -68,8 +70,8 @@ fun AuroraBackground(
                 ShaderEffectData(
                     id = "aurora-effect",
                     name = "Aurora Background",
-                    fragmentShader = buildAuroraWGSLShader(palette),
-                    glslFragmentShader = buildAuroraGLSLShader(palette),
+                    fragmentShader = buildAuroraWGSLShader(palette, config),
+                    glslFragmentShader = buildAuroraGLSLShader(palette, config),
                     timeScale = config.timeScale,
                     enableMouseInteraction = config.enableMouseInteraction,
                     // Uniforms map tells Sigil what uniform fields exist in the shader.
@@ -99,7 +101,10 @@ fun AuroraBackground(
  * NOTE: Sigil auto-generates the Uniforms struct and @group(0) @binding(0) var<uniform> u: Uniforms;
  * We just use u.time, u.deltaTime, u.resolution, u.mouse in our fragment code.
  */
-private fun buildAuroraWGSLShader(palette: AuroraPalette): String = """
+private fun buildAuroraWGSLShader(
+    palette: AuroraPalette,
+    config: AuroraConfig
+): String = """
 // IQ Palette formula for aurora colors
 fn palette(t: f32) -> vec3<f32> {
     let a = vec3<f32>(${palette.a.first}, ${palette.a.second}, ${palette.a.third});
@@ -149,9 +154,9 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Dark sky background
     let sky = vec3<f32>(0.01, 0.01, 0.03);
     
-    // Final color - reduced intensity
-    let color = sky + auroraColor * glow * 0.7;
-
+    // Final color - strong intensity
+    let color = sky + auroraColor * glow * ${config.glowIntensity};
+    
     return vec4<f32>(color, 1.0);
 }
 """
@@ -161,7 +166,10 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
  * Creates flowing aurora ribbons using sine waves - consistent with WGSL version.
  * Uses IQ palette formula for colors.
  */
-private fun buildAuroraGLSLShader(palette: AuroraPalette): String = """
+private fun buildAuroraGLSLShader(
+    palette: AuroraPalette,
+    config: AuroraConfig
+): String = """
 precision highp float;
 
 uniform float time;
@@ -222,8 +230,8 @@ void main() {
     // Dark sky background
     vec3 sky = vec3(0.01, 0.01, 0.03);
     
-    // Final color - reduced intensity
-    vec3 color = sky + auroraColor * glow * 0.7;
+    // Final color - strong intensity
+    vec3 color = sky + auroraColor * glow * ${config.glowIntensity};
     
     gl_FragColor = vec4(color, 1.0);
 }

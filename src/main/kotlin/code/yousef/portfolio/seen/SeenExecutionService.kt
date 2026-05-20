@@ -28,7 +28,7 @@ data class ExecutionResult(
  */
 class SeenExecutionService(
     private val seenHomePath: String = System.getenv("SEEN_HOME") ?: "/mnt/Storage/Projects/Rust/seenlang",
-    private val compileTimeoutSec: Long = 10,
+    private val compileTimeoutSec: Long = 30,
     private val runTimeoutSec: Long = 5,
     private val maxOutputBytes: Int = 64_000
 ) {

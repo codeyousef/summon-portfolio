@@ -1,0 +1,1335 @@
+package code.yousef.portfolio.ui.fifthwall
+
+import codes.yousef.sigil.schema.GeometryParams
+import codes.yousef.sigil.schema.GeometryType
+import codes.yousef.sigil.schema.HighlightPatch
+import codes.yousef.sigil.schema.AnimationEasing
+import codes.yousef.sigil.schema.AnimationKind
+import codes.yousef.sigil.schema.AnimationTrigger
+import codes.yousef.sigil.schema.CursorHint
+import codes.yousef.sigil.schema.DragConstraintMode
+import codes.yousef.sigil.schema.DragMetadata
+import codes.yousef.sigil.schema.DropTargetMetadata
+import codes.yousef.sigil.schema.HitVolumeData
+import codes.yousef.sigil.schema.HitVolumeShape
+import codes.yousef.sigil.schema.InteractionMetadata
+import codes.yousef.sigil.schema.SceneAnimationData
+import codes.yousef.sigil.schema.SceneNodePatch
+import codes.yousef.sigil.schema.ScenePatch
+import codes.yousef.sigil.summon.canvas.MateriaCanvas
+import codes.yousef.sigil.summon.canvas.SceneConfig
+import codes.yousef.sigil.summon.canvas.SigilDomPatch
+import codes.yousef.sigil.summon.canvas.SigilDomPatchMode
+import codes.yousef.sigil.summon.canvas.SigilSceneEventCallbackResponse
+import codes.yousef.sigil.summon.canvas.SigilSceneEventHandler
+import codes.yousef.sigil.summon.canvas.SigilSceneEventMatch
+import codes.yousef.sigil.summon.components.SigilAmbientLight
+import codes.yousef.sigil.summon.components.SigilBox
+import codes.yousef.sigil.summon.components.SigilCamera
+import codes.yousef.sigil.summon.components.SigilDirectionalLight
+import codes.yousef.sigil.summon.components.SigilGroup
+import codes.yousef.sigil.summon.components.SigilMesh
+import codes.yousef.sigil.summon.components.SigilModel
+import codes.yousef.sigil.summon.components.SigilOrbitControls
+import codes.yousef.sigil.summon.components.SigilPlane
+import codes.yousef.sigil.summon.components.SigilSphere
+import codes.yousef.summon.annotation.Composable
+import io.materia.core.math.Color
+import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.sqrt
+
+private val WAREHOUSE_FLOOR = argb("#0d1721")
+private val SCENE_ACCENT = argb(FifthWallTheme.ACCENT)
+private val SCENE_WARM = argb(FifthWallTheme.ACCENT_WARM)
+private val SCENE_SUCCESS = argb(FifthWallTheme.SUCCESS)
+private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
+private val SCENE_NEUTRAL_LIGHT = argb("#d9ddd8")
+private val PACKAGE_TAPE = argb("#eef4fb")
+private val PACKAGE_SHADE = argb("#0b1219")
+private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
+private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
+private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click", "dragstart", "drag", "dragenter", "dragleave", "drop", "pointerup")
+private const val MODEL_ASSET_VERSION = "20260510-small-glb"
+private val TRUCK_COLOR_FALLBACKS = listOf(
+    argb("#ff6b6b"),
+    argb("#5aa9ff"),
+    argb("#45e0a8"),
+    argb("#f7b955"),
+    argb("#9fb0c8"),
+    argb("#b690ff")
+)
+
+private fun uniformScale(value: Float): List<Float> = listOf(value, value, value)
+
+@Composable
+internal fun FifthWallScene(
+    controller: FifthWallController,
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    focusedPackage: FifthWallPackage?
+) {
+    MateriaCanvas(
+        id = "fifth-wall-scene",
+        width = "100%",
+        height = "100%",
+        backgroundColor = argb(FifthWallTheme.BASE),
+        sceneEventHandlers = fifthWallSceneEventHandlers(controller, level, state)
+    ) {
+        SceneConfig(
+            backgroundColor = argb(FifthWallTheme.BASE),
+            fogEnabled = false,
+            fogColor = argb("#0d1620"),
+            fogNear = 36f,
+            fogFar = 82f,
+            shadowsEnabled = false
+        )
+        SigilCamera(
+            position = listOf(0.6f, 7.4f, 11.4f),
+            lookAt = listOf(0.8f, 1.85f, 1.6f),
+            fov = 56f,
+            near = 0.1f,
+            far = 100f,
+            name = "dispatch-camera"
+        )
+        SigilOrbitControls(
+            target = listOf(0.8f, 1.85f, 1.6f),
+            enableDamping = false,
+            minDistance = 8.5f,
+            maxDistance = 15f,
+            minPolarAngle = 0.9f,
+            maxPolarAngle = 1.36f,
+            enablePan = false,
+            autoRotate = focusedPackage?.geometry != null,
+            autoRotateSpeed = 0.36f,
+            rotateSpeed = 0.7f,
+            zoomSpeed = 0.9f,
+            name = "dispatch-orbit"
+        )
+
+        SigilAmbientLight(color = SCENE_NEUTRAL_LIGHT, intensity = 0.58f, name = "ambient-fill")
+        SigilDirectionalLight(
+            position = listOf(4f, 12f, 9f),
+            target = listOf(0f, 0f, 1f),
+            color = argb("#fff2d3"),
+            intensity = 0.88f,
+            castShadow = false,
+            name = "bay-sun"
+        )
+        WarehouseShell()
+        RoutingGuides(level = level, state = state)
+        ConveyorDeck(level = level, state = state)
+        TruckBay(level = level, state = state)
+        ReturnBinBay(
+            selected = state.lastRouteTarget == "Return Bin",
+            routeAccepted = if (state.lastRouteTarget == "Return Bin") state.lastRouteAccepted else null,
+            glitchActive = state.glitchActive
+        )
+        InspectionDock(pkg = focusedPackage)
+        if (state.wrenchVisible) {
+            WrenchProp(visible = true)
+        }
+        ""
+    }
+}
+
+private fun fifthWallSceneEventHandlers(
+    controller: FifthWallController,
+    level: FifthWallLevel,
+    state: FifthWallUiState
+): List<SigilSceneEventHandler> {
+    val handlers = mutableListOf<SigilSceneEventHandler>()
+    val renderedPackageIds = state.queue.map { it.id }
+    val patchResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
+
+    state.queue.forEach { pkg ->
+        handlers += SigilSceneEventHandler(
+            match = SigilSceneEventMatch(type = "pointerdown", interactionId = "package:${pkg.id}"),
+            onEvent = { controller.selectPackage(pkg.id) },
+            onResponse = patchResponse
+        )
+    }
+
+    state.activeTrucks(level).forEachIndexed { index, _ ->
+        handlers += SigilSceneEventHandler(
+            match = SigilSceneEventMatch(
+                type = "drop",
+                sourceInteractionIdPrefix = "package:",
+                targetInteractionId = "truck:$index",
+                accepted = true
+            ),
+            onEvent = { controller.routeToTruck(index) },
+            onResponse = patchResponse
+        )
+    }
+
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(
+            type = "drop",
+            sourceInteractionIdPrefix = "package:",
+            targetInteractionId = "return-bin",
+            accepted = true
+        ),
+        onEvent = controller::routeToReturn,
+        onResponse = patchResponse
+    )
+
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(
+            type = "drop",
+            sourceInteractionIdPrefix = "package:",
+            targetInteractionId = "inspection-dock",
+            accepted = true
+        ),
+        onEvent = { controller.state.value.selectedPackageId?.let(controller::selectPackage) },
+        onResponse = patchResponse
+    )
+
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(type = "click", interactionId = "repair-wrench"),
+        onEvent = controller::repairGlitch,
+        onResponse = patchResponse
+    )
+
+    return handlers
+}
+
+private fun fifthWallSceneCallbackResponse(
+    controller: FifthWallController,
+    renderedPackageIds: List<String>
+): SigilSceneEventCallbackResponse {
+    val nextState = controller.state.value
+    val nextLevel = FifthWallLevels[nextState.levelIndex.coerceIn(FifthWallLevels.indices)]
+    return SigilSceneEventCallbackResponse(
+        action = "patch",
+        status = "ok",
+        scenePatch = fifthWallScenePatch(
+            level = nextLevel,
+            state = nextState,
+            renderedPackageIds = renderedPackageIds
+        ),
+        domPatches = fifthWallDomPatches(level = nextLevel, state = nextState)
+    )
+}
+
+private fun fifthWallScenePatch(
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    renderedPackageIds: List<String>
+): ScenePatch {
+    val visiblePackages = state.visiblePackages()
+    val visibleIds = visiblePackages.map { it.id }
+    val focusedId = state.focusPackage()?.id
+    val nodes = mutableListOf<SceneNodePatch>()
+
+    renderedPackageIds.forEach { packageId ->
+        val pkg = state.queue.firstOrNull { it.id == packageId }
+        val visibleIndex = visibleIds.indexOf(packageId)
+        val isVisible = visibleIndex >= 0
+        val focused = isVisible && packageId == focusedId
+        nodes += SceneNodePatch(
+            id = "package-$packageId",
+            position = if (isVisible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
+            rotation = pkg?.let { packageRotation(it, visibleIndex) },
+            scale = pkg?.let { packageScaleVector(enlarged = false, emphasized = visibleIndex == 0) },
+            visible = isVisible,
+            highlight = HighlightPatch(
+                active = focused,
+                color = SCENE_ACCENT,
+                intensity = if (focused) 0.75f else 0f
+            )
+        )
+        nodes += SceneNodePatch(
+            id = "package-$packageId-body",
+            position = if (isVisible && pkg != null) packageBodyPosition(pkg, packageHover(enlarged = false, emphasized = visibleIndex == 0)) else null,
+            visible = isVisible
+        )
+    }
+
+    state.activeTrucks(level).forEachIndexed { index, rule ->
+        val routeLabel = "Truck ${'A' + index}"
+        val selected = state.lastRouteTarget == routeLabel
+        nodes += SceneNodePatch(
+            id = "truck-$index",
+            highlight = HighlightPatch(
+                active = selected,
+                color = when {
+                    !selected -> truckColor(index, rule)
+                    state.lastRouteAccepted == true -> SCENE_SUCCESS
+                    state.lastRouteAccepted == false -> SCENE_DANGER
+                    else -> truckColor(index, rule)
+                },
+                intensity = if (selected) 0.82f else 0f
+            )
+        )
+    }
+
+    val returnSelected = state.lastRouteTarget == "Return Bin"
+    nodes += SceneNodePatch(
+        id = "return-bin-target",
+        highlight = HighlightPatch(
+            active = returnSelected,
+            color = when {
+                !returnSelected -> SCENE_WARM
+                state.lastRouteAccepted == true -> SCENE_SUCCESS
+                state.lastRouteAccepted == false -> SCENE_DANGER
+                else -> SCENE_WARM
+            },
+            intensity = if (returnSelected) 0.82f else 0f
+        )
+    )
+    nodes += SceneNodePatch(id = "repair-wrench", visible = state.wrenchVisible)
+
+    return ScenePatch(nodes)
+}
+
+private fun fifthWallDomPatches(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+): List<SigilDomPatch> {
+    val focusedPackage = state.focusPackage()
+    return listOf(
+        textPatch("#fw-stat-level", "${level.id}/${FifthWallLevels.size}"),
+        textPatch("#fw-stat-score", state.score.toString()),
+        textPatch("#fw-stat-processed", "${state.processedCount(level)}/${level.packageCount}"),
+        textPatch("#fw-feedback-text", state.feedback),
+        textPatch("#fw-manifest-color", focusedPackage?.color?.name?.replaceFirstChar { it.uppercase() } ?: "--"),
+        textPatch("#fw-manifest-shape", focusedPackage?.shapeDisplayLabel() ?: "--"),
+        textPatch("#fw-manifest-weight", focusedPackage?.weight?.let { "$it kg" } ?: "--"),
+        textPatch("#fw-manifest-volume", focusedPackage?.volume?.let { "$it L" } ?: "--"),
+        textPatch("#fw-manifest-pattern", focusedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--"),
+        textPatch("#fw-manifest-destination", focusedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--"),
+        textPatch("#fw-manifest-geometry", focusedPackage?.geometry ?: "--"),
+        textPatch("#fw-manifest-label", focusedPackage?.labelText ?: "--")
+    )
+}
+
+private fun textPatch(selector: String, value: String): SigilDomPatch =
+    SigilDomPatch(
+        selector = selector,
+        text = value,
+        mode = SigilDomPatchMode.TEXT_CONTENT
+    )
+
+@Composable
+private fun WarehouseShell() {
+    SigilPlane(
+        width = 34f,
+        height = 26f,
+        position = listOf(0f, 0f, 0f),
+        rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+        color = WAREHOUSE_FLOOR,
+        receiveShadow = true,
+        name = "warehouse-floor"
+    )
+    SigilModel(
+        url = fifthWallModelUrl("warehouse-bay-shell-kit.glb"),
+        position = listOf(0f, 0.02f, 0f),
+        scale = listOf(34f, 14f, 26f),
+        castShadow = false,
+        receiveShadow = false,
+        name = "warehouse-shell-model"
+    )
+}
+
+@Composable
+private fun RoutingGuides(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    val trucks = state.activeTrucks(level)
+    val spacing = truckSpacing(trucks.size)
+    val origin = truckOrigin(trucks.size, spacing)
+    val hubX = 1.25f
+    val hubZ = 3.1f
+    val focusedPackage = state.focusPackage()
+    val inspectionColor = if (focusedPackage?.validGeometry == false) SCENE_DANGER else SCENE_ACCENT
+
+    DockGuidePad(
+        position = listOf(8.2f, 0f, -5.5f),
+        width = 5.35f,
+        depth = 5f,
+        color = inspectionColor,
+        selected = focusedPackage != null,
+        name = "inspection-guide-pad"
+    )
+    GuideStrip(
+        startX = 3.1f,
+        startZ = 0.95f,
+        endX = 6.8f,
+        endZ = -3.95f,
+        color = inspectionColor,
+        thickness = 0.18f,
+        name = "inspection-guide"
+    )
+    GuideStrip(
+        startX = -2.2f,
+        startZ = 2.08f,
+        endX = hubX,
+        endZ = hubZ,
+        color = argb("#1a344c"),
+        thickness = 0.22f,
+        name = "routing-hub-guide"
+    )
+
+    trucks.forEachIndexed { index, rule ->
+        val x = origin + (spacing * index)
+        val routeLabel = "Truck ${'A' + index}"
+        val color = when {
+            state.lastRouteTarget == routeLabel && state.lastRouteAccepted == true -> SCENE_SUCCESS
+            state.lastRouteTarget == routeLabel && state.lastRouteAccepted == false -> SCENE_DANGER
+            else -> truckColor(index, rule)
+        }
+        DockGuidePad(
+            position = listOf(x, 0f, 4.65f),
+            width = 4.4f,
+            depth = 2.6f,
+            color = color,
+            selected = state.lastRouteTarget == routeLabel,
+            name = "truck-guide-pad-$index"
+        )
+        GuideStrip(
+            startX = hubX,
+            startZ = hubZ,
+            endX = x,
+            endZ = 4.15f,
+            color = color,
+            thickness = 0.17f,
+            name = "truck-guide-$index"
+        )
+    }
+
+    val returnColor = when {
+        state.lastRouteTarget == "Return Bin" && state.lastRouteAccepted == true -> SCENE_SUCCESS
+        state.lastRouteTarget == "Return Bin" && state.lastRouteAccepted == false -> SCENE_DANGER
+        else -> SCENE_WARM
+    }
+    DockGuidePad(
+        position = listOf(9.2f, 0f, 4.85f),
+        width = 3.1f,
+        depth = 3.1f,
+        color = returnColor,
+        selected = state.lastRouteTarget == "Return Bin",
+        name = "return-guide-pad"
+    )
+    GuideStrip(
+        startX = hubX,
+        startZ = hubZ,
+        endX = 8.45f,
+        endZ = 4.25f,
+        color = returnColor,
+        thickness = 0.17f,
+        name = "return-guide"
+    )
+}
+
+@Composable
+private fun DockGuidePad(
+    position: List<Float>,
+    width: Float,
+    depth: Float,
+    color: Int,
+    selected: Boolean,
+    name: String
+) {
+    SigilGroup(position = position, name = name) {
+        SigilBox(
+            width = width,
+            height = if (selected) 0.08f else 0.05f,
+            depth = depth,
+            position = listOf(0f, 0.03f, 0f),
+            color = if (selected) color else argb("#152132"),
+            metalness = if (selected) 0.42f else 0.18f,
+            roughness = 0.76f,
+            castShadow = false,
+            receiveShadow = true,
+            name = "$name-base"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun GuideStrip(
+    startX: Float,
+    startZ: Float,
+    endX: Float,
+    endZ: Float,
+    color: Int,
+    thickness: Float,
+    name: String
+) {
+    val dx = endX - startX
+    val dz = endZ - startZ
+    val length = sqrt((dx * dx) + (dz * dz))
+    val angle = atan2(dz.toDouble(), dx.toDouble()).toFloat()
+    val midX = (startX + endX) / 2f
+    val midZ = (startZ + endZ) / 2f
+
+    SigilBox(
+        width = length,
+        height = 0.05f,
+        depth = thickness,
+        position = listOf(midX, 0.035f, midZ),
+        rotation = listOf(0f, angle, 0f),
+        color = color,
+        metalness = 0.64f,
+        roughness = 0.2f,
+        castShadow = false,
+        receiveShadow = false,
+        name = name
+    )
+}
+
+@Composable
+private fun ConveyorDeck(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    SigilGroup(position = listOf(-2.2f, 0f, 0.5f), name = "conveyor-group") {
+        SigilModel(
+            url = fifthWallModelUrl("conveyor-deck.glb"),
+            scale = uniformScale(10.6f),
+            castShadow = false,
+            receiveShadow = false,
+            name = "conveyor-model"
+        )
+        val visiblePackageIds = state.visiblePackages().map { it.id }
+        state.queue.forEach { pkg ->
+            val visibleIndex = visiblePackageIds.indexOf(pkg.id)
+            val visible = visibleIndex >= 0
+            val selected = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
+            PackageMesh(
+                pkg = pkg,
+                position = if (visible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
+                selected = selected,
+                emphasized = visibleIndex == 0,
+                beltIndex = visibleIndex,
+                level = level,
+                visible = visible
+            )
+        }
+        ""
+    }
+}
+
+private fun packageBeltPosition(index: Int): List<Float> =
+    listOf(-4.9f + (index * 3.2f), 2.34f, 0f)
+
+private fun packageScale(enlarged: Boolean, emphasized: Boolean): Float = when {
+    enlarged -> 1.38f
+    emphasized -> 1.08f
+    else -> 1f
+}
+
+private fun packageScaleVector(enlarged: Boolean, emphasized: Boolean): List<Float> {
+    val scale = packageScale(enlarged = enlarged, emphasized = emphasized)
+    return listOf(scale, scale, scale)
+}
+
+private fun packageRotation(pkg: FifthWallPackage, beltIndex: Int): List<Float> {
+    val yaw = when (pkg.shape) {
+        "rect" -> 0.18f
+        "cylinder" -> 0.08f
+        "sphere" -> 0.22f
+        else -> -0.12f
+    }
+    return listOf(0f, yaw + (beltIndex.coerceAtLeast(0) * 0.08f), 0f)
+}
+
+private fun packageHover(enlarged: Boolean, emphasized: Boolean): Float =
+    if (enlarged) 0.18f else if (emphasized) 0.1f else 0f
+
+private fun packageBodyPosition(pkg: FifthWallPackage, hover: Float): List<Float> {
+    val y = when (pkg.shape) {
+        "rect" -> 0.5f
+        "cylinder" -> 0.66f
+        "sphere" -> 0.74f
+        else -> 0.62f
+    }
+    return listOf(0f, y + hover, 0f)
+}
+
+@Composable
+private fun TruckBay(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    val trucks = state.activeTrucks(level)
+    val spacing = truckSpacing(trucks.size)
+    val origin = truckOrigin(trucks.size, spacing)
+
+    trucks.forEachIndexed { index, rule ->
+        val x = origin + (spacing * index)
+        val routeLabel = "Truck ${'A' + index}"
+        DeliveryTruck(
+            index = index,
+            label = routeLabel,
+            position = listOf(x, 0f, 4.7f),
+            color = truckColor(index, rule),
+            selected = state.lastRouteTarget == routeLabel,
+            routeAccepted = if (state.lastRouteTarget == routeLabel) state.lastRouteAccepted else null,
+            hidden = level.hiddenRuleIndex == index && !state.hiddenRuleRevealed && !state.ruleShifted,
+            glitched = state.glitchActive
+        )
+    }
+}
+
+@Composable
+private fun DeliveryTruck(
+    index: Int,
+    label: String,
+    position: List<Float>,
+    color: Int,
+    selected: Boolean,
+    routeAccepted: Boolean?,
+    hidden: Boolean,
+    glitched: Boolean
+) {
+    val accent = if (hidden) argb("#3b4656") else color
+    SigilGroup(
+        position = position,
+        scale = listOf(1.08f, 1.08f, 1.08f),
+        name = label.lowercase().replace(" ", "-"),
+        interaction = truckInteraction(index, label),
+        animations = listOf(targetPulseAnimation("truck-$index-ready", delayMs = index * 80)),
+        id = "truck-$index"
+    ) {
+        SigilModel(
+            url = fifthWallModelUrl("delivery-truck.glb"),
+            position = listOf(0.1f, 0f, 0f),
+            scale = uniformScale(4.2f),
+            castShadow = false,
+            receiveShadow = false,
+            name = "$label-model"
+        )
+        TruckAccentMarker(
+            accent = accent,
+            hidden = hidden,
+            name = label.lowercase().replace(" ", "-")
+        )
+        if (selected) {
+            SigilMesh(
+                geometryType = GeometryType.RING,
+                geometryParams = GeometryParams(innerRadius = 1.55f, outerRadius = 1.85f, radialSegments = 48),
+                position = listOf(0.1f, 0.05f, 0f),
+                rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+                color = when (routeAccepted) {
+                    true -> SCENE_SUCCESS
+                    false -> SCENE_DANGER
+                    null -> SCENE_ACCENT
+                },
+                metalness = 0.8f,
+                roughness = 0.1f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "$label-ring"
+            )
+        }
+        if (glitched) {
+            SigilMesh(
+                geometryType = GeometryType.TORUS,
+                geometryParams = GeometryParams(radius = 0.72f, tube = 0.05f, radialSegments = 16, tubularSegments = 42),
+                position = listOf(0.35f, 2.1f, 0f),
+                rotation = listOf(0.35f, 0.62f, 0f),
+                color = SCENE_DANGER,
+                metalness = 0.74f,
+                roughness = 0.12f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "$label-glitch-halo"
+            )
+        }
+        ""
+    }
+}
+
+@Composable
+private fun TruckAccentMarker(
+    accent: Int,
+    hidden: Boolean,
+    name: String
+) {
+    val panelColor = if (hidden) argb("#6b7485") else accent
+    listOf(-0.36f, 0.36f).forEachIndexed { index, z ->
+        SigilBox(
+            width = 0.58f,
+            height = 0.08f,
+            depth = 0.08f,
+            position = listOf(-0.36f, 2.86f, z),
+            color = panelColor,
+            metalness = 0.18f,
+            roughness = 0.72f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-roof-rule-tag-$index"
+        )
+    }
+    SigilSphere(
+        radius = 0.14f,
+        widthSegments = 12,
+        heightSegments = 10,
+        position = listOf(-1.1f, 3.02f, 0f),
+        color = panelColor,
+        metalness = 0.18f,
+        roughness = 0.68f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-accent-beacon"
+    )
+}
+
+@Composable
+private fun ReturnBinBay(
+    selected: Boolean,
+    routeAccepted: Boolean?,
+    glitchActive: Boolean
+) {
+    SigilGroup(
+        position = listOf(9.2f, 0f, 4.85f),
+        scale = listOf(1.08f, 1.08f, 1.08f),
+        name = "return-bin",
+        interaction = returnBinInteraction(),
+        animations = listOf(targetPulseAnimation("return-bin-ready", delayMs = 260)),
+        id = "return-bin-target"
+    ) {
+        SigilModel(
+            url = fifthWallModelUrl("return-bin.glb"),
+            scale = uniformScale(2.25f),
+            castShadow = false,
+            receiveShadow = false,
+            name = "return-bin-model"
+        )
+        SigilMesh(
+            geometryType = GeometryType.TORUS,
+            geometryParams = GeometryParams(radius = 0.96f, tube = 0.08f, radialSegments = 16, tubularSegments = 48),
+            position = listOf(0f, 1.72f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = when {
+                !selected -> SCENE_WARM
+                routeAccepted == true -> SCENE_SUCCESS
+                routeAccepted == false -> SCENE_DANGER
+                else -> SCENE_ACCENT
+            },
+            metalness = 0.72f,
+            roughness = 0.16f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "return-ring"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun InspectionDock(pkg: FifthWallPackage?) {
+    SigilGroup(
+        position = listOf(8.2f, 0f, -5.5f),
+        name = "inspection-dock",
+        interaction = inspectionDockInteraction(),
+        animations = listOf(targetPulseAnimation("inspection-dock-ready", delayMs = 180)),
+        id = "inspection-dock-target"
+    ) {
+        SigilModel(
+            url = fifthWallModelUrl("inspection-dock.glb"),
+            scale = uniformScale(4.1f),
+            castShadow = false,
+            receiveShadow = false,
+            name = "inspection-dock-model"
+        )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 0.95f, outerRadius = 1.22f, radialSegments = 48),
+            position = listOf(0f, 2.38f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = if (pkg?.validGeometry == false) SCENE_DANGER else SCENE_ACCENT,
+            metalness = 0.74f,
+            roughness = 0.14f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "inspection-ring"
+        )
+        if (pkg != null) {
+            PackageMesh(
+                pkg = pkg,
+                position = listOf(0f, 3.18f, 0f),
+                selected = true,
+                emphasized = true,
+                beltIndex = -1,
+                level = null,
+                enlarged = true,
+                interactive = false,
+                nodeId = "inspection-package-${pkg.id}"
+            )
+        } else {
+            SigilModel(
+                url = fifthWallModelUrl("special-delivery-package.glb"),
+                position = listOf(0f, 2.9f, 0f),
+                rotation = listOf(0f, 0.35f, 0f),
+                scale = uniformScale(1.28f),
+                castShadow = false,
+                receiveShadow = false,
+                name = "inspection-idle-package"
+            )
+        }
+        ""
+    }
+}
+
+@Composable
+private fun PackageMesh(
+    pkg: FifthWallPackage,
+    position: List<Float>,
+    selected: Boolean,
+    emphasized: Boolean,
+    beltIndex: Int,
+    level: FifthWallLevel?,
+    enlarged: Boolean = false,
+    visible: Boolean = true,
+    interactive: Boolean = true,
+    nodeId: String = "package-${pkg.id}"
+) {
+    val baseColor = argb(pkg.color.hex)
+    val scale = packageScale(enlarged = enlarged, emphasized = emphasized)
+    val hover = packageHover(enlarged = enlarged, emphasized = emphasized)
+
+    SigilGroup(
+        position = position,
+        rotation = packageRotation(pkg, beltIndex),
+        scale = listOf(scale, scale, scale),
+        visible = visible,
+        name = nodeId,
+        interaction = if (interactive) packageInteraction(pkg, enlarged) else null,
+        animations = if (visible || enlarged) {
+            packageAnimations(pkg, selected)
+        } else {
+            emptyList()
+        },
+        id = nodeId
+    ) {
+        if (visible || enlarged) {
+            SigilBox(
+                width = when (pkg.shape) {
+                    "rect" -> 2.08f
+                    "cylinder" -> 1.18f
+                    else -> 1.34f
+                },
+                height = 0.04f,
+                depth = when (pkg.shape) {
+                    "rect" -> 1.08f
+                    "sphere" -> 1.2f
+                    else -> 1.34f
+                },
+                position = listOf(0f, 0.04f, 0f),
+                color = PACKAGE_SHADE,
+                metalness = 0.06f,
+                roughness = 0.98f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-shadow"
+            )
+        }
+        PackageBodyMesh(
+            pkg = pkg,
+            position = packageBodyPosition(pkg, hover),
+            visible = visible || enlarged,
+            id = "$nodeId-body"
+        )
+        if (visible || enlarged) {
+            PackageColorAccent(
+                shape = pkg.shape,
+                color = baseColor,
+                hover = hover
+            )
+            PackageBadge(pkg = pkg, hover = hover)
+            GeometryAura(pkg = pkg, level = level, elevated = enlarged)
+        }
+        if (selected) {
+            SigilMesh(
+                geometryType = GeometryType.TORUS,
+                geometryParams = GeometryParams(
+                    radius = when (pkg.shape) {
+                        "rect" -> 1.18f
+                        "cylinder" -> 0.8f
+                        "sphere" -> 0.9f
+                        else -> 0.98f
+                    },
+                    tube = 0.06f,
+                    radialSegments = 18,
+                    tubularSegments = 44
+                ),
+                position = listOf(0f, 0.06f, 0f),
+                rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+                color = if (pkg.validGeometry) SCENE_ACCENT else SCENE_DANGER,
+                metalness = 0.84f,
+                roughness = 0.08f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "pkg-selection"
+            )
+        }
+        ""
+    }
+}
+
+@Composable
+private fun PackageBodyMesh(
+    pkg: FifthWallPackage,
+    position: List<Float>,
+    visible: Boolean,
+    id: String
+) {
+    val color = argb(pkg.color.hex)
+    when (pkg.shape) {
+        "rect" -> SigilBox(
+            width = 2.08f,
+            height = 0.78f,
+            depth = 1.08f,
+            position = position,
+            color = color,
+            metalness = 0.18f,
+            roughness = 0.58f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+
+        "cylinder" -> SigilMesh(
+            geometryType = GeometryType.CYLINDER,
+            geometryParams = GeometryParams(
+                radiusTop = 0.62f,
+                radiusBottom = 0.62f,
+                height = 1.18f,
+                radialSegments = 18
+            ),
+            position = position,
+            rotation = listOf(0f, 0f, PI.toFloat() / 2f),
+            color = color,
+            metalness = 0.2f,
+            roughness = 0.54f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+
+        "sphere" -> SigilSphere(
+            radius = 0.72f,
+            widthSegments = 18,
+            heightSegments = 12,
+            position = position,
+            color = color,
+            metalness = 0.16f,
+            roughness = 0.5f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+
+        else -> SigilBox(
+            width = 1.34f,
+            height = 1.08f,
+            depth = 1.34f,
+            position = position,
+            color = color,
+            metalness = 0.18f,
+            roughness = 0.56f,
+            visible = visible,
+            castShadow = false,
+            receiveShadow = false,
+            name = "pkg-body",
+            id = id
+        )
+    }
+}
+
+@Composable
+private fun PackageColorAccent(
+    shape: String,
+    color: Int,
+    hover: Float
+) {
+    val markerY = when (shape) {
+        "cylinder" -> 1.22f
+        "sphere" -> 1.14f
+        else -> 1.04f
+    } + hover
+    SigilSphere(
+        radius = 0.13f,
+        widthSegments = 12,
+        heightSegments = 10,
+        position = listOf(-0.72f, markerY, 0.56f),
+        color = color,
+        metalness = 0.18f,
+        roughness = 0.48f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "pkg-color-marker"
+    )
+    SigilBox(
+        width = 0.42f,
+        height = 0.05f,
+        depth = 0.06f,
+        position = listOf(-0.72f, markerY - 0.18f, 0.56f),
+        color = color,
+        metalness = 0.2f,
+        roughness = 0.5f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "pkg-color-marker-stem"
+    )
+
+}
+
+@Composable
+private fun WrenchProp(visible: Boolean) {
+    SigilGroup(
+        position = listOf(13.1f, 0.06f, 9.2f),
+        rotation = listOf(0f, -0.42f, 0f),
+        visible = visible,
+        name = "repair-wrench-prop",
+        interaction = wrenchInteraction(),
+        animations = listOf(
+            SceneAnimationData(
+                id = "repair-wrench-pulse",
+                trigger = AnimationTrigger.SCENE_LOAD,
+                kind = AnimationKind.PULSE,
+                durationMs = 1400,
+                delayMs = 0,
+                easing = AnimationEasing.EASE_IN_OUT,
+                vector = null,
+                color = null,
+                intensity = 0.72f,
+                repeat = 24
+            )
+        ),
+        id = "repair-wrench"
+    ) {
+        SigilModel(
+            url = fifthWallModelUrl("repair-wrench.glb"),
+            scale = listOf(1.2f, 1.2f, 1.2f),
+            rotation = listOf(0f, 0.72f, 0f),
+            castShadow = false,
+            receiveShadow = false,
+            name = "repair-wrench-model"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun PackageBadge(
+    pkg: FifthWallPackage,
+    hover: Float
+) {
+    val badgeColor = when (pkg.destination) {
+        "house" -> argb("#7ad3ff")
+        "office" -> argb("#9af26c")
+        "factory" -> argb("#ffb15d")
+        else -> argb("#c6a9ff")
+    }
+    val anchor = when (pkg.shape) {
+        "rect" -> listOf(0.74f, 0.46f + hover, 0.56f)
+        "cylinder" -> listOf(0.42f, 0.68f + hover, 0.46f)
+        "sphere" -> listOf(0.48f, 0.88f + hover, 0.34f)
+        else -> listOf(0.58f, 0.72f + hover, 0.58f)
+    }
+
+    SigilBox(
+        width = 0.3f,
+        height = 0.22f,
+        depth = 0.06f,
+        position = anchor,
+        color = badgeColor,
+        metalness = 0.22f,
+        roughness = 0.42f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "pkg-badge"
+    )
+
+    when (pkg.pattern) {
+        "striped" -> {
+            for (offset in listOf(-0.05f, 0.05f)) {
+                SigilBox(
+                    width = 0.22f,
+                    height = 0.035f,
+                    depth = 0.07f,
+                    position = listOf(anchor[0], anchor[1] + offset, anchor[2] + 0.015f),
+                    color = PACKAGE_TAPE,
+                    metalness = 0.08f,
+                    roughness = 0.88f,
+                    castShadow = false,
+                    receiveShadow = false,
+                    name = "pkg-badge-stripe-$offset"
+                )
+            }
+        }
+
+        "dotted" -> {
+            listOf(
+                listOf(anchor[0] - 0.055f, anchor[1] + 0.04f, anchor[2] + 0.02f),
+                listOf(anchor[0] + 0.055f, anchor[1] + 0.04f, anchor[2] + 0.02f),
+                listOf(anchor[0] - 0.055f, anchor[1] - 0.04f, anchor[2] + 0.02f),
+                listOf(anchor[0] + 0.055f, anchor[1] - 0.04f, anchor[2] + 0.02f)
+            ).forEachIndexed { index, point ->
+                SigilSphere(
+                    radius = 0.024f,
+                    widthSegments = 10,
+                    heightSegments = 8,
+                    position = point,
+                    color = PACKAGE_TAPE,
+                    metalness = 0.08f,
+                    roughness = 0.86f,
+                    castShadow = false,
+                    receiveShadow = false,
+                    name = "pkg-badge-dot-$index"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GeometryAura(
+    pkg: FifthWallPackage,
+    level: FifthWallLevel?,
+    elevated: Boolean
+) {
+    if (pkg.geometry == null && level?.id !in 11..12) return
+
+    if (pkg.validGeometry) {
+        SigilMesh(
+            geometryType = GeometryType.TORUS,
+            geometryParams = GeometryParams(radius = if (elevated) 0.64f else 0.54f, tube = 0.05f, radialSegments = 16, tubularSegments = 42),
+            position = listOf(0f, if (elevated) 1.52f else 1.34f, 0f),
+            rotation = listOf(0.2f, 0.9f, 0f),
+            color = SCENE_SUCCESS,
+            metalness = 0.72f,
+            roughness = 0.12f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "geometry-valid"
+        )
+    } else {
+        SigilMesh(
+            geometryType = GeometryType.TETRAHEDRON,
+            geometryParams = GeometryParams(radius = if (elevated) 0.72f else 0.56f, detail = 1),
+            position = listOf(0f, if (elevated) 1.58f else 1.36f, 0f),
+            rotation = listOf(0.54f, 0.84f, 0.14f),
+            color = SCENE_DANGER,
+            metalness = 0.7f,
+            roughness = 0.2f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "geometry-invalid"
+        )
+        SigilMesh(
+            geometryType = GeometryType.TORUS,
+            geometryParams = GeometryParams(radius = if (elevated) 0.78f else 0.6f, tube = 0.04f, radialSegments = 16, tubularSegments = 42),
+            position = listOf(0f, if (elevated) 1.52f else 1.3f, 0f),
+            rotation = listOf(0.4f, 0.38f, 0.72f),
+            color = SCENE_WARM,
+            metalness = 0.78f,
+            roughness = 0.12f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "geometry-warning"
+        )
+    }
+}
+
+private fun fifthWallModelUrl(fileName: String): String {
+    return "/static/models/fifth-wall/$fileName?v=$MODEL_ASSET_VERSION"
+}
+
+private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): InteractionMetadata =
+    InteractionMetadata(
+        interactionId = "package:${pkg.id}",
+        cursor = CursorHint.GRAB,
+        hitVolume = boxHitVolume(
+            width = when (pkg.shape) {
+                "rect" -> 2.28f
+                "cylinder" -> 1.58f
+                else -> 1.74f
+            } * if (enlarged) 1.25f else 1f,
+            height = if (enlarged) 2.45f else 1.85f,
+            depth = when (pkg.shape) {
+                "rect" -> 1.28f
+                "sphere" -> 1.55f
+                else -> 1.62f
+            } * if (enlarged) 1.2f else 1f,
+            centerY = if (enlarged) 1.1f else 0.82f
+        ),
+        actions = listOf("package", "focus", "inspect", "drag"),
+        events = PACKAGE_POINTER_EVENTS,
+        enabled = true,
+        drag = DragMetadata(
+            enabled = true,
+            mode = DragConstraintMode.HORIZONTAL,
+            planeNormal = listOf(0f, 1f, 0f),
+            planePoint = listOf(0f, if (enlarged) 3.18f else 2.34f, 0f),
+            laneAxis = listOf(1f, 0f, 0f),
+            min = -7.5f,
+            max = 13.5f,
+            dropGroups = ROUTING_TARGET_GROUP
+        ),
+        dropTarget = null
+    )
+
+private fun truckInteraction(index: Int, label: String): InteractionMetadata =
+    routingTargetInteraction(
+        interactionId = "truck:$index",
+        targetId = "truck:$index",
+        actions = listOf("route", "truck", "truck:$index", label.lowercase().replace(" ", "-")),
+        cursor = CursorHint.POINTER,
+        hitVolume = boxHitVolume(width = 4.4f, height = 3.35f, depth = 2.45f, centerY = 1.55f)
+    )
+
+private fun returnBinInteraction(): InteractionMetadata =
+    routingTargetInteraction(
+        interactionId = "return-bin",
+        targetId = "return-bin",
+        actions = listOf("route", "return", "return-bin"),
+        cursor = CursorHint.POINTER,
+        hitVolume = boxHitVolume(width = 2.8f, height = 2.7f, depth = 2.8f, centerY = 1.25f)
+    )
+
+private fun inspectionDockInteraction(): InteractionMetadata =
+    routingTargetInteraction(
+        interactionId = "inspection-dock",
+        targetId = "inspection-dock",
+        actions = listOf("inspect", "inspection-dock"),
+        cursor = CursorHint.CROSSHAIR,
+        hitVolume = boxHitVolume(width = 4.8f, height = 3.2f, depth = 4.6f, centerY = 1.45f)
+    )
+
+private fun wrenchInteraction(): InteractionMetadata =
+    InteractionMetadata(
+        interactionId = "repair-wrench",
+        cursor = CursorHint.POINTER,
+        hitVolume = sphereHitVolume(radius = 1.05f, centerY = 0.5f),
+        actions = listOf("repair", "glitch", "wrench"),
+        events = listOf("pointerdown", "click"),
+        enabled = true,
+        drag = null,
+        dropTarget = null
+    )
+
+private fun routingTargetInteraction(
+    interactionId: String,
+    targetId: String,
+    actions: List<String>,
+    cursor: CursorHint,
+    hitVolume: HitVolumeData
+): InteractionMetadata =
+    InteractionMetadata(
+        interactionId = interactionId,
+        cursor = cursor,
+        hitVolume = hitVolume,
+        actions = actions + listOf("drop-target"),
+        events = listOf("pointerdown", "click", "dragenter", "dragleave", "drop"),
+        enabled = true,
+        drag = null,
+        dropTarget = DropTargetMetadata(
+            enabled = true,
+            targetId = targetId,
+            groups = ROUTING_TARGET_GROUP,
+            accepts = listOf("package")
+        )
+    )
+
+private fun packageAnimations(
+    pkg: FifthWallPackage,
+    selected: Boolean
+): List<SceneAnimationData> {
+    val interactionAnimation = SceneAnimationData(
+        id = "package-${pkg.id}-grab-feedback",
+        trigger = AnimationTrigger.INTERACTION,
+        kind = AnimationKind.BOUNCE,
+        durationMs = 220,
+        delayMs = 0,
+        easing = AnimationEasing.EASE_OUT,
+        vector = null,
+        color = null,
+        intensity = if (selected) 0.7f else 0.5f,
+        repeat = 0
+    )
+    return listOf(interactionAnimation)
+}
+
+private fun targetPulseAnimation(id: String, delayMs: Int): SceneAnimationData =
+    SceneAnimationData(
+        id = id,
+        trigger = AnimationTrigger.INTERACTION,
+        kind = AnimationKind.PULSE,
+        durationMs = 260,
+        delayMs = delayMs,
+        easing = AnimationEasing.EASE_OUT,
+        vector = null,
+        color = null,
+        intensity = 0.5f,
+        repeat = 0
+    )
+
+private fun boxHitVolume(
+    width: Float,
+    height: Float,
+    depth: Float,
+    centerY: Float
+): HitVolumeData =
+    HitVolumeData(
+        shape = HitVolumeShape.BOX,
+        center = listOf(0f, centerY, 0f),
+        size = listOf(width, height, depth),
+        radius = null
+    )
+
+private fun sphereHitVolume(radius: Float, centerY: Float): HitVolumeData =
+    HitVolumeData(
+        shape = HitVolumeShape.SPHERE,
+        center = listOf(0f, centerY, 0f),
+        size = emptyList(),
+        radius = radius
+    )
+
+private fun truckSpacing(count: Int): Float = when (count) {
+    1 -> 0f
+    2 -> 5.2f
+    3 -> 4.2f
+    else -> 3.6f
+}
+
+private fun truckOrigin(
+    count: Int,
+    spacing: Float = truckSpacing(count)
+): Float = -((count - 1) * spacing) / 2f
+
+private fun truckColor(index: Int, rule: FifthWallRule): Int = when (rule.kind) {
+    FifthWallRuleKind.Color -> when (rule.value) {
+        "red" -> argb("#ff6b6b")
+        "blue" -> argb("#5aa9ff")
+        "green" -> argb("#45e0a8")
+        "yellow" -> argb("#f7b955")
+        "gray" -> argb("#9fb0c8")
+        "purple" -> argb("#b690ff")
+        else -> TRUCK_COLOR_FALLBACKS[index % TRUCK_COLOR_FALLBACKS.size]
+    }
+    FifthWallRuleKind.Geometry -> SCENE_ACCENT
+    FifthWallRuleKind.Probability -> SCENE_WARM
+    FifthWallRuleKind.Pattern -> argb("#72d2ff")
+    FifthWallRuleKind.Destination -> when (rule.value) {
+        "factory" -> argb("#ff9b4f")
+        "office" -> argb("#7fe36b")
+        "house" -> argb("#7ad3ff")
+        else -> argb("#b695ff")
+    }
+    else -> listOf(SCENE_ACCENT, SCENE_WARM, SCENE_SUCCESS, argb("#b38cff"))[index % 4]
+}
+
+private fun argb(hex: String): Int = (0xFF shl 24) or Color(hex).getHex()

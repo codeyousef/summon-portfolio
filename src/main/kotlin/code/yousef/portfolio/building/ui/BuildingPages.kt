@@ -1,9 +1,13 @@
 package code.yousef.portfolio.building.ui
 
+import code.yousef.portfolio.building.bulk.BulkCascadePlan
+import code.yousef.portfolio.building.bulk.BulkOperationResult
 import code.yousef.portfolio.building.model.*
+import code.yousef.portfolio.building.payment.isUnpaidPastDue
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
+import codes.yousef.summon.components.foundation.RawHtml
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
@@ -504,10 +508,23 @@ fun BuildingsListPage(
         Column(modifier = Modifier().fillMaxWidth()) {
             PageHeader(title = BuildingStrings.BUILDINGS)
             
-            Card(modifier = Modifier().fillMaxWidth()) {
-                if (buildings.isEmpty()) {
+            if (buildings.isEmpty()) {
+                Card(modifier = Modifier().fillMaxWidth()) {
                     EmptyState(BuildingStrings.NO_BUILDINGS)
-                } else {
+                }
+            } else {
+                Form(
+                    action = "/buildings/bulk/review",
+                    method = FormMethod.Post,
+                    modifier = Modifier().fillMaxWidth()
+                ) {
+                    BulkActionBar(
+                        actions = listOf(
+                            "edit" to BuildingStrings.BULK_EDIT,
+                            "delete" to BuildingStrings.BULK_DELETE
+                        )
+                    )
+                    Card(modifier = Modifier().fillMaxWidth()) {
                     // Table using CSS Grid
                     Column(modifier = Modifier().fillMaxWidth()) {
                         // Header row
@@ -515,10 +532,11 @@ fun BuildingsListPage(
                             modifier = Modifier()
                                 .fillMaxWidth()
                                 .style("display", "grid")
-                                .style("grid-template-columns", "1fr 1fr 200px")
+                                .style("grid-template-columns", "52px 1fr 1fr 200px")
                                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
                                 .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                         ) {
+                            GridHeaderCell(BuildingStrings.SELECT)
                             GridHeaderCell(BuildingStrings.BUILDING_NAME)
                             GridHeaderCell(BuildingStrings.TOTAL_UNITS)
                             GridHeaderCell("")
@@ -529,9 +547,10 @@ fun BuildingsListPage(
                                 modifier = Modifier()
                                     .fillMaxWidth()
                                     .style("display", "grid")
-                                    .style("grid-template-columns", "1fr 1fr 200px")
+                                    .style("grid-template-columns", "52px 1fr 1fr 200px")
                                     .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                             ) {
+                                GridCell { BulkCheckbox(building.id) }
                                 GridCell { Text(building.name) }
                                 GridCell { Text((unitCounts[building.id] ?: 0).toString()) }
                                 GridCell {
@@ -568,6 +587,7 @@ fun BuildingsListPage(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
@@ -607,10 +627,24 @@ fun BuildingUnitsPage(
             
             PageHeader(title = "${BuildingStrings.UNITS} - ${building.name}")
             
-            Card(modifier = Modifier().fillMaxWidth()) {
-                if (apartments.isEmpty()) {
+            if (apartments.isEmpty()) {
+                Card(modifier = Modifier().fillMaxWidth()) {
                     EmptyState(BuildingStrings.NO_UNITS)
-                } else {
+                }
+            } else {
+                Form(
+                    action = "/buildings/${building.id}/units/bulk/review",
+                    method = FormMethod.Post,
+                    modifier = Modifier().fillMaxWidth()
+                ) {
+                    BulkActionBar(
+                        actions = listOf(
+                            "edit" to BuildingStrings.BULK_EDIT,
+                            "delete" to BuildingStrings.BULK_DELETE,
+                            "dates" to BuildingStrings.BULK_UPDATE_DATES
+                        )
+                    )
+                    Card(modifier = Modifier().fillMaxWidth()) {
                     // Units table using CSS Grid
                     Column(modifier = Modifier().fillMaxWidth()) {
                         // Header row
@@ -618,10 +652,11 @@ fun BuildingUnitsPage(
                             modifier = Modifier()
                                 .fillMaxWidth()
                                 .style("display", "grid")
-                                .style("grid-template-columns", "80px 1fr 120px 160px 100px 150px")
+                                .style("grid-template-columns", "52px 80px 1fr 120px 160px 100px 150px")
                                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
                                 .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                         ) {
+                            GridHeaderCell(BuildingStrings.SELECT)
                             GridHeaderCell(BuildingStrings.UNIT_NUMBER)
                             GridHeaderCell(BuildingStrings.TENANT)
                             GridHeaderCell(BuildingStrings.ANNUAL_RENT)
@@ -635,9 +670,10 @@ fun BuildingUnitsPage(
                                 modifier = Modifier()
                                     .fillMaxWidth()
                                     .style("display", "grid")
-                                    .style("grid-template-columns", "80px 1fr 120px 160px 100px 150px")
+                                    .style("grid-template-columns", "52px 80px 1fr 120px 160px 100px 150px")
                                     .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
                             ) {
+                                GridCell { BulkCheckbox(detail.apartment.id) }
                                 GridCell { Text(detail.apartment.unitNumber) }
                                 GridCell { Text(detail.tenant?.name ?: "-") }
                                 GridCell { 
@@ -704,6 +740,7 @@ fun BuildingUnitsPage(
                             }
                         }
                     }
+                    }
                 }
             }
         }
@@ -738,12 +775,33 @@ fun PaymentsListPage(
                 FilterButton(BuildingStrings.PAID, "PAID", currentFilter)
             }
             
-            Card(modifier = Modifier().fillMaxWidth()) {
-                if (payments.isEmpty()) {
+            if (payments.isEmpty()) {
+                Card(modifier = Modifier().fillMaxWidth()) {
                     EmptyState(BuildingStrings.NO_PAYMENTS)
-                } else {
-                    PaymentTable(payments)
                 }
+            } else {
+                val redirectPath = if (currentFilter.isNullOrBlank()) {
+                    "/payments"
+                } else {
+                    "/payments?status=$currentFilter"
+                }
+                Form(
+                    action = "/payments/bulk/review",
+                    method = FormMethod.Post,
+                    modifier = Modifier().fillMaxWidth()
+                ) {
+                    BulkActionBar(
+                        actions = listOf(
+                            "edit" to BuildingStrings.BULK_EDIT,
+                            "delete" to BuildingStrings.BULK_DELETE,
+                            "dates" to BuildingStrings.BULK_UPDATE_DATES
+                        )
+                    )
+                    Card(modifier = Modifier().fillMaxWidth()) {
+                        PaymentTable(payments, selectable = true, showStatusActions = true)
+                    }
+                }
+                RawHtml(html = paymentStatusFormsHtml(payments, redirectPath))
             }
         }
     }
@@ -768,7 +826,19 @@ private fun FilterButton(label: String, filter: String?, currentFilter: String?)
 }
 
 @Composable
-private fun PaymentTable(payments: List<PaymentWithDetails>) {
+private fun PaymentTable(
+    payments: List<PaymentWithDetails>,
+    selectable: Boolean = false,
+    showStatusActions: Boolean = false
+) {
+    val gridColumns = when {
+        selectable && showStatusActions ->
+            "52px minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr) 170px"
+        selectable ->
+            "52px minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr)"
+        else ->
+            "minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr)"
+    }
     // Payment table using CSS Grid
     Column(modifier = Modifier().fillMaxWidth()) {
         // Header row
@@ -776,10 +846,11 @@ private fun PaymentTable(payments: List<PaymentWithDetails>) {
             modifier = Modifier()
                 .fillMaxWidth()
                 .style("display", "grid")
-                .style("grid-template-columns", "1fr 80px 1fr 80px 100px 100px 80px 1fr")
+                .style("grid-template-columns", gridColumns)
                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
                 .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
         ) {
+            if (selectable) GridHeaderCell(BuildingStrings.SELECT)
             GridHeaderCell(BuildingStrings.BUILDING_NAME)
             GridHeaderCell(BuildingStrings.UNIT_NUMBER)
             GridHeaderCell(BuildingStrings.TENANT)
@@ -788,6 +859,7 @@ private fun PaymentTable(payments: List<PaymentWithDetails>) {
             GridHeaderCell(BuildingStrings.DUE_DATE)
             GridHeaderCell(BuildingStrings.PAYMENT_STATUS)
             GridHeaderCell(BuildingStrings.NOTES)
+            if (showStatusActions) GridHeaderCell(BuildingStrings.UPDATE_STATUS)
         }
         // Data rows
         payments.forEach { detail ->
@@ -795,19 +867,197 @@ private fun PaymentTable(payments: List<PaymentWithDetails>) {
                 modifier = Modifier()
                     .fillMaxWidth()
                     .style("display", "grid")
-                    .style("grid-template-columns", "1fr 80px 1fr 80px 100px 100px 80px 1fr")
+                    .style("grid-template-columns", gridColumns)
                     .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
             ) {
+                if (selectable) GridCell { BulkCheckbox(detail.payment.id) }
                 GridCell { Text(detail.building?.name ?: "-") }
                 GridCell { Text(detail.apartment?.unitNumber ?: "-") }
                 GridCell { Text(detail.tenant?.name ?: "-") }
                 GridCell { Text(BuildingStrings.formatPaymentNumber(detail.payment.paymentNumber)) }
                 GridCell { Text(BuildingStrings.formatCurrency(detail.payment.amount)) }
                 GridCell { Text(detail.payment.dueDate) }
-                GridCell { StatusBadge(detail.payment.status) }
+                GridCell {
+                    Column(modifier = Modifier().style("gap", BuildingTheme.Spacing.xs)) {
+                        StatusBadge(detail.payment.status)
+                        if (isUnpaidPastDue(detail.payment)) {
+                            PastDueWarningBadge()
+                        }
+                    }
+                }
                 GridCell { Text(detail.payment.notes) }
+                if (showStatusActions) {
+                    GridCell {
+                        RawHtml(html = paymentStatusButtonsHtml(detail.payment))
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun PastDueWarningBadge() {
+    Text(
+        text = BuildingStrings.PAST_DUE_UNPAID,
+        modifier = Modifier()
+            .backgroundColor(BuildingTheme.Colors.DANGER_BG)
+            .color(BuildingTheme.Colors.DANGER_TEXT)
+            .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.sm)
+            .borderRadius(BuildingTheme.BorderRadius.full)
+            .fontSize(BuildingTheme.FontSize.xs)
+            .fontWeight("500")
+            .margin(BuildingTheme.Spacing.xs, "0", "0", "0")
+    )
+}
+
+// ===================== Bulk Review Pages =====================
+
+@Composable
+fun BulkErrorPage(username: String, title: String, message: String, returnHref: String) {
+    BuildingPageLayout(title = title, username = username, currentPath = returnHref) {
+        Column(modifier = Modifier().fillMaxWidth().maxWidth("720px")) {
+            PageHeader(title = title)
+            Card(modifier = Modifier().fillMaxWidth()) {
+                Alert(message, AlertType.ERROR)
+                Link(
+                    href = returnHref,
+                    modifier = Modifier()
+                        .backgroundColor(BuildingTheme.Colors.BG_HOVER)
+                        .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                        .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                        .borderRadius(BuildingTheme.BorderRadius.md)
+                        .style("text-decoration", "none")
+                ) {
+                    Text(BuildingStrings.BACK)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BulkResultPage(
+    username: String,
+    title: String,
+    result: BulkOperationResult,
+    returnHref: String,
+    message: String
+) {
+    BuildingPageLayout(title = title, username = username, currentPath = returnHref) {
+        Column(modifier = Modifier().fillMaxWidth().maxWidth("720px")) {
+            PageHeader(title = title)
+            Card(modifier = Modifier().fillMaxWidth()) {
+                Alert(message, AlertType.SUCCESS)
+                Text("${BuildingStrings.AFFECTED_RECORDS}: ${result.applied}", modifier = Modifier().margin("0", "0", BuildingTheme.Spacing.sm, "0"))
+                if (result.skipped > 0) {
+                    Alert("${BuildingStrings.SKIPPED_RECORDS}: ${result.skipped}", AlertType.WARNING)
+                }
+                Link(
+                    href = returnHref,
+                    modifier = Modifier()
+                        .backgroundColor(BuildingTheme.Colors.PRIMARY)
+                        .color(BuildingTheme.Colors.TEXT_WHITE)
+                        .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                        .borderRadius(BuildingTheme.BorderRadius.md)
+                        .style("text-decoration", "none")
+                ) {
+                    Text(BuildingStrings.BACK)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BulkBuildingsReviewPage(
+    username: String,
+    action: String,
+    buildings: List<Building>,
+    cascadePlan: BulkCascadePlan?,
+    errorMessage: String?
+) {
+    BuildingPageLayout(title = BuildingStrings.BULK_REVIEW, username = username, currentPath = "/buildings") {
+        Column(modifier = Modifier().fillMaxWidth()) {
+            PageHeader(title = "${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.BUILDINGS}")
+            Card(modifier = Modifier().fillMaxWidth()) {
+                errorMessage?.let { Alert(it, AlertType.ERROR) }
+                if (action == "delete") {
+                    CascadeSummary(cascadePlan)
+                    RawHtml(html = bulkDeleteFormHtml("/buildings/bulk/apply", buildings.map { it.id }, "/buildings"))
+                } else {
+                    RawHtml(html = buildingsEditFormHtml(buildings))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BulkApartmentsReviewPage(
+    username: String,
+    building: Building,
+    action: String,
+    apartments: List<ApartmentWithDetails>,
+    cascadePlan: BulkCascadePlan?,
+    errorMessage: String?
+) {
+    BuildingPageLayout(title = BuildingStrings.BULK_REVIEW, username = username, currentPath = "/buildings/${building.id}") {
+        Column(modifier = Modifier().fillMaxWidth()) {
+            PageHeader(title = "${BuildingStrings.BULK_REVIEW} - ${building.name}")
+            Card(modifier = Modifier().fillMaxWidth()) {
+                errorMessage?.let { Alert(it, AlertType.ERROR) }
+                when (action) {
+                    "delete" -> {
+                        CascadeSummary(cascadePlan)
+                        RawHtml(html = bulkDeleteFormHtml("/buildings/${building.id}/units/bulk/apply", apartments.map { it.apartment.id }, "/buildings/${building.id}"))
+                    }
+                    "dates" -> RawHtml(html = apartmentDateFormHtml(building.id, apartments))
+                    else -> RawHtml(html = apartmentsEditFormHtml(building.id, apartments))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BulkPaymentsReviewPage(
+    username: String,
+    action: String,
+    payments: List<PaymentWithDetails>,
+    cascadePlan: BulkCascadePlan?,
+    errorMessage: String?
+) {
+    BuildingPageLayout(title = BuildingStrings.BULK_REVIEW, username = username, currentPath = "/payments") {
+        Column(modifier = Modifier().fillMaxWidth()) {
+            PageHeader(title = "${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.PAYMENTS}")
+            Card(modifier = Modifier().fillMaxWidth()) {
+                errorMessage?.let { Alert(it, AlertType.ERROR) }
+                when (action) {
+                    "delete" -> {
+                        CascadeSummary(cascadePlan)
+                        RawHtml(html = bulkDeleteFormHtml("/payments/bulk/apply", payments.map { it.payment.id }, "/payments"))
+                    }
+                    "dates" -> RawHtml(html = paymentDateFormHtml(payments))
+                    else -> RawHtml(html = paymentsEditFormHtml(payments))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CascadeSummary(plan: BulkCascadePlan?) {
+    if (plan == null) return
+    Alert("راجع الأعداد قبل التنفيذ. السجلات غير الموجودة ستتجاوز تلقائياً.", AlertType.WARNING)
+    Column(modifier = Modifier().margin("0", "0", BuildingTheme.Spacing.md, "0")) {
+        Text("${BuildingStrings.AFFECTED_RECORDS}: ${plan.existing}")
+        if (plan.buildings > 0) Text("${BuildingStrings.BUILDINGS}: ${plan.buildings}")
+        if (plan.apartments > 0) Text("${BuildingStrings.UNITS}: ${plan.apartments}")
+        if (plan.leases > 0) Text("العقود: ${plan.leases}")
+        if (plan.payments > 0) Text("${BuildingStrings.PAYMENTS}: ${plan.payments}")
+        if (plan.tenants > 0) Text("المستأجرون غير المرتبطين بعقود أخرى: ${plan.tenants}")
+        if (plan.skipped > 0) Text("${BuildingStrings.SKIPPED_RECORDS}: ${plan.skipped}")
     }
 }
 
@@ -1352,6 +1602,225 @@ fun EditApartmentPage(
 }
 
 // ===================== Helper Components =====================
+
+@Composable
+private fun BulkActionBar(actions: List<Pair<String, String>>) {
+    RawHtml(
+        html = buildString {
+            append("""<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 16px 0">""")
+            append("""<span style="font-weight:600;color:${BuildingTheme.Colors.TEXT_SECONDARY};">${html(BuildingStrings.BULK_ACTIONS)}</span>""")
+            actions.forEach { (value, label) ->
+                val color = if (value == "delete") BuildingTheme.Colors.DANGER else BuildingTheme.Colors.PRIMARY
+                append(
+                    """<button type="submit" name="bulkAction" value="${attr(value)}" style="border:0;border-radius:8px;padding:8px 14px;background:$color;color:white;font-weight:600;cursor:pointer">${html(label)}</button>"""
+                )
+            }
+            append("</div>")
+        }
+    )
+}
+
+@Composable
+private fun BulkCheckbox(id: String) {
+    RawHtml(
+        html = """<input type="checkbox" name="select_${attr(id)}" value="1" style="width:18px;height:18px;cursor:pointer" aria-label="${attr(BuildingStrings.SELECT)}">"""
+    )
+}
+
+private fun bulkDeleteFormHtml(action: String, ids: List<String>, returnHref: String): String = buildString {
+    append("""<form method="post" action="${attr(action)}">""")
+    append("""<input type="hidden" name="bulkAction" value="delete">""")
+    append(hiddenRecordInputs(ids))
+    append("""<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">""")
+    append("""<button type="submit" style="border:0;border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.DANGER};color:white;font-weight:700;cursor:pointer">${html(BuildingStrings.BULK_DELETE)}</button>""")
+    append("""<a href="${attr(returnHref)}" style="border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.BG_HOVER};color:${BuildingTheme.Colors.TEXT_PRIMARY};text-decoration:none;font-weight:600">${html(BuildingStrings.CANCEL)}</a>""")
+    append("</div></form>")
+}
+
+private fun buildingsEditFormHtml(buildings: List<Building>): String = buildString {
+    append("""<form method="post" action="/buildings/bulk/apply"><input type="hidden" name="bulkAction" value="edit">""")
+    append(hiddenRecordInputs(buildings.map { it.id }))
+    append("""<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">""")
+    buildings.forEach { building ->
+        append(recordCard("عمارة: ${building.name}") {
+            append(input("name_${building.id}", BuildingStrings.BUILDING_NAME, building.name))
+            append(input("address_${building.id}", BuildingStrings.BUILDING_ADDRESS, building.address))
+        })
+    }
+    append("</div>")
+    append(applyCancelButtons("/buildings"))
+    append("</form>")
+}
+
+private fun apartmentsEditFormHtml(buildingId: String, apartments: List<ApartmentWithDetails>): String = buildString {
+    append("""<form method="post" action="/buildings/${attr(buildingId)}/units/bulk/apply"><input type="hidden" name="bulkAction" value="edit">""")
+    append(hiddenRecordInputs(apartments.map { it.apartment.id }))
+    append("""<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">""")
+    apartments.forEach { detail ->
+        val id = detail.apartment.id
+        append(recordCard("شقة: ${detail.apartment.unitNumber}") {
+            append(input("unitNumber_$id", BuildingStrings.UNIT_NUMBER, detail.apartment.unitNumber))
+            append(input("floor_$id", BuildingStrings.FLOOR, detail.apartment.floor?.toString().orEmpty(), "number"))
+            append(input("apartmentNotes_$id", BuildingStrings.APARTMENT_NOTES, detail.apartment.notes))
+            detail.tenant?.let { tenant ->
+                append(input("tenantName_$id", BuildingStrings.TENANT_NAME, tenant.name))
+                append(input("tenantPhone_$id", BuildingStrings.TENANT_PHONE, tenant.phone))
+                append(input("tenantEmail_$id", "البريد الإلكتروني", tenant.email))
+                append(input("tenantNationalId_$id", "رقم الهوية", tenant.nationalId))
+                append(input("tenantNotes_$id", BuildingStrings.NOTES, tenant.notes))
+            }
+            detail.currentLease?.let { lease ->
+                append(input("annualRent_$id", BuildingStrings.ANNUAL_RENT, lease.annualRent.toString(), "number", "0.01"))
+                append(input("startDate_$id", BuildingStrings.START_DATE, lease.startDate, "date"))
+                append(input("endDate_$id", BuildingStrings.END_DATE, lease.endDate, "date"))
+                append(input("leaseNotes_$id", BuildingStrings.NOTES, lease.notes))
+            }
+        })
+    }
+    append("</div>")
+    append(applyCancelButtons("/buildings/$buildingId"))
+    append("</form>")
+}
+
+private fun paymentsEditFormHtml(payments: List<PaymentWithDetails>): String = buildString {
+    append("""<form method="post" action="/payments/bulk/apply"><input type="hidden" name="bulkAction" value="edit">""")
+    append(hiddenRecordInputs(payments.map { it.payment.id }))
+    append("""<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">""")
+    payments.forEach { detail ->
+        val payment = detail.payment
+        val title = "${detail.building?.name ?: "-"} / ${detail.apartment?.unitNumber ?: "-"} / ${BuildingStrings.formatPaymentNumber(payment.paymentNumber)}"
+        append(recordCard(title) {
+            append(input("paymentNumber_${payment.id}", BuildingStrings.PAYMENT_NUMBER, payment.paymentNumber.toString(), "number"))
+            append(input("amount_${payment.id}", BuildingStrings.PAYMENT_AMOUNT, payment.amount.toString(), "number", "0.01"))
+            append(input("periodStart_${payment.id}", "${BuildingStrings.PERIOD} - ${BuildingStrings.FROM}", payment.periodStart, "date"))
+            append(input("periodEnd_${payment.id}", "${BuildingStrings.PERIOD} - ${BuildingStrings.TO}", payment.periodEnd, "date"))
+            append(input("dueDate_${payment.id}", BuildingStrings.DUE_DATE, payment.dueDate, "date"))
+            append(input("paidDate_${payment.id}", BuildingStrings.PAID_DATE, payment.paidDate.orEmpty(), "date"))
+            append(statusSelect("status_${payment.id}", payment.status))
+            append(input("notes_${payment.id}", BuildingStrings.NOTES, payment.notes))
+        })
+    }
+    append("</div>")
+    append(applyCancelButtons("/payments"))
+    append("</form>")
+}
+
+private fun paymentDateFormHtml(payments: List<PaymentWithDetails>): String = buildString {
+    append("""<form method="post" action="/payments/bulk/apply"><input type="hidden" name="bulkAction" value="dates">""")
+    append(hiddenRecordInputs(payments.map { it.payment.id }))
+    append(dateToolHtml(
+        fields = listOf(
+            "periodStart" to "${BuildingStrings.PERIOD} - ${BuildingStrings.FROM}",
+            "periodEnd" to "${BuildingStrings.PERIOD} - ${BuildingStrings.TO}",
+            "dueDate" to BuildingStrings.DUE_DATE,
+            "paidDate" to BuildingStrings.PAID_DATE
+        ),
+        returnHref = "/payments"
+    ))
+    append("</form>")
+}
+
+private fun paymentStatusFormsHtml(payments: List<PaymentWithDetails>, redirectPath: String): String = buildString {
+    val statuses = listOf(PaymentStatus.PAID, PaymentStatus.OVERDUE, PaymentStatus.PENDING)
+    payments.forEach { detail ->
+        statuses.forEach { status ->
+            append("""<form id="${attr(paymentStatusFormId(detail.payment, status))}" method="post" action="/payments/${attr(detail.payment.id)}/status" style="display:none">""")
+            append("""<input type="hidden" name="status" value="${attr(status.name)}">""")
+            append("""<input type="hidden" name="redirect" value="${attr(redirectPath)}">""")
+            append("</form>")
+        }
+    }
+}
+
+private fun paymentStatusButtonsHtml(payment: Payment): String = buildString {
+    val statuses = listOf(PaymentStatus.PAID, PaymentStatus.OVERDUE, PaymentStatus.PENDING)
+    append("""<div style="display:flex;gap:6px;flex-wrap:wrap">""")
+    statuses.forEach { status ->
+        val isCurrent = status == payment.status
+        val background = statusActionBackground(status)
+        val color = statusActionColor(status)
+        append(
+            """<button type="submit" form="${attr(paymentStatusFormId(payment, status))}" style="border:0;border-radius:8px;padding:7px 9px;background:$background;color:$color;font-size:12px;font-weight:700;cursor:pointer;${if (isCurrent) "opacity:.72;box-shadow:inset 0 0 0 2px rgba(0,0,0,.08);" else ""}" title="${attr(BuildingStrings.UPDATE_STATUS)}">${html(BuildingStrings.formatStatus(status))}</button>"""
+        )
+    }
+    append("</div>")
+}
+
+private fun paymentStatusFormId(payment: Payment, status: PaymentStatus): String =
+    "payment-status-${payment.id}-${status.name}"
+
+private fun statusActionBackground(status: PaymentStatus): String = when (status) {
+    PaymentStatus.PAID -> BuildingTheme.Colors.SUCCESS
+    PaymentStatus.PENDING -> BuildingTheme.Colors.WARNING
+    PaymentStatus.OVERDUE -> BuildingTheme.Colors.DANGER
+}
+
+private fun statusActionColor(status: PaymentStatus): String = when (status) {
+    PaymentStatus.PENDING -> BuildingTheme.Colors.TEXT_PRIMARY
+    PaymentStatus.PAID,
+    PaymentStatus.OVERDUE -> BuildingTheme.Colors.TEXT_WHITE
+}
+
+private fun apartmentDateFormHtml(buildingId: String, apartments: List<ApartmentWithDetails>): String = buildString {
+    append("""<form method="post" action="/buildings/${attr(buildingId)}/units/bulk/apply"><input type="hidden" name="bulkAction" value="dates">""")
+    append(hiddenRecordInputs(apartments.map { it.apartment.id }))
+    append(dateToolHtml(
+        fields = listOf(
+            "startDate" to BuildingStrings.START_DATE,
+            "endDate" to BuildingStrings.END_DATE
+        ),
+        returnHref = "/buildings/$buildingId"
+    ))
+    append("</form>")
+}
+
+private fun dateToolHtml(fields: List<Pair<String, String>>, returnHref: String): String = buildString {
+    append("""<div style="display:grid;gap:16px;max-width:760px">""")
+    append("""<div><strong>${html(BuildingStrings.DATE_FIELDS)}</strong><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">""")
+    fields.forEach { (value, label) ->
+        append("""<label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" name="field_${attr(value)}" value="1"> ${html(label)}</label>""")
+    }
+    append("</div></div>")
+    append("""<div><strong>${html(BuildingStrings.DATE_MODE)}</strong><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">""")
+    append("""<label><input type="radio" name="dateMode" value="set" checked> ${html(BuildingStrings.SET_DATE)}</label>""")
+    append("""<label><input type="radio" name="dateMode" value="shift"> ${html(BuildingStrings.SHIFT_DATE)}</label>""")
+    append("</div></div>")
+    append(input("setDate", BuildingStrings.SET_DATE, "", "date"))
+    append("""<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">""")
+    append(input("shiftAmount", BuildingStrings.SHIFT_AMOUNT, "0", "number"))
+    append("""<label style="display:grid;gap:6px;color:${BuildingTheme.Colors.TEXT_SECONDARY};font-size:14px">${html(BuildingStrings.SHIFT_UNIT)}<select name="shiftUnit" style="padding:10px;border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:8px;background:${BuildingTheme.Colors.BG_PRIMARY};color:${BuildingTheme.Colors.TEXT_PRIMARY}"><option value="days">${html(BuildingStrings.DAYS_UNIT)}</option><option value="months">${html(BuildingStrings.MONTHS_UNIT)}</option></select></label>""")
+    append("</div></div>")
+    append(applyCancelButtons(returnHref))
+}
+
+private fun hiddenRecordInputs(ids: List<String>): String =
+    ids.distinct().mapIndexed { index, id -> """<input type="hidden" name="record_$index" value="${attr(id)}">""" }.joinToString("")
+
+private fun recordCard(title: String, body: StringBuilder.() -> Unit): String {
+    val content = buildString(body)
+    return """<section style="border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:12px;padding:14px;background:${BuildingTheme.Colors.BG_PRIMARY}"><h3 style="margin:0 0 12px 0;color:${BuildingTheme.Colors.TEXT_PRIMARY};font-size:16px">${html(title)}</h3><div style="display:grid;gap:10px">$content</div></section>"""
+}
+
+private fun input(name: String, label: String, value: String, type: String = "text", step: String? = null): String {
+    val stepAttr = step?.let { """ step="${attr(it)}"""" }.orEmpty()
+    return """<label style="display:grid;gap:6px;color:${BuildingTheme.Colors.TEXT_SECONDARY};font-size:14px">${html(label)}<input type="${attr(type)}" name="${attr(name)}" value="${attr(value)}"$stepAttr style="padding:10px;border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:8px;background:${BuildingTheme.Colors.BG_CARD};color:${BuildingTheme.Colors.TEXT_PRIMARY}"></label>"""
+}
+
+private fun statusSelect(name: String, current: PaymentStatus): String {
+    return """<label style="display:grid;gap:6px;color:${BuildingTheme.Colors.TEXT_SECONDARY};font-size:14px">${html(BuildingStrings.PAYMENT_STATUS)}<select name="${attr(name)}" style="padding:10px;border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:8px;background:${BuildingTheme.Colors.BG_CARD};color:${BuildingTheme.Colors.TEXT_PRIMARY}">${PaymentStatus.entries.joinToString("") { status -> "<option value=\"${attr(status.name)}\"${if (status == current) " selected" else ""}>${html(BuildingStrings.formatStatus(status))}</option>" }}</select></label>"""
+}
+
+private fun applyCancelButtons(returnHref: String): String =
+    """<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button type="submit" style="border:0;border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.PRIMARY};color:white;font-weight:700;cursor:pointer">${html(BuildingStrings.BULK_APPLY)}</button><a href="${attr(returnHref)}" style="border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.BG_HOVER};color:${BuildingTheme.Colors.TEXT_PRIMARY};text-decoration:none;font-weight:600">${html(BuildingStrings.CANCEL)}</a></div>"""
+
+private fun html(value: String): String = value
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+
+private fun attr(value: String): String = html(value)
+    .replace("\"", "&quot;")
+    .replace("'", "&#39;")
 
 @Composable
 private fun GridHeaderCell(text: String) {
