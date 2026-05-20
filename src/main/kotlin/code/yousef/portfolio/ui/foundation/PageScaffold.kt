@@ -5,7 +5,6 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.aurora.AuroraBackground
 import code.yousef.portfolio.ui.aurora.AuroraConfig
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.foundation.Canvas
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.styles.GlobalStyle
@@ -116,6 +115,7 @@ fun PageScaffold(
                     enableClickCycle = true
                 )
             )
+            AuroraBlendLayer()
             GrainLayer()
         }
         val columnModifier = Modifier()
@@ -136,6 +136,25 @@ fun PageScaffold(
             content()
         }
     }
+}
+
+@Composable
+private fun AuroraBlendLayer() {
+    Box(
+        modifier = Modifier()
+            .position(Position.Fixed)
+            .left(0.px)
+            .right(0.px)
+            .top("64vh")
+            .height("56vh")
+            .pointerEvents(PointerEvents.None)
+            .style(
+                "background",
+                "linear-gradient(180deg, rgba(2,3,10,0) 0%, rgba(2,3,10,0.18) 34%, rgba(0,18,31,0.72) 74%, rgba(0,26,44,0.96) 100%)"
+            )
+            .zIndex(1)
+            .dataAttribute("aurora-blend", "true")
+    ) {}
 }
 
 @Composable

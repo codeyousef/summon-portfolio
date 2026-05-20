@@ -41,7 +41,7 @@ fun AuroraBackground(
             .left(0.px)
             .width(100.percent)
             .height(config.heightVh.vh)
-            .background(PortfolioTheme.Gradients.HERO)
+            .style("background", PortfolioTheme.Gradients.HERO)
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {
@@ -49,7 +49,7 @@ fun AuroraBackground(
         SigilEffectCanvas(
             id = config.canvasId,
             width = "100%",
-            height = "100%",
+            height = "${config.heightVh}vh",
             config = SigilCanvasConfig(
                 id = config.canvasId,
                 respectDevicePixelRatio = false,

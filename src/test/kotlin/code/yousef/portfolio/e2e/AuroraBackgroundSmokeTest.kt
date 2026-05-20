@@ -50,6 +50,18 @@ class AuroraBackgroundSmokeTest {
             assertTrue(body.contains("summon-hydration.js"), "Should contain summon-hydration.js script tag")
             assertTrue(body.contains("height: 120vh"), "Aurora background should use bounded viewport overscan")
             assertTrue(
+                body.contains("""id="aurora-canvas-container" style="width: 100%; height: 120vh;"""),
+                "Sigil canvas container should receive explicit viewport height instead of a collapsible 100%"
+            )
+            assertTrue(
+                body.contains("data-aurora-blend=\"true\""),
+                "Aurora background should render a blend layer over the canvas boundary"
+            )
+            assertTrue(
+                body.contains("background: radial-gradient"),
+                "Aurora container should use a real background gradient declaration"
+            )
+            assertTrue(
                 body.contains("\"respectDevicePixelRatio\":false"),
                 "Decorative Aurora canvas should avoid DPR-scaled WebGL allocations"
             )

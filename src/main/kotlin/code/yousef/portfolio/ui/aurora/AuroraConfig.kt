@@ -11,7 +11,7 @@ data class AuroraConfig(
     /** Canvas element ID */
     val canvasId: String = "aurora-canvas",
     
-    /** Fixed background height in viewport units, with overscan to avoid a hard fold cut-off. */
+    /** Fixed background height in viewport units, with bounded overscan to avoid a hard fold cut-off. */
     val heightVh: Int = 120,
     
     /** Initial color palette index (0-6) */
