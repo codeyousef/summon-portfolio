@@ -48,7 +48,7 @@ class AuroraBackgroundSmokeTest {
 
             val body = response.body()
             assertTrue(body.contains("summon-hydration.js"), "Should contain summon-hydration.js script tag")
-            assertTrue(body.contains("height: 100vh"), "Aurora background should be viewport-bound")
+            assertTrue(body.contains("height: 120vh"), "Aurora background should use bounded viewport overscan")
             assertTrue(
                 body.contains("\"respectDevicePixelRatio\":false"),
                 "Decorative Aurora canvas should avoid DPR-scaled WebGL allocations"
