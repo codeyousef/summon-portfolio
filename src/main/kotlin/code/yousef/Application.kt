@@ -25,6 +25,9 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.db.ContentStoreDriver
 import code.yousef.portfolio.docs.*
+import code.yousef.portfolio.photography.GcsPhotoAssetStore
+import code.yousef.portfolio.photography.LocalPhotoAssetStore
+import code.yousef.portfolio.photography.PhotographyService
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
@@ -74,6 +77,14 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     
     val contentService = PortfolioContentService(contentStore)
     val contactService = ContactService(FileContactRepository(contentStore))
+    val photoAssetStore = appConfig.photographyUploadBucket?.let { bucket ->
+        GcsPhotoAssetStore(bucket = bucket, prefix = appConfig.photographyUploadPrefix)
+    } ?: LocalPhotoAssetStore(appConfig.photographyUploadDir)
+    val photographyService = PhotographyService(
+        contentStore = contentStore,
+        assetStore = photoAssetStore,
+        maxUploadBytes = appConfig.photographyMaxUploadBytes
+    )
     
     // Admin auth - use Firestore in production, file-based locally
     val adminAuthService: AdminAuthProvider = if (firestore != null) {
@@ -174,6 +185,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             contactService,
             contentService,
             adminAuthService,
+            photographyService,
             aiCurriculumRenderer = aiCurriculumRenderer,
             aiProgressStore = aiProgressStore,
             fifthWallTelemetryStore = fifthWallTelemetryStore,
@@ -336,7 +348,15 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             val host = exchange.request.headers["Host"]?.substringBefore(":")
             val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
             val path = exchange.request.path
-            if (!isBuildingSite &&
+            if (!isBuildingSite && path.startsWith("/admin/photography")) {
+                val session = exchange.session()
+                val username = session?.get("username") as? String
+                if (username == null) {
+                    exchange.redirect("/admin/login?next=${path}")
+                } else {
+                    next()
+                }
+            } else if (!isBuildingSite &&
                 path.startsWith("/admin") &&
                 !path.startsWith("/admin/login") &&
                 !path.startsWith("/admin/change-password")) {

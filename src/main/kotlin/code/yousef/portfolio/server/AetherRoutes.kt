@@ -12,6 +12,9 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.photography.PhotographyService
+import code.yousef.portfolio.photography.extractMultipartBoundary
+import code.yousef.portfolio.photography.parseMultipartFormData
 import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.seen.SeenRunRequest
@@ -95,6 +98,7 @@ internal fun Router.portfolioRoutes(
     contactService: ContactService,
     contentService: PortfolioContentService,
     adminAuthService: AdminAuthProvider,
+    photographyService: PhotographyService,
     aiCurriculumRenderer: AiCurriculumRenderer? = null,
     aiProgressStore: AiProgressStore? = null,
     fifthWallTelemetryStore: FifthWallTelemetryStore? = null,
@@ -140,6 +144,23 @@ internal fun Router.portfolioRoutes(
     get("/full-time") { exchange ->
         val page = portfolioRenderer.fullTimePage(locale = PortfolioLocale.EN)
         exchange.respondSummonPage(page)
+    }
+
+    get("/photography") { exchange ->
+        val page = portfolioRenderer.photographyPage(photographyService.publicPhotos())
+        exchange.respondSummonPage(page)
+    }
+
+    get("/uploads/photography/:id") { exchange ->
+        val id = exchange.pathParam("id").orEmpty()
+        val asset = photographyService.assetForPublishedPhoto(id)
+        if (asset == null) {
+            exchange.respond(404, "Photo not found")
+            return@get
+        }
+        exchange.response.setHeader("Cache-Control", "public, max-age=604800")
+        exchange.response.setHeader("X-Content-Type-Options", "nosniff")
+        exchange.respondBytes(200, asset.contentType, asset.bytes)
     }
 
     get("/fifth-wall") { exchange ->
@@ -446,6 +467,97 @@ internal fun Router.portfolioRoutes(
                 adminAuthService.updateCredentials(username, password)
                 exchange.redirect("/admin")
             }
+        }
+    }
+
+    get("/admin/photography") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@get
+        }
+        val successMessage = when {
+            exchange.request.queryParameter("uploaded") == "true" -> "Photo uploaded."
+            exchange.request.queryParameter("saved") == "true" -> "Photo updated."
+            exchange.request.queryParameter("deleted") == "true" -> "Photo deleted."
+            else -> null
+        }
+        exchange.respondSummonPage(
+            portfolioRenderer.photographyAdminPage(
+                photos = photographyService.adminPhotos(),
+                successMessage = successMessage
+            )
+        )
+    }
+
+    post("/admin/photography") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@post
+        }
+
+        val boundary = extractMultipartBoundary(exchange.request.headers["Content-Type"].orEmpty())
+        if (boundary == null) {
+            exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = "Invalid upload request."
+                ),
+                400
+            )
+            return@post
+        }
+
+        val formData = parseMultipartFormData(exchange.request.bodyBytes(), boundary, fileFieldName = "photo")
+        when (val result = photographyService.upload(formData.fields, formData.file)) {
+            is PhotographyService.UploadResult.Success -> exchange.redirect("/admin/photography?uploaded=true")
+            is PhotographyService.UploadResult.Error -> exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = result.message
+                ),
+                400
+            )
+        }
+    }
+
+    post("/admin/photography/:id") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@post
+        }
+        val id = exchange.pathParam("id").orEmpty()
+        val params = exchange.receiveParameters()
+        when (val result = photographyService.update(id, params)) {
+            is PhotographyService.UpdateResult.Success -> exchange.redirect("/admin/photography?saved=true")
+            is PhotographyService.UpdateResult.Error -> exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = result.message
+                ),
+                400
+            )
+        }
+    }
+
+    post("/admin/photography/:id/delete") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@post
+        }
+        val id = exchange.pathParam("id").orEmpty()
+        when (val result = photographyService.delete(id)) {
+            is PhotographyService.DeleteResult.Success -> exchange.redirect("/admin/photography?deleted=true")
+            is PhotographyService.DeleteResult.Error -> exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = result.message
+                ),
+                400
+            )
         }
     }
 }

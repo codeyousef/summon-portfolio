@@ -1,8 +1,11 @@
 package code.yousef.portfolio.ssr
 
 import code.yousef.portfolio.content.PortfolioContentService
+import code.yousef.portfolio.content.model.PhotographyPhoto
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
+import code.yousef.portfolio.ui.photography.PhotographyAdminPage
+import code.yousef.portfolio.ui.photography.PhotographyPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
 import code.yousef.portfolio.ui.summon.SummonLandingPage
 import code.yousef.portfolio.ui.workwithme.FullTimePage
@@ -73,6 +76,43 @@ class PortfolioRenderer(
                 FullTimePage(locale = locale)
             },
             locale = locale
+        )
+    }
+
+    fun photographyPage(photos: List<PhotographyPhoto>): SummonPage {
+        return SummonPage(
+            head = headBlockFor(
+                locale = PortfolioLocale.EN,
+                pageTitle = "Photography | Yousef",
+                description = "Selected photography by Yousef."
+            ),
+            content = {
+                PhotographyPage(photos = photos)
+            },
+            locale = PortfolioLocale.EN
+        )
+    }
+
+    fun photographyAdminPage(
+        photos: List<PhotographyPhoto>,
+        errorMessage: String? = null,
+        successMessage: String? = null
+    ): SummonPage {
+        return SummonPage(
+            head = { head ->
+                head.title("Photography Admin | Yousef")
+                head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+                head.meta("robots", "noindex", null, null, null)
+                head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+            },
+            content = {
+                PhotographyAdminPage(
+                    photos = photos,
+                    errorMessage = errorMessage,
+                    successMessage = successMessage
+                )
+            },
+            locale = PortfolioLocale.EN
         )
     }
 

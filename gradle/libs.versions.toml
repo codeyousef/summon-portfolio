@@ -82,6 +82,7 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 # Google Cloud
 google-cloud-bom = { module = "com.google.cloud:libraries-bom", version.ref = "google-cloud-bom" }
 google-cloud-firestore = { module = "com.google.cloud:google-cloud-firestore" }
+google-cloud-storage = { module = "com.google.cloud:google-cloud-storage" }
 
 # Apache POI
 poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }

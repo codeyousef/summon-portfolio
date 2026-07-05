@@ -21,6 +21,8 @@ class PortfolioContentService(
 
     fun listTestimonials() = store.listTestimonials()
 
+    fun listPhotographyPhotos() = store.listPhotographyPhotos()
+
     fun findBlogPostBySlug(slug: String) = store.listBlogPosts().firstOrNull {
         it.slug.equals(slug, ignoreCase = true)
     }?.repairMojibake()

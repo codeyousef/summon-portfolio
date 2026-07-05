@@ -42,6 +42,10 @@ Environment variables:
 - `PORTFOLIO_CONTENT_PATH` - Path to content.json (default: `/app/storage/content.json`)
 - `ADMIN_CREDENTIALS_PATH` - Path to admin-credentials.json (default: `/app/storage/admin-credentials.json`)
 - `USE_LOCAL_STORE` - Set to `true` to use file storage instead of Firestore
+- `PHOTOGRAPHY_UPLOAD_BUCKET` - Optional GCS bucket for durable photo uploads in production
+- `PHOTOGRAPHY_UPLOAD_PREFIX` - GCS object prefix for photo uploads (default: `photography`)
+- `PHOTOGRAPHY_UPLOAD_DIR` - Local photo upload directory when no bucket is configured
+- `PHOTOGRAPHY_MAX_UPLOAD_BYTES` - Maximum single photo upload size in bytes
 
 Contributing:
 

@@ -49,6 +49,7 @@ dependencies {
     // Google Cloud Firestore
     implementation(platform(libs.google.cloud.bom))
     implementation(libs.google.cloud.firestore)
+    implementation(libs.google.cloud.storage)
 
     // Apache POI for Excel (.xlsx) import
     implementation(libs.poi.ooxml)

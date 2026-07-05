@@ -62,6 +62,9 @@ RUN mkdir -p /app/storage && chmod 755 /app/storage
 ENV PORT=8080
 ENV PORTFOLIO_CONTENT_PATH=/app/storage/content.json
 ENV ADMIN_CREDENTIALS_PATH=/app/storage/admin-credentials.json
+ENV PHOTOGRAPHY_UPLOAD_DIR=/app/storage/uploads/photography
+ENV PHOTOGRAPHY_UPLOAD_PREFIX=photography
+ENV PHOTOGRAPHY_MAX_UPLOAD_BYTES=15728640
 ENV SEEN_HOME=/opt/seen
 ENV SEEN_BINARY_PATH=/opt/seen/seen
 

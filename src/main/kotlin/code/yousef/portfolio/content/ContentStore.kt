@@ -26,4 +26,7 @@ interface ContentStore {
     fun listContactSubmissions(): List<ContactSubmission>
     fun upsertContactSubmission(submission: ContactSubmission)
     fun deleteContactSubmission(id: String)
+    fun listPhotographyPhotos(): List<PhotographyPhoto>
+    fun upsertPhotographyPhoto(photo: PhotographyPhoto)
+    fun deletePhotographyPhoto(id: String)
 }
