@@ -21,6 +21,7 @@ data class NavItem(
 )
 
 val defaultNavItems = listOf(
+    NavItem(NavigationStrings.photography, NavTarget.Page("/photography")),
     NavItem(NavigationStrings.blog, NavTarget.Page("/blog"))
 )
 

@@ -102,7 +102,7 @@ fun DesktopHeader(
         // Right Nav: Blog + Work With Me dropdown
         Box(
             modifier = Modifier()
-                .flex(grow = 0, shrink = 1, basis = "320px")
+                .flex(grow = 0, shrink = 1, basis = "420px")
         ) {
             Row(
                 modifier = Modifier()
@@ -111,7 +111,7 @@ fun DesktopHeader(
                     .gap(PortfolioTheme.Spacing.md)
                     .flex(grow = 0, shrink = 0, basis = "auto")
                     .justifyContent(JustifyContent.FlexEnd)
-                    .flexWrap(FlexWrap.NoWrap)
+                    .flexWrap(FlexWrap.Wrap)
             ) {
                 val baseNavModifier = Modifier()
                     .textDecoration(TextDecoration.None)
@@ -124,6 +124,14 @@ fun DesktopHeader(
                     .opacity(0.9F)
                     .hover(Modifier().opacity(1.0F).backgroundColor(PortfolioTheme.Colors.SURFACE))
                 
+                navLink(
+                    label = NavigationStrings.photography.resolve(locale),
+                    href = "/photography",
+                    modifier = baseNavModifier,
+                    dataAttributes = mapOf("nav" to "photography"),
+                    navigationMode = LinkNavigationMode.Native
+                )
+
                 // Blog link - always use environment-aware URL for cross-site navigation
                 val blogHref = blogUrl()
                 navLink(

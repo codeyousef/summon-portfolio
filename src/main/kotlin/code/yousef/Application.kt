@@ -348,7 +348,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             val host = exchange.request.headers["Host"]?.substringBefore(":")
             val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
             val path = exchange.request.path
-            if (!isBuildingSite && path.startsWith("/admin/photography")) {
+            if (!isBuildingSite && (path == "/admin" || path.startsWith("/admin/photography"))) {
                 val session = exchange.session()
                 val username = session?.get("username") as? String
                 if (username == null) {

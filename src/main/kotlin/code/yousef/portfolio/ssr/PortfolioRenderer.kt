@@ -4,6 +4,7 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.model.PhotographyPhoto
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
+import code.yousef.portfolio.ui.admin.AdminHomePage
 import code.yousef.portfolio.ui.photography.PhotographyAdminPage
 import code.yousef.portfolio.ui.photography.PhotographyPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
@@ -111,6 +112,21 @@ class PortfolioRenderer(
                     errorMessage = errorMessage,
                     successMessage = successMessage
                 )
+            },
+            locale = PortfolioLocale.EN
+        )
+    }
+
+    fun adminHomePage(username: String): SummonPage {
+        return SummonPage(
+            head = { head ->
+                head.title("Admin | Yousef")
+                head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+                head.meta("robots", "noindex", null, null, null)
+                head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+            },
+            content = {
+                AdminHomePage(username = username)
             },
             locale = PortfolioLocale.EN
         )

@@ -6,6 +6,7 @@ object NavigationStrings {
     val about = LocalizedText("About", "حول")
     val services = LocalizedText("Services", "الخدمات")
     val blog = LocalizedText("Blog", "المدونة")
+    val photography = LocalizedText("Photography", "التصوير")
     val contact = LocalizedText("Contact", "اتصل")
     val projects = LocalizedText("Projects", "المشاريع")
     val startProject = LocalizedText("Start your project", "ابدأ مشروعك")

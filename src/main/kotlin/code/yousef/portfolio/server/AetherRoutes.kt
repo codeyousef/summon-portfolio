@@ -419,6 +419,19 @@ internal fun Router.portfolioRoutes(
         }
     }
 
+    get("/admin") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin")
+            return@get
+        }
+        if (session.mustChangePassword) {
+            exchange.redirect("/admin/change-password")
+            return@get
+        }
+        exchange.respondSummonPage(portfolioRenderer.adminHomePage(session.username))
+    }
+
     get("/admin/change-password") { exchange ->
         val session = exchange.getAdminSession()
         if (session == null) {
