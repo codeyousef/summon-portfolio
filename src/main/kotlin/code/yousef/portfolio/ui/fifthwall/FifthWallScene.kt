@@ -30,6 +30,7 @@ import codes.yousef.sigil.summon.components.SigilDirectionalLight
 import codes.yousef.sigil.summon.components.SigilGroup
 import codes.yousef.sigil.summon.components.SigilMesh
 import codes.yousef.sigil.summon.components.SigilModel
+import codes.yousef.sigil.summon.components.SigilOrbitControls
 import codes.yousef.sigil.summon.components.SigilPlane
 import codes.yousef.sigil.summon.components.SigilSphere
 import codes.yousef.summon.annotation.Composable
@@ -96,6 +97,21 @@ internal fun FifthWallScene(
             near = 0.1f,
             far = 100f,
             name = "dispatch-camera"
+        )
+        SigilOrbitControls(
+            target = listOf(0.8f, 1.85f, 1.6f),
+            enableDamping = true,
+            dampingFactor = 0.04f,
+            minDistance = 8.5f,
+            maxDistance = 15f,
+            minPolarAngle = 0.9f,
+            maxPolarAngle = 1.36f,
+            enablePan = false,
+            autoRotate = false,
+            autoRotateSpeed = 0f,
+            rotateSpeed = 0.26f,
+            zoomSpeed = 0.45f,
+            name = "dispatch-orbit"
         )
 
         SigilAmbientLight(color = SCENE_NEUTRAL_LIGHT, intensity = 0.58f, name = "ambient-fill")
