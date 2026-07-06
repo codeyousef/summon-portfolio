@@ -101,7 +101,7 @@ internal fun FifthWallScene(
         SigilOrbitControls(
             target = listOf(0.8f, 1.85f, 1.6f),
             enableDamping = true,
-            dampingFactor = 0.04f,
+            dampingFactor = 0.14f,
             minDistance = 8.5f,
             maxDistance = 15f,
             minPolarAngle = 0.9f,
