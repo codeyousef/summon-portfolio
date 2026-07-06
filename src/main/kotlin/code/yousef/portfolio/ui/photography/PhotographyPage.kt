@@ -142,6 +142,8 @@ private fun PhotographyHero(hero: PhotographyPhoto, media: List<PhotographyPhoto
             .display(Display.Grid)
             .className("photography-shell photography-hero")
             .gap(PortfolioTheme.Spacing.xl)
+            .alignItems(AlignItems.FlexStart)
+            .minHeight("auto")
     ) {
         Column(
             modifier = Modifier()

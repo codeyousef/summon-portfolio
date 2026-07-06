@@ -41,6 +41,7 @@ fun PhotographyAdminPage(
             .fontFamily("ui-sans-serif, system-ui, sans-serif")
             .padding(28.px)
             .gap(28.px)
+            .alignItems(AlignItems.FlexStart)
     ) {
         Row(
             modifier = Modifier()
@@ -49,6 +50,7 @@ fun PhotographyAdminPage(
                 .justifyContent(JustifyContent.SpaceBetween)
                 .gap(16.px)
                 .width(100.percent)
+                .maxWidth(1180.px)
         ) {
             Column(modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(6.px)) {
                 Text(text = "Photography Admin", modifier = Modifier().fontSize(2.rem).fontWeight(700))
@@ -77,6 +79,8 @@ fun PhotographyAdminPage(
                 .display(Display.Flex)
                 .flexDirection(FlexDirection.Column)
                 .gap(16.px)
+                .width(100.percent)
+                .maxWidth(1180.px)
         ) {
             Text(text = "Photos", modifier = Modifier().fontSize(1.2.rem).fontWeight(700))
             if (photos.isEmpty()) {
@@ -102,13 +106,19 @@ private fun UploadPanel() {
             .border("1px", "solid", "#30363d")
             .borderRadius(6.px)
             .backgroundColor("#161b22")
+            .width(100.percent)
+            .maxWidth(760.px)
     ) {
         Text(text = "Create media", modifier = Modifier().fontSize(1.2.rem).fontWeight(700))
         Form(
             action = "/admin/photography",
             method = FormMethod.Post,
             encType = FormEncType.Multipart,
-            modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(14.px)
+            modifier = Modifier()
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .gap(14.px)
+                .width(100.percent)
         ) {
             TextInputField("Title", "title", "", required = true)
             TextInputField("Alt text", "altText", "", required = true)
@@ -159,6 +169,7 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
             .borderRadius(6.px)
             .backgroundColor("#161b22")
             .flexWrap(FlexWrap.Wrap)
+            .width(100.percent)
     ) {
         AdminMediaPreview(photo)
         Column(
@@ -167,12 +178,17 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
                 .flexDirection(FlexDirection.Column)
                 .gap(12.px)
                 .flex(grow = 1, shrink = 1, basis = "320px")
+                .maxWidth(760.px)
         ) {
             Form(
                 action = "/admin/photography/${photo.id}",
                 method = FormMethod.Post,
                 encType = FormEncType.Multipart,
-                modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(12.px)
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(12.px)
+                    .width(100.percent)
             ) {
                 TextInputField("Title", "title", photo.title, required = true)
                 TextInputField("Alt text", "altText", photo.altText, required = true)
