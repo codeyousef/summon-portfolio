@@ -420,17 +420,6 @@
     backdrop-filter: blur(14px);
 }
 
-.fw-accessibility-fallback {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 18px;
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background:
-        linear-gradient(180deg, rgba(13, 20, 31, 0.84) 0%, rgba(9, 14, 22, 0.92) 100%);
-}
-
 .fw-fallback-row {
     display: flex;
     flex-wrap: wrap;
@@ -441,12 +430,15 @@
 .fw-scene-control-deck {
     position: absolute;
     left: 18px;
-    right: 18px;
+    right: calc(min(420px, calc(100% - 36px)) + 36px);
     bottom: 18px;
     z-index: 7;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: min(330px, calc(100% - 240px));
+    overflow: auto;
+    overscroll-behavior: contain;
     pointer-events: auto;
 }
 
@@ -462,11 +454,12 @@
     gap: 10px;
     align-items: stretch;
     justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .fw-scene-control-grid {
     display: grid;
-    grid-template-columns: minmax(190px, 1fr) minmax(170px, 0.8fr) minmax(210px, 1fr) minmax(290px, 1.35fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     align-items: stretch;
 }
@@ -487,6 +480,10 @@
     background: rgba(7, 12, 19, 0.82);
     box-shadow: 0 16px 32px rgba(3, 8, 18, 0.28);
     backdrop-filter: blur(12px);
+}
+
+.fw-scene-control-deck .fw-fallback-row {
+    gap: 8px;
 }
 
 .fw-scene-control-deck .fw-panel-title {
@@ -1250,7 +1247,7 @@ input.fw-input:focus {
 
     .fw-scene-shell,
     #fifth-wall-scene-container {
-        min-height: 940px;
+        min-height: 1080px;
     }
 
     .fw-scene-hud {
@@ -1332,9 +1329,9 @@ input.fw-input:focus {
         left: 12px;
         right: 12px;
         top: 188px;
-        bottom: 104px;
+        bottom: 330px;
         width: auto;
-        grid-template-rows: minmax(250px, 0.95fr) minmax(220px, 0.85fr) minmax(120px, 0.5fr);
+        grid-template-rows: minmax(190px, 0.95fr) minmax(150px, 0.85fr) minmax(72px, 0.5fr);
     }
 
     .fw-scene-feedback {
@@ -1363,7 +1360,7 @@ input.fw-input:focus {
         left: 10px;
         right: 10px;
         bottom: 10px;
-        max-height: min(640px, calc(100dvh - 190px));
+        max-height: 310px;
         gap: 8px;
         padding: 7px;
     }
