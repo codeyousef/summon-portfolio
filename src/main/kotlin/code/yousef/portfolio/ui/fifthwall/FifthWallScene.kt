@@ -100,8 +100,8 @@ internal fun FifthWallScene(
         )
         SigilOrbitControls(
             target = listOf(0.8f, 1.85f, 1.6f),
-            enableDamping = true,
-            dampingFactor = 0.14f,
+            enableDamping = false,
+            dampingFactor = 0f,
             minDistance = 8.5f,
             maxDistance = 15f,
             minPolarAngle = 0.9f,
@@ -109,7 +109,7 @@ internal fun FifthWallScene(
             enablePan = false,
             autoRotate = false,
             autoRotateSpeed = 0f,
-            rotateSpeed = 0.26f,
+            rotateSpeed = 0.22f,
             zoomSpeed = 0.45f,
             name = "dispatch-orbit"
         )
