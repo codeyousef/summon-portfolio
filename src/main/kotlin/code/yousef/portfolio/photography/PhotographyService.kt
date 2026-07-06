@@ -122,7 +122,7 @@ class PhotographyService(
         }
     }
 
-    fun update(id: String, fields: Map<String, String>): UpdateResult {
+    fun update(id: String, fields: Map<String, String>, file: MultipartFilePart? = null): UpdateResult {
         val existing = contentStore.listPhotographyPhotos().firstOrNull { it.id == id }
             ?: return UpdateResult.Error("Photo not found.")
         val metadata = parseMetadata(fields, requireTitle = true, requireAltText = true)
@@ -130,38 +130,79 @@ class PhotographyService(
         if (metadata.sourceKind == PhotographySourceKind.EXTERNAL && metadata.externalUrl == null) {
             return UpdateResult.Error("External media requires a valid URL.")
         }
-        if (metadata.sourceKind == PhotographySourceKind.UPLOAD) {
-            if (existing.storageKey.isBlank()) {
-                return UpdateResult.Error("Uploaded media requires a saved file.")
-            }
-            if (extensionFor(existing.contentType, metadata.mediaType) == null) {
-                return UpdateResult.Error(uploadTypeError(metadata.mediaType))
-            }
+        val replacementFile = file?.takeIf { it.bytes.isNotEmpty() }
+        val basePhoto = existing.copy(
+            title = metadata.title,
+            altText = metadata.altText,
+            caption = metadata.caption,
+            takenAt = metadata.takenAt,
+            order = metadata.order,
+            published = metadata.published,
+            mediaType = metadata.mediaType,
+            sourceKind = metadata.sourceKind,
+            category = metadata.category,
+            albumTitle = metadata.albumTitle,
+            externalUrl = metadata.externalUrl,
+            thumbnailUrl = metadata.thumbnailUrl,
+            featured = metadata.featured
+        )
+
+        if (metadata.sourceKind == PhotographySourceKind.EXTERNAL) {
+            val photo = basePhoto.copy(
+                sourceKind = PhotographySourceKind.EXTERNAL,
+                storageKey = "",
+                contentType = "text/uri-list",
+                originalFilename = null,
+                sizeBytes = 0
+            )
+            return saveUpdatedPhoto(
+                id = id,
+                photo = photo,
+                oldStorageKeyToDelete = existing.storageKey.takeIf { it.isNotBlank() }
+            )
         }
 
-        return try {
-            contentStore.upsertPhotographyPhoto(
-                existing.copy(
-                    title = metadata.title,
-                    altText = metadata.altText,
-                    caption = metadata.caption,
-                    takenAt = metadata.takenAt,
-                    order = metadata.order,
-                    published = metadata.published,
-                    mediaType = metadata.mediaType,
-                    sourceKind = metadata.sourceKind,
-                    category = metadata.category,
-                    albumTitle = metadata.albumTitle,
-                    externalUrl = metadata.externalUrl,
-                    thumbnailUrl = metadata.thumbnailUrl,
-                    featured = metadata.featured
-                )
+        if (replacementFile != null) {
+            if (replacementFile.bytes.size > maxUploadBytes) {
+                return UpdateResult.Error("Media file is too large. Maximum upload size is ${maxUploadBytes / 1_048_576} MB.")
+            }
+            val contentType = replacementFile.contentType.substringBefore(';').trim().lowercase()
+            val extension = extensionFor(contentType, metadata.mediaType)
+                ?: return UpdateResult.Error(uploadTypeError(metadata.mediaType))
+            val storageKey = assetStore.keyFor(id, extension)
+            val photo = basePhoto.copy(
+                sourceKind = PhotographySourceKind.UPLOAD,
+                externalUrl = null,
+                storageKey = storageKey,
+                contentType = contentType,
+                originalFilename = replacementFile.originalFilename,
+                sizeBytes = replacementFile.bytes.size.toLong(),
+                uploadedAt = Instant.now()
             )
-            UpdateResult.Success
-        } catch (e: Exception) {
-            log.error("Failed to update photography photo {}", id, e)
-            UpdateResult.Error("Could not update photo.")
+            return saveReplacementUpload(
+                id = id,
+                photo = photo,
+                storageKey = storageKey,
+                contentType = contentType,
+                bytes = replacementFile.bytes,
+                oldStorageKey = existing.storageKey
+            )
         }
+
+        if (existing.storageKey.isBlank()) {
+            return UpdateResult.Error("Uploaded media requires a saved file.")
+        }
+        if (extensionFor(existing.contentType, metadata.mediaType) == null) {
+            return UpdateResult.Error(uploadTypeError(metadata.mediaType))
+        }
+
+        return saveUpdatedPhoto(
+            id = id,
+            photo = basePhoto.copy(
+                sourceKind = PhotographySourceKind.UPLOAD,
+                externalUrl = null
+            )
+        )
     }
 
     fun delete(id: String): DeleteResult {
@@ -216,6 +257,52 @@ class PhotographyService(
             featured = fields["featured"].isOn()
         )
     }
+
+    private fun saveReplacementUpload(
+        id: String,
+        photo: PhotographyPhoto,
+        storageKey: String,
+        contentType: String,
+        bytes: ByteArray,
+        oldStorageKey: String
+    ): UpdateResult =
+        try {
+            assetStore.save(storageKey, contentType, bytes)
+            try {
+                contentStore.upsertPhotographyPhoto(photo)
+            } catch (e: Exception) {
+                if (storageKey != oldStorageKey) {
+                    runCatching { assetStore.delete(storageKey) }
+                        .onFailure { cleanupError -> log.warn("Failed to delete orphaned photo asset {}", storageKey, cleanupError) }
+                }
+                throw e
+            }
+            if (oldStorageKey.isNotBlank() && oldStorageKey != storageKey) {
+                runCatching { assetStore.delete(oldStorageKey) }
+                    .onFailure { log.warn("Failed to delete replaced photo asset {}", oldStorageKey, it) }
+            }
+            UpdateResult.Success
+        } catch (e: Exception) {
+            log.error("Failed to replace photography media asset {}", id, e)
+            UpdateResult.Error("Could not update photo.")
+        }
+
+    private fun saveUpdatedPhoto(
+        id: String,
+        photo: PhotographyPhoto,
+        oldStorageKeyToDelete: String? = null
+    ): UpdateResult =
+        try {
+            contentStore.upsertPhotographyPhoto(photo)
+            oldStorageKeyToDelete?.let { storageKey ->
+                runCatching { assetStore.delete(storageKey) }
+                    .onFailure { log.warn("Failed to delete replaced photo asset {}", storageKey, it) }
+            }
+            UpdateResult.Success
+        } catch (e: Exception) {
+            log.error("Failed to update photography photo {}", id, e)
+            UpdateResult.Error("Could not update photo.")
+        }
 
     private fun extensionFor(contentType: String, mediaType: PhotographyMediaType): String? {
         val normalized = contentType.substringBefore(';').trim().lowercase()

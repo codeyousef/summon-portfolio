@@ -171,7 +171,7 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
             Form(
                 action = "/admin/photography/${photo.id}",
                 method = FormMethod.Post,
-                encType = FormEncType.UrlEncoded,
+                encType = FormEncType.Multipart,
                 modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(12.px)
             ) {
                 TextInputField("Title", "title", photo.title, required = true)
@@ -203,6 +203,7 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
                     NativeInputField("Taken at", "date", "takenAt", photo.takenAt?.toString().orEmpty(), modifier = Modifier().flex(grow = 1, shrink = 1, basis = "180px"))
                     NativeInputField("Order", "number", "order", photo.order.toString(), modifier = Modifier().flex(grow = 1, shrink = 1, basis = "120px"))
                 }
+                FileInputField("Replace upload", "photo", "image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime", required = false)
                 CheckboxField("Published", "published", checked = photo.published)
                 CheckboxField("Featured", "featured", checked = photo.featured)
                 FormButton(text = "Save", modifier = SecondaryAdminButtonModifier())

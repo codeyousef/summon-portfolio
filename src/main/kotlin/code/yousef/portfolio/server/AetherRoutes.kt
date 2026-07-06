@@ -12,6 +12,7 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.photography.MultipartFormData
 import code.yousef.portfolio.photography.PhotographyService
 import code.yousef.portfolio.photography.extractMultipartBoundary
 import code.yousef.portfolio.photography.parseMultipartFormData
@@ -542,8 +543,24 @@ internal fun Router.portfolioRoutes(
             return@post
         }
         val id = exchange.pathParam("id").orEmpty()
-        val params = exchange.receiveParameters()
-        when (val result = photographyService.update(id, params)) {
+        val contentType = exchange.request.headers["Content-Type"].orEmpty()
+        val formData = if (contentType.contains("multipart/form-data", ignoreCase = true)) {
+            val boundary = extractMultipartBoundary(contentType)
+            if (boundary == null) {
+                exchange.respondSummonPage(
+                    portfolioRenderer.photographyAdminPage(
+                        photos = photographyService.adminPhotos(),
+                        errorMessage = "Invalid upload request."
+                    ),
+                    400
+                )
+                return@post
+            }
+            parseMultipartFormData(exchange.request.bodyBytes(), boundary, fileFieldName = "photo")
+        } else {
+            MultipartFormData(fields = exchange.receiveParameters(), file = null)
+        }
+        when (val result = photographyService.update(id, formData.fields, formData.file)) {
             is PhotographyService.UpdateResult.Success -> exchange.redirect("/admin/photography?saved=true")
             is PhotographyService.UpdateResult.Error -> exchange.respondSummonPage(
                 portfolioRenderer.photographyAdminPage(
