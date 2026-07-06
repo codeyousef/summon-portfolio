@@ -30,7 +30,6 @@ import codes.yousef.sigil.summon.components.SigilDirectionalLight
 import codes.yousef.sigil.summon.components.SigilGroup
 import codes.yousef.sigil.summon.components.SigilMesh
 import codes.yousef.sigil.summon.components.SigilModel
-import codes.yousef.sigil.summon.components.SigilOrbitControls
 import codes.yousef.sigil.summon.components.SigilPlane
 import codes.yousef.sigil.summon.components.SigilSphere
 import codes.yousef.summon.annotation.Composable
@@ -53,9 +52,9 @@ private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click", "dragstart",
 private const val CONSOLE_FOCUS_SLOT_COUNT = 3
 private const val CONSOLE_RETURN_INTERACTION_ID = "console-route-return"
 private const val CONSOLE_RESET_INTERACTION_ID = "console-reset"
-private const val CONSOLE_RETURN_BUTTON_ID = "console-return-button"
-private const val CONSOLE_RESET_BUTTON_ID = "console-reset-button"
-private val CONSOLE_BUTTON_HIDDEN_POSITION = listOf(0f, -6f, 0f)
+private const val ROUTE_PAD_RETURN_ID = "route-pad-return"
+private const val RESET_PAD_ID = "reset-shift-pad"
+private val CONTROL_PAD_HIDDEN_POSITION = listOf(0f, -6f, 0f)
 private const val MODEL_ASSET_VERSION = "20260510-small-glb"
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
@@ -98,21 +97,6 @@ internal fun FifthWallScene(
             far = 100f,
             name = "dispatch-camera"
         )
-        SigilOrbitControls(
-            target = listOf(0.8f, 1.85f, 1.6f),
-            enableDamping = true,
-            dampingFactor = 0.075f,
-            minDistance = 8.5f,
-            maxDistance = 15f,
-            minPolarAngle = 0.9f,
-            maxPolarAngle = 1.36f,
-            enablePan = false,
-            autoRotate = false,
-            autoRotateSpeed = 0.18f,
-            rotateSpeed = 0.34f,
-            zoomSpeed = 0.52f,
-            name = "dispatch-orbit"
-        )
 
         SigilAmbientLight(color = SCENE_NEUTRAL_LIGHT, intensity = 0.58f, name = "ambient-fill")
         SigilDirectionalLight(
@@ -125,6 +109,7 @@ internal fun FifthWallScene(
         )
         WarehouseShell()
         RoutingGuides(level = level, state = state)
+        RouteControlPads(level = level, state = state)
         ConveyorDeck(level = level, state = state)
         TruckBay(level = level, state = state)
         ReturnBinBay(
@@ -133,7 +118,6 @@ internal fun FifthWallScene(
             glitchActive = state.glitchActive
         )
         InspectionDock(pkg = focusedPackage)
-        DispatchConsole(level = level, state = state)
         if (state.wrenchVisible) {
             WrenchProp(visible = true)
         }
@@ -326,13 +310,13 @@ private fun consolePatchNodes(
         val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
         val focused = visible && packageId == focusedId
         nodes += SceneNodePatch(
-            id = consoleFocusButtonId(packageId),
-            position = if (visible) consoleFocusSlotPosition(visibleIndex) else CONSOLE_BUTTON_HIDDEN_POSITION,
+            id = packageFocusPadId(packageId),
+            position = if (visible) packageFocusPadPosition(visibleIndex) else CONTROL_PAD_HIDDEN_POSITION,
             visible = visible,
             highlight = HighlightPatch(
                 active = focused,
                 color = SCENE_ACCENT,
-                intensity = if (focused) 0.72f else 0f
+                intensity = if (focused) 0.88f else 0.28f
             )
         )
     }
@@ -341,7 +325,7 @@ private fun consolePatchNodes(
         val label = "Truck ${'A' + index}"
         val selected = state.lastRouteTarget == label
         nodes += SceneNodePatch(
-            id = consoleTruckButtonId(index),
+            id = routePadTruckId(index),
             highlight = HighlightPatch(
                 active = selected,
                 color = routeFeedbackColor(
@@ -349,14 +333,14 @@ private fun consolePatchNodes(
                     routeAccepted = state.lastRouteAccepted,
                     fallback = truckColor(index, rule)
                 ),
-                intensity = if (selected) 0.74f else 0f
+                intensity = if (selected) 0.9f else 0.3f
             )
         )
     }
 
     val returnSelected = state.lastRouteTarget == "Return Bin"
     nodes += SceneNodePatch(
-        id = CONSOLE_RETURN_BUTTON_ID,
+        id = ROUTE_PAD_RETURN_ID,
         highlight = HighlightPatch(
             active = returnSelected,
             color = routeFeedbackColor(
@@ -364,7 +348,7 @@ private fun consolePatchNodes(
                 routeAccepted = state.lastRouteAccepted,
                 fallback = SCENE_WARM
             ),
-            intensity = if (returnSelected) 0.76f else 0f
+            intensity = if (returnSelected) 0.92f else 0.34f
         )
     )
 
@@ -581,6 +565,308 @@ private fun GuideStrip(
 }
 
 @Composable
+private fun RouteControlPads(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    val trucks = state.activeTrucks(level)
+    val spacing = truckSpacing(trucks.size)
+    val origin = truckOrigin(trucks.size, spacing)
+
+    trucks.forEachIndexed { index, rule ->
+        val routeLabel = "Truck ${'A' + index}"
+        val selected = state.lastRouteTarget == routeLabel
+        RouteTruckPad(
+            index = index,
+            position = listOf(origin + (spacing * index), 0.08f, 6.0f),
+            color = truckColor(index, rule),
+            selected = selected,
+            routeAccepted = if (selected) state.lastRouteAccepted else null
+        )
+    }
+    RouteReturnPad(
+        selected = state.lastRouteTarget == "Return Bin",
+        routeAccepted = if (state.lastRouteTarget == "Return Bin") state.lastRouteAccepted else null
+    )
+    ResetShiftPad()
+}
+
+@Composable
+private fun RouteTruckPad(
+    index: Int,
+    position: List<Float>,
+    color: Int,
+    selected: Boolean,
+    routeAccepted: Boolean?
+) {
+    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = color)
+    SigilGroup(
+        position = position,
+        name = "route-pad-truck-${'A' + index}",
+        interaction = routePadInteraction(
+            interactionId = consoleTruckInteractionId(index),
+            width = 4.35f,
+            depth = 2.75f,
+            actions = listOf("route", "truck", "control-pad"),
+            height = 1.85f,
+            centerY = 0.72f
+        ),
+        animations = listOf(targetPulseAnimation("route-pad-truck-$index-press", 80 + (index * 50))),
+        id = routePadTruckId(index)
+    ) {
+        SigilMesh(
+            geometryType = GeometryType.CIRCLE,
+            geometryParams = GeometryParams(radius = 1.3f, radialSegments = 56),
+            position = listOf(0f, 0.02f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = argb("#102131"),
+            metalness = 0.28f,
+            roughness = 0.64f,
+            castShadow = false,
+            receiveShadow = true,
+            name = "route-pad-truck-$index-disc"
+        )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 1.14f, outerRadius = 1.66f, radialSegments = 72),
+            position = listOf(0f, 0.045f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = feedback,
+            metalness = 0.72f,
+            roughness = 0.12f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-truck-$index-ring"
+        )
+        SigilBox(
+            width = 1.42f,
+            height = 0.12f,
+            depth = 0.24f,
+            position = listOf(-0.34f, 0.12f, -0.12f),
+            color = feedback,
+            metalness = 0.32f,
+            roughness = 0.36f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-truck-$index-arrow-a"
+        )
+        SigilBox(
+            width = 0.96f,
+            height = 0.12f,
+            depth = 0.24f,
+            position = listOf(0.2f, 0.12f, 0.26f),
+            color = feedback,
+            metalness = 0.32f,
+            roughness = 0.36f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-truck-$index-arrow-b"
+        )
+        listOf(-1.04f, 1.04f).forEachIndexed { beaconIndex, x ->
+            SigilMesh(
+                geometryType = GeometryType.CYLINDER,
+                geometryParams = GeometryParams(
+                    radiusTop = 0.1f,
+                    radiusBottom = 0.16f,
+                    height = 0.95f,
+                    radialSegments = 14
+                ),
+                position = listOf(x, 0.54f, 0.64f),
+                color = feedback,
+                metalness = 0.46f,
+                roughness = 0.24f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "route-pad-truck-$index-beacon-post-$beaconIndex"
+            )
+            SigilSphere(
+                radius = 0.28f,
+                widthSegments = 16,
+                heightSegments = 12,
+                position = listOf(x, 1.08f, 0.64f),
+                color = feedback,
+                metalness = 0.26f,
+                roughness = 0.26f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "route-pad-truck-$index-beacon-cap-$beaconIndex"
+            )
+        }
+        SigilSphere(
+            radius = 0.24f,
+            widthSegments = 16,
+            heightSegments = 12,
+            position = listOf(0f, 0.24f, -0.86f),
+            color = feedback,
+            metalness = 0.26f,
+            roughness = 0.38f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-truck-$index-beacon"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun RouteReturnPad(
+    selected: Boolean,
+    routeAccepted: Boolean?
+) {
+    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = SCENE_WARM)
+    SigilGroup(
+        position = listOf(3.8f, 0.08f, 3.4f),
+        name = "route-pad-return",
+        interaction = routePadInteraction(
+            interactionId = CONSOLE_RETURN_INTERACTION_ID,
+            width = 3.8f,
+            depth = 2.8f,
+            actions = listOf("route", "return", "control-pad"),
+            height = 1.75f,
+            centerY = 0.68f
+        ),
+        animations = listOf(targetPulseAnimation("route-pad-return-press", 220)),
+        id = ROUTE_PAD_RETURN_ID
+    ) {
+        SigilMesh(
+            geometryType = GeometryType.CIRCLE,
+            geometryParams = GeometryParams(radius = 1.24f, radialSegments = 56),
+            position = listOf(0f, 0.02f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = argb("#261f12"),
+            metalness = 0.28f,
+            roughness = 0.66f,
+            castShadow = false,
+            receiveShadow = true,
+            name = "route-pad-return-disc"
+        )
+        SigilMesh(
+            geometryType = GeometryType.TORUS,
+            geometryParams = GeometryParams(radius = 0.82f, tube = 0.1f, radialSegments = 20, tubularSegments = 64),
+            position = listOf(0f, 0.18f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = feedback,
+            metalness = 0.72f,
+            roughness = 0.14f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-return-loop"
+        )
+        SigilBox(
+            width = 0.46f,
+            height = 0.12f,
+            depth = 0.92f,
+            position = listOf(0.86f, 0.15f, 0f),
+            color = feedback,
+            metalness = 0.34f,
+            roughness = 0.32f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-return-tail"
+        )
+        SigilMesh(
+            geometryType = GeometryType.CYLINDER,
+            geometryParams = GeometryParams(
+                radiusTop = 0.12f,
+                radiusBottom = 0.18f,
+                height = 1.0f,
+                radialSegments = 16
+            ),
+            position = listOf(-0.95f, 0.56f, 0.58f),
+            color = feedback,
+            metalness = 0.46f,
+            roughness = 0.24f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-return-beacon-post"
+        )
+        SigilSphere(
+            radius = 0.32f,
+            widthSegments = 18,
+            heightSegments = 12,
+            position = listOf(-0.95f, 1.14f, 0.58f),
+            color = feedback,
+            metalness = 0.26f,
+            roughness = 0.28f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "route-pad-return-beacon-cap"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun ResetShiftPad() {
+    SigilGroup(
+        position = listOf(-5.5f, 0.08f, 5.1f),
+        name = "reset-shift-pad",
+        interaction = routePadInteraction(
+            interactionId = CONSOLE_RESET_INTERACTION_ID,
+            width = 3.2f,
+            depth = 1.9f,
+            actions = listOf("reset", "control-pad"),
+            height = 1.15f,
+            centerY = 0.38f
+        ),
+        animations = listOf(targetPulseAnimation("reset-shift-pad-press", 260)),
+        id = RESET_PAD_ID
+    ) {
+        SigilBox(
+            width = 2.85f,
+            height = 0.14f,
+            depth = 1.42f,
+            position = listOf(0f, 0.06f, 0f),
+            color = argb("#27181c"),
+            metalness = 0.34f,
+            roughness = 0.56f,
+            castShadow = false,
+            receiveShadow = true,
+            name = "reset-shift-pad-base"
+        )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 0.42f, outerRadius = 0.7f, radialSegments = 48),
+            position = listOf(0f, 0.16f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = SCENE_DANGER,
+            metalness = 0.72f,
+            roughness = 0.14f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "reset-shift-pad-ring"
+        )
+        listOf(-0.52f, 0.52f).forEachIndexed { index, x ->
+            SigilBox(
+                width = 0.72f,
+                height = 0.1f,
+                depth = 0.16f,
+                position = listOf(x, 0.17f, 0f),
+                color = SCENE_DANGER,
+                metalness = 0.28f,
+                roughness = 0.42f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "reset-shift-pad-bar-$index"
+            )
+        }
+        SigilSphere(
+            radius = 0.24f,
+            widthSegments = 16,
+            heightSegments = 12,
+            position = listOf(1.14f, 0.34f, 0.46f),
+            color = SCENE_DANGER,
+            metalness = 0.24f,
+            roughness = 0.38f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "reset-shift-pad-warning"
+        )
+        ""
+    }
+}
+
+@Composable
 private fun ConveyorDeck(
     level: FifthWallLevel,
     state: FifthWallUiState
@@ -594,6 +880,16 @@ private fun ConveyorDeck(
             name = "conveyor-model"
         )
         val visiblePackageIds = state.visiblePackages().map { it.id }
+        state.queue.forEach { pkg ->
+            val visibleIndex = visiblePackageIds.indexOf(pkg.id)
+            val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
+            PackageFocusPad(
+                pkg = pkg,
+                position = if (visible) packageFocusPadPosition(visibleIndex) else CONTROL_PAD_HIDDEN_POSITION,
+                visible = visible,
+                focused = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
+            )
+        }
         state.queue.forEach { pkg ->
             val visibleIndex = visiblePackageIds.indexOf(pkg.id)
             val visible = visibleIndex >= 0
@@ -612,8 +908,84 @@ private fun ConveyorDeck(
     }
 }
 
+@Composable
+private fun PackageFocusPad(
+    pkg: FifthWallPackage,
+    position: List<Float>,
+    visible: Boolean,
+    focused: Boolean
+) {
+    val color = argb(pkg.color.hex)
+    SigilGroup(
+        position = position,
+        visible = visible,
+        name = "package-focus-pad-${pkg.id}",
+        interaction = routePadInteraction(
+            interactionId = consoleFocusInteractionId(pkg.id),
+            width = 2.65f,
+            depth = 2.05f,
+            actions = listOf("focus", "package", "control-pad")
+        ),
+        animations = listOf(targetPulseAnimation("package-focus-pad-${pkg.id}-press", 0)),
+        id = packageFocusPadId(pkg.id)
+    ) {
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 0.92f, outerRadius = 1.28f, radialSegments = 60),
+            position = listOf(0f, 0.02f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = if (focused) SCENE_ACCENT else color,
+            metalness = 0.78f,
+            roughness = 0.12f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "package-focus-pad-${pkg.id}-ring"
+        )
+        SigilBox(
+            width = 1.08f,
+            height = 0.08f,
+            depth = 0.16f,
+            position = listOf(-0.06f, 0.08f, -0.76f),
+            color = if (focused) SCENE_ACCENT else color,
+            metalness = 0.34f,
+            roughness = 0.34f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "package-focus-pad-${pkg.id}-signal-a"
+        )
+        SigilBox(
+            width = 0.78f,
+            height = 0.08f,
+            depth = 0.16f,
+            position = listOf(0.1f, 0.08f, -0.52f),
+            color = if (focused) SCENE_ACCENT else color,
+            metalness = 0.34f,
+            roughness = 0.34f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "package-focus-pad-${pkg.id}-signal-b"
+        )
+        SigilSphere(
+            radius = if (focused) 0.2f else 0.16f,
+            widthSegments = 14,
+            heightSegments = 10,
+            position = listOf(-0.82f, 0.14f, -0.55f),
+            color = color,
+            metalness = 0.24f,
+            roughness = 0.4f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "package-focus-pad-${pkg.id}-beacon"
+        )
+        ""
+    }
+}
+
 private fun packageBeltPosition(index: Int): List<Float> =
     listOf(-4.9f + (index * 3.2f), 2.34f, 0f)
+
+private fun packageFocusPadPosition(index: Int): List<Float> =
+    listOf(-4.9f + (index * 3.2f), 2.2f, 0f)
 
 private fun packageScale(enlarged: Boolean, emphasized: Boolean): Float = when {
     enlarged -> 1.38f
@@ -873,402 +1245,6 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
         }
         ""
     }
-}
-
-@Composable
-private fun DispatchConsole(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-) {
-    val trucks = state.activeTrucks(level)
-    val visibleIds = state.visiblePackages().map { it.id }
-    val focusedId = state.focusPackage()?.id
-
-    SigilGroup(
-        position = listOf(-1.72f, 0.08f, 6.32f),
-        rotation = listOf(0f, 0.02f, 0f),
-        name = "dispatch-console",
-        id = "dispatch-console"
-    ) {
-        SigilBox(
-            width = 12.1f,
-            height = 0.18f,
-            depth = 2.34f,
-            position = listOf(0f, 0.09f, 0f),
-            color = argb("#101927"),
-            metalness = 0.42f,
-            roughness = 0.5f,
-            castShadow = false,
-            receiveShadow = true,
-            name = "dispatch-console-base"
-        )
-        SigilBox(
-            width = 11.55f,
-            height = 0.05f,
-            depth = 0.08f,
-            position = listOf(0f, 0.22f, -1.01f),
-            color = SCENE_ACCENT,
-            metalness = 0.72f,
-            roughness = 0.18f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "dispatch-console-horizon"
-        )
-        SigilBox(
-            width = 3.95f,
-            height = 0.04f,
-            depth = 1.52f,
-            position = listOf(-3.5f, 0.22f, -0.1f),
-            color = argb("#152438"),
-            metalness = 0.34f,
-            roughness = 0.58f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "dispatch-console-focus-bay"
-        )
-        SigilBox(
-            width = 6.75f,
-            height = 0.04f,
-            depth = 1.52f,
-            position = listOf(2.08f, 0.22f, -0.1f),
-            color = argb("#182130"),
-            metalness = 0.34f,
-            roughness = 0.6f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "dispatch-console-route-bay"
-        )
-
-        repeat(CONSOLE_FOCUS_SLOT_COUNT) { index ->
-            ConsoleFocusSlot(index = index)
-        }
-        state.queue.forEach { pkg ->
-            val visibleIndex = visibleIds.indexOf(pkg.id)
-            val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
-            ConsoleFocusButton(
-                pkg = pkg,
-                slotIndex = visibleIndex.coerceAtLeast(0),
-                position = if (visible) consoleFocusSlotPosition(visibleIndex) else CONSOLE_BUTTON_HIDDEN_POSITION,
-                visible = visible,
-                focused = visible && pkg.id == focusedId
-            )
-        }
-        trucks.forEachIndexed { index, rule ->
-            val routeLabel = "Truck ${'A' + index}"
-            val selected = state.lastRouteTarget == routeLabel
-            ConsoleTruckButton(
-                index = index,
-                color = truckColor(index, rule),
-                position = consoleTruckButtonPosition(index, trucks.size),
-                selected = selected,
-                routeAccepted = if (selected) state.lastRouteAccepted else null
-            )
-        }
-        ConsoleReturnButton(
-            selected = state.lastRouteTarget == "Return Bin",
-            routeAccepted = if (state.lastRouteTarget == "Return Bin") state.lastRouteAccepted else null
-        )
-        ConsoleResetButton()
-        ""
-    }
-}
-
-@Composable
-private fun ConsoleFocusSlot(index: Int) {
-    SigilBox(
-        width = 0.88f,
-        height = 0.06f,
-        depth = 0.96f,
-        position = consoleFocusSlotPosition(index),
-        color = argb("#0d1420"),
-        metalness = 0.26f,
-        roughness = 0.78f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "console-focus-slot-$index"
-    )
-}
-
-@Composable
-private fun ConsoleFocusButton(
-    pkg: FifthWallPackage,
-    slotIndex: Int,
-    position: List<Float>,
-    visible: Boolean,
-    focused: Boolean
-) {
-    val color = argb(pkg.color.hex)
-    SigilGroup(
-        position = position,
-        visible = visible,
-        name = "console-focus-${pkg.id}",
-        interaction = consoleButtonInteraction(
-            interactionId = consoleFocusInteractionId(pkg.id),
-            width = 0.82f,
-            depth = 0.86f,
-            actions = listOf("console", "focus", "package")
-        ),
-        animations = listOf(targetPulseAnimation("console-focus-${pkg.id}-press", slotIndex * 45)),
-        id = consoleFocusButtonId(pkg.id)
-    ) {
-        ConsoleButtonShell(
-            width = 0.82f,
-            depth = 0.86f,
-            baseColor = if (focused) argb("#182b42") else argb("#141d2a"),
-            accent = if (focused) SCENE_ACCENT else color,
-            selected = focused,
-            name = "console-focus-${pkg.id}"
-        )
-        SigilSphere(
-            radius = 0.13f,
-            widthSegments = 12,
-            heightSegments = 10,
-            position = listOf(-0.2f, 0.31f, -0.12f),
-            color = color,
-            metalness = 0.2f,
-            roughness = 0.48f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-focus-${pkg.id}-color"
-        )
-        SigilBox(
-            width = 0.3f,
-            height = 0.045f,
-            depth = 0.08f,
-            position = listOf(0.16f, 0.3f, -0.15f),
-            color = PACKAGE_TAPE,
-            metalness = 0.08f,
-            roughness = 0.72f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-focus-${pkg.id}-mark-a"
-        )
-        SigilBox(
-            width = if (pkg.validGeometry) 0.22f else 0.12f,
-            height = 0.045f,
-            depth = 0.08f,
-            position = listOf(0.12f, 0.3f, 0.12f),
-            color = if (pkg.validGeometry) SCENE_SUCCESS else SCENE_DANGER,
-            metalness = 0.12f,
-            roughness = 0.66f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-focus-${pkg.id}-mark-b"
-        )
-        ""
-    }
-}
-
-@Composable
-private fun ConsoleTruckButton(
-    index: Int,
-    color: Int,
-    position: List<Float>,
-    selected: Boolean,
-    routeAccepted: Boolean?
-) {
-    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = color)
-    SigilGroup(
-        position = position,
-        name = "console-truck-${'A' + index}",
-        interaction = consoleButtonInteraction(
-            interactionId = consoleTruckInteractionId(index),
-            width = 0.94f,
-            depth = 0.86f,
-            actions = listOf("console", "route", "truck")
-        ),
-        animations = listOf(targetPulseAnimation("console-truck-$index-press", 110 + (index * 45))),
-        id = consoleTruckButtonId(index)
-    ) {
-        ConsoleButtonShell(
-            width = 0.94f,
-            depth = 0.86f,
-            baseColor = if (selected) argb("#1b2533") else argb("#141b25"),
-            accent = feedback,
-            selected = selected,
-            name = "console-truck-$index"
-        )
-        SigilBox(
-            width = 0.38f,
-            height = 0.16f,
-            depth = 0.24f,
-            position = listOf(-0.08f, 0.33f, -0.04f),
-            color = feedback,
-            metalness = 0.2f,
-            roughness = 0.58f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-truck-$index-cargo"
-        )
-        SigilBox(
-            width = 0.18f,
-            height = 0.13f,
-            depth = 0.22f,
-            position = listOf(0.27f, 0.315f, -0.04f),
-            color = PACKAGE_TAPE,
-            metalness = 0.08f,
-            roughness = 0.76f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-truck-$index-cab"
-        )
-        listOf(-0.2f, 0.24f).forEachIndexed { wheelIndex, x ->
-            SigilSphere(
-                radius = 0.055f,
-                widthSegments = 10,
-                heightSegments = 8,
-                position = listOf(x, 0.245f, 0.14f),
-                color = PACKAGE_SHADE,
-                metalness = 0.1f,
-                roughness = 0.84f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "console-truck-$index-wheel-$wheelIndex"
-            )
-        }
-        ""
-    }
-}
-
-@Composable
-private fun ConsoleReturnButton(
-    selected: Boolean,
-    routeAccepted: Boolean?
-) {
-    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = SCENE_WARM)
-    SigilGroup(
-        position = listOf(4.62f, 0.25f, 0.32f),
-        name = "console-return",
-        interaction = consoleButtonInteraction(
-            interactionId = CONSOLE_RETURN_INTERACTION_ID,
-            width = 1.12f,
-            depth = 0.94f,
-            actions = listOf("console", "route", "return")
-        ),
-        animations = listOf(targetPulseAnimation("console-return-press", 280)),
-        id = CONSOLE_RETURN_BUTTON_ID
-    ) {
-        ConsoleButtonShell(
-            width = 1.12f,
-            depth = 0.94f,
-            baseColor = if (selected) argb("#28251e") else argb("#181c22"),
-            accent = feedback,
-            selected = selected,
-            name = "console-return"
-        )
-        SigilMesh(
-            geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = 0.24f, tube = 0.035f, radialSegments = 14, tubularSegments = 36),
-            position = listOf(0f, 0.34f, -0.02f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = feedback,
-            metalness = 0.74f,
-            roughness = 0.18f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-return-ring"
-        )
-        SigilBox(
-            width = 0.18f,
-            height = 0.045f,
-            depth = 0.28f,
-            position = listOf(0.28f, 0.34f, -0.02f),
-            color = feedback,
-            metalness = 0.52f,
-            roughness = 0.24f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-return-tail"
-        )
-        ""
-    }
-}
-
-@Composable
-private fun ConsoleResetButton() {
-    SigilGroup(
-        position = listOf(-5.28f, 0.25f, 0.36f),
-        name = "console-reset",
-        interaction = consoleButtonInteraction(
-            interactionId = CONSOLE_RESET_INTERACTION_ID,
-            width = 0.8f,
-            depth = 0.76f,
-            actions = listOf("console", "reset")
-        ),
-        animations = listOf(targetPulseAnimation("console-reset-press", 320)),
-        id = CONSOLE_RESET_BUTTON_ID
-    ) {
-        ConsoleButtonShell(
-            width = 0.8f,
-            depth = 0.76f,
-            baseColor = argb("#201b22"),
-            accent = SCENE_DANGER,
-            selected = false,
-            name = "console-reset"
-        )
-        SigilBox(
-            width = 0.44f,
-            height = 0.045f,
-            depth = 0.08f,
-            position = listOf(0f, 0.32f, 0f),
-            rotation = listOf(0f, 0.68f, 0f),
-            color = SCENE_DANGER,
-            metalness = 0.2f,
-            roughness = 0.58f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-reset-cross-a"
-        )
-        SigilBox(
-            width = 0.44f,
-            height = 0.045f,
-            depth = 0.08f,
-            position = listOf(0f, 0.32f, 0f),
-            rotation = listOf(0f, -0.68f, 0f),
-            color = SCENE_DANGER,
-            metalness = 0.2f,
-            roughness = 0.58f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "console-reset-cross-b"
-        )
-        ""
-    }
-}
-
-@Composable
-private fun ConsoleButtonShell(
-    width: Float,
-    depth: Float,
-    baseColor: Int,
-    accent: Int,
-    selected: Boolean,
-    name: String
-) {
-    SigilBox(
-        width = width,
-        height = if (selected) 0.18f else 0.14f,
-        depth = depth,
-        position = listOf(0f, 0.08f, 0f),
-        color = baseColor,
-        metalness = 0.34f,
-        roughness = 0.56f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-shell"
-    )
-    SigilBox(
-        width = width * 0.72f,
-        height = 0.045f,
-        depth = 0.08f,
-        position = listOf(0f, 0.18f, -(depth * 0.28f)),
-        color = accent,
-        metalness = 0.64f,
-        roughness = 0.18f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-light"
-    )
 }
 
 @Composable
@@ -1643,38 +1619,26 @@ private fun fifthWallModelUrl(fileName: String): String {
     return "/static/models/fifth-wall/$fileName?v=$MODEL_ASSET_VERSION"
 }
 
-private fun consoleFocusButtonId(packageId: String): String = "console-focus-button-$packageId"
+private fun packageFocusPadId(packageId: String): String = "package-focus-pad-$packageId"
 
 private fun consoleFocusInteractionId(packageId: String): String = "console-focus:$packageId"
 
-private fun consoleTruckButtonId(index: Int): String = "console-truck-button-$index"
+private fun routePadTruckId(index: Int): String = "route-pad-truck-$index"
 
 private fun consoleTruckInteractionId(index: Int): String = "console-route-truck:$index"
 
-private fun consoleFocusSlotPosition(index: Int): List<Float> =
-    listOf(-4.25f + (index * 1.12f), 0.25f, -0.38f)
-
-private fun consoleTruckButtonPosition(index: Int, count: Int): List<Float> {
-    val spacing = when (count) {
-        1 -> 0f
-        2 -> 1.18f
-        3 -> 1.06f
-        else -> 0.94f
-    }
-    val origin = 1.05f - (((count - 1) * spacing) / 2f)
-    return listOf(origin + (index * spacing), 0.25f, 0.32f)
-}
-
-private fun consoleButtonInteraction(
+private fun routePadInteraction(
     interactionId: String,
     width: Float,
     depth: Float,
-    actions: List<String>
+    actions: List<String>,
+    height: Float = 0.78f,
+    centerY: Float = 0.16f
 ): InteractionMetadata =
     InteractionMetadata(
         interactionId = interactionId,
         cursor = CursorHint.POINTER,
-        hitVolume = boxHitVolume(width = width, height = 0.56f, depth = depth, centerY = 0.16f),
+        hitVolume = boxHitVolume(width = width, height = height, depth = depth, centerY = centerY),
         actions = actions,
         events = listOf("pointerdown", "click"),
         enabled = true,
