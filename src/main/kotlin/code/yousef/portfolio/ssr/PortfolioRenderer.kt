@@ -84,11 +84,11 @@ class PortfolioRenderer(
         return SummonPage(
             head = headBlockFor(
                 locale = PortfolioLocale.EN,
-                pageTitle = "Photography | Yousef",
-                description = "Selected photography by Yousef."
+                pageTitle = "Photography & Motion | Yousef",
+                description = "Albums, still photography, standard video, and 360 video work by Yousef."
             ),
             content = {
-                PhotographyPage(photos = photos)
+                PhotographyPage(photos = photos, locale = PortfolioLocale.EN)
             },
             locale = PortfolioLocale.EN
         )

@@ -50,7 +50,7 @@ fun DesktopHeader(
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.md)
-                .flex(grow = 1, shrink = 1, basis = "220px")
+                .flex(grow = 0, shrink = 0, basis = "124px")
         ) {
             Text(
                 text = "YOUSEF",
@@ -64,23 +64,24 @@ fun DesktopHeader(
         // Center Nav: The Ecosystem (Summon, Sigil, Materia)
         Box(
             modifier = Modifier()
-                .flex(grow = 1, shrink = 1, basis = "400px")
+                .flex(grow = 1, shrink = 1, basis = "320px")
+                .minWidth(0.px)
         ) {
             Row(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .justifyContent(JustifyContent.Center)
-                    .gap(PortfolioTheme.Spacing.lg)
+                    .gap(PortfolioTheme.Spacing.md)
                     .flex(grow = 1, shrink = 1, basis = "400px")
-                    .flexWrap(FlexWrap.Wrap)
+                    .flexWrap(FlexWrap.NoWrap)
             ) {
                 val baseNavModifier = Modifier()
                     .textDecoration(TextDecoration.None)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
-                    .fontSize(0.85.rem)
-                    .letterSpacing(0.08.rem)
+                    .fontSize(0.8.rem)
+                    .letterSpacing(0.04.rem)
                     .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .opacity(0.9F)
@@ -102,23 +103,23 @@ fun DesktopHeader(
         // Right Nav: Blog + Work With Me dropdown
         Box(
             modifier = Modifier()
-                .flex(grow = 0, shrink = 1, basis = "420px")
+                .flex(grow = 0, shrink = 0, basis = "auto")
         ) {
             Row(
                 modifier = Modifier()
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
-                    .gap(PortfolioTheme.Spacing.md)
+                    .gap(PortfolioTheme.Spacing.sm)
                     .flex(grow = 0, shrink = 0, basis = "auto")
                     .justifyContent(JustifyContent.FlexEnd)
-                    .flexWrap(FlexWrap.Wrap)
+                    .flexWrap(FlexWrap.NoWrap)
             ) {
                 val baseNavModifier = Modifier()
                     .textDecoration(TextDecoration.None)
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .visited(Modifier().color(PortfolioTheme.Colors.TEXT_SECONDARY))
-                    .fontSize(0.85.rem)
-                    .letterSpacing(0.08.rem)
+                    .fontSize(0.8.rem)
+                    .letterSpacing(0.04.rem)
                     .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .opacity(0.9F)
@@ -268,7 +269,7 @@ private fun WorkWithMeDropdown(
                     .alignItems(AlignItems.Center)
                     .gap(6.px)
                     .cursor(Cursor.Pointer)
-                    .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                    .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.md)
                     .borderRadius(PortfolioTheme.Radii.pill)
                     .backgroundColor(PortfolioTheme.Colors.ACCENT)
                     .color("#ffffff")

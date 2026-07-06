@@ -1,6 +1,8 @@
 package code.yousef.portfolio.photography
 
 import code.yousef.portfolio.content.LocalContentStore
+import code.yousef.portfolio.content.model.PhotographyMediaType
+import code.yousef.portfolio.content.model.PhotographySourceKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -33,8 +35,80 @@ class PhotographyServiceTest {
         assertEquals("A first frame", success.photo.caption)
         assertEquals(3, success.photo.order)
         assertTrue(success.photo.published)
+        assertEquals(PhotographyMediaType.PHOTO, success.photo.mediaType)
+        assertEquals(PhotographySourceKind.UPLOAD, success.photo.sourceKind)
+        assertEquals("Uncategorized", success.photo.category)
         assertEquals(1, contentStore.listPhotographyPhotos().size)
         assertEquals(byteArrayOf(1, 2, 3).toList(), assetStore.assets[success.photo.storageKey]?.bytes?.toList())
+    }
+
+    @Test
+    fun `uploads video metadata and asset`() {
+        val contentStore = LocalContentStore()
+        val assetStore = FakePhotoAssetStore()
+        val service = PhotographyService(contentStore, assetStore, maxUploadBytes = 100)
+
+        val result = service.upload(
+            fields = mapOf(
+                "title" to "City Drift",
+                "altText" to "Moving through the city",
+                "mediaType" to "VIDEO",
+                "sourceKind" to "UPLOAD",
+                "category" to "Street",
+                "albumTitle" to "Night Walk",
+                "featured" to "on",
+                "published" to "on"
+            ),
+            file = MultipartFilePart("photo", "city.mp4", "video/mp4", byteArrayOf(4, 5, 6))
+        )
+
+        val success = assertIs<PhotographyService.UploadResult.Success>(result)
+        assertEquals(PhotographyMediaType.VIDEO, success.photo.mediaType)
+        assertEquals(PhotographySourceKind.UPLOAD, success.photo.sourceKind)
+        assertEquals("Street", success.photo.category)
+        assertEquals("Night Walk", success.photo.albumTitle)
+        assertTrue(success.photo.featured)
+        assertEquals("video/mp4", success.photo.contentType)
+        assertEquals(byteArrayOf(4, 5, 6).toList(), assetStore.assets[success.photo.storageKey]?.bytes?.toList())
+    }
+
+    @Test
+    fun `saves external video and external 360 media without an asset`() {
+        val contentStore = LocalContentStore()
+        val assetStore = FakePhotoAssetStore()
+        val service = PhotographyService(contentStore, assetStore, maxUploadBytes = 100)
+
+        val video = service.upload(
+            fields = mapOf(
+                "title" to "Reference Cut",
+                "altText" to "Reference cut",
+                "mediaType" to "VIDEO",
+                "sourceKind" to "EXTERNAL",
+                "category" to "Motion",
+                "externalUrl" to "https://youtu.be/abc123",
+                "published" to "on"
+            ),
+            file = null
+        )
+        val video360 = service.upload(
+            fields = mapOf(
+                "title" to "Room Scan",
+                "altText" to "Room scan",
+                "mediaType" to "VIDEO_360",
+                "sourceKind" to "EXTERNAL",
+                "category" to "360",
+                "externalUrl" to "https://vimeo.com/123456",
+                "published" to "on"
+            ),
+            file = null
+        )
+
+        val savedVideo = assertIs<PhotographyService.UploadResult.Success>(video).photo
+        val saved360 = assertIs<PhotographyService.UploadResult.Success>(video360).photo
+        assertEquals(PhotographySourceKind.EXTERNAL, savedVideo.sourceKind)
+        assertEquals(PhotographyMediaType.VIDEO_360, saved360.mediaType)
+        assertTrue(assetStore.assets.isEmpty())
+        assertNull(service.assetForPublishedPhoto(savedVideo.id))
     }
 
     @Test
@@ -47,6 +121,23 @@ class PhotographyServiceTest {
         )
 
         assertIs<PhotographyService.UploadResult.Error>(result)
+    }
+
+    @Test
+    fun `rejects media type and source mismatches`() {
+        val service = PhotographyService(LocalContentStore(), FakePhotoAssetStore(), maxUploadBytes = 100)
+
+        val videoAsPhoto = service.upload(
+            fields = mapOf("title" to "Bad", "altText" to "Bad file", "mediaType" to "PHOTO"),
+            file = MultipartFilePart("photo", "bad.mp4", "video/mp4", byteArrayOf(1))
+        )
+        val externalWithoutUrl = service.upload(
+            fields = mapOf("title" to "Missing URL", "altText" to "Missing URL", "sourceKind" to "EXTERNAL"),
+            file = null
+        )
+
+        assertIs<PhotographyService.UploadResult.Error>(videoAsPhoto)
+        assertIs<PhotographyService.UploadResult.Error>(externalWithoutUrl)
     }
 
     @Test

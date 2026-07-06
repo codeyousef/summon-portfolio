@@ -1,7 +1,10 @@
 package code.yousef.portfolio.ui.photography
 
+import code.yousef.portfolio.content.model.PhotographyMediaType
 import code.yousef.portfolio.content.model.PhotographyPhoto
+import code.yousef.portfolio.content.model.PhotographySourceKind
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.components.foundation.RawHtml
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.Form
@@ -48,7 +51,7 @@ fun PhotographyAdminPage(
             Column(modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(6.px)) {
                 Text(text = "Photography Admin", modifier = Modifier().fontSize(2.rem).fontWeight(700))
                 Text(
-                    text = "Upload and manage the public photography page.",
+                    text = "Upload and manage the public photography and motion page.",
                     modifier = Modifier().color("#8b949e").fontSize(0.95.rem)
                 )
             }
@@ -98,7 +101,7 @@ private fun UploadPanel() {
             .borderRadius(6.px)
             .backgroundColor("#161b22")
     ) {
-        Text(text = "Upload photo", modifier = Modifier().fontSize(1.2.rem).fontWeight(700))
+        Text(text = "Create media", modifier = Modifier().fontSize(1.2.rem).fontWeight(700))
         Form(
             action = "/admin/photography",
             method = FormMethod.Post,
@@ -109,15 +112,35 @@ private fun UploadPanel() {
             TextInputField("Alt text", "altText", "", required = true)
             TextAreaField("Caption", "caption", "")
             Row(modifier = Modifier().display(Display.Flex).gap(14.px).flexWrap(FlexWrap.Wrap)) {
+                SelectField(
+                    label = "Media type",
+                    name = "mediaType",
+                    value = PhotographyMediaType.PHOTO.name,
+                    options = mediaTypeOptions(),
+                    modifier = Modifier().flex(grow = 1, shrink = 1, basis = "220px")
+                )
+                SelectField(
+                    label = "Source",
+                    name = "sourceKind",
+                    value = PhotographySourceKind.UPLOAD.name,
+                    options = sourceKindOptions(),
+                    modifier = Modifier().flex(grow = 1, shrink = 1, basis = "180px")
+                )
+            }
+            Row(modifier = Modifier().display(Display.Flex).gap(14.px).flexWrap(FlexWrap.Wrap)) {
+                TextInputField("Category", "category", "Uncategorized", required = false, modifier = Modifier().flex(grow = 1, shrink = 1, basis = "220px"))
+                TextInputField("Album", "albumTitle", "", required = false, modifier = Modifier().flex(grow = 1, shrink = 1, basis = "220px"))
+            }
+            TextInputField("External URL", "externalUrl", "", required = false)
+            TextInputField("Thumbnail URL", "thumbnailUrl", "", required = false)
+            Row(modifier = Modifier().display(Display.Flex).gap(14.px).flexWrap(FlexWrap.Wrap)) {
                 NativeInputField("Taken at", "date", "takenAt", "", modifier = Modifier().flex(grow = 1, shrink = 1, basis = "220px"))
                 NativeInputField("Order", "number", "order", "0", modifier = Modifier().flex(grow = 1, shrink = 1, basis = "160px"))
             }
-            FileInputField("Photo", "photo", "image/jpeg,image/png,image/webp")
+            FileInputField("Upload file", "photo", "image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime", required = false)
             CheckboxField("Publish now", "published", checked = true)
-            FormButton(
-                text = "Upload photo",
-                modifier = PrimaryAdminButtonModifier()
-            )
+            CheckboxField("Feature", "featured", checked = false)
+            FormButton(text = "Save media", modifier = PrimaryAdminButtonModifier())
         }
     }
 }
@@ -135,17 +158,7 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
             .backgroundColor("#161b22")
             .flexWrap(FlexWrap.Wrap)
     ) {
-        Image(
-            src = "/uploads/photography/${photo.id}",
-            alt = photo.altText,
-            modifier = Modifier()
-                .width(180.px)
-                .height(132.px)
-                .objectFit(ObjectFit.Cover)
-                .backgroundColor("#0d1117")
-                .borderRadius(4.px)
-                .attribute("loading", "lazy")
-        )
+        AdminMediaPreview(photo)
         Column(
             modifier = Modifier()
                 .display(Display.Flex)
@@ -163,10 +176,33 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
                 TextInputField("Alt text", "altText", photo.altText, required = true)
                 TextAreaField("Caption", "caption", photo.caption.orEmpty())
                 Row(modifier = Modifier().display(Display.Flex).gap(12.px).flexWrap(FlexWrap.Wrap)) {
+                    SelectField(
+                        label = "Media type",
+                        name = "mediaType",
+                        value = photo.mediaType.name,
+                        options = mediaTypeOptions(),
+                        modifier = Modifier().flex(grow = 1, shrink = 1, basis = "180px")
+                    )
+                    SelectField(
+                        label = "Source",
+                        name = "sourceKind",
+                        value = photo.sourceKind.name,
+                        options = sourceKindOptions(),
+                        modifier = Modifier().flex(grow = 1, shrink = 1, basis = "160px")
+                    )
+                }
+                Row(modifier = Modifier().display(Display.Flex).gap(12.px).flexWrap(FlexWrap.Wrap)) {
+                    TextInputField("Category", "category", photo.category, required = false, modifier = Modifier().flex(grow = 1, shrink = 1, basis = "180px"))
+                    TextInputField("Album", "albumTitle", photo.albumTitle.orEmpty(), required = false, modifier = Modifier().flex(grow = 1, shrink = 1, basis = "180px"))
+                }
+                TextInputField("External URL", "externalUrl", photo.externalUrl.orEmpty(), required = false)
+                TextInputField("Thumbnail URL", "thumbnailUrl", photo.thumbnailUrl.orEmpty(), required = false)
+                Row(modifier = Modifier().display(Display.Flex).gap(12.px).flexWrap(FlexWrap.Wrap)) {
                     NativeInputField("Taken at", "date", "takenAt", photo.takenAt?.toString().orEmpty(), modifier = Modifier().flex(grow = 1, shrink = 1, basis = "180px"))
                     NativeInputField("Order", "number", "order", photo.order.toString(), modifier = Modifier().flex(grow = 1, shrink = 1, basis = "120px"))
                 }
                 CheckboxField("Published", "published", checked = photo.published)
+                CheckboxField("Featured", "featured", checked = photo.featured)
                 FormButton(text = "Save", modifier = SecondaryAdminButtonModifier())
             }
             Form(
@@ -180,7 +216,7 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
                 )
             }
             Text(
-                text = "${photo.contentType} · ${photo.sizeBytes / 1024} KB",
+                text = "${photo.mediaType.label()} · ${photo.sourceKind.label()} · ${photo.category} · ${photo.contentType} · ${photo.sizeBytes / 1024} KB",
                 modifier = Modifier().fontSize(0.78.rem).color("#8b949e")
             )
         }
@@ -188,13 +224,78 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
 }
 
 @Composable
-private fun TextInputField(label: String, name: String, value: String, required: Boolean) {
-    FormField(label = { AdminLabel(label) }, isRequired = required) {
+private fun AdminMediaPreview(photo: PhotographyPhoto) {
+    val previewSrc = when {
+        !photo.thumbnailUrl.isNullOrBlank() -> photo.thumbnailUrl
+        photo.sourceKind == PhotographySourceKind.UPLOAD && photo.mediaType == PhotographyMediaType.PHOTO -> "/uploads/photography/${photo.id}"
+        else -> null
+    }
+    if (previewSrc != null) {
+        Image(
+            src = previewSrc,
+            alt = photo.altText,
+            modifier = Modifier()
+                .width(180.px)
+                .height(132.px)
+                .objectFit(ObjectFit.Cover)
+                .backgroundColor("#0d1117")
+                .borderRadius(4.px)
+                .attribute("loading", "lazy")
+        )
+    } else {
+        Box(
+            modifier = Modifier()
+                .width(180.px)
+                .height(132.px)
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .justifyContent(JustifyContent.Center)
+                .backgroundColor("#0d1117")
+                .border("1px", "solid", "#30363d")
+                .borderRadius(4.px)
+        ) {
+            Text(text = photo.mediaType.label(), modifier = Modifier().color("#8b949e").fontSize(0.85.rem))
+        }
+    }
+}
+
+@Composable
+private fun TextInputField(
+    label: String,
+    name: String,
+    value: String,
+    required: Boolean,
+    modifier: Modifier = Modifier()
+) {
+    FormField(label = { AdminLabel(label) }, isRequired = required, modifier = modifier) {
         FormTextField(
             name = name,
             label = "",
             defaultValue = value,
             modifier = InputModifier().let { if (required) it.attribute("required", "required") else it }
+        )
+    }
+}
+
+@Composable
+private fun SelectField(
+    label: String,
+    name: String,
+    value: String,
+    options: List<SelectOption>,
+    modifier: Modifier = Modifier()
+) {
+    Column(modifier = modifier.display(Display.Flex).flexDirection(FlexDirection.Column).gap(6.px)) {
+        AdminLabel(label)
+        RawHtml(
+            html = """
+                <select name="${htmlAttr(name)}" style="width:100%;padding:10px 12px;border:1px solid #30363d;border-radius:6px;background:#0d1117;color:#e6edf3">
+                    ${options.joinToString("") { option ->
+                        val selected = if (option.value == value) " selected" else ""
+                        "<option value=\"${htmlAttr(option.value)}\"$selected>${html(option.label)}</option>"
+                    }}
+                </select>
+            """.trimIndent()
         )
     }
 }
@@ -226,15 +327,16 @@ private fun NativeInputField(label: String, type: String, name: String, value: S
 }
 
 @Composable
-private fun FileInputField(label: String, name: String, accept: String) {
+private fun FileInputField(label: String, name: String, accept: String, required: Boolean) {
     Column(modifier = Modifier().display(Display.Flex).flexDirection(FlexDirection.Column).gap(6.px)) {
         AdminLabel(label)
+        var modifier = InputModifier()
+            .attribute("name", name)
+            .attribute("accept", accept)
+        if (required) modifier = modifier.attribute("required", "required")
         LocalPlatformRenderer.current.renderNativeInput(
             type = "file",
-            modifier = InputModifier()
-                .attribute("name", name)
-                .attribute("accept", accept)
-                .attribute("required", "required"),
+            modifier = modifier,
             value = ""
         )
     }
@@ -329,3 +431,35 @@ private fun DangerAdminButtonModifier(): Modifier =
         .borderRadius(6.px)
         .padding(9.px, 14.px)
         .fontWeight(700)
+
+private data class SelectOption(val value: String, val label: String)
+
+private fun mediaTypeOptions(): List<SelectOption> =
+    PhotographyMediaType.values().map { SelectOption(it.name, it.label()) }
+
+private fun sourceKindOptions(): List<SelectOption> =
+    PhotographySourceKind.values().map { SelectOption(it.name, it.label()) }
+
+private fun PhotographyMediaType.label(): String =
+    when (this) {
+        PhotographyMediaType.PHOTO -> "Photo"
+        PhotographyMediaType.VIDEO -> "Video"
+        PhotographyMediaType.VIDEO_360 -> "360 Video"
+    }
+
+private fun PhotographySourceKind.label(): String =
+    when (this) {
+        PhotographySourceKind.UPLOAD -> "Upload"
+        PhotographySourceKind.EXTERNAL -> "External"
+    }
+
+private fun html(value: String): String =
+    value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+
+private fun htmlAttr(value: String): String =
+    html(value)
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")

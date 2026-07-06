@@ -401,6 +401,17 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
                 contentType = data["contentType"] as? String ?: "application/octet-stream",
                 originalFilename = data["originalFilename"] as? String,
                 sizeBytes = (data["sizeBytes"] as? Number)?.toLong() ?: 0L,
+                mediaType = (data["mediaType"] as? String)?.let {
+                    runCatching { PhotographyMediaType.valueOf(it) }.getOrNull()
+                } ?: PhotographyMediaType.PHOTO,
+                sourceKind = (data["sourceKind"] as? String)?.let {
+                    runCatching { PhotographySourceKind.valueOf(it) }.getOrNull()
+                } ?: PhotographySourceKind.UPLOAD,
+                category = data["category"] as? String ?: "Uncategorized",
+                albumTitle = data["albumTitle"] as? String,
+                externalUrl = data["externalUrl"] as? String,
+                thumbnailUrl = data["thumbnailUrl"] as? String,
+                featured = data["featured"] as? Boolean ?: false,
                 uploadedAt = (data["uploadedAt"] as? String)?.let { Instant.parse(it) } ?: Instant.now()
             )
         } catch (e: Exception) {
@@ -501,6 +512,13 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
         "contentType" to contentType,
         "originalFilename" to originalFilename,
         "sizeBytes" to sizeBytes,
+        "mediaType" to mediaType.name,
+        "sourceKind" to sourceKind.name,
+        "category" to category,
+        "albumTitle" to albumTitle,
+        "externalUrl" to externalUrl,
+        "thumbnailUrl" to thumbnailUrl,
+        "featured" to featured,
         "uploadedAt" to uploadedAt.toString()
     )
 
