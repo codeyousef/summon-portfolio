@@ -50,6 +50,12 @@ private val PACKAGE_SHADE = argb("#0b1219")
 private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
 private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
 private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click", "dragstart", "drag", "dragenter", "dragleave", "drop", "pointerup")
+private const val CONSOLE_FOCUS_SLOT_COUNT = 3
+private const val CONSOLE_RETURN_INTERACTION_ID = "console-route-return"
+private const val CONSOLE_RESET_INTERACTION_ID = "console-reset"
+private const val CONSOLE_RETURN_BUTTON_ID = "console-return-button"
+private const val CONSOLE_RESET_BUTTON_ID = "console-reset-button"
+private val CONSOLE_BUTTON_HIDDEN_POSITION = listOf(0f, -6f, 0f)
 private const val MODEL_ASSET_VERSION = "20260510-small-glb"
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
@@ -95,6 +101,7 @@ internal fun FifthWallScene(
         SigilOrbitControls(
             target = listOf(0.8f, 1.85f, 1.6f),
             enableDamping = true,
+            dampingFactor = 0.075f,
             minDistance = 8.5f,
             maxDistance = 15f,
             minPolarAngle = 0.9f,
@@ -102,8 +109,8 @@ internal fun FifthWallScene(
             enablePan = false,
             autoRotate = false,
             autoRotateSpeed = 0.18f,
-            rotateSpeed = 0.48f,
-            zoomSpeed = 0.72f,
+            rotateSpeed = 0.34f,
+            zoomSpeed = 0.52f,
             name = "dispatch-orbit"
         )
 
@@ -126,6 +133,7 @@ internal fun FifthWallScene(
             glitchActive = state.glitchActive
         )
         InspectionDock(pkg = focusedPackage)
+        DispatchConsole(level = level, state = state)
         if (state.wrenchVisible) {
             WrenchProp(visible = true)
         }
@@ -148,6 +156,11 @@ private fun fifthWallSceneEventHandlers(
             onEvent = { controller.selectPackage(pkg.id) },
             onResponse = patchResponse
         )
+        handlers += SigilSceneEventHandler(
+            match = SigilSceneEventMatch(type = "click", interactionId = consoleFocusInteractionId(pkg.id)),
+            onEvent = { controller.selectPackage(pkg.id) },
+            onResponse = patchResponse
+        )
     }
 
     state.activeTrucks(level).forEachIndexed { index, _ ->
@@ -161,6 +174,11 @@ private fun fifthWallSceneEventHandlers(
             onEvent = { controller.routeToTruck(index) },
             onResponse = patchResponse
         )
+        handlers += SigilSceneEventHandler(
+            match = SigilSceneEventMatch(type = "click", interactionId = consoleTruckInteractionId(index)),
+            onEvent = { controller.routeToTruck(index) },
+            onResponse = patchResponse
+        )
     }
 
     handlers += SigilSceneEventHandler(
@@ -171,6 +189,16 @@ private fun fifthWallSceneEventHandlers(
             accepted = true
         ),
         onEvent = controller::routeToReturn,
+        onResponse = patchResponse
+    )
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RETURN_INTERACTION_ID),
+        onEvent = controller::routeToReturn,
+        onResponse = patchResponse
+    )
+    handlers += SigilSceneEventHandler(
+        match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RESET_INTERACTION_ID),
+        onEvent = controller::reset,
         onResponse = patchResponse
     )
 
@@ -279,8 +307,79 @@ private fun fifthWallScenePatch(
         )
     )
     nodes += SceneNodePatch(id = "repair-wrench", visible = state.wrenchVisible)
+    nodes += consolePatchNodes(level = level, state = state, renderedPackageIds = renderedPackageIds)
 
     return ScenePatch(nodes)
+}
+
+private fun consolePatchNodes(
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    renderedPackageIds: List<String>
+): List<SceneNodePatch> {
+    val visibleIds = state.visiblePackages().map { it.id }
+    val focusedId = state.focusPackage()?.id
+    val nodes = mutableListOf<SceneNodePatch>()
+
+    renderedPackageIds.forEach { packageId ->
+        val visibleIndex = visibleIds.indexOf(packageId)
+        val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
+        val focused = visible && packageId == focusedId
+        nodes += SceneNodePatch(
+            id = consoleFocusButtonId(packageId),
+            position = if (visible) consoleFocusSlotPosition(visibleIndex) else CONSOLE_BUTTON_HIDDEN_POSITION,
+            visible = visible,
+            highlight = HighlightPatch(
+                active = focused,
+                color = SCENE_ACCENT,
+                intensity = if (focused) 0.72f else 0f
+            )
+        )
+    }
+
+    state.activeTrucks(level).forEachIndexed { index, rule ->
+        val label = "Truck ${'A' + index}"
+        val selected = state.lastRouteTarget == label
+        nodes += SceneNodePatch(
+            id = consoleTruckButtonId(index),
+            highlight = HighlightPatch(
+                active = selected,
+                color = routeFeedbackColor(
+                    selected = selected,
+                    routeAccepted = state.lastRouteAccepted,
+                    fallback = truckColor(index, rule)
+                ),
+                intensity = if (selected) 0.74f else 0f
+            )
+        )
+    }
+
+    val returnSelected = state.lastRouteTarget == "Return Bin"
+    nodes += SceneNodePatch(
+        id = CONSOLE_RETURN_BUTTON_ID,
+        highlight = HighlightPatch(
+            active = returnSelected,
+            color = routeFeedbackColor(
+                selected = returnSelected,
+                routeAccepted = state.lastRouteAccepted,
+                fallback = SCENE_WARM
+            ),
+            intensity = if (returnSelected) 0.76f else 0f
+        )
+    )
+
+    return nodes
+}
+
+private fun routeFeedbackColor(
+    selected: Boolean,
+    routeAccepted: Boolean?,
+    fallback: Int
+): Int = when {
+    !selected -> fallback
+    routeAccepted == true -> SCENE_SUCCESS
+    routeAccepted == false -> SCENE_DANGER
+    else -> fallback
 }
 
 private fun fifthWallDomPatches(
@@ -777,6 +876,402 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
 }
 
 @Composable
+private fun DispatchConsole(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    val trucks = state.activeTrucks(level)
+    val visibleIds = state.visiblePackages().map { it.id }
+    val focusedId = state.focusPackage()?.id
+
+    SigilGroup(
+        position = listOf(-1.72f, 0.08f, 6.32f),
+        rotation = listOf(0f, 0.02f, 0f),
+        name = "dispatch-console",
+        id = "dispatch-console"
+    ) {
+        SigilBox(
+            width = 12.1f,
+            height = 0.18f,
+            depth = 2.34f,
+            position = listOf(0f, 0.09f, 0f),
+            color = argb("#101927"),
+            metalness = 0.42f,
+            roughness = 0.5f,
+            castShadow = false,
+            receiveShadow = true,
+            name = "dispatch-console-base"
+        )
+        SigilBox(
+            width = 11.55f,
+            height = 0.05f,
+            depth = 0.08f,
+            position = listOf(0f, 0.22f, -1.01f),
+            color = SCENE_ACCENT,
+            metalness = 0.72f,
+            roughness = 0.18f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "dispatch-console-horizon"
+        )
+        SigilBox(
+            width = 3.95f,
+            height = 0.04f,
+            depth = 1.52f,
+            position = listOf(-3.5f, 0.22f, -0.1f),
+            color = argb("#152438"),
+            metalness = 0.34f,
+            roughness = 0.58f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "dispatch-console-focus-bay"
+        )
+        SigilBox(
+            width = 6.75f,
+            height = 0.04f,
+            depth = 1.52f,
+            position = listOf(2.08f, 0.22f, -0.1f),
+            color = argb("#182130"),
+            metalness = 0.34f,
+            roughness = 0.6f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "dispatch-console-route-bay"
+        )
+
+        repeat(CONSOLE_FOCUS_SLOT_COUNT) { index ->
+            ConsoleFocusSlot(index = index)
+        }
+        state.queue.forEach { pkg ->
+            val visibleIndex = visibleIds.indexOf(pkg.id)
+            val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
+            ConsoleFocusButton(
+                pkg = pkg,
+                slotIndex = visibleIndex.coerceAtLeast(0),
+                position = if (visible) consoleFocusSlotPosition(visibleIndex) else CONSOLE_BUTTON_HIDDEN_POSITION,
+                visible = visible,
+                focused = visible && pkg.id == focusedId
+            )
+        }
+        trucks.forEachIndexed { index, rule ->
+            val routeLabel = "Truck ${'A' + index}"
+            val selected = state.lastRouteTarget == routeLabel
+            ConsoleTruckButton(
+                index = index,
+                color = truckColor(index, rule),
+                position = consoleTruckButtonPosition(index, trucks.size),
+                selected = selected,
+                routeAccepted = if (selected) state.lastRouteAccepted else null
+            )
+        }
+        ConsoleReturnButton(
+            selected = state.lastRouteTarget == "Return Bin",
+            routeAccepted = if (state.lastRouteTarget == "Return Bin") state.lastRouteAccepted else null
+        )
+        ConsoleResetButton()
+        ""
+    }
+}
+
+@Composable
+private fun ConsoleFocusSlot(index: Int) {
+    SigilBox(
+        width = 0.88f,
+        height = 0.06f,
+        depth = 0.96f,
+        position = consoleFocusSlotPosition(index),
+        color = argb("#0d1420"),
+        metalness = 0.26f,
+        roughness = 0.78f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "console-focus-slot-$index"
+    )
+}
+
+@Composable
+private fun ConsoleFocusButton(
+    pkg: FifthWallPackage,
+    slotIndex: Int,
+    position: List<Float>,
+    visible: Boolean,
+    focused: Boolean
+) {
+    val color = argb(pkg.color.hex)
+    SigilGroup(
+        position = position,
+        visible = visible,
+        name = "console-focus-${pkg.id}",
+        interaction = consoleButtonInteraction(
+            interactionId = consoleFocusInteractionId(pkg.id),
+            width = 0.82f,
+            depth = 0.86f,
+            actions = listOf("console", "focus", "package")
+        ),
+        animations = listOf(targetPulseAnimation("console-focus-${pkg.id}-press", slotIndex * 45)),
+        id = consoleFocusButtonId(pkg.id)
+    ) {
+        ConsoleButtonShell(
+            width = 0.82f,
+            depth = 0.86f,
+            baseColor = if (focused) argb("#182b42") else argb("#141d2a"),
+            accent = if (focused) SCENE_ACCENT else color,
+            selected = focused,
+            name = "console-focus-${pkg.id}"
+        )
+        SigilSphere(
+            radius = 0.13f,
+            widthSegments = 12,
+            heightSegments = 10,
+            position = listOf(-0.2f, 0.31f, -0.12f),
+            color = color,
+            metalness = 0.2f,
+            roughness = 0.48f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-focus-${pkg.id}-color"
+        )
+        SigilBox(
+            width = 0.3f,
+            height = 0.045f,
+            depth = 0.08f,
+            position = listOf(0.16f, 0.3f, -0.15f),
+            color = PACKAGE_TAPE,
+            metalness = 0.08f,
+            roughness = 0.72f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-focus-${pkg.id}-mark-a"
+        )
+        SigilBox(
+            width = if (pkg.validGeometry) 0.22f else 0.12f,
+            height = 0.045f,
+            depth = 0.08f,
+            position = listOf(0.12f, 0.3f, 0.12f),
+            color = if (pkg.validGeometry) SCENE_SUCCESS else SCENE_DANGER,
+            metalness = 0.12f,
+            roughness = 0.66f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-focus-${pkg.id}-mark-b"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun ConsoleTruckButton(
+    index: Int,
+    color: Int,
+    position: List<Float>,
+    selected: Boolean,
+    routeAccepted: Boolean?
+) {
+    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = color)
+    SigilGroup(
+        position = position,
+        name = "console-truck-${'A' + index}",
+        interaction = consoleButtonInteraction(
+            interactionId = consoleTruckInteractionId(index),
+            width = 0.94f,
+            depth = 0.86f,
+            actions = listOf("console", "route", "truck")
+        ),
+        animations = listOf(targetPulseAnimation("console-truck-$index-press", 110 + (index * 45))),
+        id = consoleTruckButtonId(index)
+    ) {
+        ConsoleButtonShell(
+            width = 0.94f,
+            depth = 0.86f,
+            baseColor = if (selected) argb("#1b2533") else argb("#141b25"),
+            accent = feedback,
+            selected = selected,
+            name = "console-truck-$index"
+        )
+        SigilBox(
+            width = 0.38f,
+            height = 0.16f,
+            depth = 0.24f,
+            position = listOf(-0.08f, 0.33f, -0.04f),
+            color = feedback,
+            metalness = 0.2f,
+            roughness = 0.58f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-truck-$index-cargo"
+        )
+        SigilBox(
+            width = 0.18f,
+            height = 0.13f,
+            depth = 0.22f,
+            position = listOf(0.27f, 0.315f, -0.04f),
+            color = PACKAGE_TAPE,
+            metalness = 0.08f,
+            roughness = 0.76f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-truck-$index-cab"
+        )
+        listOf(-0.2f, 0.24f).forEachIndexed { wheelIndex, x ->
+            SigilSphere(
+                radius = 0.055f,
+                widthSegments = 10,
+                heightSegments = 8,
+                position = listOf(x, 0.245f, 0.14f),
+                color = PACKAGE_SHADE,
+                metalness = 0.1f,
+                roughness = 0.84f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "console-truck-$index-wheel-$wheelIndex"
+            )
+        }
+        ""
+    }
+}
+
+@Composable
+private fun ConsoleReturnButton(
+    selected: Boolean,
+    routeAccepted: Boolean?
+) {
+    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = SCENE_WARM)
+    SigilGroup(
+        position = listOf(4.62f, 0.25f, 0.32f),
+        name = "console-return",
+        interaction = consoleButtonInteraction(
+            interactionId = CONSOLE_RETURN_INTERACTION_ID,
+            width = 1.12f,
+            depth = 0.94f,
+            actions = listOf("console", "route", "return")
+        ),
+        animations = listOf(targetPulseAnimation("console-return-press", 280)),
+        id = CONSOLE_RETURN_BUTTON_ID
+    ) {
+        ConsoleButtonShell(
+            width = 1.12f,
+            depth = 0.94f,
+            baseColor = if (selected) argb("#28251e") else argb("#181c22"),
+            accent = feedback,
+            selected = selected,
+            name = "console-return"
+        )
+        SigilMesh(
+            geometryType = GeometryType.TORUS,
+            geometryParams = GeometryParams(radius = 0.24f, tube = 0.035f, radialSegments = 14, tubularSegments = 36),
+            position = listOf(0f, 0.34f, -0.02f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = feedback,
+            metalness = 0.74f,
+            roughness = 0.18f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-return-ring"
+        )
+        SigilBox(
+            width = 0.18f,
+            height = 0.045f,
+            depth = 0.28f,
+            position = listOf(0.28f, 0.34f, -0.02f),
+            color = feedback,
+            metalness = 0.52f,
+            roughness = 0.24f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-return-tail"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun ConsoleResetButton() {
+    SigilGroup(
+        position = listOf(-5.28f, 0.25f, 0.36f),
+        name = "console-reset",
+        interaction = consoleButtonInteraction(
+            interactionId = CONSOLE_RESET_INTERACTION_ID,
+            width = 0.8f,
+            depth = 0.76f,
+            actions = listOf("console", "reset")
+        ),
+        animations = listOf(targetPulseAnimation("console-reset-press", 320)),
+        id = CONSOLE_RESET_BUTTON_ID
+    ) {
+        ConsoleButtonShell(
+            width = 0.8f,
+            depth = 0.76f,
+            baseColor = argb("#201b22"),
+            accent = SCENE_DANGER,
+            selected = false,
+            name = "console-reset"
+        )
+        SigilBox(
+            width = 0.44f,
+            height = 0.045f,
+            depth = 0.08f,
+            position = listOf(0f, 0.32f, 0f),
+            rotation = listOf(0f, 0.68f, 0f),
+            color = SCENE_DANGER,
+            metalness = 0.2f,
+            roughness = 0.58f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-reset-cross-a"
+        )
+        SigilBox(
+            width = 0.44f,
+            height = 0.045f,
+            depth = 0.08f,
+            position = listOf(0f, 0.32f, 0f),
+            rotation = listOf(0f, -0.68f, 0f),
+            color = SCENE_DANGER,
+            metalness = 0.2f,
+            roughness = 0.58f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "console-reset-cross-b"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun ConsoleButtonShell(
+    width: Float,
+    depth: Float,
+    baseColor: Int,
+    accent: Int,
+    selected: Boolean,
+    name: String
+) {
+    SigilBox(
+        width = width,
+        height = if (selected) 0.18f else 0.14f,
+        depth = depth,
+        position = listOf(0f, 0.08f, 0f),
+        color = baseColor,
+        metalness = 0.34f,
+        roughness = 0.56f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-shell"
+    )
+    SigilBox(
+        width = width * 0.72f,
+        height = 0.045f,
+        depth = 0.08f,
+        position = listOf(0f, 0.18f, -(depth * 0.28f)),
+        color = accent,
+        metalness = 0.64f,
+        roughness = 0.18f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-light"
+    )
+}
+
+@Composable
 private fun PackageMesh(
     pkg: FifthWallPackage,
     position: List<Float>,
@@ -1147,6 +1642,45 @@ private fun GeometryAura(
 private fun fifthWallModelUrl(fileName: String): String {
     return "/static/models/fifth-wall/$fileName?v=$MODEL_ASSET_VERSION"
 }
+
+private fun consoleFocusButtonId(packageId: String): String = "console-focus-button-$packageId"
+
+private fun consoleFocusInteractionId(packageId: String): String = "console-focus:$packageId"
+
+private fun consoleTruckButtonId(index: Int): String = "console-truck-button-$index"
+
+private fun consoleTruckInteractionId(index: Int): String = "console-route-truck:$index"
+
+private fun consoleFocusSlotPosition(index: Int): List<Float> =
+    listOf(-4.25f + (index * 1.12f), 0.25f, -0.38f)
+
+private fun consoleTruckButtonPosition(index: Int, count: Int): List<Float> {
+    val spacing = when (count) {
+        1 -> 0f
+        2 -> 1.18f
+        3 -> 1.06f
+        else -> 0.94f
+    }
+    val origin = 1.05f - (((count - 1) * spacing) / 2f)
+    return listOf(origin + (index * spacing), 0.25f, 0.32f)
+}
+
+private fun consoleButtonInteraction(
+    interactionId: String,
+    width: Float,
+    depth: Float,
+    actions: List<String>
+): InteractionMetadata =
+    InteractionMetadata(
+        interactionId = interactionId,
+        cursor = CursorHint.POINTER,
+        hitVolume = boxHitVolume(width = width, height = 0.56f, depth = depth, centerY = 0.16f),
+        actions = actions,
+        events = listOf("pointerdown", "click"),
+        enabled = true,
+        drag = null,
+        dropTarget = null
+    )
 
 private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): InteractionMetadata =
     InteractionMetadata(

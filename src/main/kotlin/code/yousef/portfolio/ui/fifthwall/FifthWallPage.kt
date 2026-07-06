@@ -50,11 +50,7 @@ internal fun FifthWallPage(
                                 state = state,
                                 focusedPackage = focusedPackage
                             )
-                            SceneControlDeck(
-                                level = level,
-                                state = state,
-                                focusedPackage = focusedPackage
-                            )
+                            SceneFeedback(state = state)
                         }
                         if (state.prompt != FifthWallPrompt.None) {
                             PromptOverlay(state = state, level = level)
@@ -150,103 +146,9 @@ private fun SceneDashboard(
 }
 
 @Composable
-private fun SceneControlDeck(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?
-) {
-    val controlsBlocked = state.prompt != FifthWallPrompt.None
-    val visiblePackages = state.visiblePackages()
-
-    Box(modifier = Modifier().className("fw-scene-control-deck")) {
-        Box(modifier = Modifier().className("fw-scene-feedback-row")) {
-            FeedbackBanner(state = state)
-            Box(modifier = Modifier().className("fw-scene-utility-actions")) {
-                if (state.prompt == FifthWallPrompt.Intro) {
-                    ActionControl(
-                        label = "Enter bay",
-                        action = "start",
-                        classes = "fw-action-link fw-ui-btn-accent"
-                    )
-                }
-                if (state.prompt == FifthWallPrompt.LevelComplete) {
-                    ActionControl(
-                        label = "Next level",
-                        action = "advance",
-                        classes = "fw-action-link fw-ui-btn-accent"
-                    )
-                }
-                if (state.glitchActive) {
-                    ActionControl(
-                        label = "Restart console",
-                        action = "fake-restart",
-                        classes = "fw-action-link fw-ui-btn-danger"
-                    )
-                }
-                if (state.wrenchVisible) {
-                    ActionControl(
-                        label = "Repair with wrench",
-                        action = "repair",
-                        classes = "fw-action-link fw-ui-btn-accent"
-                    )
-                }
-                ActionControl(
-                    label = "Reset shift",
-                    action = "reset",
-                    classes = "fw-action-link fw-ui-btn-outline"
-                )
-            }
-        }
-
-        Box(modifier = Modifier().className("fw-scene-control-grid")) {
-            Box(modifier = Modifier().className("fw-scene-control-panel")) {
-                Box(modifier = Modifier().className("fw-panel")) {
-                    Text(text = "Package Focus", modifier = Modifier().className("fw-panel-title"))
-                    if (visiblePackages.isEmpty()) {
-                        Text(text = "No parcels on the belt.", modifier = Modifier().className("fw-empty"))
-                    } else {
-                        Box(modifier = Modifier().className("fw-fallback-row")) {
-                            visiblePackages.forEachIndexed { index, pkg ->
-                                ActionControl(
-                                    label = if (focusedPackage?.id == pkg.id) "Focused P${index + 1}" else "Focus P${index + 1}",
-                                    action = "select",
-                                    classes = if (focusedPackage?.id == pkg.id) {
-                                        "fw-action-link fw-ui-btn-accent"
-                                    } else {
-                                        "fw-action-link fw-ui-btn"
-                                    },
-                                    disabled = controlsBlocked,
-                                    params = arrayOf("package" to pkg.id)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Box(modifier = Modifier().className("fw-scene-control-panel")) {
-                Box(modifier = Modifier().className("fw-panel")) {
-                    Text(text = "Route Focus", modifier = Modifier().className("fw-panel-title"))
-                    Box(modifier = Modifier().className("fw-fallback-row")) {
-                        state.activeTrucks(level).forEachIndexed { index, _ ->
-                            ActionControl(
-                                label = "Truck ${'A' + index}",
-                                action = "route-truck",
-                                classes = "fw-action-link fw-ui-btn",
-                                disabled = focusedPackage == null || controlsBlocked,
-                                params = arrayOf("truck" to index.toString())
-                            )
-                        }
-                        ActionControl(
-                            label = "Return Bin",
-                            action = "route-return",
-                            classes = "fw-action-link fw-ui-btn-outline",
-                            disabled = focusedPackage == null || controlsBlocked
-                        )
-                    }
-                }
-            }
-        }
+private fun SceneFeedback(state: FifthWallUiState) {
+    Box(modifier = Modifier().className("fw-scene-feedback")) {
+        FeedbackBanner(state = state)
     }
 }
 
