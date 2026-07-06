@@ -32,11 +32,13 @@ docker run -d -p 8080:8080 -v portfolio-data:/app/storage portfolio
 
 ## Deployment Notes
 
-**Data Persistence**: The admin credentials and content are stored in `/app/storage/` inside the container. To persist data across container restarts:
+**Data Persistence**: In local file-storage mode, admin credentials and content are stored in `/app/storage/` inside the container. To persist data across container restarts:
 
 - **Docker Compose**: Uses a named volume `portfolio-data` by default
 - **Docker**: Use `-v portfolio-data:/app/storage` or bind mount a host directory
 - **Kubernetes**: Create a PersistentVolumeClaim mounted at `/app/storage`
+
+Cloud Run deployments should use Firestore for content and GCS for photography uploads. The GitHub deploy workflow creates/uses `portfolio-476219-portfolio-uploads` and sets `PHOTOGRAPHY_UPLOAD_BUCKET` plus a per-service `PHOTOGRAPHY_UPLOAD_PREFIX` so uploaded media survives new revisions.
 
 Environment variables:
 - `PORTFOLIO_CONTENT_PATH` - Path to content.json (default: `/app/storage/content.json`)

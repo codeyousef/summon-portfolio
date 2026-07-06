@@ -10,6 +10,7 @@ env:
   CONTAINER_REPO: portfolio-registry      # Artifact Registry repo
   GCP_PROJECT_ID: portfolio-476219        # <-- your project ID (not name)
   GCP_REGION: us-central1                 # region
+  PHOTOGRAPHY_UPLOAD_BUCKET: portfolio-476219-portfolio-uploads
 
 jobs:
   build-and-deploy:
@@ -81,12 +82,35 @@ jobs:
           docker push "${IMAGE}"
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
+      - name: Prepare photography upload bucket
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUCKET_URI="gs://${PHOTOGRAPHY_UPLOAD_BUCKET}"
+          if ! gcloud storage buckets describe "${BUCKET_URI}" >/dev/null 2>&1; then
+            gcloud storage buckets create "${BUCKET_URI}" \
+              --project "${GCP_PROJECT_ID}" \
+              --location "${GCP_REGION}" \
+              --uniform-bucket-level-access
+          fi
+
+          PROJECT_NUMBER="$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')"
+          EXISTING_SERVICE_ACCOUNT="$(gcloud run services describe "${{ steps.svc.outputs.name }}" \
+            --region "${GCP_REGION}" \
+            --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)"
+          RUNTIME_SERVICE_ACCOUNT="${EXISTING_SERVICE_ACCOUNT:-${PROJECT_NUMBER}-compute@developer.gserviceaccount.com}"
+          gcloud storage buckets add-iam-policy-binding "${BUCKET_URI}" \
+            --member "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
+            --role "roles/storage.objectAdmin" \
+            --condition=None >/dev/null
+
       - name: Deploy to Cloud Run
         shell: bash
         run: |
           gcloud run deploy "${{ steps.svc.outputs.name }}" \
             --image "${{ steps.bp.outputs.image }}" \
             --region "${GCP_REGION}" \
+            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ steps.svc.outputs.name }}" \
             --allow-unauthenticated \
             --port 8080
 

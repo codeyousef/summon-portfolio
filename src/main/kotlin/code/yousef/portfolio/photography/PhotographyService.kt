@@ -32,6 +32,15 @@ class PhotographyService(
         } ?: return null
         if (photo.sourceKind != PhotographySourceKind.UPLOAD || photo.storageKey.isBlank()) return null
         return assetStore.load(photo.storageKey, photo.contentType)
+            ?: run {
+                log.warn(
+                    "Missing photography asset for published media id={} storageKey={} contentType={}",
+                    photo.id,
+                    photo.storageKey,
+                    photo.contentType
+                )
+                null
+            }
     }
 
     fun upload(fields: Map<String, String>, file: MultipartFilePart?): UploadResult {
