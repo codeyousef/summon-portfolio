@@ -40,6 +40,7 @@ class PhotographyRoutesTest {
         val assetStore = LocalPhotoAssetStore(tempDir.resolve("uploads"))
         assetStore.save("published.jpg", "image/jpeg", byteArrayOf(1, 2, 3))
         assetStore.save("motion.mp4", "video/mp4", byteArrayOf(4, 5, 6))
+        assetStore.save("uncategorized.jpg", "image/jpeg", byteArrayOf(7, 8, 9))
         contentStore.upsertPhotographyPhoto(
             PhotographyPhoto(
                 id = "published",
@@ -72,6 +73,19 @@ class PhotographyRoutesTest {
                 sourceKind = PhotographySourceKind.UPLOAD,
                 sizeBytes = 3,
                 uploadedAt = Instant.parse("2026-07-05T00:00:02Z")
+            )
+        )
+        contentStore.upsertPhotographyPhoto(
+            PhotographyPhoto(
+                id = "uncategorized",
+                title = "Unsorted Frame",
+                altText = "Unsorted alt",
+                order = 3,
+                published = true,
+                storageKey = "uncategorized.jpg",
+                contentType = "image/jpeg",
+                sizeBytes = 3,
+                uploadedAt = Instant.parse("2026-07-05T00:00:03Z")
             )
         )
         contentStore.upsertPhotographyPhoto(
@@ -122,11 +136,14 @@ class PhotographyRoutesTest {
             assertTrue(page.body().contains("Published Frame"))
             assertTrue(page.body().contains("Visible caption"))
             assertTrue(page.body().contains("Motion Clip"))
+            assertTrue(page.body().contains("Unsorted Frame"))
             assertTrue(page.body().contains("Travel"))
             assertTrue(page.body().contains("Riyadh Walks"))
             assertTrue(page.body().contains("data-media-filter=\"category:travel\""))
+            assertTrue(page.body().contains("/uploads/photography/published"))
             assertTrue(page.body().contains("/uploads/photography/published.jpg"))
             assertTrue(page.body().contains("/uploads/photography/motion.mp4"))
+            assertFalse(page.body().contains("Uncategorized"))
             assertFalse(page.body().contains("Draft Frame"))
 
             val asset = client.send(

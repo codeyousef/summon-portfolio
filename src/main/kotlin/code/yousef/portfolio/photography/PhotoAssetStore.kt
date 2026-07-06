@@ -79,11 +79,21 @@ class GcsPhotoAssetStore(
     }
 
     override fun load(storageKey: String, contentType: String): PhotoAsset? {
-        val blob = storage.get(BlobId.of(bucket, storageKey)) ?: return null
+        val blob = candidateKeys(storageKey)
+            .firstNotNullOfOrNull { key -> storage.get(BlobId.of(bucket, key)) }
+            ?: return null
         return PhotoAsset(bytes = blob.getContent(), contentType = blob.contentType ?: contentType)
     }
 
     override fun delete(storageKey: String) {
         storage.delete(BlobId.of(bucket, storageKey))
+    }
+
+    private fun candidateKeys(storageKey: String): List<String> {
+        val normalized = storageKey.trim('/')
+        val prefixed = normalizedPrefix
+            ?.takeIf { normalized.isNotBlank() && !normalized.startsWith("$it/") }
+            ?.let { "$it/$normalized" }
+        return listOfNotNull(normalized.takeIf { it.isNotBlank() }, prefixed).distinct()
     }
 }

@@ -152,7 +152,7 @@ internal fun Router.portfolioRoutes(
     }
 
     get("/uploads/photography/:id") { exchange ->
-        val id = exchange.pathParam("id").orEmpty()
+        val id = URLDecoder.decode(exchange.pathParam("id").orEmpty(), StandardCharsets.UTF_8)
         val asset = photographyService.assetForPublishedPhoto(id)
         if (asset == null) {
             exchange.respond(404, "Photo not found")

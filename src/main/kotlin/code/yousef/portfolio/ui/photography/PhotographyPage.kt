@@ -188,7 +188,7 @@ private fun PhotographyHero(hero: PhotographyPhoto, media: List<PhotographyPhoto
 
 @Composable
 private fun HeroMetrics(media: List<PhotographyPhoto>) {
-    val categories = media.map { it.category.normalizedCategory() }.distinct().size
+    val categories = media.mapNotNull { it.category.displayCategory() }.distinct().size
     val albums = media.mapNotNull { it.albumTitle?.trim()?.takeIf(String::isNotBlank) }.distinct().size
     val videos = media.count { it.mediaType == PhotographyMediaType.VIDEO || it.mediaType == PhotographyMediaType.VIDEO_360 }
     Row(
@@ -224,7 +224,7 @@ private fun MetricPill(value: String, label: String) {
 
 @Composable
 private fun MediaFilters(media: List<PhotographyPhoto>) {
-    val categories = media.map { it.category.normalizedCategory() }.distinct()
+    val categories = media.mapNotNull { it.category.displayCategory() }.distinct()
     Column(
         modifier = Modifier()
             .className("photography-shell")
@@ -307,23 +307,25 @@ private fun CategorySection(category: String, items: List<PhotographyPhoto>) {
                 .flexDirection(FlexDirection.Column)
                 .gap(PortfolioTheme.Spacing.xs)
         ) {
-            Text(
-                text = category,
-                modifier = Modifier()
-                    .fontSize(2.15.rem)
-                    .fontWeight(800)
-                    .lineHeight(1.1)
-                    .letterSpacing(0.px)
-                    .color("#ffffff")
-            )
-            Text(
-                text = "${items.size} ${if (items.size == 1) "piece" else "pieces"}",
-                modifier = Modifier()
-                    .fontSize(0.86.rem)
-                    .textTransform(TextTransform.Uppercase)
-                    .color("#9f978c")
-                    .letterSpacing(0.px)
-            )
+            if (!category.isUncategorized()) {
+                Text(
+                    text = category,
+                    modifier = Modifier()
+                        .fontSize(2.15.rem)
+                        .fontWeight(800)
+                        .lineHeight(1.1)
+                        .letterSpacing(0.px)
+                        .color("#ffffff")
+                )
+                Text(
+                    text = "${items.size} ${if (items.size == 1) "piece" else "pieces"}",
+                    modifier = Modifier()
+                        .fontSize(0.86.rem)
+                        .textTransform(TextTransform.Uppercase)
+                        .color("#9f978c")
+                        .letterSpacing(0.px)
+                )
+            }
         }
 
         items.groupBy { it.albumTitle?.trim()?.takeIf(String::isNotBlank) ?: "Singles" }.forEach { (album, albumItems) ->
@@ -340,15 +342,17 @@ private fun AlbumSection(album: String, items: List<PhotographyPhoto>) {
             .flexDirection(FlexDirection.Column)
             .gap(PortfolioTheme.Spacing.md)
     ) {
-        Text(
-            text = album,
-            modifier = Modifier()
-                .fontSize(1.05.rem)
-                .fontWeight(800)
-                .textTransform(TextTransform.Uppercase)
-                .color("#d9d2c8")
-                .letterSpacing(0.px)
-        )
+        if (album != "Singles") {
+            Text(
+                text = album,
+                modifier = Modifier()
+                    .fontSize(1.05.rem)
+                    .fontWeight(800)
+                    .textTransform(TextTransform.Uppercase)
+                    .color("#d9d2c8")
+                    .letterSpacing(0.px)
+            )
+        }
         Row(
             modifier = Modifier()
                 .display(Display.Grid)
@@ -403,16 +407,14 @@ private fun MediaFrame(photo: PhotographyPhoto, large: Boolean) {
 
 @Composable
 private fun PhotoImage(photo: PhotographyPhoto) {
-    Image(
-        src = mediaSource(photo),
-        alt = photo.altText,
-        modifier = Modifier()
-            .width(100.percent)
-            .height(100.percent)
-            .objectFit(ObjectFit.Cover)
-            .className("photography-media")
-            .attribute("loading", "lazy")
-            .attribute("decoding", "async")
+    val fallback = photo.uploadFallbackSource()
+    val fallbackHandler = fallback?.let {
+        "this.onerror=null;this.src='${htmlAttr(it)}';"
+    }.orEmpty()
+    RawHtml(
+        html = """
+            <img class="photography-media" src="${htmlAttr(photo.primaryImageSource())}" alt="${htmlAttr(photo.altText)}" loading="lazy" decoding="async"${if (fallbackHandler.isNotBlank()) " onerror=\"$fallbackHandler\"" else ""}>
+        """.trimIndent()
     )
 }
 
@@ -549,7 +551,7 @@ private fun MediaMeta(photo: PhotographyPhoto, prominent: Boolean) {
             )
         }
         Text(
-            text = listOfNotNull(photo.takenAt?.year?.toString(), photo.category.normalizedCategory(), photo.albumTitle).joinToString(" / "),
+            text = listOfNotNull(photo.takenAt?.year?.toString(), photo.category.displayCategory(), photo.albumTitle).joinToString(" / "),
             modifier = Modifier()
                 .fontSize(0.78.rem)
                 .fontWeight(800)
@@ -640,6 +642,19 @@ private fun mediaSource(photo: PhotographyPhoto): String =
         PhotographySourceKind.EXTERNAL -> photo.externalUrl.orEmpty()
     }
 
+private fun PhotographyPhoto.primaryImageSource(): String =
+    when (sourceKind) {
+        PhotographySourceKind.UPLOAD -> "/uploads/photography/${id.urlPathSegment()}"
+        PhotographySourceKind.EXTERNAL -> externalUrl.orEmpty()
+    }
+
+private fun PhotographyPhoto.uploadFallbackSource(): String? =
+    if (sourceKind == PhotographySourceKind.UPLOAD) {
+        mediaSource(this).takeIf { it != primaryImageSource() }
+    } else {
+        null
+    }
+
 private fun PhotographyPhoto.uploadAssetRef(): String =
     storageKey.replace('\\', '/').substringAfterLast('/').takeIf { it.isNotBlank() } ?: id
 
@@ -669,6 +684,10 @@ private fun queryParam(query: String?, name: String): String? =
         ?.takeIf { it.isNotBlank() }
 
 private fun String.normalizedCategory(): String = trim().takeIf { it.isNotBlank() } ?: "Uncategorized"
+
+private fun String.displayCategory(): String? = normalizedCategory().takeUnless { it.isUncategorized() }
+
+private fun String.isUncategorized(): Boolean = normalizedCategory().equals("Uncategorized", ignoreCase = true)
 
 private fun String.slug(): String =
     lowercase()
