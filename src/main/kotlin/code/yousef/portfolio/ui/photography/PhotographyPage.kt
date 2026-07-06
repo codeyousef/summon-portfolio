@@ -25,6 +25,8 @@ import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Composable
 fun PhotographyPage(
@@ -634,9 +636,15 @@ private fun FilterScript() {
 
 private fun mediaSource(photo: PhotographyPhoto): String =
     when (photo.sourceKind) {
-        PhotographySourceKind.UPLOAD -> "/uploads/photography/${photo.id}"
+        PhotographySourceKind.UPLOAD -> "/uploads/photography/${photo.uploadAssetRef().urlPathSegment()}"
         PhotographySourceKind.EXTERNAL -> photo.externalUrl.orEmpty()
     }
+
+private fun PhotographyPhoto.uploadAssetRef(): String =
+    storageKey.replace('\\', '/').substringAfterLast('/').takeIf { it.isNotBlank() } ?: id
+
+private fun String.urlPathSegment(): String =
+    URLEncoder.encode(this, StandardCharsets.UTF_8).replace("+", "%20")
 
 private fun externalEmbedUrl(url: String): String? =
     runCatching {

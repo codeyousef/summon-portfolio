@@ -125,6 +125,8 @@ class PhotographyRoutesTest {
             assertTrue(page.body().contains("Travel"))
             assertTrue(page.body().contains("Riyadh Walks"))
             assertTrue(page.body().contains("data-media-filter=\"category:travel\""))
+            assertTrue(page.body().contains("/uploads/photography/published.jpg"))
+            assertTrue(page.body().contains("/uploads/photography/motion.mp4"))
             assertFalse(page.body().contains("Draft Frame"))
 
             val asset = client.send(
@@ -133,6 +135,13 @@ class PhotographyRoutesTest {
             )
             assertEquals(200, asset.statusCode())
             assertEquals("image/jpeg", asset.headers().firstValue("Content-Type").orElse(""))
+
+            val assetByFileName = client.send(
+                HttpRequest.newBuilder().uri(URI.create("http://localhost:$port/uploads/photography/published.jpg")).GET().build(),
+                HttpResponse.BodyHandlers.ofByteArray()
+            )
+            assertEquals(200, assetByFileName.statusCode())
+            assertEquals("image/jpeg", assetByFileName.headers().firstValue("Content-Type").orElse(""))
 
             val videoAsset = client.send(
                 HttpRequest.newBuilder().uri(URI.create("http://localhost:$port/uploads/photography/motion")).GET().build(),

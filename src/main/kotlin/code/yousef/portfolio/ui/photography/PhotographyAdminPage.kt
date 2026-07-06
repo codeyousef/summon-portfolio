@@ -24,6 +24,8 @@ import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.runtime.LocalPlatformRenderer
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Composable
 fun PhotographyAdminPage(
@@ -227,7 +229,7 @@ private fun AdminPhotoRow(photo: PhotographyPhoto) {
 private fun AdminMediaPreview(photo: PhotographyPhoto) {
     val previewSrc = when {
         !photo.thumbnailUrl.isNullOrBlank() -> photo.thumbnailUrl
-        photo.sourceKind == PhotographySourceKind.UPLOAD && photo.mediaType == PhotographyMediaType.PHOTO -> "/uploads/photography/${photo.id}"
+        photo.sourceKind == PhotographySourceKind.UPLOAD && photo.mediaType == PhotographyMediaType.PHOTO -> photo.uploadAssetHref()
         else -> null
     }
     if (previewSrc != null) {
@@ -452,6 +454,15 @@ private fun PhotographySourceKind.label(): String =
         PhotographySourceKind.UPLOAD -> "Upload"
         PhotographySourceKind.EXTERNAL -> "External"
     }
+
+private fun PhotographyPhoto.uploadAssetHref(): String =
+    "/uploads/photography/${uploadAssetRef().urlPathSegment()}"
+
+private fun PhotographyPhoto.uploadAssetRef(): String =
+    storageKey.replace('\\', '/').substringAfterLast('/').takeIf { it.isNotBlank() } ?: id
+
+private fun String.urlPathSegment(): String =
+    URLEncoder.encode(this, StandardCharsets.UTF_8).replace("+", "%20")
 
 private fun html(value: String): String =
     value

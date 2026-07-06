@@ -27,7 +27,9 @@ class PhotographyService(
             .sortedWith(compareBy<PhotographyPhoto> { it.order }.thenByDescending { it.uploadedAt })
 
     fun assetForPublishedPhoto(id: String): PhotoAsset? {
-        val photo = contentStore.listPhotographyPhotos().firstOrNull { it.id == id && it.published } ?: return null
+        val photo = contentStore.listPhotographyPhotos().firstOrNull { photo ->
+            photo.published && (photo.id == id || photo.storageKey.assetFileName() == id || photo.storageKey == id)
+        } ?: return null
         if (photo.sourceKind != PhotographySourceKind.UPLOAD || photo.storageKey.isBlank()) return null
         return assetStore.load(photo.storageKey, photo.contentType)
     }
@@ -248,6 +250,8 @@ class PhotographyService(
         }.getOrNull()
 
     private fun String?.isOn(): Boolean = this == "on" || this == "true" || this == "1"
+
+    private fun String.assetFileName(): String = replace('\\', '/').substringAfterLast('/')
 
     private data class PhotoMetadata(
         val title: String,

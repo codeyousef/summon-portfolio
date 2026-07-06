@@ -73,6 +73,23 @@ class PhotographyServiceTest {
     }
 
     @Test
+    fun `loads published uploaded asset by id or stored file name`() {
+        val contentStore = LocalContentStore()
+        val assetStore = FakePhotoAssetStore()
+        val service = PhotographyService(contentStore, assetStore, maxUploadBytes = 100)
+        val upload = assertIs<PhotographyService.UploadResult.Success>(
+            service.upload(
+                fields = mapOf("title" to "Frame", "altText" to "Frame alt", "published" to "on"),
+                file = MultipartFilePart("photo", "frame.jpg", "image/jpeg", byteArrayOf(7, 8, 9))
+            )
+        ).photo
+        val storedFileName = upload.storageKey.substringAfterLast('/')
+
+        assertEquals(byteArrayOf(7, 8, 9).toList(), service.assetForPublishedPhoto(upload.id)?.bytes?.toList())
+        assertEquals(byteArrayOf(7, 8, 9).toList(), service.assetForPublishedPhoto(storedFileName)?.bytes?.toList())
+    }
+
+    @Test
     fun `saves external video and external 360 media without an asset`() {
         val contentStore = LocalContentStore()
         val assetStore = FakePhotoAssetStore()
