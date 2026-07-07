@@ -6,6 +6,8 @@ import code.yousef.portfolio.ui.fifthwall.FifthWallPage
 import code.yousef.portfolio.ui.fifthwall.FifthWallUiState
 import codes.yousef.summon.seo.HeadScope
 
+private const val SIGIL_RUNTIME_VERSION = "0.4.2.0"
+
 class FifthWallRenderer {
 
     internal fun fifthWallPage(
@@ -42,7 +44,14 @@ class FifthWallRenderer {
         )
 
         head.link("stylesheet", "/static/fifth-wall.css", null, null, null, null)
-        head.script("/sigil-hydration.js", "sigil-hydration-runtime", "application/javascript", false, true, null)
+        head.script(
+            "/sigil-hydration.js?v=$SIGIL_RUNTIME_VERSION",
+            "sigil-hydration-runtime",
+            "application/javascript",
+            false,
+            true,
+            null
+        )
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
         head.script("/static/fifth-wall-telemetry.js", "fifth-wall-telemetry", "application/javascript", false, true, null)
     }
