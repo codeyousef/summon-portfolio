@@ -16,6 +16,9 @@ import codes.yousef.sigil.schema.InteractionMetadata
 import codes.yousef.sigil.schema.SceneAnimationData
 import codes.yousef.sigil.schema.SceneNodePatch
 import codes.yousef.sigil.schema.ScenePatch
+import codes.yousef.sigil.schema.TextAlignMode
+import codes.yousef.sigil.schema.TextBaselineMode
+import codes.yousef.sigil.schema.TextFacingMode
 import codes.yousef.sigil.summon.canvas.MateriaCanvas
 import codes.yousef.sigil.summon.canvas.SceneConfig
 import codes.yousef.sigil.summon.canvas.SigilDomPatch
@@ -33,6 +36,7 @@ import codes.yousef.sigil.summon.components.SigilModel
 import codes.yousef.sigil.summon.components.SigilOrbitControls
 import codes.yousef.sigil.summon.components.SigilPlane
 import codes.yousef.sigil.summon.components.SigilSphere
+import codes.yousef.sigil.summon.components.SigilText
 import codes.yousef.summon.annotation.Composable
 import io.materia.core.math.Color
 import kotlin.math.PI
@@ -45,6 +49,8 @@ private val SCENE_WARM = argb(FifthWallTheme.ACCENT_WARM)
 private val SCENE_SUCCESS = argb(FifthWallTheme.SUCCESS)
 private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
 private val SCENE_NEUTRAL_LIGHT = argb("#d9ddd8")
+private val SCENE_TEXT = argb("#f4f8ff")
+private val SCENE_TEXT_MUTED = argb("#9fb0c8")
 private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
 private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
@@ -581,6 +587,55 @@ private fun GuideStrip(
 }
 
 @Composable
+private fun FloorTextLabel(
+    text: String,
+    position: List<Float>,
+    size: Float,
+    color: Int,
+    name: String,
+    id: String = name
+) {
+    SigilText(
+        text = text,
+        position = position,
+        rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+        color = color,
+        size = size,
+        depth = 0.012f,
+        curveSegments = 4,
+        align = TextAlignMode.CENTER,
+        baseline = TextBaselineMode.MIDDLE,
+        facingMode = TextFacingMode.FIXED,
+        name = name,
+        id = id
+    )
+}
+
+@Composable
+private fun BillboardTextLabel(
+    text: String,
+    position: List<Float>,
+    size: Float,
+    color: Int,
+    name: String,
+    id: String = name
+) {
+    SigilText(
+        text = text,
+        position = position,
+        color = color,
+        size = size,
+        depth = 0.016f,
+        curveSegments = 5,
+        align = TextAlignMode.CENTER,
+        baseline = TextBaselineMode.MIDDLE,
+        facingMode = TextFacingMode.BILLBOARD,
+        name = name,
+        id = id
+    )
+}
+
+@Composable
 private fun RouteControlPads(
     level: FifthWallLevel,
     state: FifthWallUiState
@@ -720,6 +775,20 @@ private fun RouteTruckPad(
             receiveShadow = false,
             name = "route-pad-truck-$index-beacon"
         )
+        FloorTextLabel(
+            text = "ROUTE",
+            position = listOf(0f, 0.2f, -0.48f),
+            size = 0.22f,
+            color = SCENE_TEXT_MUTED,
+            name = "route-pad-truck-$index-route-label"
+        )
+        FloorTextLabel(
+            text = "TRUCK ${'A' + index}",
+            position = listOf(0f, 0.21f, 0.02f),
+            size = 0.34f,
+            color = SCENE_TEXT,
+            name = "route-pad-truck-$index-label"
+        )
         ""
     }
 }
@@ -808,6 +877,20 @@ private fun RouteReturnPad(
             receiveShadow = false,
             name = "route-pad-return-beacon-cap"
         )
+        FloorTextLabel(
+            text = "RETURN",
+            position = listOf(0f, 0.23f, -0.32f),
+            size = 0.3f,
+            color = SCENE_TEXT,
+            name = "route-pad-return-label"
+        )
+        FloorTextLabel(
+            text = "BIN",
+            position = listOf(0f, 0.24f, 0.2f),
+            size = 0.28f,
+            color = SCENE_TEXT_MUTED,
+            name = "route-pad-return-bin-label"
+        )
         ""
     }
 }
@@ -877,6 +960,20 @@ private fun ResetShiftPad() {
             castShadow = false,
             receiveShadow = false,
             name = "reset-shift-pad-warning"
+        )
+        FloorTextLabel(
+            text = "RESET",
+            position = listOf(0f, 0.22f, -0.18f),
+            size = 0.28f,
+            color = SCENE_TEXT,
+            name = "reset-shift-pad-reset-label"
+        )
+        FloorTextLabel(
+            text = "SHIFT",
+            position = listOf(0f, 0.23f, 0.24f),
+            size = 0.22f,
+            color = SCENE_TEXT_MUTED,
+            name = "reset-shift-pad-shift-label"
         )
         ""
     }
@@ -993,6 +1090,13 @@ private fun PackageFocusPad(
             receiveShadow = false,
             name = "package-focus-pad-${pkg.id}-beacon"
         )
+        FloorTextLabel(
+            text = "FOCUS",
+            position = listOf(0f, 0.16f, 0.56f),
+            size = 0.22f,
+            color = if (focused) SCENE_TEXT else SCENE_TEXT_MUTED,
+            name = "package-focus-pad-${pkg.id}-label"
+        )
         ""
     }
 }
@@ -1094,6 +1198,13 @@ private fun DeliveryTruck(
             accent = accent,
             hidden = hidden,
             name = label.lowercase().replace(" ", "-")
+        )
+        BillboardTextLabel(
+            text = label.uppercase(),
+            position = listOf(0.1f, 3.72f, 0f),
+            size = 0.32f,
+            color = if (hidden) SCENE_TEXT_MUTED else SCENE_TEXT,
+            name = "$label-target-label".lowercase().replace(" ", "-")
         )
         if (selected) {
             SigilMesh(
@@ -1204,6 +1315,13 @@ private fun ReturnBinBay(
             receiveShadow = false,
             name = "return-ring"
         )
+        BillboardTextLabel(
+            text = "RETURN BIN",
+            position = listOf(0f, 2.52f, 0f),
+            size = 0.28f,
+            color = SCENE_TEXT,
+            name = "return-bin-target-label"
+        )
         ""
     }
 }
@@ -1235,6 +1353,13 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
             castShadow = false,
             receiveShadow = false,
             name = "inspection-ring"
+        )
+        BillboardTextLabel(
+            text = "INSPECT",
+            position = listOf(0f, 4.1f, 0f),
+            size = 0.28f,
+            color = if (pkg?.validGeometry == false) SCENE_DANGER else SCENE_TEXT,
+            name = "inspection-dock-label"
         )
         if (pkg != null) {
             PackageMesh(
@@ -1504,6 +1629,13 @@ private fun WrenchProp(visible: Boolean) {
             castShadow = false,
             receiveShadow = false,
             name = "repair-wrench-model"
+        )
+        BillboardTextLabel(
+            text = "REPAIR",
+            position = listOf(0f, 1.38f, 0f),
+            size = 0.22f,
+            color = SCENE_TEXT,
+            name = "repair-wrench-label"
         )
         ""
     }

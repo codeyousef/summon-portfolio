@@ -1,31 +1,31 @@
 package code.yousef.portfolio.e2e
 
 import code.yousef.buildApplication
+import code.yousef.ApplicationResources
 import code.yousef.config.AppConfig
 import codes.yousef.aether.core.jvm.VertxServer
 import codes.yousef.aether.core.jvm.VertxServerConfig
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.URI
+import kotlin.test.AfterTest
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class HydrationTest {
 
     private lateinit var server: VertxServer
+    private lateinit var resources: ApplicationResources
     private val testPort = 8082
     private val baseUrl = "http://localhost:$testPort"
     private val httpClient = HttpClient.newHttpClient()
 
-    @BeforeAll
+    @BeforeTest
     fun setup() {
         val appConfig = AppConfig(
             projectId = "test-project",
@@ -33,7 +33,7 @@ class HydrationTest {
             port = testPort,
             useLocalStore = true
         )
-        val resources = buildApplication(appConfig)
+        resources = buildApplication(appConfig)
         val config = VertxServerConfig(port = testPort)
         server = VertxServer(config, resources.pipeline) { exchange ->
             exchange.notFound("Route not found")
@@ -43,10 +43,11 @@ class HydrationTest {
         }
     }
 
-    @AfterAll
+    @AfterTest
     fun teardown() {
         runBlocking {
             server.stop()
+            resources.onShutdown()
         }
     }
 
@@ -82,9 +83,22 @@ class HydrationTest {
     }
 
     @Test
+    fun `should serve Sigil default font asset`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/sigil-default-font.json"))
+            .GET()
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode())
+        assertTrue(response.body().contains("\"glyphs\""), "Should serve the bundled Sigil mesh-text font")
+    }
+
+    @Test
     fun `fifth wall serves Materia Sigil scene shell`() {
         val request = HttpRequest.newBuilder()
-            .uri(URI.create("$baseUrl/fifth-wall"))
+            .uri(URI.create("$baseUrl/fifth-wall?action=start"))
             .GET()
             .build()
 
@@ -104,8 +118,11 @@ class HydrationTest {
         assertTrue(body.contains("\"interactionId\":\"inspection-dock\""), "Inspection dock should expose a Sigil drop-target interaction ID")
         assertTrue(body.contains("\"drag\":{\"enabled\":true"), "Packages should declare Sigil drag metadata")
         assertTrue(body.contains("\"dropTarget\":{\"enabled\":true"), "Routing targets should declare Sigil drop-target metadata")
-        assertTrue(body.contains("\"kind\":\"bob\""), "Scene should declare Sigil animation metadata")
-        assertTrue(body.contains("Accessibility fallback"), "Should keep non-primary native fallback controls")
+        assertTrue(body.contains("\"kind\":\"pulse\""), "Scene should declare Sigil animation metadata")
+        assertTrue(body.contains("\"type\":\"text\""), "Scene should serialize in-canvas Sigil text labels")
+        assertTrue(body.contains("\"facingMode\":\"BILLBOARD\""), "Target labels should face the camera as Sigil billboards")
+        assertTrue(body.contains("TRUCK A"), "Truck controls should have visible in-scene text labels")
+        assertTrue(body.contains("RETURN BIN"), "Return control should have a visible in-scene text label")
         assertFalse(body.contains("id=\"fifth-wall-game-root\""), "Should not expose the temporary client game mount")
         assertFalse(body.contains("model-viewer.min.js"), "Should not load model-viewer")
         assertFalse(body.contains("/static/fifth-wall-client-game.js"), "Should not load the temporary JS runtime")
