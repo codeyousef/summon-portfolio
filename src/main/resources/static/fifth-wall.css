@@ -408,16 +408,18 @@
 .fw-scene-feedback {
     position: absolute;
     left: 18px;
-    right: calc(min(420px, calc(100% - 36px)) + 36px);
+    right: auto;
     bottom: 18px;
     z-index: 6;
+    width: min(430px, calc(100% - 36px));
     pointer-events: none;
 }
 
 .fw-scene-feedback .fw-feedback {
-    border-radius: 12px;
-    background: rgba(7, 12, 19, 0.78);
-    backdrop-filter: blur(14px);
+    border-radius: 999px;
+    padding: 10px 14px;
+    background: rgba(7, 12, 19, 0.7);
+    backdrop-filter: blur(10px);
 }
 
 .fw-scene-shell .fw-scene-hud,
@@ -1095,9 +1097,10 @@ input.fw-input:focus {
 
     .fw-scene-feedback {
         top: 146px;
-        right: 12px;
+        right: auto;
         bottom: auto;
         left: 12px;
+        width: min(430px, calc(100% - 24px));
     }
 
     .fw-scene-heading {
@@ -1139,8 +1142,9 @@ input.fw-input:focus {
 
     .fw-scene-feedback {
         left: 12px;
-        right: 12px;
+        right: auto;
         bottom: 12px;
+        width: min(430px, calc(100% - 24px));
     }
 
     .fw-scene-feedback .fw-feedback {

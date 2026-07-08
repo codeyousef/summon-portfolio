@@ -7,8 +7,6 @@ import codes.yousef.sigil.schema.AnimationEasing
 import codes.yousef.sigil.schema.AnimationKind
 import codes.yousef.sigil.schema.AnimationTrigger
 import codes.yousef.sigil.schema.CursorHint
-import codes.yousef.sigil.schema.DragConstraintMode
-import codes.yousef.sigil.schema.DragMetadata
 import codes.yousef.sigil.schema.DropTargetMetadata
 import codes.yousef.sigil.schema.HitVolumeData
 import codes.yousef.sigil.schema.HitVolumeShape
@@ -55,7 +53,7 @@ private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
 private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
 private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
-private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click", "dragstart", "drag", "dragenter", "dragleave", "drop", "pointerup")
+private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click")
 private const val CONSOLE_FOCUS_SLOT_COUNT = 3
 private const val CONSOLE_RETURN_INTERACTION_ID = "console-route-return"
 private const val CONSOLE_RESET_INTERACTION_ID = "console-reset"
@@ -113,8 +111,8 @@ internal fun FifthWallScene(
         )
         SigilOrbitControls(
             target = listOf(0.8f, 1.85f, 1.6f),
-            enableDamping = false,
-            dampingFactor = 0f,
+            enableDamping = true,
+            dampingFactor = 0.24f,
             minDistance = 8.5f,
             maxDistance = 15f,
             minPolarAngle = 0.9f,
@@ -122,7 +120,7 @@ internal fun FifthWallScene(
             enablePan = false,
             autoRotate = false,
             autoRotateSpeed = 0f,
-            rotateSpeed = 0.22f,
+            rotateSpeed = 0.12f,
             zoomSpeed = 0.45f,
             name = "dispatch-orbit"
         )
@@ -283,8 +281,7 @@ private fun fifthWallScenePatch(
         )
         nodes += SceneNodePatch(
             id = "package-$packageId-body",
-            position = if (isVisible && pkg != null) packageBodyPosition(pkg, packageHover(enlarged = false, emphasized = visibleIndex == 0)) else null,
-            visible = isVisible
+            position = if (isVisible && pkg != null) packageBodyPosition(pkg, packageHover(enlarged = false, emphasized = visibleIndex == 0)) else null
         )
     }
 
@@ -865,18 +862,6 @@ private fun DispatchConsoleControl(
         animations = listOf(targetPulseAnimation("$id-press", 120)),
         id = id
     ) {
-        SigilBox(
-            width = width,
-            height = if (selected) 0.18f else 0.12f,
-            depth = depth,
-            position = listOf(0f, 0.06f, 0f),
-            color = argb("#0a1320"),
-            metalness = 0.34f,
-            roughness = 0.58f,
-            castShadow = false,
-            receiveShadow = true,
-            name = "$name-base"
-        )
         SigilBox(
             width = width * 0.78f,
             height = 0.09f,
@@ -1644,7 +1629,6 @@ private fun PackageMesh(
         PackageBodyModel(
             pkg = pkg,
             position = packageBodyPosition(pkg, hover),
-            visible = visible || enlarged,
             id = "$nodeId-body"
         )
         if (visible || enlarged) {
@@ -1688,7 +1672,6 @@ private fun PackageMesh(
 private fun PackageBodyModel(
     pkg: FifthWallPackage,
     position: List<Float>,
-    visible: Boolean,
     id: String
 ) {
     SigilModel(
@@ -1696,7 +1679,7 @@ private fun PackageBodyModel(
         position = position,
         rotation = packageModelRotation(pkg),
         scale = packageModelScale(pkg),
-        visible = visible,
+        visible = true,
         castShadow = false,
         receiveShadow = false,
         name = "pkg-body-model",
@@ -1968,7 +1951,7 @@ private fun routePadInteraction(
 private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): InteractionMetadata =
     InteractionMetadata(
         interactionId = "package:${pkg.id}",
-        cursor = CursorHint.GRAB,
+        cursor = CursorHint.POINTER,
         hitVolume = boxHitVolume(
             width = when (pkg.shape) {
                 "rect" -> 2.28f
@@ -1983,19 +1966,10 @@ private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): Intera
             } * if (enlarged) 1.2f else 1f,
             centerY = if (enlarged) 1.1f else 0.82f
         ),
-        actions = listOf("package", "focus", "inspect", "drag"),
+        actions = listOf("package", "focus", "inspect"),
         events = PACKAGE_POINTER_EVENTS,
         enabled = true,
-        drag = DragMetadata(
-            enabled = true,
-            mode = DragConstraintMode.HORIZONTAL,
-            planeNormal = listOf(0f, 1f, 0f),
-            planePoint = listOf(0f, if (enlarged) 3.18f else 2.34f, 0f),
-            laneAxis = listOf(1f, 0f, 0f),
-            min = -7.5f,
-            max = 13.5f,
-            dropGroups = ROUTING_TARGET_GROUP
-        ),
+        drag = null,
         dropTarget = null
     )
 
