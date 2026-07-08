@@ -1349,10 +1349,8 @@ private fun packageHover(enlarged: Boolean, emphasized: Boolean): Float =
 
 private fun packageBodyPosition(pkg: FifthWallPackage, hover: Float): List<Float> {
     val y = when (pkg.shape) {
-        "rect" -> 0.5f
-        "cylinder" -> 0.66f
-        "sphere" -> 0.74f
-        else -> 0.62f
+        "sphere" -> 0.05f
+        else -> 0.08f
     }
     return listOf(0f, y + hover, 0f)
 }
@@ -1643,7 +1641,7 @@ private fun PackageMesh(
                 name = "pkg-shadow"
             )
         }
-        PackageBodyMesh(
+        PackageBodyModel(
             pkg = pkg,
             position = packageBodyPosition(pkg, hover),
             visible = visible || enlarged,
@@ -1687,80 +1685,47 @@ private fun PackageMesh(
 }
 
 @Composable
-private fun PackageBodyMesh(
+private fun PackageBodyModel(
     pkg: FifthWallPackage,
     position: List<Float>,
     visible: Boolean,
     id: String
 ) {
-    val color = argb(pkg.color.hex)
-    when (pkg.shape) {
-        "rect" -> SigilBox(
-            width = 2.08f,
-            height = 0.78f,
-            depth = 1.08f,
-            position = position,
-            color = color,
-            metalness = 0.18f,
-            roughness = 0.58f,
-            visible = visible,
-            castShadow = false,
-            receiveShadow = false,
-            name = "pkg-body",
-            id = id
-        )
-
-        "cylinder" -> SigilMesh(
-            geometryType = GeometryType.CYLINDER,
-            geometryParams = GeometryParams(
-                radiusTop = 0.62f,
-                radiusBottom = 0.62f,
-                height = 1.18f,
-                radialSegments = 18
-            ),
-            position = position,
-            rotation = listOf(0f, 0f, PI.toFloat() / 2f),
-            color = color,
-            metalness = 0.2f,
-            roughness = 0.54f,
-            visible = visible,
-            castShadow = false,
-            receiveShadow = false,
-            name = "pkg-body",
-            id = id
-        )
-
-        "sphere" -> SigilSphere(
-            radius = 0.72f,
-            widthSegments = 18,
-            heightSegments = 12,
-            position = position,
-            color = color,
-            metalness = 0.16f,
-            roughness = 0.5f,
-            visible = visible,
-            castShadow = false,
-            receiveShadow = false,
-            name = "pkg-body",
-            id = id
-        )
-
-        else -> SigilBox(
-            width = 1.34f,
-            height = 1.08f,
-            depth = 1.34f,
-            position = position,
-            color = color,
-            metalness = 0.18f,
-            roughness = 0.56f,
-            visible = visible,
-            castShadow = false,
-            receiveShadow = false,
-            name = "pkg-body",
-            id = id
-        )
-    }
+    SigilModel(
+        url = fifthWallModelUrl(packageModelFile(pkg)),
+        position = position,
+        rotation = packageModelRotation(pkg),
+        scale = packageModelScale(pkg),
+        visible = visible,
+        castShadow = false,
+        receiveShadow = false,
+        name = "pkg-body-model",
+        id = id
+    )
 }
+
+private fun packageModelFile(pkg: FifthWallPackage): String =
+    when (pkg.shape) {
+        "rect" -> "rectangular-parcel.glb"
+        "cylinder" -> "cylinder-drum.glb"
+        "sphere" -> "sphere-package-with-cradle.glb"
+        else -> "cube-crate.glb"
+    }
+
+private fun packageModelScale(pkg: FifthWallPackage): List<Float> =
+    when (pkg.shape) {
+        "rect" -> listOf(2.08f, 1.22f, 1.08f)
+        "cylinder" -> listOf(1.34f, 1.36f, 1.34f)
+        "sphere" -> listOf(1.48f, 1.36f, 1.48f)
+        else -> listOf(1.36f, 1.18f, 1.36f)
+    }
+
+private fun packageModelRotation(pkg: FifthWallPackage): List<Float> =
+    when (pkg.shape) {
+        "cylinder" -> listOf(0f, 0.18f, 0f)
+        "sphere" -> listOf(0f, -0.12f, 0f)
+        else -> listOf(0f, 0f, 0f)
+    }
 
 @Composable
 private fun PackageColorAccent(

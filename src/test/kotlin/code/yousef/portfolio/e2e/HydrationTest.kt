@@ -169,13 +169,17 @@ class HydrationTest {
             "cube-crate.glb",
             "cylinder-drum.glb",
             "rectangular-parcel.glb",
-            "sphere-package-with-cradle.glb",
+            "sphere-package-with-cradle.glb"
+        ).forEach { asset ->
+            assertTrue(body.contains(asset), "Package meshes should use the textured package model asset: $asset")
+        }
+        listOf(
             "valid-geometry-insert-set.glb",
             "penrose-loop.glb",
             "escher-stair.glb",
             "impossible-trident.glb"
         ).forEach { asset ->
-            assertFalse(body.contains(asset), "Package meshes should use lightweight primitives instead of repeated GLB asset: $asset")
+            assertFalse(body.contains(asset), "Geometry overlays should remain lightweight instead of repeated GLB asset: $asset")
         }
     }
 
