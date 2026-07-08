@@ -51,7 +51,7 @@ private val PACKAGE_TAPE = argb("#eef4fb")
 private val PACKAGE_SHADE = argb("#0b1219")
 private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
 private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
-private val PACKAGE_POINTER_EVENTS = listOf("pointerdown", "click")
+private val PACKAGE_POINTER_EVENTS = listOf("click")
 private const val CONSOLE_FOCUS_SLOT_COUNT = 3
 private const val CONSOLE_RETURN_INTERACTION_ID = "console-route-return"
 private const val CONSOLE_RESET_INTERACTION_ID = "console-reset"
@@ -170,7 +170,7 @@ private fun fifthWallSceneEventHandlers(
 
     state.queue.forEach { pkg ->
         handlers += reloadingSceneEventHandler(
-            match = SigilSceneEventMatch(type = "pointerdown", interactionId = "package:${pkg.id}"),
+            match = SigilSceneEventMatch(type = "click", interactionId = "package:${pkg.id}"),
             onEvent = { controller.selectPackage(pkg.id) }
         )
         handlers += reloadingSceneEventHandler(

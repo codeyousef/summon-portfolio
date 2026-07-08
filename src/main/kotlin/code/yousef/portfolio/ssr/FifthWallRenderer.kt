@@ -44,6 +44,7 @@ class FifthWallRenderer {
         )
 
         head.link("stylesheet", "/static/fifth-wall.css", null, null, null, null)
+        head.script("/static/fifth-wall-pointer-guard.js", "fifth-wall-pointer-guard", "application/javascript", false, true, null)
         head.script(
             "/sigil-hydration.js?v=$SIGIL_RUNTIME_VERSION",
             "sigil-hydration-runtime",

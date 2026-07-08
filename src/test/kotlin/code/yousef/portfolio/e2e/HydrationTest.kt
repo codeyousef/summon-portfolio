@@ -128,12 +128,20 @@ class HydrationTest {
         assertTrue(body.contains("warehouse-bay-shell-kit"), "Should render the warehouse GLTF scene content")
         assertTrue(body.contains("conveyor-deck"), "Should render the conveyor as scene content")
         assertTrue(body.contains("delivery-truck"), "Should render trucks as scene content")
+        val pointerGuardIndex = body.indexOf("/static/fifth-wall-pointer-guard.js")
+        val sigilRuntimeIndex = body.indexOf("/sigil-hydration.js?v=0.4.2.2")
+        assertTrue(pointerGuardIndex >= 0, "Should load the Fifth Wall drag-click guard")
+        assertTrue(pointerGuardIndex < sigilRuntimeIndex, "Drag-click guard should run before Sigil handles canvas clicks")
         assertTrue(body.contains("/sigil-hydration.js?v=0.4.2.2"), "Should load the Sigil 0.4.2.2 runtime")
         assertTrue(body.contains("\"interactionId\":\"package:"), "Packages should expose Sigil interaction IDs")
         assertTrue(body.contains("\"interactionId\":\"truck:0\""), "Trucks should expose Sigil drop-target interaction IDs")
         assertTrue(body.contains("\"interactionId\":\"return-bin\""), "Return bin should expose a Sigil drop-target interaction ID")
         assertTrue(body.contains("\"interactionId\":\"inspection-dock\""), "Inspection dock should expose a Sigil drop-target interaction ID")
-        assertTrue(body.contains("\"events\":[\"pointerdown\",\"click\"]"), "Packages should use click-to-focus interactions")
+        assertTrue(body.contains("\"events\":[\"click\"]"), "Packages should use click-to-focus interactions")
+        assertFalse(
+            body.contains("\"type\":\"pointerdown\",\"interactionId\":\"package:"),
+            "Package focus should not reload the page when a camera drag starts over a package"
+        )
         assertFalse(body.contains("\"drag\":{\"enabled\":true"), "Packages should not steal camera drags")
         assertTrue(body.contains("\"dropTarget\":{\"enabled\":true"), "Routing targets should declare Sigil drop-target metadata")
         assertTrue(body.contains("\"kind\":\"pulse\""), "Scene should declare Sigil animation metadata")
