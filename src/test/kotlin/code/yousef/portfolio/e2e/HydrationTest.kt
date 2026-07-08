@@ -107,6 +107,9 @@ class HydrationTest {
         assertEquals(200, response.statusCode())
         assertTrue(response.body().contains("\"familyName\": \"Fifth Wall Control\""), "Should serve the game text font")
         assertTrue(response.body().contains("\"glyphs\""), "Should include vector glyph outlines")
+        listOf("\"D\"", "\"L\"", "\"G\"", "\"0\"", "\"/\"", "\":\"").forEach { glyph ->
+            assertTrue(response.body().contains(glyph), "Should include glyph $glyph for readable in-canvas game text")
+        }
     }
 
     @Test
@@ -139,8 +142,8 @@ class HydrationTest {
         assertTrue(body.contains("\"fontUrl\":\"/static/fifth-wall-control-font.json\""), "Fifth Wall text should use the readable game font")
         assertTrue(body.contains("canvas-manifest-panel"), "Manifest should be serialized as in-canvas Sigil UI")
         assertTrue(body.contains("canvas-rule-board-panel"), "Rule board should be serialized as in-canvas Sigil UI")
-        assertTrue(body.contains("PACKAGE MANIFEST"), "Manifest text should live in the Sigil scene")
-        assertTrue(body.contains("RULE BOARD"), "Rule board text should live in the Sigil scene")
+        assertTrue(body.contains("MANIFEST"), "Manifest text should live in the Sigil scene")
+        assertTrue(body.contains("RULES"), "Rule board text should live in the Sigil scene")
         assertTrue(body.contains("FOCUS"), "Focus controls should be visible in-scene text controls")
         assertTrue(body.contains("INSPECT"), "Inspection should have visible in-scene text labels")
         assertTrue(body.contains("COMPARE"), "Comparison guidance should be visible in-scene text labels")

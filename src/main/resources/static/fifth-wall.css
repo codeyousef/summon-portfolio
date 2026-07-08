@@ -20,20 +20,20 @@
 .fw-root.is-canvas-only {
     max-width: none;
     width: 100%;
-    min-height: 100vh;
+    min-height: calc(100vh - 66px);
     margin: 0;
-    padding: 0;
+    padding: 66px 0 0;
     gap: 0;
 }
 
 .fw-stage.is-canvas-only,
 .fw-primary.is-canvas-only {
-    min-height: 100vh;
+    min-height: calc(100vh - 66px);
     gap: 0;
 }
 
 .fw-scene-shell.is-canvas-only {
-    min-height: 100vh;
+    min-height: calc(100vh - 66px);
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -44,7 +44,7 @@
 }
 
 .fw-scene-shell.is-canvas-only #fifth-wall-scene-container {
-    min-height: 100vh;
+    min-height: calc(100vh - 66px);
 }
 
 .fw-topbar {
@@ -1211,5 +1211,5 @@ input.fw-input:focus {
 .fw-primary.is-canvas-only,
 .fw-scene-shell.is-canvas-only,
 .fw-scene-shell.is-canvas-only #fifth-wall-scene-container {
-    min-height: 100vh;
+    min-height: calc(100vh - 66px);
 }

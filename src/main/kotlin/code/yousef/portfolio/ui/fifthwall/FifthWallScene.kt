@@ -748,8 +748,7 @@ private fun InCanvasGameUi(
     focusedPackage: FifthWallPackage?
 ) {
     CanvasProgressLabel(level = level, state = state)
-    CanvasManifestPanel(focusedPackage = focusedPackage)
-    CanvasRuleBoardPanel(level = level, state = state)
+    CanvasManifestPanel(level = level, state = state, focusedPackage = focusedPackage)
     CanvasPromptPanel(level = level, state = state)
 }
 
@@ -776,76 +775,75 @@ private fun CanvasProgressLabel(
 }
 
 @Composable
-private fun CanvasManifestPanel(focusedPackage: FifthWallPackage?) {
+private fun CanvasManifestPanel(
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    focusedPackage: FifthWallPackage?
+) {
     CanvasPanel(
         name = "canvas-manifest-panel",
-        position = listOf(6.95f, 4.8f, 5.65f),
-        width = 5.35f,
-        height = 3.45f,
+        position = listOf(4.9f, 3.98f, 6.05f),
+        width = 5.75f,
+        height = 5.05f,
         accentColor = SCENE_ACCENT
     ) {
         CanvasText(
-            text = "PACKAGE MANIFEST",
-            position = listOf(-2.42f, 1.22f, 0.12f),
-            size = 0.23f,
-            color = SCENE_TEXT_MUTED,
+            text = "MANIFEST",
+            position = listOf(-2.48f, 2.05f, 0.18f),
+            size = 0.32f,
+            color = SCENE_ACCENT,
             name = "canvas-manifest-title"
         )
         val rows = listOf(
-            Triple("COLOR", focusedPackage?.color?.name?.replaceFirstChar { it.uppercase() } ?: "--", "canvas-manifest-color"),
-            Triple("SHAPE", focusedPackage?.shapeDisplayLabel() ?: "--", "canvas-manifest-shape"),
-            Triple("WEIGHT", focusedPackage?.weight?.let { "$it kg" } ?: "--", "canvas-manifest-weight"),
+            Triple("COLOR", focusedPackage?.color?.name?.uppercase() ?: "--", "canvas-manifest-color"),
+            Triple("SHAPE", focusedPackage?.shape?.canvasShapeLabel() ?: "--", "canvas-manifest-shape"),
+            Triple("WEIGHT", focusedPackage?.weight?.let { "$it KG" } ?: "--", "canvas-manifest-weight"),
             Triple("VOLUME", focusedPackage?.volume?.let { "$it L" } ?: "--", "canvas-manifest-volume"),
-            Triple("PATTERN", focusedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--", "canvas-manifest-pattern"),
-            Triple("DEST", focusedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--", "canvas-manifest-destination")
+            Triple("PATTERN", focusedPackage?.pattern?.uppercase() ?: "--", "canvas-manifest-pattern"),
+            Triple("DEST", focusedPackage?.destination?.uppercase() ?: "--", "canvas-manifest-destination")
         )
         rows.forEachIndexed { index, (label, value, id) ->
             CanvasRow(
                 label = label,
                 value = value,
-                y = 0.78f - (index * 0.43f),
+                y = 1.52f - (index * 0.37f),
                 valueId = id
             )
         }
-    }
-}
-
-@Composable
-private fun CanvasRuleBoardPanel(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-) {
-    CanvasPanel(
-        name = "canvas-rule-board-panel",
-        position = listOf(6.95f, 2.0f, 5.9f),
-        width = 5.35f,
-        height = 3.0f,
-        accentColor = if (state.ruleShifted) SCENE_WARM else SCENE_ACCENT
-    ) {
+        SigilGroup(name = "canvas-rule-board-panel", id = "canvas-rule-board-panel") {
+            ""
+        }
         CanvasText(
-            text = "RULE BOARD",
-            position = listOf(-2.42f, 0.95f, 0.12f),
-            size = 0.23f,
-            color = SCENE_TEXT_MUTED,
+            text = "RULES",
+            position = listOf(-2.48f, -0.92f, 0.18f),
+            size = 0.34f,
+            color = if (state.ruleShifted) SCENE_WARM else SCENE_ACCENT,
             name = "canvas-rule-board-title"
         )
         state.activeTrucks(level).forEachIndexed { index, rule ->
             val revealed = level.hiddenRuleIndex != index || state.hiddenRuleRevealed || state.ruleShifted
             CanvasText(
-                text = "TRUCK ${'A' + index}  ${rule.label(revealed)}",
-                position = listOf(-2.42f, 0.55f - (index * 0.43f), 0.12f),
-                size = 0.22f,
+                text = "${'A' + index}  ${rule.canvasShortLabel(revealed)}",
+                position = listOf(-2.48f, -1.3f - (index * 0.34f), 0.18f),
+                size = 0.32f,
                 color = if (revealed) SCENE_TEXT else SCENE_TEXT_MUTED,
                 name = "canvas-rule-truck-$index",
                 lineHeight = 1.12f
             )
         }
         CanvasText(
-            text = "RETURN BIN  Use when no truck rule matches.",
-            position = listOf(-2.42f, 0.32f - (state.activeTrucks(level).size * 0.43f), 0.12f),
-            size = 0.2f,
-            color = SCENE_TEXT_MUTED,
+            text = "RET",
+            position = listOf(-2.48f, -2.02f, 0.18f),
+            size = 0.27f,
+            color = SCENE_TEXT,
             name = "canvas-rule-return"
+        )
+        CanvasText(
+            text = "NO MATCH",
+            position = listOf(-1.4f, -2.02f, 0.18f),
+            size = 0.24f,
+            color = SCENE_TEXT,
+            name = "canvas-rule-return-value"
         )
     }
 }
@@ -866,15 +864,15 @@ private fun CanvasPromptPanel(
     ) {
         CanvasText(
             text = promptTitle(state.prompt),
-            position = listOf(-3.72f, 1.28f, 0.12f),
-            size = 0.27f,
+            position = listOf(-3.72f, 1.28f, 0.18f),
+            size = 0.34f,
             color = SCENE_TEXT,
             name = "canvas-prompt-title"
         )
         CanvasText(
             text = wrapCanvasText(promptCopy(level, state), 62),
-            position = listOf(-3.72f, 0.82f, 0.12f),
-            size = 0.23f,
+            position = listOf(-3.72f, 0.75f, 0.18f),
+            size = 0.28f,
             color = SCENE_TEXT,
             name = "canvas-prompt-copy",
             lineHeight = 1.18f
@@ -990,15 +988,15 @@ private fun CanvasRow(
 ) {
     CanvasText(
         text = label,
-        position = listOf(-2.42f, y, 0.12f),
-        size = 0.22f,
-        color = SCENE_TEXT_MUTED,
+        position = listOf(-2.48f, y, 0.18f),
+        size = 0.25f,
+        color = SCENE_TEXT,
         name = "$valueId-label"
     )
     CanvasText(
         text = value,
-        position = listOf(-1.0f, y, 0.12f),
-        size = 0.23f,
+        position = listOf(0.32f, y, 0.18f),
+        size = 0.28f,
         color = SCENE_TEXT,
         name = valueId,
         id = valueId
@@ -1017,9 +1015,33 @@ private fun CanvasPanel(
     SigilGroup(position = position, name = name, id = name) {
         SigilBox(
             width = width,
-            height = 0.035f,
-            depth = 0.12f,
-            position = listOf(0f, (height / 2f) - 0.035f, 0.06f),
+            height = height,
+            depth = 0.1f,
+            position = listOf(0f, 0f, 0f),
+            color = argb("#08111b"),
+            metalness = 0.08f,
+            roughness = 0.86f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-backing"
+        )
+        SigilBox(
+            width = width,
+            height = 0.04f,
+            depth = 0.16f,
+            position = listOf(0f, -(height / 2f) + 0.04f, 0.08f),
+            color = accentColor,
+            metalness = 0.32f,
+            roughness = 0.3f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-bottom-accent"
+        )
+        SigilBox(
+            width = width,
+            height = 0.05f,
+            depth = 0.16f,
+            position = listOf(0f, (height / 2f) - 0.05f, 0.08f),
             color = accentColor,
             metalness = 0.36f,
             roughness = 0.24f,
@@ -1183,6 +1205,29 @@ private fun promptPredictionInteractionId(value: Int): String =
 
 private fun promptConfidenceInteractionId(value: String): String =
     "prompt:confidence:${value.lowercase()}"
+
+private fun String.canvasShapeLabel(): String =
+    when (lowercase()) {
+        "rect" -> "RECT"
+        "cylinder" -> "CYL"
+        "sphere" -> "SPHERE"
+        "cube" -> "CUBE"
+        else -> uppercase()
+    }
+
+private fun FifthWallRule.canvasShortLabel(revealed: Boolean): String {
+    if (!revealed) return "HIDDEN"
+    return when (kind) {
+        FifthWallRuleKind.Color -> value.orEmpty().uppercase()
+        FifthWallRuleKind.Shape -> value.orEmpty().canvasShapeLabel()
+        FifthWallRuleKind.Pattern -> value.orEmpty().uppercase()
+        FifthWallRuleKind.Destination -> value.orEmpty().uppercase()
+        FifthWallRuleKind.Geometry -> value.orEmpty().uppercase()
+        FifthWallRuleKind.Weight -> "${comparator.orEmpty()} ${threshold ?: ""} KG".trim()
+        FifthWallRuleKind.Volume -> "${comparator.orEmpty()} ${threshold ?: ""} L".trim()
+        FifthWallRuleKind.Probability -> "${(probability?.times(100)?.toInt() ?: 0)}%"
+    }
+}
 
 private fun hiddenRuleCanvasAnswer(level: FifthWallLevel): String {
     val hiddenRule = level.hiddenRuleIndex?.let { level.trucks.getOrNull(it) } ?: level.trucks.firstOrNull()

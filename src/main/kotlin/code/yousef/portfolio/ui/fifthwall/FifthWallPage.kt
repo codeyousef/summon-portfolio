@@ -1,5 +1,7 @@
 package code.yousef.portfolio.ui.fifthwall
 
+import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.ui.components.AppHeader
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
@@ -24,6 +26,11 @@ internal fun FifthWallPage(
     }
 
     FifthWallScaffold {
+        AppHeader(
+            locale = PortfolioLocale.EN,
+            forceNativeLinks = true,
+            forcePortfolioAnchors = true
+        )
         Box(modifier = Modifier().className("fw-root is-canvas-only")) {
             Box(modifier = Modifier().className("fw-stage is-canvas-only")) {
                 Box(modifier = Modifier().className("fw-primary is-canvas-only")) {
