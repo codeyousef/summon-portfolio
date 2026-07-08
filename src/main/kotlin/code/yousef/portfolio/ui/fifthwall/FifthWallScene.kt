@@ -166,11 +166,11 @@ private fun fifthWallSceneEventHandlers(
     val handlers = mutableListOf<SigilSceneEventHandler>()
 
     state.queue.forEach { pkg ->
-        handlers += reloadingSceneEventHandler(
+        handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = "package:${pkg.id}"),
             onEvent = { controller.selectPackage(pkg.id) }
         )
-        handlers += reloadingSceneEventHandler(
+        handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = consoleFocusInteractionId(pkg.id)),
             onEvent = { controller.selectPackage(pkg.id) }
         )
@@ -246,6 +246,16 @@ private fun reloadingSceneEventHandler(
         match = match,
         onEvent = onEvent,
         reloadOnSuccess = true
+    )
+
+private fun patchingSceneEventHandler(
+    match: SigilSceneEventMatch,
+    onEvent: () -> Unit
+): SigilSceneEventHandler =
+    SigilSceneEventHandler(
+        match = match,
+        onEvent = onEvent,
+        reloadOnSuccess = false
     )
 
 private fun promptSceneEventHandlers(
@@ -398,10 +408,21 @@ private fun fifthWallScenePatch(
         )
     )
     nodes += SceneNodePatch(id = "repair-wrench", visible = state.wrenchVisible)
+    nodes += manifestPatchNodes(focusedPackage = state.focusPackage())
     nodes += consolePatchNodes(level = level, state = state, renderedPackageIds = renderedPackageIds)
 
     return ScenePatch(nodes)
 }
+
+private fun manifestPatchNodes(focusedPackage: FifthWallPackage?): List<SceneNodePatch> =
+    listOf(
+        SceneNodePatch(id = "canvas-manifest-color", label = focusedPackage?.color?.name?.uppercase() ?: "--"),
+        SceneNodePatch(id = "canvas-manifest-shape", label = focusedPackage?.shape?.canvasShapeLabel() ?: "--"),
+        SceneNodePatch(id = "canvas-manifest-weight", label = focusedPackage?.weight?.let { "$it KG" } ?: "--"),
+        SceneNodePatch(id = "canvas-manifest-volume", label = focusedPackage?.volume?.let { "$it L" } ?: "--"),
+        SceneNodePatch(id = "canvas-manifest-pattern", label = focusedPackage?.pattern?.uppercase() ?: "--"),
+        SceneNodePatch(id = "canvas-manifest-destination", label = focusedPackage?.destination?.uppercase() ?: "--")
+    )
 
 private fun consolePatchNodes(
     level: FifthWallLevel,

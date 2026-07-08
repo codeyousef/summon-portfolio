@@ -142,6 +142,8 @@ class HydrationTest {
             body.contains("\"type\":\"pointerdown\",\"interactionId\":\"package:"),
             "Package focus should not reload the page when a camera drag starts over a package"
         )
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "package:", reloadOnSuccess = false)
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "console-focus:", reloadOnSuccess = false)
         assertFalse(body.contains("\"drag\":{\"enabled\":true"), "Packages should not steal camera drags")
         assertTrue(body.contains("\"dropTarget\":{\"enabled\":true"), "Routing targets should declare Sigil drop-target metadata")
         assertTrue(body.contains("\"kind\":\"pulse\""), "Scene should declare Sigil animation metadata")
@@ -263,5 +265,25 @@ class HydrationTest {
         val match = Regex(""""text":"DONE ([^"]+)"""").find(window)
         assertTrue(match != null, "Should serialize processed stat text")
         return match.groupValues[1]
+    }
+
+    private fun assertSceneClickHandlerReload(
+        body: String,
+        interactionIdPrefix: String,
+        reloadOnSuccess: Boolean
+    ) {
+        val actionsJson = Regex(
+            """<script type="application/json" id="fifth-wall-scene-actions">(.*?)</script>""",
+            setOf(RegexOption.DOT_MATCHES_ALL)
+        ).find(body)?.groupValues?.get(1)
+        assertTrue(actionsJson != null, "Should serialize Fifth Wall scene action handlers")
+
+        val handlerPattern = Regex(
+            """"match":\{[^}]*"type":"click"[^}]*"interactionId":"${Regex.escape(interactionIdPrefix)}[^"]*"[^}]*}[^}]*"reloadOnSuccess":$reloadOnSuccess"""
+        )
+        assertTrue(
+            handlerPattern.containsMatchIn(actionsJson),
+            "Click handler for $interactionIdPrefix should serialize reloadOnSuccess=$reloadOnSuccess"
+        )
     }
 }
