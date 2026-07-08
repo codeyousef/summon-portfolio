@@ -96,6 +96,20 @@ class HydrationTest {
     }
 
     @Test
+    fun `should serve Fifth Wall control font asset`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/static/fifth-wall-control-font.json"))
+            .GET()
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode())
+        assertTrue(response.body().contains("\"familyName\": \"Fifth Wall Control\""), "Should serve the game text font")
+        assertTrue(response.body().contains("\"glyphs\""), "Should include vector glyph outlines")
+    }
+
+    @Test
     fun `fifth wall serves Materia Sigil scene shell`() {
         val request = HttpRequest.newBuilder()
             .uri(URI.create("$baseUrl/fifth-wall?action=start"))
@@ -121,9 +135,10 @@ class HydrationTest {
         assertTrue(body.contains("\"kind\":\"pulse\""), "Scene should declare Sigil animation metadata")
         assertTrue(body.contains("\"type\":\"text\""), "Scene should serialize in-canvas Sigil text labels")
         assertTrue(body.contains("\"facingMode\":\"BILLBOARD\""), "Target labels should face the camera as Sigil billboards")
-        assertTrue(body.contains("FOCUSED P1"), "Focus controls should be visible in-scene text controls")
-        assertTrue(body.contains("TRUCK A"), "Truck controls should have visible in-scene text labels")
-        assertTrue(body.contains("RETURN BIN"), "Return control should have a visible in-scene text label")
+        assertTrue(body.contains("\"fontUrl\":\"/static/fifth-wall-control-font.json\""), "Fifth Wall text should use the readable game font")
+        assertTrue(body.contains("\"text\":\"P1\""), "Focus controls should be visible in-scene text controls")
+        assertTrue(body.contains("\"text\":\"A\""), "Truck controls should have visible in-scene text labels")
+        assertTrue(body.contains("\"text\":\"BIN\""), "Return control should have a visible in-scene text label")
         assertTrue(body.contains("text-control"), "Clickable control words should expose Sigil interaction metadata")
         assertFalse(body.contains("id=\"fifth-wall-game-root\""), "Should not expose the temporary client game mount")
         assertFalse(body.contains("model-viewer.min.js"), "Should not load model-viewer")

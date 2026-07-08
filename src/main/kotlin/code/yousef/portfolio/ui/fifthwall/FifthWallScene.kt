@@ -63,6 +63,7 @@ private const val ROUTE_PAD_RETURN_ID = "route-pad-return"
 private const val RESET_PAD_ID = "reset-shift-pad"
 private val CONTROL_PAD_HIDDEN_POSITION = listOf(0f, -6f, 0f)
 private const val MODEL_ASSET_VERSION = "20260510-small-glb"
+private const val FIFTH_WALL_TEXT_FONT = "/static/fifth-wall-control-font.json"
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
     argb("#5aa9ff"),
@@ -593,18 +594,21 @@ private fun BillboardTextLabel(
     size: Float,
     color: Int,
     name: String,
-    id: String = name
+    id: String = name,
+    lineHeight: Float = 1.04f
 ) {
     SigilText(
         text = text,
         position = position,
         color = color,
         size = size,
-        depth = 0.016f,
+        depth = 0f,
         curveSegments = 5,
+        lineHeight = lineHeight,
         align = TextAlignMode.CENTER,
         baseline = TextBaselineMode.MIDDLE,
         facingMode = TextFacingMode.BILLBOARD,
+        fontUrl = FIFTH_WALL_TEXT_FONT,
         name = name,
         id = id
     )
@@ -622,18 +626,21 @@ private fun BillboardTextControl(
     hitHeight: Float,
     hitDepth: Float,
     name: String,
-    id: String = name
+    id: String = name,
+    lineHeight: Float = 1.02f
 ) {
     SigilText(
         text = text,
         position = position,
         color = color,
         size = size,
-        depth = 0.034f,
+        depth = 0f,
         curveSegments = 5,
+        lineHeight = lineHeight,
         align = TextAlignMode.CENTER,
         baseline = TextBaselineMode.MIDDLE,
         facingMode = TextFacingMode.BILLBOARD,
+        fontUrl = FIFTH_WALL_TEXT_FONT,
         interaction = routePadInteraction(
             interactionId = interactionId,
             width = hitWidth,
@@ -787,25 +794,6 @@ private fun RouteTruckPad(
             receiveShadow = false,
             name = "route-pad-truck-$index-beacon"
         )
-        BillboardTextLabel(
-            text = "ROUTE",
-            position = listOf(0f, 0.46f, -0.54f),
-            size = 0.2f,
-            color = SCENE_TEXT_MUTED,
-            name = "route-pad-truck-$index-route-label"
-        )
-        BillboardTextControl(
-            text = "TRUCK ${'A' + index}",
-            position = listOf(0f, 0.84f, 0.08f),
-            size = 0.54f,
-            color = SCENE_TEXT,
-            interactionId = consoleTruckInteractionId(index),
-            actions = listOf("route", "truck", "text-control"),
-            hitWidth = 3.35f,
-            hitHeight = 1.1f,
-            hitDepth = 1.05f,
-            name = "route-pad-truck-$index-text-control"
-        )
         ""
     }
 }
@@ -894,25 +882,6 @@ private fun RouteReturnPad(
             receiveShadow = false,
             name = "route-pad-return-beacon-cap"
         )
-        BillboardTextControl(
-            text = "RETURN BIN",
-            position = listOf(0f, 0.86f, 0.02f),
-            size = 0.4f,
-            color = SCENE_TEXT,
-            interactionId = CONSOLE_RETURN_INTERACTION_ID,
-            actions = listOf("route", "return", "text-control"),
-            hitWidth = 3.35f,
-            hitHeight = 1.05f,
-            hitDepth = 1.1f,
-            name = "route-pad-return-text-control"
-        )
-        BillboardTextLabel(
-            text = "SORT OUT",
-            position = listOf(0f, 0.46f, -0.55f),
-            size = 0.18f,
-            color = SCENE_TEXT_MUTED,
-            name = "route-pad-return-bin-label"
-        )
         ""
     }
 }
@@ -982,25 +951,6 @@ private fun ResetShiftPad() {
             castShadow = false,
             receiveShadow = false,
             name = "reset-shift-pad-warning"
-        )
-        BillboardTextControl(
-            text = "RESET",
-            position = listOf(0f, 0.6f, 0.04f),
-            size = 0.38f,
-            color = SCENE_TEXT,
-            interactionId = CONSOLE_RESET_INTERACTION_ID,
-            actions = listOf("reset", "text-control"),
-            hitWidth = 2.55f,
-            hitHeight = 0.76f,
-            hitDepth = 0.68f,
-            name = "reset-shift-pad-text-control"
-        )
-        BillboardTextLabel(
-            text = "SHIFT",
-            position = listOf(0f, 0.34f, -0.44f),
-            size = 0.18f,
-            color = SCENE_TEXT_MUTED,
-            name = "reset-shift-pad-shift-label"
         )
         ""
     }
@@ -1120,14 +1070,14 @@ private fun PackageFocusPad(
             name = "package-focus-pad-${pkg.id}-beacon"
         )
         BillboardTextControl(
-            text = if (focused) "FOCUSED P${slotIndex + 1}" else "FOCUS P${slotIndex + 1}",
-            position = listOf(0f, 1.02f, 1.06f),
-            size = if (focused) 0.36f else 0.32f,
+            text = "P${slotIndex + 1}",
+            position = listOf(0f, 1.12f, 1.04f),
+            size = if (focused) 1.0f else 0.9f,
             color = if (focused) SCENE_ACCENT else SCENE_TEXT,
             interactionId = consoleFocusInteractionId(pkg.id),
             actions = listOf("focus", "package", "text-control"),
             hitWidth = 2.65f,
-            hitHeight = 0.86f,
+            hitHeight = 1.12f,
             hitDepth = 0.82f,
             name = "package-focus-pad-${pkg.id}-text-control"
         )
@@ -1233,11 +1183,16 @@ private fun DeliveryTruck(
             hidden = hidden,
             name = label.lowercase().replace(" ", "-")
         )
-        BillboardTextLabel(
-            text = label.uppercase(),
+        BillboardTextControl(
+            text = "${'A' + index}",
             position = listOf(0.1f, 3.72f, 0f),
-            size = 0.32f,
+            size = 0.9f,
             color = if (hidden) SCENE_TEXT_MUTED else SCENE_TEXT,
+            interactionId = consoleTruckInteractionId(index),
+            actions = listOf("route", "truck", "text-control"),
+            hitWidth = 1.25f,
+            hitHeight = 1.25f,
+            hitDepth = 1.0f,
             name = "$label-target-label".lowercase().replace(" ", "-")
         )
         if (selected) {
@@ -1349,11 +1304,16 @@ private fun ReturnBinBay(
             receiveShadow = false,
             name = "return-ring"
         )
-        BillboardTextLabel(
-            text = "RETURN BIN",
+        BillboardTextControl(
+            text = "BIN",
             position = listOf(0f, 2.52f, 0f),
-            size = 0.28f,
+            size = 0.72f,
             color = SCENE_TEXT,
+            interactionId = CONSOLE_RETURN_INTERACTION_ID,
+            actions = listOf("route", "return", "text-control"),
+            hitWidth = 1.9f,
+            hitHeight = 1.1f,
+            hitDepth = 1.1f,
             name = "return-bin-target-label"
         )
         ""
