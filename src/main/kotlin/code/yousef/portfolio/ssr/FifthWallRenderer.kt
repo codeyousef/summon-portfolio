@@ -6,7 +6,7 @@ import code.yousef.portfolio.ui.fifthwall.FifthWallPage
 import code.yousef.portfolio.ui.fifthwall.FifthWallUiState
 import codes.yousef.summon.seo.HeadScope
 
-private const val SIGIL_RUNTIME_VERSION = "0.4.2.0"
+private const val SIGIL_RUNTIME_VERSION = "0.4.2.1"
 
 class FifthWallRenderer {
 

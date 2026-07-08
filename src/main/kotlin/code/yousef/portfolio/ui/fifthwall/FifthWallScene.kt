@@ -789,21 +789,21 @@ private fun RouteTruckPad(
         )
         BillboardTextLabel(
             text = "ROUTE",
-            position = listOf(0f, 0.82f, 1.18f),
-            size = 0.18f,
+            position = listOf(0f, 0.46f, -0.54f),
+            size = 0.2f,
             color = SCENE_TEXT_MUTED,
             name = "route-pad-truck-$index-route-label"
         )
         BillboardTextControl(
             text = "TRUCK ${'A' + index}",
-            position = listOf(0f, 1.24f, 1.18f),
-            size = 0.48f,
-            color = feedback,
+            position = listOf(0f, 0.84f, 0.08f),
+            size = 0.54f,
+            color = SCENE_TEXT,
             interactionId = consoleTruckInteractionId(index),
             actions = listOf("route", "truck", "text-control"),
-            hitWidth = 2.9f,
-            hitHeight = 0.95f,
-            hitDepth = 0.78f,
+            hitWidth = 3.35f,
+            hitHeight = 1.1f,
+            hitDepth = 1.05f,
             name = "route-pad-truck-$index-text-control"
         )
         ""
@@ -895,21 +895,21 @@ private fun RouteReturnPad(
             name = "route-pad-return-beacon-cap"
         )
         BillboardTextControl(
-            text = "RETURN",
-            position = listOf(0f, 1.14f, 1.02f),
-            size = 0.44f,
-            color = feedback,
+            text = "RETURN BIN",
+            position = listOf(0f, 0.86f, 0.02f),
+            size = 0.4f,
+            color = SCENE_TEXT,
             interactionId = CONSOLE_RETURN_INTERACTION_ID,
             actions = listOf("route", "return", "text-control"),
-            hitWidth = 2.95f,
-            hitHeight = 0.9f,
-            hitDepth = 0.8f,
+            hitWidth = 3.35f,
+            hitHeight = 1.05f,
+            hitDepth = 1.1f,
             name = "route-pad-return-text-control"
         )
         BillboardTextLabel(
-            text = "BIN",
-            position = listOf(0f, 0.72f, 1.02f),
-            size = 0.2f,
+            text = "SORT OUT",
+            position = listOf(0f, 0.46f, -0.55f),
+            size = 0.18f,
             color = SCENE_TEXT_MUTED,
             name = "route-pad-return-bin-label"
         )
@@ -985,9 +985,9 @@ private fun ResetShiftPad() {
         )
         BillboardTextControl(
             text = "RESET",
-            position = listOf(0f, 0.78f, 0.78f),
-            size = 0.36f,
-            color = SCENE_DANGER,
+            position = listOf(0f, 0.6f, 0.04f),
+            size = 0.38f,
+            color = SCENE_TEXT,
             interactionId = CONSOLE_RESET_INTERACTION_ID,
             actions = listOf("reset", "text-control"),
             hitWidth = 2.55f,
@@ -997,7 +997,7 @@ private fun ResetShiftPad() {
         )
         BillboardTextLabel(
             text = "SHIFT",
-            position = listOf(0f, 0.42f, 0.78f),
+            position = listOf(0f, 0.34f, -0.44f),
             size = 0.18f,
             color = SCENE_TEXT_MUTED,
             name = "reset-shift-pad-shift-label"
@@ -1121,14 +1121,14 @@ private fun PackageFocusPad(
         )
         BillboardTextControl(
             text = if (focused) "FOCUSED P${slotIndex + 1}" else "FOCUS P${slotIndex + 1}",
-            position = listOf(0f, 0.92f, 0.82f),
-            size = if (focused) 0.34f else 0.3f,
+            position = listOf(0f, 1.02f, 1.06f),
+            size = if (focused) 0.36f else 0.32f,
             color = if (focused) SCENE_ACCENT else SCENE_TEXT,
             interactionId = consoleFocusInteractionId(pkg.id),
             actions = listOf("focus", "package", "text-control"),
             hitWidth = 2.65f,
-            hitHeight = 0.72f,
-            hitDepth = 0.62f,
+            hitHeight = 0.86f,
+            hitDepth = 0.82f,
             name = "package-focus-pad-${pkg.id}-text-control"
         )
         ""

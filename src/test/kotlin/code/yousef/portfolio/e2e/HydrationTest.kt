@@ -111,7 +111,7 @@ class HydrationTest {
         assertTrue(body.contains("warehouse-bay-shell-kit"), "Should render the warehouse GLTF scene content")
         assertTrue(body.contains("conveyor-deck"), "Should render the conveyor as scene content")
         assertTrue(body.contains("delivery-truck"), "Should render trucks as scene content")
-        assertTrue(body.contains("/sigil-hydration.js?v=0.4.2.0"), "Should load the Sigil 0.4.2 runtime")
+        assertTrue(body.contains("/sigil-hydration.js?v=0.4.2.1"), "Should load the Sigil 0.4.2.1 runtime")
         assertTrue(body.contains("\"interactionId\":\"package:"), "Packages should expose Sigil interaction IDs")
         assertTrue(body.contains("\"interactionId\":\"truck:0\""), "Trucks should expose Sigil drop-target interaction IDs")
         assertTrue(body.contains("\"interactionId\":\"return-bin\""), "Return bin should expose a Sigil drop-target interaction ID")
