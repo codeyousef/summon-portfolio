@@ -61,6 +61,8 @@ private const val CONSOLE_RETURN_INTERACTION_ID = "console-route-return"
 private const val CONSOLE_RESET_INTERACTION_ID = "console-reset"
 private const val ROUTE_PAD_RETURN_ID = "route-pad-return"
 private const val RESET_PAD_ID = "reset-shift-pad"
+private const val CONSOLE_RETURN_CONTROL_ID = "dispatch-console-return-control"
+private const val CONSOLE_RESET_CONTROL_ID = "dispatch-console-reset-control"
 private val CONTROL_PAD_HIDDEN_POSITION = listOf(0f, -6f, 0f)
 private const val MODEL_ASSET_VERSION = "20260510-small-glb"
 private const val FIFTH_WALL_TEXT_FONT = "/static/fifth-wall-control-font.json"
@@ -74,6 +76,10 @@ private val TRUCK_COLOR_FALLBACKS = listOf(
 )
 
 private fun uniformScale(value: Float): List<Float> = listOf(value, value, value)
+
+// Materia 0.4.1 scales positioned glyph offsets twice; compensate until the renderer fixes it.
+private fun meshTextLetterSpacing(size: Float): Float =
+    (620_000f / size) - 620f
 
 @Composable
 internal fun FifthWallScene(
@@ -133,6 +139,7 @@ internal fun FifthWallScene(
         WarehouseShell()
         RoutingGuides(level = level, state = state)
         RouteControlPads(level = level, state = state)
+        DispatchConsoleControls(level = level, state = state)
         ConveyorDeck(level = level, state = state)
         TruckBay(level = level, state = state)
         ReturnBinBay(
@@ -342,6 +349,16 @@ private fun consolePatchNodes(
                 intensity = if (focused) 0.88f else 0.28f
             )
         )
+        nodes += SceneNodePatch(
+            id = consoleFocusControlId(packageId),
+            position = if (visible) consoleFocusControlPosition(visibleIndex) else CONTROL_PAD_HIDDEN_POSITION,
+            visible = visible,
+            highlight = HighlightPatch(
+                active = focused,
+                color = SCENE_ACCENT,
+                intensity = if (focused) 0.9f else 0.22f
+            )
+        )
     }
 
     state.activeTrucks(level).forEachIndexed { index, rule ->
@@ -359,6 +376,18 @@ private fun consolePatchNodes(
                 intensity = if (selected) 0.9f else 0.3f
             )
         )
+        nodes += SceneNodePatch(
+            id = consoleRouteTruckControlId(index),
+            highlight = HighlightPatch(
+                active = selected,
+                color = routeFeedbackColor(
+                    selected = selected,
+                    routeAccepted = state.lastRouteAccepted,
+                    fallback = truckColor(index, rule)
+                ),
+                intensity = if (selected) 0.92f else 0.24f
+            )
+        )
     }
 
     val returnSelected = state.lastRouteTarget == "Return Bin"
@@ -372,6 +401,18 @@ private fun consolePatchNodes(
                 fallback = SCENE_WARM
             ),
             intensity = if (returnSelected) 0.92f else 0.34f
+        )
+    )
+    nodes += SceneNodePatch(
+        id = CONSOLE_RETURN_CONTROL_ID,
+        highlight = HighlightPatch(
+            active = returnSelected,
+            color = routeFeedbackColor(
+                selected = returnSelected,
+                routeAccepted = state.lastRouteAccepted,
+                fallback = SCENE_WARM
+            ),
+            intensity = if (returnSelected) 0.92f else 0.24f
         )
     )
 
@@ -604,6 +645,7 @@ private fun BillboardTextLabel(
         size = size,
         depth = 0f,
         curveSegments = 5,
+        letterSpacing = meshTextLetterSpacing(size),
         lineHeight = lineHeight,
         align = TextAlignMode.CENTER,
         baseline = TextBaselineMode.MIDDLE,
@@ -636,6 +678,7 @@ private fun BillboardTextControl(
         size = size,
         depth = 0f,
         curveSegments = 5,
+        letterSpacing = meshTextLetterSpacing(size),
         lineHeight = lineHeight,
         align = TextAlignMode.CENTER,
         baseline = TextBaselineMode.MIDDLE,
@@ -679,6 +722,200 @@ private fun RouteControlPads(
         routeAccepted = if (state.lastRouteTarget == "Return Bin") state.lastRouteAccepted else null
     )
     ResetShiftPad()
+}
+
+@Composable
+private fun DispatchConsoleControls(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    val visibleIds = state.visiblePackages().map { it.id }
+    val focusedId = state.focusPackage()?.id
+    val trucks = state.activeTrucks(level)
+
+    state.queue.forEach { pkg ->
+        val visibleIndex = visibleIds.indexOf(pkg.id)
+        val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
+        val focused = visible && pkg.id == focusedId
+        DispatchConsoleControl(
+            text = "FOCUS P${visibleIndex.coerceAtLeast(0) + 1}",
+            position = if (visible) consoleFocusControlPosition(visibleIndex) else CONTROL_PAD_HIDDEN_POSITION,
+            color = if (focused) SCENE_ACCENT else argb(pkg.color.hex),
+            textColor = SCENE_TEXT,
+            interactionId = consoleFocusInteractionId(pkg.id),
+            actions = listOf("focus", "package", "text-control"),
+            selected = focused,
+            width = 2.65f,
+            depth = 1.28f,
+            textSize = 0.27f,
+            visible = visible,
+            name = "dispatch-console-focus-p${visibleIndex.coerceAtLeast(0) + 1}",
+            id = consoleFocusControlId(pkg.id)
+        )
+    }
+
+    BillboardTextLabel(
+        text = "INSPECT",
+        position = listOf(4.25f, 2.62f, -2.5f),
+        size = 0.38f,
+        color = SCENE_ACCENT,
+        name = "dispatch-console-inspect-title"
+    )
+    BillboardTextLabel(
+        text = "COMPARE",
+        position = listOf(4.55f, 2.62f, 0.7f),
+        size = 0.36f,
+        color = SCENE_TEXT,
+        name = "dispatch-console-compare-title"
+    )
+    val routeCount = trucks.size + 1
+    trucks.forEachIndexed { index, rule ->
+        val label = "Truck ${'A' + index}"
+        val selected = state.lastRouteTarget == label
+        val feedback = routeFeedbackColor(
+            selected = selected,
+            routeAccepted = state.lastRouteAccepted,
+            fallback = truckColor(index, rule)
+        )
+        DispatchConsoleControl(
+            text = "TRUCK ${'A' + index}",
+            position = consoleRouteControlPosition(index, routeCount),
+            color = feedback,
+            textColor = if (level.hiddenRuleIndex == index && !state.hiddenRuleRevealed && !state.ruleShifted) {
+                SCENE_TEXT_MUTED
+            } else {
+                SCENE_TEXT
+            },
+            interactionId = consoleTruckInteractionId(index),
+            actions = listOf("route", "truck", "text-control"),
+            selected = selected,
+            width = 2.65f,
+            depth = 1.32f,
+            textSize = 0.3f,
+            visible = true,
+            name = "dispatch-console-route-truck-${'A' + index}",
+            id = consoleRouteTruckControlId(index)
+        )
+    }
+    val returnSelected = state.lastRouteTarget == "Return Bin"
+    DispatchConsoleControl(
+        text = "RETURN",
+        position = consoleRouteControlPosition(trucks.size, routeCount),
+        color = routeFeedbackColor(
+            selected = returnSelected,
+            routeAccepted = state.lastRouteAccepted,
+            fallback = SCENE_WARM
+        ),
+        textColor = SCENE_TEXT,
+        interactionId = CONSOLE_RETURN_INTERACTION_ID,
+        actions = listOf("route", "return", "text-control"),
+        selected = returnSelected,
+        width = 2.65f,
+        depth = 1.32f,
+        textSize = 0.3f,
+        visible = true,
+        name = "dispatch-console-return-bin",
+        id = CONSOLE_RETURN_CONTROL_ID
+    )
+    DispatchConsoleControl(
+        text = "RESET",
+        position = listOf(-4.9f, 2.75f, 2.9f),
+        color = SCENE_DANGER,
+        textColor = SCENE_TEXT,
+        interactionId = CONSOLE_RESET_INTERACTION_ID,
+        actions = listOf("reset", "text-control"),
+        selected = false,
+        width = 2.45f,
+        depth = 1.08f,
+        textSize = 0.34f,
+        visible = true,
+        name = "dispatch-console-reset",
+        id = CONSOLE_RESET_CONTROL_ID
+    )
+}
+
+@Composable
+private fun DispatchConsoleControl(
+    text: String,
+    position: List<Float>,
+    color: Int,
+    textColor: Int,
+    interactionId: String,
+    actions: List<String>,
+    selected: Boolean,
+    width: Float,
+    depth: Float,
+    textSize: Float,
+    visible: Boolean,
+    name: String,
+    id: String
+) {
+    SigilGroup(
+        position = position,
+        visible = visible,
+        name = name,
+        interaction = routePadInteraction(
+            interactionId = interactionId,
+            width = width,
+            depth = depth,
+            actions = actions,
+            height = 1.72f,
+            centerY = 0.72f
+        ),
+        animations = listOf(targetPulseAnimation("$id-press", 120)),
+        id = id
+    ) {
+        SigilBox(
+            width = width,
+            height = if (selected) 0.18f else 0.12f,
+            depth = depth,
+            position = listOf(0f, 0.06f, 0f),
+            color = argb("#0a1320"),
+            metalness = 0.34f,
+            roughness = 0.58f,
+            castShadow = false,
+            receiveShadow = true,
+            name = "$name-base"
+        )
+        SigilBox(
+            width = width * 0.78f,
+            height = 0.09f,
+            depth = 0.13f,
+            position = listOf(0f, 0.17f, -depth * 0.34f),
+            color = color,
+            metalness = 0.44f,
+            roughness = 0.28f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-led"
+        )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 0.43f, outerRadius = 0.56f, radialSegments = 42),
+            position = listOf(-width * 0.34f, 0.22f, depth * 0.2f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = color,
+            metalness = 0.72f,
+            roughness = 0.14f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-ring"
+        )
+        BillboardTextControl(
+            text = text,
+            position = listOf(0.08f, 0.66f, 0.03f),
+            size = textSize,
+            color = textColor,
+            interactionId = interactionId,
+            actions = actions,
+            hitWidth = width,
+            hitHeight = 1.28f,
+            hitDepth = depth,
+            name = "$name-text-control",
+            lineHeight = 1.14f
+        )
+        ""
+    }
 }
 
 @Composable
@@ -977,7 +1214,6 @@ private fun ConveyorDeck(
                 pkg = pkg,
                 position = if (visible) packageFocusPadPosition(visibleIndex) else CONTROL_PAD_HIDDEN_POSITION,
                 visible = visible,
-                slotIndex = visibleIndex.coerceAtLeast(0),
                 focused = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
             )
         }
@@ -1004,7 +1240,6 @@ private fun PackageFocusPad(
     pkg: FifthWallPackage,
     position: List<Float>,
     visible: Boolean,
-    slotIndex: Int,
     focused: Boolean
 ) {
     val color = argb(pkg.color.hex)
@@ -1069,18 +1304,6 @@ private fun PackageFocusPad(
             receiveShadow = false,
             name = "package-focus-pad-${pkg.id}-beacon"
         )
-        BillboardTextControl(
-            text = "P${slotIndex + 1}",
-            position = listOf(0f, 1.12f, 1.04f),
-            size = if (focused) 1.0f else 0.9f,
-            color = if (focused) SCENE_ACCENT else SCENE_TEXT,
-            interactionId = consoleFocusInteractionId(pkg.id),
-            actions = listOf("focus", "package", "text-control"),
-            hitWidth = 2.65f,
-            hitHeight = 1.12f,
-            hitDepth = 0.82f,
-            name = "package-focus-pad-${pkg.id}-text-control"
-        )
         ""
     }
 }
@@ -1090,6 +1313,15 @@ private fun packageBeltPosition(index: Int): List<Float> =
 
 private fun packageFocusPadPosition(index: Int): List<Float> =
     listOf(-4.9f + (index * 3.2f), 2.2f, 0f)
+
+private fun consoleFocusControlPosition(index: Int): List<Float> =
+    listOf(-3.25f + (index * 2.45f), 2.75f, 1.25f)
+
+private fun consoleRouteControlPosition(index: Int, count: Int): List<Float> {
+    val spacing = if (count <= 3) 2.65f else 2.25f
+    val origin = -((count - 1) * spacing) / 2f
+    return listOf(origin + (index * spacing) + 0.35f, 2.75f, 2.9f)
+}
 
 private fun packageScale(enlarged: Boolean, emphasized: Boolean): Float = when {
     enlarged -> 1.38f
@@ -1182,18 +1414,6 @@ private fun DeliveryTruck(
             accent = accent,
             hidden = hidden,
             name = label.lowercase().replace(" ", "-")
-        )
-        BillboardTextControl(
-            text = "${'A' + index}",
-            position = listOf(0.1f, 3.72f, 0f),
-            size = 0.9f,
-            color = if (hidden) SCENE_TEXT_MUTED else SCENE_TEXT,
-            interactionId = consoleTruckInteractionId(index),
-            actions = listOf("route", "truck", "text-control"),
-            hitWidth = 1.25f,
-            hitHeight = 1.25f,
-            hitDepth = 1.0f,
-            name = "$label-target-label".lowercase().replace(" ", "-")
         )
         if (selected) {
             SigilMesh(
@@ -1303,18 +1523,6 @@ private fun ReturnBinBay(
             castShadow = false,
             receiveShadow = false,
             name = "return-ring"
-        )
-        BillboardTextControl(
-            text = "BIN",
-            position = listOf(0f, 2.52f, 0f),
-            size = 0.72f,
-            color = SCENE_TEXT,
-            interactionId = CONSOLE_RETURN_INTERACTION_ID,
-            actions = listOf("route", "return", "text-control"),
-            hitWidth = 1.9f,
-            hitHeight = 1.1f,
-            hitDepth = 1.1f,
-            name = "return-bin-target-label"
         )
         ""
     }
@@ -1763,9 +1971,13 @@ private fun fifthWallModelUrl(fileName: String): String {
 
 private fun packageFocusPadId(packageId: String): String = "package-focus-pad-$packageId"
 
+private fun consoleFocusControlId(packageId: String): String = "dispatch-console-focus-$packageId"
+
 private fun consoleFocusInteractionId(packageId: String): String = "console-focus:$packageId"
 
 private fun routePadTruckId(index: Int): String = "route-pad-truck-$index"
+
+private fun consoleRouteTruckControlId(index: Int): String = "dispatch-console-route-truck-$index"
 
 private fun consoleTruckInteractionId(index: Int): String = "console-route-truck:$index"
 
