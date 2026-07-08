@@ -19,8 +19,6 @@ import codes.yousef.sigil.schema.TextBaselineMode
 import codes.yousef.sigil.schema.TextFacingMode
 import codes.yousef.sigil.summon.canvas.MateriaCanvas
 import codes.yousef.sigil.summon.canvas.SceneConfig
-import codes.yousef.sigil.summon.canvas.SigilDomPatch
-import codes.yousef.sigil.summon.canvas.SigilDomPatchMode
 import codes.yousef.sigil.summon.canvas.SigilSceneEventCallbackResponse
 import codes.yousef.sigil.summon.canvas.SigilSceneEventHandler
 import codes.yousef.sigil.summon.canvas.SigilSceneEventMatch
@@ -61,6 +59,11 @@ private const val ROUTE_PAD_RETURN_ID = "route-pad-return"
 private const val RESET_PAD_ID = "reset-shift-pad"
 private const val CONSOLE_RETURN_CONTROL_ID = "dispatch-console-return-control"
 private const val CONSOLE_RESET_CONTROL_ID = "dispatch-console-reset-control"
+private const val PROMPT_START_INTERACTION_ID = "prompt:start"
+private const val PROMPT_NEXT_INTERACTION_ID = "prompt:next"
+private const val PROMPT_RESET_INTERACTION_ID = "prompt:reset"
+private const val PROMPT_DISCUSSION_INTERACTION_ID = "prompt:discussion:resume"
+private const val PROMPT_RULE_ANSWER_INTERACTION_ID = "prompt:rule:answer"
 private val CONTROL_PAD_HIDDEN_POSITION = listOf(0f, -6f, 0f)
 private const val MODEL_ASSET_VERSION = "20260510-small-glb"
 private const val FIFTH_WALL_TEXT_FONT = "/static/fifth-wall-control-font.json"
@@ -149,6 +152,11 @@ internal fun FifthWallScene(
         if (state.wrenchVisible) {
             WrenchProp(visible = true)
         }
+        InCanvasGameUi(
+            level = level,
+            state = state,
+            focusedPackage = focusedPackage
+        )
         ""
     }
 }
@@ -159,80 +167,148 @@ private fun fifthWallSceneEventHandlers(
     state: FifthWallUiState
 ): List<SigilSceneEventHandler> {
     val handlers = mutableListOf<SigilSceneEventHandler>()
-    val renderedPackageIds = state.queue.map { it.id }
-    val patchResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
 
     state.queue.forEach { pkg ->
-        handlers += SigilSceneEventHandler(
+        handlers += reloadingSceneEventHandler(
             match = SigilSceneEventMatch(type = "pointerdown", interactionId = "package:${pkg.id}"),
-            onEvent = { controller.selectPackage(pkg.id) },
-            onResponse = patchResponse
+            onEvent = { controller.selectPackage(pkg.id) }
         )
-        handlers += SigilSceneEventHandler(
+        handlers += reloadingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = consoleFocusInteractionId(pkg.id)),
-            onEvent = { controller.selectPackage(pkg.id) },
-            onResponse = patchResponse
+            onEvent = { controller.selectPackage(pkg.id) }
         )
     }
 
     state.activeTrucks(level).forEachIndexed { index, _ ->
-        handlers += SigilSceneEventHandler(
+        handlers += reloadingSceneEventHandler(
             match = SigilSceneEventMatch(
                 type = "drop",
                 sourceInteractionIdPrefix = "package:",
                 targetInteractionId = "truck:$index",
                 accepted = true
             ),
-            onEvent = { controller.routeToTruck(index) },
-            onResponse = patchResponse
+            onEvent = { controller.routeToTruck(index) }
         )
-        handlers += SigilSceneEventHandler(
+        handlers += reloadingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = consoleTruckInteractionId(index)),
-            onEvent = { controller.routeToTruck(index) },
-            onResponse = patchResponse
+            onEvent = { controller.routeToTruck(index) }
         )
     }
 
-    handlers += SigilSceneEventHandler(
+    handlers += reloadingSceneEventHandler(
         match = SigilSceneEventMatch(
             type = "drop",
             sourceInteractionIdPrefix = "package:",
             targetInteractionId = "return-bin",
             accepted = true
         ),
-        onEvent = controller::routeToReturn,
-        onResponse = patchResponse
+        onEvent = controller::routeToReturn
     )
-    handlers += SigilSceneEventHandler(
+    handlers += reloadingSceneEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RETURN_INTERACTION_ID),
-        onEvent = controller::routeToReturn,
-        onResponse = patchResponse
+        onEvent = controller::routeToReturn
     )
-    handlers += SigilSceneEventHandler(
+    handlers += reloadingSceneEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RESET_INTERACTION_ID),
-        onEvent = controller::reset,
-        onResponse = patchResponse
+        onEvent = controller::reset
     )
 
-    handlers += SigilSceneEventHandler(
+    handlers += reloadingSceneEventHandler(
         match = SigilSceneEventMatch(
             type = "drop",
             sourceInteractionIdPrefix = "package:",
             targetInteractionId = "inspection-dock",
             accepted = true
         ),
-        onEvent = { controller.state.value.selectedPackageId?.let(controller::selectPackage) },
-        onResponse = patchResponse
+        onEvent = { controller.state.value.selectedPackageId?.let(controller::selectPackage) }
     )
 
-    handlers += SigilSceneEventHandler(
+    handlers += reloadingSceneEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = "repair-wrench"),
-        onEvent = controller::repairGlitch,
-        onResponse = patchResponse
+        onEvent = controller::repairGlitch
     )
+
+    handlers += promptSceneEventHandlers(controller, level, state)
 
     return handlers
 }
+
+private fun reloadingSceneEventHandler(
+    match: SigilSceneEventMatch,
+    onEvent: () -> Unit
+): SigilSceneEventHandler =
+    SigilSceneEventHandler(
+        match = match,
+        onEvent = onEvent,
+        reloadOnSuccess = true
+    )
+
+private fun promptSceneEventHandlers(
+    controller: FifthWallController,
+    level: FifthWallLevel,
+    state: FifthWallUiState
+): List<SigilSceneEventHandler> =
+    when (state.prompt) {
+        FifthWallPrompt.Intro -> listOf(
+            reloadingSceneEventHandler(
+                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_START_INTERACTION_ID),
+                onEvent = controller::startShift
+            )
+        )
+
+        FifthWallPrompt.ProbabilityPrediction -> predictionChoices(level).map { value ->
+            reloadingSceneEventHandler(
+                match = SigilSceneEventMatch(type = "click", interactionId = promptPredictionInteractionId(value)),
+                onEvent = {
+                    controller.updatePredictionInput(value.toString())
+                    controller.submitPrediction()
+                }
+            )
+        }
+
+        FifthWallPrompt.TeamDiscussion -> listOf(
+            reloadingSceneEventHandler(
+                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_DISCUSSION_INTERACTION_ID),
+                onEvent = {
+                    controller.updateDiscussionReply("")
+                    controller.submitDiscussionReply()
+                }
+            )
+        )
+
+        FifthWallPrompt.RuleGuess -> listOf(
+            reloadingSceneEventHandler(
+                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_RULE_ANSWER_INTERACTION_ID),
+                onEvent = {
+                    controller.updateRuleGuess(hiddenRuleCanvasAnswer(level))
+                    controller.submitRuleGuess()
+                }
+            )
+        )
+
+        FifthWallPrompt.Confidence -> listOf("Low", "Medium", "High").map { value ->
+            reloadingSceneEventHandler(
+                match = SigilSceneEventMatch(type = "click", interactionId = promptConfidenceInteractionId(value)),
+                onEvent = { controller.recordConfidence(value) }
+            )
+        }
+
+        FifthWallPrompt.LevelComplete -> listOf(
+            reloadingSceneEventHandler(
+                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_NEXT_INTERACTION_ID),
+                onEvent = controller::advanceLevel
+            )
+        )
+
+        FifthWallPrompt.GameComplete -> listOf(
+            reloadingSceneEventHandler(
+                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_RESET_INTERACTION_ID),
+                onEvent = controller::reset
+            )
+        )
+
+        FifthWallPrompt.None -> emptyList()
+    }
 
 private fun fifthWallSceneCallbackResponse(
     controller: FifthWallController,
@@ -247,8 +323,7 @@ private fun fifthWallSceneCallbackResponse(
             level = nextLevel,
             state = nextState,
             renderedPackageIds = renderedPackageIds
-        ),
-        domPatches = fifthWallDomPatches(level = nextLevel, state = nextState)
+        )
     )
 }
 
@@ -426,34 +501,6 @@ private fun routeFeedbackColor(
     routeAccepted == false -> SCENE_DANGER
     else -> fallback
 }
-
-private fun fifthWallDomPatches(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-): List<SigilDomPatch> {
-    val focusedPackage = state.focusPackage()
-    return listOf(
-        textPatch("#fw-stat-level", "${level.id}/${FifthWallLevels.size}"),
-        textPatch("#fw-stat-score", state.score.toString()),
-        textPatch("#fw-stat-processed", "${state.processedCount(level)}/${level.packageCount}"),
-        textPatch("#fw-feedback-text", state.feedback),
-        textPatch("#fw-manifest-color", focusedPackage?.color?.name?.replaceFirstChar { it.uppercase() } ?: "--"),
-        textPatch("#fw-manifest-shape", focusedPackage?.shapeDisplayLabel() ?: "--"),
-        textPatch("#fw-manifest-weight", focusedPackage?.weight?.let { "$it kg" } ?: "--"),
-        textPatch("#fw-manifest-volume", focusedPackage?.volume?.let { "$it L" } ?: "--"),
-        textPatch("#fw-manifest-pattern", focusedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--"),
-        textPatch("#fw-manifest-destination", focusedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--"),
-        textPatch("#fw-manifest-geometry", focusedPackage?.geometry ?: "--"),
-        textPatch("#fw-manifest-label", focusedPackage?.labelText ?: "--")
-    )
-}
-
-private fun textPatch(selector: String, value: String): SigilDomPatch =
-    SigilDomPatch(
-        selector = selector,
-        text = value,
-        mode = SigilDomPatchMode.TEXT_CONTENT
-    )
 
 @Composable
 private fun WarehouseShell() {
@@ -692,6 +739,478 @@ private fun BillboardTextControl(
         name = name,
         id = id
     )
+}
+
+@Composable
+private fun InCanvasGameUi(
+    level: FifthWallLevel,
+    state: FifthWallUiState,
+    focusedPackage: FifthWallPackage?
+) {
+    CanvasProgressLabel(level = level, state = state)
+    CanvasManifestPanel(focusedPackage = focusedPackage)
+    CanvasRuleBoardPanel(level = level, state = state)
+    CanvasPromptPanel(level = level, state = state)
+}
+
+@Composable
+private fun CanvasProgressLabel(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    SigilGroup(
+        position = CONTROL_PAD_HIDDEN_POSITION,
+        visible = false,
+        name = "canvas-progress-state"
+    ) {
+        BillboardTextLabel(
+            text = "DONE ${state.processedCount(level)}/${level.packageCount}",
+            position = listOf(0f, 0f, 0f),
+            size = 0.32f,
+            color = SCENE_TEXT,
+            name = "canvas-stat-processed-value",
+            id = "canvas-stat-processed-value"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun CanvasManifestPanel(focusedPackage: FifthWallPackage?) {
+    CanvasPanel(
+        name = "canvas-manifest-panel",
+        position = listOf(6.95f, 4.8f, 5.65f),
+        width = 5.35f,
+        height = 3.45f,
+        accentColor = SCENE_ACCENT
+    ) {
+        CanvasText(
+            text = "PACKAGE MANIFEST",
+            position = listOf(-2.42f, 1.22f, 0.12f),
+            size = 0.23f,
+            color = SCENE_TEXT_MUTED,
+            name = "canvas-manifest-title"
+        )
+        val rows = listOf(
+            Triple("COLOR", focusedPackage?.color?.name?.replaceFirstChar { it.uppercase() } ?: "--", "canvas-manifest-color"),
+            Triple("SHAPE", focusedPackage?.shapeDisplayLabel() ?: "--", "canvas-manifest-shape"),
+            Triple("WEIGHT", focusedPackage?.weight?.let { "$it kg" } ?: "--", "canvas-manifest-weight"),
+            Triple("VOLUME", focusedPackage?.volume?.let { "$it L" } ?: "--", "canvas-manifest-volume"),
+            Triple("PATTERN", focusedPackage?.pattern?.replaceFirstChar { it.uppercase() } ?: "--", "canvas-manifest-pattern"),
+            Triple("DEST", focusedPackage?.destination?.replaceFirstChar { it.uppercase() } ?: "--", "canvas-manifest-destination")
+        )
+        rows.forEachIndexed { index, (label, value, id) ->
+            CanvasRow(
+                label = label,
+                value = value,
+                y = 0.78f - (index * 0.43f),
+                valueId = id
+            )
+        }
+    }
+}
+
+@Composable
+private fun CanvasRuleBoardPanel(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    CanvasPanel(
+        name = "canvas-rule-board-panel",
+        position = listOf(6.95f, 2.0f, 5.9f),
+        width = 5.35f,
+        height = 3.0f,
+        accentColor = if (state.ruleShifted) SCENE_WARM else SCENE_ACCENT
+    ) {
+        CanvasText(
+            text = "RULE BOARD",
+            position = listOf(-2.42f, 0.95f, 0.12f),
+            size = 0.23f,
+            color = SCENE_TEXT_MUTED,
+            name = "canvas-rule-board-title"
+        )
+        state.activeTrucks(level).forEachIndexed { index, rule ->
+            val revealed = level.hiddenRuleIndex != index || state.hiddenRuleRevealed || state.ruleShifted
+            CanvasText(
+                text = "TRUCK ${'A' + index}  ${rule.label(revealed)}",
+                position = listOf(-2.42f, 0.55f - (index * 0.43f), 0.12f),
+                size = 0.22f,
+                color = if (revealed) SCENE_TEXT else SCENE_TEXT_MUTED,
+                name = "canvas-rule-truck-$index",
+                lineHeight = 1.12f
+            )
+        }
+        CanvasText(
+            text = "RETURN BIN  Use when no truck rule matches.",
+            position = listOf(-2.42f, 0.32f - (state.activeTrucks(level).size * 0.43f), 0.12f),
+            size = 0.2f,
+            color = SCENE_TEXT_MUTED,
+            name = "canvas-rule-return"
+        )
+    }
+}
+
+@Composable
+private fun CanvasPromptPanel(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    if (state.prompt == FifthWallPrompt.None) return
+
+    CanvasPanel(
+        name = "canvas-prompt-panel",
+        position = listOf(0f, 4.25f, 7.35f),
+        width = 8.2f,
+        height = 3.45f,
+        accentColor = SCENE_WARM
+    ) {
+        CanvasText(
+            text = promptTitle(state.prompt),
+            position = listOf(-3.72f, 1.28f, 0.12f),
+            size = 0.27f,
+            color = SCENE_TEXT,
+            name = "canvas-prompt-title"
+        )
+        CanvasText(
+            text = wrapCanvasText(promptCopy(level, state), 62),
+            position = listOf(-3.72f, 0.82f, 0.12f),
+            size = 0.23f,
+            color = SCENE_TEXT,
+            name = "canvas-prompt-copy",
+            lineHeight = 1.18f
+        )
+        CanvasPromptControls(level = level, state = state)
+    }
+}
+
+@Composable
+private fun CanvasPromptControls(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+) {
+    when (state.prompt) {
+        FifthWallPrompt.Intro -> {
+            CanvasButton(
+                text = "ENTER BAY",
+                position = listOf(-2.72f, -1.08f, 0.16f),
+                width = 2.1f,
+                height = 0.48f,
+                interactionId = PROMPT_START_INTERACTION_ID,
+                name = "canvas-prompt-start"
+            )
+        }
+
+        FifthWallPrompt.ProbabilityPrediction -> {
+            predictionChoices(level).forEachIndexed { index, value ->
+                CanvasButton(
+                    text = "$value/${level.packageCount}",
+                    position = listOf(-2.72f + (index * 1.9f), -1.08f, 0.16f),
+                    width = 1.55f,
+                    height = 0.48f,
+                    interactionId = promptPredictionInteractionId(value),
+                    name = "canvas-prompt-prediction-$value"
+                )
+            }
+        }
+
+        FifthWallPrompt.TeamDiscussion -> {
+            CanvasButton(
+                text = "RESUME",
+                position = listOf(-2.72f, -1.08f, 0.16f),
+                width = 1.85f,
+                height = 0.48f,
+                interactionId = PROMPT_DISCUSSION_INTERACTION_ID,
+                name = "canvas-prompt-discussion"
+            )
+        }
+
+        FifthWallPrompt.RuleGuess -> {
+            CanvasButton(
+                text = "CONFIRM RULE",
+                position = listOf(-2.72f, -1.08f, 0.16f),
+                width = 2.45f,
+                height = 0.48f,
+                interactionId = PROMPT_RULE_ANSWER_INTERACTION_ID,
+                name = "canvas-prompt-rule-answer"
+            )
+            CanvasText(
+                text = hiddenRuleCanvasAnswer(level),
+                position = listOf(-0.02f, -1.15f, 0.16f),
+                size = 0.22f,
+                color = SCENE_TEXT_MUTED,
+                name = "canvas-prompt-rule-answer-preview"
+            )
+        }
+
+        FifthWallPrompt.Confidence -> {
+            listOf("Low", "Medium", "High").forEachIndexed { index, value ->
+                CanvasButton(
+                    text = value.uppercase(),
+                    position = listOf(-2.72f + (index * 1.9f), -1.08f, 0.16f),
+                    width = 1.55f,
+                    height = 0.48f,
+                    interactionId = promptConfidenceInteractionId(value),
+                    name = "canvas-prompt-confidence-${value.lowercase()}"
+                )
+            }
+        }
+
+        FifthWallPrompt.LevelComplete -> {
+            CanvasButton(
+                text = "NEXT LEVEL",
+                position = listOf(-2.72f, -1.08f, 0.16f),
+                width = 2.2f,
+                height = 0.48f,
+                interactionId = PROMPT_NEXT_INTERACTION_ID,
+                name = "canvas-prompt-next"
+            )
+        }
+
+        FifthWallPrompt.GameComplete -> {
+            CanvasButton(
+                text = "RESTART",
+                position = listOf(-2.72f, -1.08f, 0.16f),
+                width = 1.9f,
+                height = 0.48f,
+                interactionId = PROMPT_RESET_INTERACTION_ID,
+                name = "canvas-prompt-reset"
+            )
+        }
+
+        FifthWallPrompt.None -> Unit
+    }
+}
+
+@Composable
+private fun CanvasRow(
+    label: String,
+    value: String,
+    y: Float,
+    valueId: String
+) {
+    CanvasText(
+        text = label,
+        position = listOf(-2.42f, y, 0.12f),
+        size = 0.22f,
+        color = SCENE_TEXT_MUTED,
+        name = "$valueId-label"
+    )
+    CanvasText(
+        text = value,
+        position = listOf(-1.0f, y, 0.12f),
+        size = 0.23f,
+        color = SCENE_TEXT,
+        name = valueId,
+        id = valueId
+    )
+}
+
+@Composable
+private fun CanvasPanel(
+    name: String,
+    position: List<Float>,
+    width: Float,
+    height: Float,
+    accentColor: Int,
+    content: () -> Unit
+) {
+    SigilGroup(position = position, name = name, id = name) {
+        SigilBox(
+            width = width,
+            height = 0.035f,
+            depth = 0.12f,
+            position = listOf(0f, (height / 2f) - 0.035f, 0.06f),
+            color = accentColor,
+            metalness = 0.36f,
+            roughness = 0.24f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-accent"
+        )
+        content()
+        ""
+    }
+}
+
+@Composable
+private fun CanvasButton(
+    text: String,
+    position: List<Float>,
+    width: Float,
+    height: Float,
+    interactionId: String,
+    name: String,
+    color: Int = SCENE_ACCENT
+) {
+    SigilGroup(
+        position = position,
+        name = name,
+        interaction = routePadInteraction(
+            interactionId = interactionId,
+            width = width,
+            depth = 0.58f,
+            actions = listOf("prompt", "text-control"),
+            height = height,
+            centerY = 0f
+        ),
+        animations = listOf(targetPulseAnimation("$name-press", 0)),
+        id = name
+    ) {
+        SigilBox(
+            width = width,
+            height = height,
+            depth = 0.1f,
+            position = listOf(0f, 0f, 0f),
+            color = color,
+            metalness = 0.44f,
+            roughness = 0.28f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "$name-plate"
+        )
+        CanvasText(
+            text = text,
+            position = listOf(0f, 0f, 0.12f),
+            size = 0.22f,
+            color = SCENE_TEXT,
+            align = TextAlignMode.CENTER,
+            baseline = TextBaselineMode.MIDDLE,
+            name = "$name-text",
+            id = "$name-text"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun CanvasText(
+    text: String,
+    position: List<Float>,
+    size: Float,
+    color: Int,
+    name: String,
+    id: String = name,
+    align: TextAlignMode = TextAlignMode.LEFT,
+    baseline: TextBaselineMode = TextBaselineMode.TOP,
+    lineHeight: Float = 1.05f
+) {
+    SigilText(
+        text = text.uppercase(),
+        position = position,
+        color = color,
+        size = size,
+        depth = 0f,
+        curveSegments = 5,
+        letterSpacing = meshTextLetterSpacing(size.coerceAtLeast(0.3f)),
+        lineHeight = lineHeight,
+        align = align,
+        baseline = baseline,
+        facingMode = TextFacingMode.BILLBOARD,
+        fontUrl = FIFTH_WALL_TEXT_FONT,
+        name = name,
+        id = id
+    )
+}
+
+private fun promptTitle(prompt: FifthWallPrompt): String =
+    when (prompt) {
+        FifthWallPrompt.Intro -> "Courier Protocol 3D"
+        FifthWallPrompt.ProbabilityPrediction -> "Prediction Lock"
+        FifthWallPrompt.TeamDiscussion -> "Dispatch Pause"
+        FifthWallPrompt.RuleGuess -> "Name the Hidden Rule"
+        FifthWallPrompt.Confidence -> "Confidence Check"
+        FifthWallPrompt.LevelComplete -> "Shift Cleared"
+        FifthWallPrompt.GameComplete -> "All Bays Clear"
+        FifthWallPrompt.None -> ""
+    }
+
+private fun promptCopy(
+    level: FifthWallLevel,
+    state: FifthWallUiState
+): String =
+    when (state.prompt) {
+        FifthWallPrompt.Intro ->
+            "FOCUS PACKAGE\nREAD RULE BOARD\nROUTE OR RETURN"
+
+        FifthWallPrompt.ProbabilityPrediction ->
+            "TRUCK A ACCEPTS 70 PERCENT\nPICK EXPECTED PASSES"
+
+        FifthWallPrompt.TeamDiscussion ->
+            "DISPATCH PAUSE\nRESUME THE SHIFT"
+
+        FifthWallPrompt.RuleGuess ->
+            "CONFIRM THE HIDDEN TRUCK A RULE"
+
+        FifthWallPrompt.Confidence ->
+            state.pendingConfidence?.let { "${it.outcome} ON ${it.routeLabel}\nRECORD CONFIDENCE" }
+                ?: "RECORD CONFIDENCE"
+
+        FifthWallPrompt.LevelComplete ->
+            "${level.name} CLEAR\nSCORE ${state.score}"
+
+        FifthWallPrompt.GameComplete ->
+            "ALL BAYS CLEAR\nRESTART SHIFT"
+
+        FifthWallPrompt.None -> ""
+    }
+
+private fun wrapCanvasText(
+    text: String,
+    maxChars: Int
+): String =
+    text.lineSequence().joinToString("\n") { line ->
+        val words = line.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val wrapped = mutableListOf<String>()
+        var current = ""
+        words.forEach { word ->
+            val candidate = if (current.isBlank()) word else "$current $word"
+            if (candidate.length > maxChars && current.isNotBlank()) {
+                wrapped += current
+                current = word
+            } else {
+                current = candidate
+            }
+        }
+        if (current.isNotBlank()) wrapped += current
+        wrapped.joinToString("\n")
+    }
+
+private fun predictionChoices(level: FifthWallLevel): List<Int> =
+    listOf(0, (level.packageCount * 7) / 10, level.packageCount).distinct()
+
+private fun promptPredictionInteractionId(value: Int): String =
+    "prompt:prediction:$value"
+
+private fun promptConfidenceInteractionId(value: String): String =
+    "prompt:confidence:${value.lowercase()}"
+
+private fun hiddenRuleCanvasAnswer(level: FifthWallLevel): String {
+    val hiddenRule = level.hiddenRuleIndex?.let { level.trucks.getOrNull(it) } ?: level.trucks.firstOrNull()
+    return when (hiddenRule?.kind) {
+        FifthWallRuleKind.Weight ->
+            "weight ${hiddenRule.comparator ?: ">="} ${hiddenRule.threshold ?: 0}"
+
+        FifthWallRuleKind.Color ->
+            "color ${hiddenRule.value.orEmpty()}"
+
+        FifthWallRuleKind.Shape ->
+            "shape ${hiddenRule.value.orEmpty()}"
+
+        FifthWallRuleKind.Pattern ->
+            "pattern ${hiddenRule.value.orEmpty()}"
+
+        FifthWallRuleKind.Destination ->
+            "destination ${hiddenRule.value.orEmpty()}"
+
+        FifthWallRuleKind.Geometry ->
+            "geometry ${hiddenRule.value.orEmpty()}"
+
+        FifthWallRuleKind.Volume ->
+            "volume ${hiddenRule.comparator ?: ">="} ${hiddenRule.threshold ?: 0}"
+
+        FifthWallRuleKind.Probability,
+        null -> "weight >= 8"
+    }
 }
 
 @Composable

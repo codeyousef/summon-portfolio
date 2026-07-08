@@ -17,6 +17,36 @@
     gap: 24px;
 }
 
+.fw-root.is-canvas-only {
+    max-width: none;
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+}
+
+.fw-stage.is-canvas-only,
+.fw-primary.is-canvas-only {
+    min-height: 100vh;
+    gap: 0;
+}
+
+.fw-scene-shell.is-canvas-only {
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.fw-scene-shell.is-canvas-only::before {
+    display: none;
+}
+
+.fw-scene-shell.is-canvas-only #fifth-wall-scene-container {
+    min-height: 100vh;
+}
+
 .fw-topbar {
     display: flex;
     align-items: center;
@@ -1174,4 +1204,12 @@ input.fw-input:focus {
     .fw-modal-card {
         padding: 20px;
     }
+}
+
+.fw-root.is-canvas-only,
+.fw-stage.is-canvas-only,
+.fw-primary.is-canvas-only,
+.fw-scene-shell.is-canvas-only,
+.fw-scene-shell.is-canvas-only #fifth-wall-scene-container {
+    min-height: 100vh;
 }

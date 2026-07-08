@@ -137,6 +137,10 @@ class HydrationTest {
         assertTrue(body.contains("\"type\":\"text\""), "Scene should serialize in-canvas Sigil text labels")
         assertTrue(body.contains("\"facingMode\":\"BILLBOARD\""), "Target labels should face the camera as Sigil billboards")
         assertTrue(body.contains("\"fontUrl\":\"/static/fifth-wall-control-font.json\""), "Fifth Wall text should use the readable game font")
+        assertTrue(body.contains("canvas-manifest-panel"), "Manifest should be serialized as in-canvas Sigil UI")
+        assertTrue(body.contains("canvas-rule-board-panel"), "Rule board should be serialized as in-canvas Sigil UI")
+        assertTrue(body.contains("PACKAGE MANIFEST"), "Manifest text should live in the Sigil scene")
+        assertTrue(body.contains("RULE BOARD"), "Rule board text should live in the Sigil scene")
         assertTrue(body.contains("FOCUS"), "Focus controls should be visible in-scene text controls")
         assertTrue(body.contains("INSPECT"), "Inspection should have visible in-scene text labels")
         assertTrue(body.contains("COMPARE"), "Comparison guidance should be visible in-scene text labels")
@@ -144,6 +148,10 @@ class HydrationTest {
         assertTrue(body.contains("RETURN"), "Return control should have a visible in-scene text label")
         assertTrue(body.contains("RESET"), "Reset control should have a visible in-scene text label")
         assertTrue(body.contains("text-control"), "Clickable control words should expose Sigil interaction metadata")
+        assertFalse(body.contains("fw-scene-dashboard"), "Should not render a DOM dashboard overlay")
+        assertFalse(body.contains("fw-scene-hud"), "Should not render a DOM guidance overlay")
+        assertFalse(body.contains("fw-modal"), "Should not render DOM prompt modals")
+        assertFalse(body.contains("fw-stat-processed"), "Processed stat should not be a DOM overlay")
         assertFalse(body.contains("id=\"fifth-wall-game-root\""), "Should not expose the temporary client game mount")
         assertFalse(body.contains("model-viewer.min.js"), "Should not load model-viewer")
         assertFalse(body.contains("/static/fifth-wall-client-game.js"), "Should not load the temporary JS runtime")
@@ -237,11 +245,12 @@ class HydrationTest {
         )
 
     private fun fifthWallProcessedCount(body: String): String {
-        val marker = "id=\"fw-stat-processed\""
+        val marker = "\"id\":\"canvas-stat-processed-value\""
         val markerIndex = body.indexOf(marker)
-        assertTrue(markerIndex >= 0, "Should render processed stat")
-        val valueStart = body.indexOf('>', markerIndex) + 1
-        val valueEnd = body.indexOf('<', valueStart)
-        return body.substring(valueStart, valueEnd)
+        assertTrue(markerIndex >= 0, "Should render processed stat as in-canvas text")
+        val window = body.substring(markerIndex, (markerIndex + 600).coerceAtMost(body.length))
+        val match = Regex(""""text":"DONE ([^"]+)"""").find(window)
+        assertTrue(match != null, "Should serialize processed stat text")
+        return match.groupValues[1]
     }
 }
