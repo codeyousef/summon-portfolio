@@ -7,7 +7,6 @@ import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
-import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
@@ -177,7 +176,8 @@ private fun MobileLandingNavbar(branding: LandingBranding) {
             .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
         // Hamburger Menu (Left)
-        HamburgerMenu(
+        SafeHamburgerMenu(
+            menuId = "landing-mobile-menu-${branding.name.lowercase()}",
             modifier = Modifier()
                 .position(Position.Relative)
                 .width(40.px)

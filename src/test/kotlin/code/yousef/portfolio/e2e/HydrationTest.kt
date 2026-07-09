@@ -10,6 +10,8 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.URI
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -174,6 +176,36 @@ class HydrationTest {
         assertFalse(body.contains("/static/fifth-wall-sigil-hydration.js"), "Should not pin Fifth Wall to the old custom Sigil bundle")
         assertFalse(body.contains("Conveyor Queue"), "Should not render queue cards as primary website UI")
         assertFalse(body.contains("Routing Console"), "Should not render a website routing console")
+    }
+
+    @Test
+    fun `fifth wall SSR handles concurrent renders`() {
+        val executor = Executors.newFixedThreadPool(8)
+        try {
+            val futures = (1..24).map {
+                executor.submit<HttpResponse<String>> {
+                    val request = HttpRequest.newBuilder()
+                        .uri(URI.create("$baseUrl/fifth-wall?action=start"))
+                        .GET()
+                        .build()
+                    httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+                }
+            }
+
+            val responses = futures.map { it.get(20, TimeUnit.SECONDS) }
+
+            responses.forEach { response ->
+                assertEquals(200, response.statusCode())
+                assertTrue(response.body().contains("fifth-wall-scene"), "Should render the game shell")
+                assertFalse(
+                    response.body().contains("ConcurrentModificationException"),
+                    "Concurrent SSR should not corrupt Summon hydration attributes"
+                )
+                assertFalse(response.body().contains("Internal Server Error"), "Concurrent SSR should not fail")
+            }
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     @Test

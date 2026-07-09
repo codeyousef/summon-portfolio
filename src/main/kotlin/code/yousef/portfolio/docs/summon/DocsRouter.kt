@@ -4,6 +4,7 @@ import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.*
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.ui.components.SafeHamburgerMenu
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
@@ -13,7 +14,6 @@ import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
-import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
@@ -273,7 +273,8 @@ private fun MobileDocsNavbar(branding: DocsBranding, docsPath: String, apiRefere
             .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
         // Hamburger Menu (Left)
-        HamburgerMenu(
+        SafeHamburgerMenu(
+            menuId = "docs-mobile-menu-${branding.name.lowercase()}",
             modifier = Modifier()
                 .position(Position.Relative)
                 .width(40.px)

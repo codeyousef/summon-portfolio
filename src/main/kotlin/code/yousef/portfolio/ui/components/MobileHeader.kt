@@ -18,13 +18,11 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.ButtonLink
-import codes.yousef.summon.components.navigation.HamburgerMenu
 import codes.yousef.summon.components.navigation.LinkNavigationMode
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
-import codes.yousef.summon.modifier.ModifierExtras.onClick
 
 @Composable
 fun MobileHeader(
@@ -67,7 +65,8 @@ fun MobileHeader(
                     .flexWrap(FlexWrap.Wrap), // Allow wrapping so menu content can break to new line if needed
         ) {
             // Hamburger Menu (on the left)
-            HamburgerMenu(
+            SafeHamburgerMenu(
+                menuId = "portfolio-mobile-header-menu",
                 modifier =
                     Modifier()
                         .position(Position.Relative)
