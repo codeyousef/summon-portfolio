@@ -92,7 +92,12 @@ internal fun FifthWallScene(
         width = "100%",
         height = "100%",
         backgroundColor = argb(FifthWallTheme.BASE),
-        sceneEventHandlers = fifthWallSceneEventHandlers(controller, level, state)
+        sceneEventHandlers = fifthWallSceneEventHandlers(
+            controller = controller,
+            level = level,
+            state = state,
+            renderedPackageIds = state.queue.map { it.id }
+        )
     ) {
         SceneConfig(
             backgroundColor = argb(FifthWallTheme.BASE),
@@ -161,18 +166,21 @@ internal fun FifthWallScene(
 private fun fifthWallSceneEventHandlers(
     controller: FifthWallController,
     level: FifthWallLevel,
-    state: FifthWallUiState
+    state: FifthWallUiState,
+    renderedPackageIds: List<String>
 ): List<SigilSceneEventHandler> {
     val handlers = mutableListOf<SigilSceneEventHandler>()
 
     state.queue.forEach { pkg ->
         handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = "package:${pkg.id}"),
-            onEvent = { controller.selectPackage(pkg.id) }
+            onEvent = { controller.selectPackage(pkg.id) },
+            onResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
         )
         handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = consoleFocusInteractionId(pkg.id)),
-            onEvent = { controller.selectPackage(pkg.id) }
+            onEvent = { controller.selectPackage(pkg.id) },
+            onResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
         )
     }
 
@@ -250,11 +258,13 @@ private fun reloadingSceneEventHandler(
 
 private fun patchingSceneEventHandler(
     match: SigilSceneEventMatch,
-    onEvent: () -> Unit
+    onEvent: () -> Unit,
+    onResponse: () -> SigilSceneEventCallbackResponse
 ): SigilSceneEventHandler =
     SigilSceneEventHandler(
         match = match,
         onEvent = onEvent,
+        onResponse = onResponse,
         reloadOnSuccess = false
     )
 
@@ -361,7 +371,7 @@ private fun fifthWallScenePatch(
             id = "package-$packageId",
             position = if (isVisible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
             rotation = pkg?.let { packageRotation(it, visibleIndex) },
-            scale = pkg?.let { packageScaleVector(enlarged = false, emphasized = visibleIndex == 0) },
+            scale = pkg?.let { packageScaleVector(enlarged = false, emphasized = focused) },
             visible = isVisible,
             highlight = HighlightPatch(
                 active = focused,
@@ -371,7 +381,7 @@ private fun fifthWallScenePatch(
         )
         nodes += SceneNodePatch(
             id = "package-$packageId-body",
-            position = if (isVisible && pkg != null) packageBodyPosition(pkg, packageHover(enlarged = false, emphasized = visibleIndex == 0)) else null
+            position = if (isVisible && pkg != null) packageBodyPosition(pkg, packageHover(enlarged = false, emphasized = focused)) else null
         )
     }
 
@@ -408,21 +418,23 @@ private fun fifthWallScenePatch(
         )
     )
     nodes += SceneNodePatch(id = "repair-wrench", visible = state.wrenchVisible)
-    nodes += manifestPatchNodes(focusedPackage = state.focusPackage())
+    nodes += manifestPatchNodes(
+        focusedPackageId = state.focusPackage()?.id,
+        renderedPackageIds = renderedPackageIds
+    )
     nodes += consolePatchNodes(level = level, state = state, renderedPackageIds = renderedPackageIds)
 
     return ScenePatch(nodes)
 }
 
-private fun manifestPatchNodes(focusedPackage: FifthWallPackage?): List<SceneNodePatch> =
-    listOf(
-        SceneNodePatch(id = "canvas-manifest-color", label = focusedPackage?.color?.name?.uppercase() ?: "--"),
-        SceneNodePatch(id = "canvas-manifest-shape", label = focusedPackage?.shape?.canvasShapeLabel() ?: "--"),
-        SceneNodePatch(id = "canvas-manifest-weight", label = focusedPackage?.weight?.let { "$it KG" } ?: "--"),
-        SceneNodePatch(id = "canvas-manifest-volume", label = focusedPackage?.volume?.let { "$it L" } ?: "--"),
-        SceneNodePatch(id = "canvas-manifest-pattern", label = focusedPackage?.pattern?.uppercase() ?: "--"),
-        SceneNodePatch(id = "canvas-manifest-destination", label = focusedPackage?.destination?.uppercase() ?: "--")
-    )
+private fun manifestPatchNodes(
+    focusedPackageId: String?,
+    renderedPackageIds: List<String>
+): List<SceneNodePatch> =
+    listOf(SceneNodePatch(id = "canvas-manifest-values-empty", visible = focusedPackageId == null)) +
+        renderedPackageIds.map { packageId ->
+            SceneNodePatch(id = manifestValueGroupId(packageId), visible = packageId == focusedPackageId)
+        }
 
 private fun consolePatchNodes(
     level: FifthWallLevel,
@@ -786,20 +798,25 @@ private fun CanvasManifestPanel(
             color = SCENE_ACCENT,
             name = "canvas-manifest-title"
         )
-        val rows = listOf(
-            Triple("COLOR", focusedPackage?.color?.name?.uppercase() ?: "--", "canvas-manifest-color"),
-            Triple("SHAPE", focusedPackage?.shape?.canvasShapeLabel() ?: "--", "canvas-manifest-shape"),
-            Triple("WEIGHT", focusedPackage?.weight?.let { "$it KG" } ?: "--", "canvas-manifest-weight"),
-            Triple("VOLUME", focusedPackage?.volume?.let { "$it L" } ?: "--", "canvas-manifest-volume"),
-            Triple("PATTERN", focusedPackage?.pattern?.uppercase() ?: "--", "canvas-manifest-pattern"),
-            Triple("DEST", focusedPackage?.destination?.uppercase() ?: "--", "canvas-manifest-destination")
+        manifestRows(null).forEachIndexed { index, row ->
+            CanvasText(
+                text = row.label,
+                position = listOf(-2.48f, 1.52f - (index * 0.37f), 0.18f),
+                size = 0.25f,
+                color = SCENE_TEXT,
+                name = "canvas-manifest-${row.idSuffix}-label"
+            )
+        }
+        CanvasManifestValueGroup(
+            packageId = null,
+            rows = manifestRows(null),
+            visible = focusedPackage == null
         )
-        rows.forEachIndexed { index, (label, value, id) ->
-            CanvasRow(
-                label = label,
-                value = value,
-                y = 1.52f - (index * 0.37f),
-                valueId = id
+        state.queue.forEach { pkg ->
+            CanvasManifestValueGroup(
+                packageId = pkg.id,
+                rows = manifestRows(pkg),
+                visible = pkg.id == focusedPackage?.id
             )
         }
         SigilGroup(name = "canvas-rule-board-panel", id = "canvas-rule-board-panel") {
@@ -846,6 +863,46 @@ private fun CanvasManifestPanel(
         )
     }
 }
+
+private data class CanvasManifestRow(
+    val label: String,
+    val value: String,
+    val idSuffix: String
+)
+
+private fun manifestRows(pkg: FifthWallPackage?): List<CanvasManifestRow> =
+    listOf(
+        CanvasManifestRow("COLOR", pkg?.color?.name?.uppercase() ?: "--", "color"),
+        CanvasManifestRow("SHAPE", pkg?.shape?.canvasShapeLabel() ?: "--", "shape"),
+        CanvasManifestRow("WEIGHT", pkg?.weight?.let { "$it KG" } ?: "--", "weight"),
+        CanvasManifestRow("VOLUME", pkg?.volume?.let { "$it L" } ?: "--", "volume"),
+        CanvasManifestRow("PATTERN", pkg?.pattern?.uppercase() ?: "--", "pattern"),
+        CanvasManifestRow("DEST", pkg?.destination?.uppercase() ?: "--", "destination")
+    )
+
+@Composable
+private fun CanvasManifestValueGroup(
+    packageId: String?,
+    rows: List<CanvasManifestRow>,
+    visible: Boolean
+) {
+    val groupId = packageId?.let(::manifestValueGroupId) ?: "canvas-manifest-values-empty"
+    SigilGroup(name = groupId, id = groupId, visible = visible) {
+        rows.forEachIndexed { index, row ->
+            CanvasText(
+                text = row.value,
+                position = listOf(0.32f, 1.52f - (index * 0.37f), 0.18f),
+                size = 0.28f,
+                color = SCENE_TEXT,
+                name = "$groupId-${row.idSuffix}",
+                id = "$groupId-${row.idSuffix}"
+            )
+        }
+        ""
+    }
+}
+
+private fun manifestValueGroupId(packageId: String): String = "canvas-manifest-values-$packageId"
 
 @Composable
 private fun CanvasPromptPanel(
@@ -1606,7 +1663,7 @@ private fun ConveyorDeck(
                 pkg = pkg,
                 position = if (visible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
                 selected = selected,
-                emphasized = visibleIndex == 0,
+                emphasized = selected,
                 beltIndex = visibleIndex,
                 level = level,
                 visible = visible
@@ -1802,14 +1859,14 @@ private fun DeliveryTruck(
         )
         BillboardTextControl(
             text = label.uppercase(),
-            position = listOf(0.1f, 4.05f, -0.12f),
+            position = listOf(0.1f, 2.55f, -0.12f),
             size = 0.26f,
             color = if (hidden) SCENE_TEXT_MUTED else SCENE_TEXT,
             interactionId = consoleTruckInteractionId(index),
             actions = listOf("route", "truck", "text-control"),
-            hitWidth = 2.65f,
-            hitHeight = 0.95f,
-            hitDepth = 1.05f,
+            hitWidth = 1.8f,
+            hitHeight = 0.58f,
+            hitDepth = 0.72f,
             name = "truck-$index-label",
             id = "truck-$index-label",
             lineHeight = 1.06f
@@ -1925,14 +1982,14 @@ private fun ReturnBinBay(
         )
         BillboardTextControl(
             text = "RETURN",
-            position = listOf(0f, 3.15f, 0f),
+            position = listOf(0f, 2.3f, 0f),
             size = 0.28f,
             color = SCENE_TEXT,
             interactionId = CONSOLE_RETURN_INTERACTION_ID,
             actions = listOf("route", "return", "text-control"),
-            hitWidth = 2.4f,
-            hitHeight = 0.95f,
-            hitDepth = 1.05f,
+            hitWidth = 1.75f,
+            hitHeight = 0.6f,
+            hitDepth = 0.75f,
             name = "return-bin-label",
             id = "return-bin-label",
             lineHeight = 1.06f
@@ -2368,7 +2425,7 @@ private fun routePadInteraction(
         cursor = CursorHint.POINTER,
         hitVolume = boxHitVolume(width = width, height = height, depth = depth, centerY = centerY),
         actions = actions,
-        events = listOf("pointerdown", "click"),
+        events = listOf("click"),
         enabled = true,
         drag = null,
         dropTarget = null
@@ -2450,7 +2507,7 @@ private fun routingTargetInteraction(
         cursor = cursor,
         hitVolume = hitVolume,
         actions = actions + listOf("drop-target"),
-        events = listOf("pointerdown", "click", "dragenter", "dragleave", "drop"),
+        events = listOf("click", "dragenter", "dragleave", "drop"),
         enabled = true,
         drag = null,
         dropTarget = DropTargetMetadata(

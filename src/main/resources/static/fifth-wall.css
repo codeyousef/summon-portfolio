@@ -194,11 +194,33 @@
 }
 
 #fifth-wall-scene-container {
+    position: relative;
     min-height: 760px;
 }
 
 #fifth-wall-scene {
     display: block;
+}
+
+#fifth-wall-fps {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    z-index: 12;
+    min-width: 76px;
+    padding: 7px 10px;
+    border: 1px solid rgba(114, 216, 255, 0.34);
+    border-radius: 7px;
+    background: rgba(7, 12, 19, 0.72);
+    box-shadow: 0 12px 24px rgba(3, 8, 18, 0.26);
+    color: #7adfff;
+    font-family: var(--fw-font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    pointer-events: none;
+    user-select: none;
 }
 
 .fw-scene-hud {
