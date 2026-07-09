@@ -752,8 +752,11 @@ private fun InCanvasGameUi(
     focusedPackage: FifthWallPackage?
 ) {
     CanvasProgressLabel(level = level, state = state)
-    CanvasManifestPanel(level = level, state = state, focusedPackage = focusedPackage)
-    CanvasPromptPanel(level = level, state = state)
+    if (state.prompt == FifthWallPrompt.None) {
+        CanvasManifestPanel(level = level, state = state, focusedPackage = focusedPackage)
+    } else {
+        CanvasPromptPanel(level = level, state = state)
+    }
 }
 
 @Composable
@@ -786,24 +789,25 @@ private fun CanvasManifestPanel(
 ) {
     CanvasPanel(
         name = "canvas-manifest-panel",
-        position = listOf(4.9f, 3.98f, 6.05f),
-        width = 5.75f,
-        height = 5.05f,
+        position = listOf(5.4f, 5.1f, 0.35f),
+        rotation = listOf(0f, -0.42f, 0f),
+        width = 5.25f,
+        height = 4.55f,
         accentColor = SCENE_ACCENT
     ) {
         CanvasText(
             text = "MANIFEST",
-            position = listOf(-2.48f, 2.05f, 0.18f),
-            size = 0.32f,
+            position = listOf(-2.25f, 1.82f, 0.18f),
+            size = 0.34f,
             color = SCENE_ACCENT,
             name = "canvas-manifest-title"
         )
         manifestRows(null).forEachIndexed { index, row ->
             CanvasText(
                 text = row.label,
-                position = listOf(-2.48f, 1.52f - (index * 0.37f), 0.18f),
+                position = listOf(-2.25f, 1.34f - (index * 0.34f), 0.18f),
                 size = 0.25f,
-                color = SCENE_TEXT,
+                color = SCENE_TEXT_MUTED,
                 name = "canvas-manifest-${row.idSuffix}-label"
             )
         }
@@ -823,16 +827,9 @@ private fun CanvasManifestPanel(
             ""
         }
         CanvasText(
-            text = "COMPARE",
-            position = listOf(0.86f, -0.92f, 0.18f),
-            size = 0.24f,
-            color = SCENE_TEXT_MUTED,
-            name = "canvas-compare-label"
-        )
-        CanvasText(
-            text = "RULES",
-            position = listOf(-2.48f, -0.92f, 0.18f),
-            size = 0.34f,
+            text = "COMPARE RULES",
+            position = listOf(-2.25f, -0.82f, 0.18f),
+            size = 0.31f,
             color = if (state.ruleShifted) SCENE_WARM else SCENE_ACCENT,
             name = "canvas-rule-board-title"
         )
@@ -840,8 +837,8 @@ private fun CanvasManifestPanel(
             val revealed = level.hiddenRuleIndex != index || state.hiddenRuleRevealed || state.ruleShifted
             CanvasText(
                 text = "${'A' + index}  ${rule.canvasShortLabel(revealed)}",
-                position = listOf(-2.48f, -1.3f - (index * 0.34f), 0.18f),
-                size = 0.32f,
+                position = listOf(-2.25f, -1.18f - (index * 0.3f), 0.18f),
+                size = 0.27f,
                 color = if (revealed) SCENE_TEXT else SCENE_TEXT_MUTED,
                 name = "canvas-rule-truck-$index",
                 lineHeight = 1.12f
@@ -849,15 +846,15 @@ private fun CanvasManifestPanel(
         }
         CanvasText(
             text = "RET",
-            position = listOf(-2.48f, -2.02f, 0.18f),
-            size = 0.27f,
+            position = listOf(-2.25f, -1.88f, 0.18f),
+            size = 0.25f,
             color = SCENE_TEXT,
             name = "canvas-rule-return"
         )
         CanvasText(
             text = "NO MATCH",
-            position = listOf(-1.4f, -2.02f, 0.18f),
-            size = 0.24f,
+            position = listOf(-1.38f, -1.88f, 0.18f),
+            size = 0.23f,
             color = SCENE_TEXT,
             name = "canvas-rule-return-value"
         )
@@ -891,8 +888,8 @@ private fun CanvasManifestValueGroup(
         rows.forEachIndexed { index, row ->
             CanvasText(
                 text = row.value,
-                position = listOf(0.32f, 1.52f - (index * 0.37f), 0.18f),
-                size = 0.28f,
+                position = listOf(0.18f, 1.34f - (index * 0.34f), 0.18f),
+                size = 0.27f,
                 color = SCENE_TEXT,
                 name = "$groupId-${row.idSuffix}",
                 id = "$groupId-${row.idSuffix}"
@@ -913,26 +910,28 @@ private fun CanvasPromptPanel(
 
     CanvasPanel(
         name = "canvas-prompt-panel",
-        position = listOf(0f, 4.25f, 7.35f),
-        width = 8.2f,
-        height = 3.45f,
+        position = listOf(-5.5f, 5.9f, 0.4f),
+        rotation = listOf(0f, 0.48f, 0f),
+        width = 6f,
+        height = 2.55f,
         accentColor = SCENE_WARM
     ) {
         CanvasText(
             text = promptTitle(state.prompt),
-            position = listOf(-3.72f, 1.28f, 0.18f),
-            size = 0.34f,
+            position = listOf(-2.62f, 0.92f, 0.18f),
+            size = 0.32f,
             color = SCENE_TEXT,
             name = "canvas-prompt-title"
         )
-        CanvasText(
-            text = wrapCanvasText(promptCopy(level, state), 62),
-            position = listOf(-3.72f, 0.75f, 0.18f),
-            size = 0.28f,
-            color = SCENE_TEXT,
-            name = "canvas-prompt-copy",
-            lineHeight = 1.18f
-        )
+        promptCopyLines(level, state).forEachIndexed { index, line ->
+            CanvasText(
+                text = line,
+                position = listOf(-2.62f, 0.42f - (index * 0.3f), 0.18f),
+                size = 0.24f,
+                color = if (index == 0) SCENE_TEXT else SCENE_TEXT_MUTED,
+                name = "canvas-prompt-copy-$index"
+            )
+        }
         CanvasPromptControls(level = level, state = state)
     }
 }
@@ -946,9 +945,9 @@ private fun CanvasPromptControls(
         FifthWallPrompt.Intro -> {
             CanvasButton(
                 text = "ENTER BAY",
-                position = listOf(-2.72f, -1.08f, 0.16f),
-                width = 2.1f,
-                height = 0.48f,
+                position = listOf(-1.92f, -0.98f, 0.16f),
+                width = 2.0f,
+                height = 0.44f,
                 interactionId = PROMPT_START_INTERACTION_ID,
                 name = "canvas-prompt-start"
             )
@@ -958,9 +957,9 @@ private fun CanvasPromptControls(
             predictionChoices(level).forEachIndexed { index, value ->
                 CanvasButton(
                     text = "$value/${level.packageCount}",
-                    position = listOf(-2.72f + (index * 1.9f), -1.08f, 0.16f),
-                    width = 1.55f,
-                    height = 0.48f,
+                    position = listOf(-1.92f + (index * 1.65f), -0.98f, 0.16f),
+                    width = 1.4f,
+                    height = 0.44f,
                     interactionId = promptPredictionInteractionId(value),
                     name = "canvas-prompt-prediction-$value"
                 )
@@ -970,9 +969,9 @@ private fun CanvasPromptControls(
         FifthWallPrompt.TeamDiscussion -> {
             CanvasButton(
                 text = "RESUME",
-                position = listOf(-2.72f, -1.08f, 0.16f),
+                position = listOf(-1.92f, -0.98f, 0.16f),
                 width = 1.85f,
-                height = 0.48f,
+                height = 0.44f,
                 interactionId = PROMPT_DISCUSSION_INTERACTION_ID,
                 name = "canvas-prompt-discussion"
             )
@@ -981,16 +980,16 @@ private fun CanvasPromptControls(
         FifthWallPrompt.RuleGuess -> {
             CanvasButton(
                 text = "CONFIRM RULE",
-                position = listOf(-2.72f, -1.08f, 0.16f),
+                position = listOf(-1.92f, -0.98f, 0.16f),
                 width = 2.45f,
-                height = 0.48f,
+                height = 0.44f,
                 interactionId = PROMPT_RULE_ANSWER_INTERACTION_ID,
                 name = "canvas-prompt-rule-answer"
             )
             CanvasText(
                 text = hiddenRuleCanvasAnswer(level),
-                position = listOf(-0.02f, -1.15f, 0.16f),
-                size = 0.22f,
+                position = listOf(-0.42f, -1.05f, 0.16f),
+                size = 0.18f,
                 color = SCENE_TEXT_MUTED,
                 name = "canvas-prompt-rule-answer-preview"
             )
@@ -1000,9 +999,9 @@ private fun CanvasPromptControls(
             listOf("Low", "Medium", "High").forEachIndexed { index, value ->
                 CanvasButton(
                     text = value.uppercase(),
-                    position = listOf(-2.72f + (index * 1.9f), -1.08f, 0.16f),
-                    width = 1.55f,
-                    height = 0.48f,
+                    position = listOf(-1.92f + (index * 1.65f), -0.98f, 0.16f),
+                    width = 1.4f,
+                    height = 0.44f,
                     interactionId = promptConfidenceInteractionId(value),
                     name = "canvas-prompt-confidence-${value.lowercase()}"
                 )
@@ -1012,9 +1011,9 @@ private fun CanvasPromptControls(
         FifthWallPrompt.LevelComplete -> {
             CanvasButton(
                 text = "NEXT LEVEL",
-                position = listOf(-2.72f, -1.08f, 0.16f),
+                position = listOf(-1.92f, -0.98f, 0.16f),
                 width = 2.2f,
-                height = 0.48f,
+                height = 0.44f,
                 interactionId = PROMPT_NEXT_INTERACTION_ID,
                 name = "canvas-prompt-next"
             )
@@ -1023,9 +1022,9 @@ private fun CanvasPromptControls(
         FifthWallPrompt.GameComplete -> {
             CanvasButton(
                 text = "RESTART",
-                position = listOf(-2.72f, -1.08f, 0.16f),
+                position = listOf(-1.92f, -0.98f, 0.16f),
                 width = 1.9f,
-                height = 0.48f,
+                height = 0.44f,
                 interactionId = PROMPT_RESET_INTERACTION_ID,
                 name = "canvas-prompt-reset"
             )
@@ -1063,12 +1062,13 @@ private fun CanvasRow(
 private fun CanvasPanel(
     name: String,
     position: List<Float>,
+    rotation: List<Float> = listOf(0f, 0f, 0f),
     width: Float,
     height: Float,
     accentColor: Int,
     content: () -> Unit
 ) {
-    SigilGroup(position = position, name = name, id = name) {
+    SigilGroup(position = position, rotation = rotation, name = name, id = name) {
         SigilBox(
             width = width,
             height = height,
@@ -1183,7 +1183,7 @@ private fun CanvasText(
         lineHeight = lineHeight,
         align = align,
         baseline = baseline,
-        facingMode = TextFacingMode.BILLBOARD,
+        facingMode = TextFacingMode.FIXED,
         fontUrl = FIFTH_WALL_TEXT_FONT,
         name = name,
         id = id
@@ -1202,55 +1202,34 @@ private fun promptTitle(prompt: FifthWallPrompt): String =
         FifthWallPrompt.None -> ""
     }
 
-private fun promptCopy(
+private fun promptCopyLines(
     level: FifthWallLevel,
     state: FifthWallUiState
-): String =
+): List<String> =
     when (state.prompt) {
         FifthWallPrompt.Intro ->
-            "FOCUS PACKAGE\nREAD RULE BOARD\nROUTE OR RETURN"
+            listOf("FOCUS A PACKAGE", "READ ITS MANIFEST", "ROUTE OR RETURN")
 
         FifthWallPrompt.ProbabilityPrediction ->
-            "TRUCK A ACCEPTS 70 PERCENT\nPICK EXPECTED PASSES"
+            listOf("TRUCK A ACCEPTS 70 PERCENT", "PICK EXPECTED PASSES")
 
         FifthWallPrompt.TeamDiscussion ->
-            "DISPATCH PAUSE\nRESUME THE SHIFT"
+            listOf("DISPATCH PAUSE", "RESUME THE SHIFT")
 
         FifthWallPrompt.RuleGuess ->
-            "CONFIRM THE HIDDEN TRUCK A RULE"
+            listOf("CONFIRM THE HIDDEN TRUCK A RULE")
 
         FifthWallPrompt.Confidence ->
-            state.pendingConfidence?.let { "${it.outcome} ON ${it.routeLabel}\nRECORD CONFIDENCE" }
-                ?: "RECORD CONFIDENCE"
+            state.pendingConfidence?.let { listOf("${it.outcome} ON ${it.routeLabel}", "RECORD CONFIDENCE") }
+                ?: listOf("RECORD CONFIDENCE")
 
         FifthWallPrompt.LevelComplete ->
-            "${level.name} CLEAR\nSCORE ${state.score}"
+            listOf("${level.name} CLEAR", "SCORE ${state.score}")
 
         FifthWallPrompt.GameComplete ->
-            "ALL BAYS CLEAR\nRESTART SHIFT"
+            listOf("ALL BAYS CLEAR", "RESTART SHIFT")
 
-        FifthWallPrompt.None -> ""
-    }
-
-private fun wrapCanvasText(
-    text: String,
-    maxChars: Int
-): String =
-    text.lineSequence().joinToString("\n") { line ->
-        val words = line.split(Regex("\\s+")).filter { it.isNotBlank() }
-        val wrapped = mutableListOf<String>()
-        var current = ""
-        words.forEach { word ->
-            val candidate = if (current.isBlank()) word else "$current $word"
-            if (candidate.length > maxChars && current.isNotBlank()) {
-                wrapped += current
-                current = word
-            } else {
-                current = candidate
-            }
-        }
-        if (current.isNotBlank()) wrapped += current
-        wrapped.joinToString("\n")
+        FifthWallPrompt.None -> emptyList()
     }
 
 private fun predictionChoices(level: FifthWallLevel): List<Int> =
