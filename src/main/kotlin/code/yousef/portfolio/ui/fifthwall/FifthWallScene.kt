@@ -1951,7 +1951,14 @@ private fun DeliveryTruck(
         animations = listOf(targetPulseAnimation("truck-$index-ready", delayMs = index * 80)),
         id = "truck-$index"
     ) {
-        NativeDeliveryTruckBody(accent = accent, name = label.lowercase().replace(" ", "-"))
+        SigilModel(
+            url = fifthWallModelUrl("delivery-truck.glb"),
+            position = listOf(0.1f, 0f, 0f),
+            scale = uniformScale(4.2f),
+            castShadow = false,
+            receiveShadow = false,
+            name = "$label-model"
+        )
         TruckAccentMarker(
             accent = accent,
             hidden = hidden,
@@ -2004,82 +2011,6 @@ private fun DeliveryTruck(
             )
         }
         ""
-    }
-}
-
-@Composable
-private fun NativeDeliveryTruckBody(
-    accent: Int,
-    name: String
-) {
-    SigilBox(
-        width = 3.25f,
-        height = 1.8f,
-        depth = 2.15f,
-        position = listOf(-0.62f, 1.28f, 0f),
-        color = argb("#42bfc0"),
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-cargo"
-    )
-    SigilBox(
-        width = 1.35f,
-        height = 1.35f,
-        depth = 2.05f,
-        position = listOf(1.67f, 0.95f, 0f),
-        color = argb("#31496d"),
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-cab"
-    )
-    SigilBox(
-        width = 0.16f,
-        height = 1.2f,
-        depth = 1.56f,
-        position = listOf(2.36f, 1.08f, 0f),
-        color = PACKAGE_TAPE,
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-windshield"
-    )
-    SigilBox(
-        width = 3.1f,
-        height = 0.18f,
-        depth = 2.2f,
-        position = listOf(-0.58f, 0.32f, 0f),
-        color = accent,
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-route-stripe"
-    )
-    listOf(-1.34f, 1.55f).forEachIndexed { axleIndex, x ->
-        listOf(-1.12f, 1.12f).forEachIndexed { sideIndex, z ->
-            SigilMesh(
-                geometryType = GeometryType.CYLINDER,
-                geometryParams = GeometryParams(
-                    radiusTop = 0.42f,
-                    radiusBottom = 0.42f,
-                    height = 0.26f,
-                    radialSegments = 8
-                ),
-                position = listOf(x, 0.33f, z),
-                rotation = listOf(PI.toFloat() / 2f, 0f, 0f),
-                color = argb("#111820"),
-                metalness = 0f,
-                roughness = 1f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "$name-wheel-$axleIndex-$sideIndex"
-            )
-        }
     }
 }
 

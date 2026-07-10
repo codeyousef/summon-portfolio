@@ -157,7 +157,7 @@ class HydrationTest {
         assertTrue(body.contains("fifth-wall-scene"), "Should expose the Materia/Sigil scene mount")
         assertTrue(body.contains("warehouse-back-wall"), "Should render native Sigil warehouse geometry")
         assertTrue(body.contains("conveyor-belt"), "Should render native Sigil conveyor geometry")
-        assertTrue(body.contains("truck-a-cargo"), "Should render native Sigil truck geometry")
+        assertTrue(body.contains("optimized/delivery-truck.glb"), "Should render the textured truck LOD")
         val pointerGuardIndex = body.indexOf("/static/fifth-wall-pointer-guard.js")
         val fpsIndex = body.indexOf("/static/fifth-wall-fps.js")
         val sceneRefreshIndex = body.indexOf("/static/fifth-wall-scene-refresh.js")
