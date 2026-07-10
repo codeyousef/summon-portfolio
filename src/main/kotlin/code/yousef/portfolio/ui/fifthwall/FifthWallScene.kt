@@ -53,6 +53,7 @@ private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
 private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
 private val PACKAGE_POINTER_EVENTS = listOf("click")
 private const val CONSOLE_FOCUS_SLOT_COUNT = 3
+private const val PACKAGE_RENDER_WINDOW = 6
 private const val CONSOLE_RETURN_INTERACTION_ID = "console-route-return"
 private const val CONSOLE_RESET_INTERACTION_ID = "console-reset"
 private const val ROUTE_PAD_RETURN_ID = "route-pad-return"
@@ -63,7 +64,7 @@ private const val PROMPT_RESET_INTERACTION_ID = "prompt:reset"
 private const val PROMPT_DISCUSSION_INTERACTION_ID = "prompt:discussion:resume"
 private const val PROMPT_RULE_ANSWER_INTERACTION_ID = "prompt:rule:answer"
 private val CONTROL_PAD_HIDDEN_POSITION = listOf(0f, -6f, 0f)
-private const val MODEL_ASSET_VERSION = "20260510-small-glb"
+private const val MODEL_ASSET_VERSION = "20260710-game-lod"
 private const val FIFTH_WALL_TEXT_FONT = "/static/fifth-wall-control-font.json"
 private val TRUCK_COLOR_FALLBACKS = listOf(
     argb("#ff6b6b"),
@@ -87,6 +88,7 @@ internal fun FifthWallScene(
     state: FifthWallUiState,
     focusedPackage: FifthWallPackage?
 ) {
+    val renderedPackages = state.queue.take(PACKAGE_RENDER_WINDOW)
     MateriaCanvas(
         id = "fifth-wall-scene",
         width = "100%",
@@ -96,7 +98,7 @@ internal fun FifthWallScene(
             controller = controller,
             level = level,
             state = state,
-            renderedPackageIds = state.queue.map { it.id }
+            renderedPackageIds = renderedPackages.map { it.id }
         )
     ) {
         SceneConfig(
@@ -143,7 +145,7 @@ internal fun FifthWallScene(
         WarehouseShell()
         RoutingGuides(level = level, state = state)
         RouteControlPads(level = level, state = state)
-        ConveyorDeck(level = level, state = state)
+        ConveyorDeck(level = level, state = state, renderedPackages = renderedPackages)
         TruckBay(level = level, state = state)
         ReturnBinBay(
             selected = state.lastRouteTarget == "Return Bin",
@@ -157,7 +159,8 @@ internal fun FifthWallScene(
         InCanvasGameUi(
             level = level,
             state = state,
-            focusedPackage = focusedPackage
+            focusedPackage = focusedPackage,
+            renderedPackages = renderedPackages
         )
         ""
     }
@@ -175,70 +178,78 @@ private fun fifthWallSceneEventHandlers(
         handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = "package:${pkg.id}"),
             onEvent = { controller.selectPackage(pkg.id) },
-            onResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
+            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
         )
         handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = consoleFocusInteractionId(pkg.id)),
             onEvent = { controller.selectPackage(pkg.id) },
-            onResponse = { fifthWallSceneCallbackResponse(controller, renderedPackageIds) }
+            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
         )
     }
 
     state.activeTrucks(level).forEachIndexed { index, _ ->
-        handlers += reloadingSceneEventHandler(
+        handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(
                 type = "drop",
                 sourceInteractionIdPrefix = "package:",
                 targetInteractionId = "truck:$index",
                 accepted = true
             ),
-            onEvent = { controller.routeToTruck(index) }
+            onEvent = { controller.routeToTruck(index) },
+            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
         )
-        handlers += reloadingSceneEventHandler(
+        handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = consoleTruckInteractionId(index)),
-            onEvent = { controller.routeToTruck(index) }
+            onEvent = { controller.routeToTruck(index) },
+            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
         )
-        handlers += reloadingSceneEventHandler(
+        handlers += patchingSceneEventHandler(
             match = SigilSceneEventMatch(type = "click", interactionId = "truck:$index"),
-            onEvent = { controller.routeToTruck(index) }
+            onEvent = { controller.routeToTruck(index) },
+            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
         )
     }
 
-    handlers += reloadingSceneEventHandler(
+    handlers += patchingSceneEventHandler(
         match = SigilSceneEventMatch(
             type = "drop",
             sourceInteractionIdPrefix = "package:",
             targetInteractionId = "return-bin",
             accepted = true
         ),
-        onEvent = controller::routeToReturn
+        onEvent = controller::routeToReturn,
+        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
     )
-    handlers += reloadingSceneEventHandler(
+    handlers += patchingSceneEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RETURN_INTERACTION_ID),
-        onEvent = controller::routeToReturn
+        onEvent = controller::routeToReturn,
+        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
     )
-    handlers += reloadingSceneEventHandler(
+    handlers += patchingSceneEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = "return-bin"),
-        onEvent = controller::routeToReturn
+        onEvent = controller::routeToReturn,
+        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
     )
-    handlers += reloadingSceneEventHandler(
+    handlers += sceneRefreshingEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RESET_INTERACTION_ID),
         onEvent = controller::reset
     )
 
-    handlers += reloadingSceneEventHandler(
+    handlers += patchingSceneEventHandler(
         match = SigilSceneEventMatch(
             type = "drop",
             sourceInteractionIdPrefix = "package:",
             targetInteractionId = "inspection-dock",
             accepted = true
         ),
-        onEvent = { controller.state.value.selectedPackageId?.let(controller::selectPackage) }
+        onEvent = { controller.state.value.selectedPackageId?.let(controller::selectPackage) },
+        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
     )
 
-    handlers += reloadingSceneEventHandler(
+    handlers += patchingSceneEventHandler(
         match = SigilSceneEventMatch(type = "click", interactionId = "repair-wrench"),
-        onEvent = controller::repairGlitch
+        onEvent = controller::repairGlitch,
+        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
     )
 
     handlers += promptSceneEventHandlers(controller, level, state)
@@ -246,14 +257,20 @@ private fun fifthWallSceneEventHandlers(
     return handlers
 }
 
-private fun reloadingSceneEventHandler(
+private fun sceneRefreshingEventHandler(
     match: SigilSceneEventMatch,
     onEvent: () -> Unit
 ): SigilSceneEventHandler =
     SigilSceneEventHandler(
         match = match,
         onEvent = onEvent,
-        reloadOnSuccess = true
+        onResponse = {
+            SigilSceneEventCallbackResponse(
+                action = "scene-refresh",
+                status = "ok"
+            )
+        },
+        reloadOnSuccess = false
     )
 
 private fun patchingSceneEventHandler(
@@ -275,14 +292,14 @@ private fun promptSceneEventHandlers(
 ): List<SigilSceneEventHandler> =
     when (state.prompt) {
         FifthWallPrompt.Intro -> listOf(
-            reloadingSceneEventHandler(
+            sceneRefreshingEventHandler(
                 match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_START_INTERACTION_ID),
                 onEvent = controller::startShift
             )
         )
 
         FifthWallPrompt.ProbabilityPrediction -> predictionChoices(level).map { value ->
-            reloadingSceneEventHandler(
+            sceneRefreshingEventHandler(
                 match = SigilSceneEventMatch(type = "click", interactionId = promptPredictionInteractionId(value)),
                 onEvent = {
                     controller.updatePredictionInput(value.toString())
@@ -292,7 +309,7 @@ private fun promptSceneEventHandlers(
         }
 
         FifthWallPrompt.TeamDiscussion -> listOf(
-            reloadingSceneEventHandler(
+            sceneRefreshingEventHandler(
                 match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_DISCUSSION_INTERACTION_ID),
                 onEvent = {
                     controller.updateDiscussionReply("")
@@ -302,7 +319,7 @@ private fun promptSceneEventHandlers(
         )
 
         FifthWallPrompt.RuleGuess -> listOf(
-            reloadingSceneEventHandler(
+            sceneRefreshingEventHandler(
                 match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_RULE_ANSWER_INTERACTION_ID),
                 onEvent = {
                     controller.updateRuleGuess(hiddenRuleCanvasAnswer(level))
@@ -312,21 +329,21 @@ private fun promptSceneEventHandlers(
         )
 
         FifthWallPrompt.Confidence -> listOf("Low", "Medium", "High").map { value ->
-            reloadingSceneEventHandler(
+            sceneRefreshingEventHandler(
                 match = SigilSceneEventMatch(type = "click", interactionId = promptConfidenceInteractionId(value)),
                 onEvent = { controller.recordConfidence(value) }
             )
         }
 
         FifthWallPrompt.LevelComplete -> listOf(
-            reloadingSceneEventHandler(
+            sceneRefreshingEventHandler(
                 match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_NEXT_INTERACTION_ID),
                 onEvent = controller::advanceLevel
             )
         )
 
         FifthWallPrompt.GameComplete -> listOf(
-            reloadingSceneEventHandler(
+            sceneRefreshingEventHandler(
                 match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_RESET_INTERACTION_ID),
                 onEvent = controller::reset
             )
@@ -337,10 +354,17 @@ private fun promptSceneEventHandlers(
 
 private fun fifthWallSceneCallbackResponse(
     controller: FifthWallController,
+    renderedState: FifthWallUiState,
     renderedPackageIds: List<String>
 ): SigilSceneEventCallbackResponse {
     val nextState = controller.state.value
     val nextLevel = FifthWallLevels[nextState.levelIndex.coerceIn(FifthWallLevels.indices)]
+    if (requiresSceneRefresh(renderedState, nextState, renderedPackageIds)) {
+        return SigilSceneEventCallbackResponse(
+            action = "scene-refresh",
+            status = "ok"
+        )
+    }
     return SigilSceneEventCallbackResponse(
         action = "patch",
         status = "ok",
@@ -351,6 +375,19 @@ private fun fifthWallSceneCallbackResponse(
         )
     )
 }
+
+private fun requiresSceneRefresh(
+    renderedState: FifthWallUiState,
+    nextState: FifthWallUiState,
+    renderedPackageIds: List<String>
+): Boolean =
+    nextState.levelIndex != renderedState.levelIndex ||
+        nextState.prompt != renderedState.prompt ||
+        nextState.ruleShifted != renderedState.ruleShifted ||
+        nextState.priorityShifted != renderedState.priorityShifted ||
+        nextState.glitchActive != renderedState.glitchActive ||
+        nextState.wrenchVisible != renderedState.wrenchVisible ||
+        !renderedPackageIds.containsAll(nextState.visiblePackages().map { it.id })
 
 private fun fifthWallScenePatch(
     level: FifthWallLevel,
@@ -517,14 +554,47 @@ private fun WarehouseShell() {
         receiveShadow = true,
         name = "warehouse-floor"
     )
-    SigilModel(
-        url = fifthWallModelUrl("warehouse-bay-shell-kit.glb"),
-        position = listOf(0f, 0.02f, 0f),
-        scale = listOf(34f, 14f, 26f),
-        castShadow = false,
-        receiveShadow = false,
-        name = "warehouse-shell-model"
-    )
+    SigilGroup(name = "warehouse-shell") {
+        SigilBox(
+            width = 30f,
+            height = 6.4f,
+            depth = 0.28f,
+            position = listOf(0f, 3.2f, -9.2f),
+            color = argb("#263b5b"),
+            metalness = 0f,
+            roughness = 1f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "warehouse-back-wall"
+        )
+        SigilBox(
+            width = 0.28f,
+            height = 6.4f,
+            depth = 18.4f,
+            position = listOf(-12.2f, 3.2f, 0f),
+            color = argb("#263b5b"),
+            metalness = 0f,
+            roughness = 1f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "warehouse-side-wall"
+        )
+        listOf(-7.5f, 0f, 7.5f).forEachIndexed { index, x ->
+            SigilBox(
+                width = 0.22f,
+                height = 5.2f,
+                depth = 0.34f,
+                position = listOf(x, 2.8f, -9f),
+                color = SCENE_WARM,
+                metalness = 0f,
+                roughness = 1f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "warehouse-wall-marker-$index"
+            )
+        }
+        ""
+    }
 }
 
 @Composable
@@ -692,7 +762,7 @@ private fun BillboardTextLabel(
         color = color,
         size = size,
         depth = 0f,
-        curveSegments = 5,
+        curveSegments = 3,
         letterSpacing = meshTextLetterSpacing(size),
         lineHeight = lineHeight,
         align = TextAlignMode.CENTER,
@@ -725,7 +795,7 @@ private fun BillboardTextControl(
         color = color,
         size = size,
         depth = 0f,
-        curveSegments = 5,
+        curveSegments = 3,
         letterSpacing = meshTextLetterSpacing(size),
         lineHeight = lineHeight,
         align = TextAlignMode.CENTER,
@@ -749,11 +819,17 @@ private fun BillboardTextControl(
 private fun InCanvasGameUi(
     level: FifthWallLevel,
     state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?
+    focusedPackage: FifthWallPackage?,
+    renderedPackages: List<FifthWallPackage>
 ) {
     CanvasProgressLabel(level = level, state = state)
     if (state.prompt == FifthWallPrompt.None) {
-        CanvasManifestPanel(level = level, state = state, focusedPackage = focusedPackage)
+        CanvasManifestPanel(
+            level = level,
+            state = state,
+            focusedPackage = focusedPackage,
+            renderedPackages = renderedPackages
+        )
     } else {
         CanvasPromptPanel(level = level, state = state)
     }
@@ -785,7 +861,8 @@ private fun CanvasProgressLabel(
 private fun CanvasManifestPanel(
     level: FifthWallLevel,
     state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?
+    focusedPackage: FifthWallPackage?,
+    renderedPackages: List<FifthWallPackage>
 ) {
     CanvasPanel(
         name = "canvas-manifest-panel",
@@ -816,7 +893,7 @@ private fun CanvasManifestPanel(
             rows = manifestRows(null),
             visible = focusedPackage == null
         )
-        state.queue.forEach { pkg ->
+        renderedPackages.forEach { pkg ->
             CanvasManifestValueGroup(
                 packageId = pkg.id,
                 rows = manifestRows(pkg),
@@ -1178,7 +1255,7 @@ private fun CanvasText(
         color = color,
         size = size,
         depth = 0f,
-        curveSegments = 5,
+        curveSegments = 3,
         letterSpacing = meshTextLetterSpacing(size.coerceAtLeast(0.3f)),
         lineHeight = lineHeight,
         align = align,
@@ -1345,7 +1422,7 @@ private fun RouteTruckPad(
     ) {
         SigilMesh(
             geometryType = GeometryType.CIRCLE,
-            geometryParams = GeometryParams(radius = 1.3f, radialSegments = 56),
+            geometryParams = GeometryParams(radius = 1.3f, radialSegments = 28),
             position = listOf(0f, 0.02f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = argb("#102131"),
@@ -1357,7 +1434,7 @@ private fun RouteTruckPad(
         )
         SigilMesh(
             geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 1.14f, outerRadius = 1.66f, radialSegments = 72),
+            geometryParams = GeometryParams(innerRadius = 1.14f, outerRadius = 1.66f, radialSegments = 36),
             position = listOf(0f, 0.045f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = feedback,
@@ -1398,7 +1475,7 @@ private fun RouteTruckPad(
                     radiusTop = 0.1f,
                     radiusBottom = 0.16f,
                     height = 0.95f,
-                    radialSegments = 14
+                    radialSegments = 8
                 ),
                 position = listOf(x, 0.54f, 0.64f),
                 color = feedback,
@@ -1410,8 +1487,8 @@ private fun RouteTruckPad(
             )
             SigilSphere(
                 radius = 0.28f,
-                widthSegments = 16,
-                heightSegments = 12,
+                widthSegments = 10,
+                heightSegments = 8,
                 position = listOf(x, 1.08f, 0.64f),
                 color = feedback,
                 metalness = 0.26f,
@@ -1423,8 +1500,8 @@ private fun RouteTruckPad(
         }
         SigilSphere(
             radius = 0.24f,
-            widthSegments = 16,
-            heightSegments = 12,
+            widthSegments = 10,
+            heightSegments = 8,
             position = listOf(0f, 0.24f, -0.86f),
             color = feedback,
             metalness = 0.26f,
@@ -1459,7 +1536,7 @@ private fun RouteReturnPad(
     ) {
         SigilMesh(
             geometryType = GeometryType.CIRCLE,
-            geometryParams = GeometryParams(radius = 1.24f, radialSegments = 56),
+            geometryParams = GeometryParams(radius = 1.24f, radialSegments = 28),
             position = listOf(0f, 0.02f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = argb("#261f12"),
@@ -1471,7 +1548,7 @@ private fun RouteReturnPad(
         )
         SigilMesh(
             geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = 0.82f, tube = 0.1f, radialSegments = 20, tubularSegments = 64),
+            geometryParams = GeometryParams(radius = 0.82f, tube = 0.1f, radialSegments = 10, tubularSegments = 32),
             position = listOf(0f, 0.18f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = feedback,
@@ -1499,7 +1576,7 @@ private fun RouteReturnPad(
                 radiusTop = 0.12f,
                 radiusBottom = 0.18f,
                 height = 1.0f,
-                radialSegments = 16
+                radialSegments = 8
             ),
             position = listOf(-0.95f, 0.56f, 0.58f),
             color = feedback,
@@ -1511,8 +1588,8 @@ private fun RouteReturnPad(
         )
         SigilSphere(
             radius = 0.32f,
-            widthSegments = 18,
-            heightSegments = 12,
+            widthSegments = 10,
+            heightSegments = 8,
             position = listOf(-0.95f, 1.14f, 0.58f),
             color = feedback,
             metalness = 0.26f,
@@ -1555,7 +1632,7 @@ private fun ResetShiftPad() {
         )
         SigilMesh(
             geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 0.42f, outerRadius = 0.7f, radialSegments = 48),
+            geometryParams = GeometryParams(innerRadius = 0.42f, outerRadius = 0.7f, radialSegments = 24),
             position = listOf(0f, 0.16f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = SCENE_DANGER,
@@ -1581,8 +1658,8 @@ private fun ResetShiftPad() {
         }
         SigilSphere(
             radius = 0.24f,
-            widthSegments = 16,
-            heightSegments = 12,
+            widthSegments = 10,
+            heightSegments = 8,
             position = listOf(1.14f, 0.34f, 0.46f),
             color = SCENE_DANGER,
             metalness = 0.24f,
@@ -1612,18 +1689,13 @@ private fun ResetShiftPad() {
 @Composable
 private fun ConveyorDeck(
     level: FifthWallLevel,
-    state: FifthWallUiState
+    state: FifthWallUiState,
+    renderedPackages: List<FifthWallPackage>
 ) {
     SigilGroup(position = listOf(-2.2f, 0f, 0.5f), name = "conveyor-group") {
-        SigilModel(
-            url = fifthWallModelUrl("conveyor-deck.glb"),
-            scale = uniformScale(10.6f),
-            castShadow = false,
-            receiveShadow = false,
-            name = "conveyor-model"
-        )
+        NativeConveyorDeck()
         val visiblePackageIds = state.visiblePackages().map { it.id }
-        state.queue.forEach { pkg ->
+        renderedPackages.forEach { pkg ->
             val visibleIndex = visiblePackageIds.indexOf(pkg.id)
             val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
             PackageFocusPad(
@@ -1634,7 +1706,7 @@ private fun ConveyorDeck(
                 label = "FOCUS P${visibleIndex.coerceAtLeast(0) + 1}"
             )
         }
-        state.queue.forEach { pkg ->
+        renderedPackages.forEach { pkg ->
             val visibleIndex = visiblePackageIds.indexOf(pkg.id)
             val visible = visibleIndex >= 0
             val selected = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
@@ -1649,6 +1721,62 @@ private fun ConveyorDeck(
             )
         }
         ""
+    }
+}
+
+@Composable
+private fun NativeConveyorDeck() {
+    SigilBox(
+        width = 11.8f,
+        height = 0.42f,
+        depth = 2.5f,
+        position = listOf(-1.7f, 1.3f, 0f),
+        color = argb("#26384a"),
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "conveyor-frame"
+    )
+    SigilBox(
+        width = 11.2f,
+        height = 0.12f,
+        depth = 1.82f,
+        position = listOf(-1.7f, 1.57f, 0f),
+        color = argb("#202a31"),
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "conveyor-belt"
+    )
+    listOf(-1.18f, 1.18f).forEachIndexed { index, z ->
+        SigilBox(
+            width = 11.8f,
+            height = 0.18f,
+            depth = 0.16f,
+            position = listOf(-1.7f, 1.72f, z),
+            color = argb("#6fbfc2"),
+            metalness = 0f,
+            roughness = 1f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "conveyor-rail-$index"
+        )
+    }
+    listOf(-6.6f, 3.2f).forEachIndexed { index, x ->
+        SigilBox(
+            width = 0.36f,
+            height = 1.3f,
+            depth = 1.9f,
+            position = listOf(x, 0.65f, 0f),
+            color = argb("#2f4256"),
+            metalness = 0f,
+            roughness = 1f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "conveyor-leg-$index"
+        )
     }
 }
 
@@ -1676,7 +1804,7 @@ private fun PackageFocusPad(
     ) {
         SigilMesh(
             geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 0.92f, outerRadius = 1.28f, radialSegments = 60),
+            geometryParams = GeometryParams(innerRadius = 0.92f, outerRadius = 1.28f, radialSegments = 30),
             position = listOf(0f, 0.02f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = if (focused) SCENE_ACCENT else color,
@@ -1712,8 +1840,8 @@ private fun PackageFocusPad(
         )
         SigilSphere(
             radius = if (focused) 0.2f else 0.16f,
-            widthSegments = 14,
-            heightSegments = 10,
+            widthSegments = 8,
+            heightSegments = 6,
             position = listOf(-0.82f, 0.14f, -0.55f),
             color = color,
             metalness = 0.24f,
@@ -1823,14 +1951,7 @@ private fun DeliveryTruck(
         animations = listOf(targetPulseAnimation("truck-$index-ready", delayMs = index * 80)),
         id = "truck-$index"
     ) {
-        SigilModel(
-            url = fifthWallModelUrl("delivery-truck.glb"),
-            position = listOf(0.1f, 0f, 0f),
-            scale = uniformScale(4.2f),
-            castShadow = false,
-            receiveShadow = false,
-            name = "$label-model"
-        )
+        NativeDeliveryTruckBody(accent = accent, name = label.lowercase().replace(" ", "-"))
         TruckAccentMarker(
             accent = accent,
             hidden = hidden,
@@ -1853,7 +1974,7 @@ private fun DeliveryTruck(
         if (selected) {
             SigilMesh(
                 geometryType = GeometryType.RING,
-                geometryParams = GeometryParams(innerRadius = 1.55f, outerRadius = 1.85f, radialSegments = 48),
+                geometryParams = GeometryParams(innerRadius = 1.55f, outerRadius = 1.85f, radialSegments = 24),
                 position = listOf(0.1f, 0.05f, 0f),
                 rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
                 color = when (routeAccepted) {
@@ -1871,7 +1992,7 @@ private fun DeliveryTruck(
         if (glitched) {
             SigilMesh(
                 geometryType = GeometryType.TORUS,
-                geometryParams = GeometryParams(radius = 0.72f, tube = 0.05f, radialSegments = 16, tubularSegments = 42),
+                geometryParams = GeometryParams(radius = 0.72f, tube = 0.05f, radialSegments = 8, tubularSegments = 24),
                 position = listOf(0.35f, 2.1f, 0f),
                 rotation = listOf(0.35f, 0.62f, 0f),
                 color = SCENE_DANGER,
@@ -1883,6 +2004,82 @@ private fun DeliveryTruck(
             )
         }
         ""
+    }
+}
+
+@Composable
+private fun NativeDeliveryTruckBody(
+    accent: Int,
+    name: String
+) {
+    SigilBox(
+        width = 3.25f,
+        height = 1.8f,
+        depth = 2.15f,
+        position = listOf(-0.62f, 1.28f, 0f),
+        color = argb("#42bfc0"),
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-cargo"
+    )
+    SigilBox(
+        width = 1.35f,
+        height = 1.35f,
+        depth = 2.05f,
+        position = listOf(1.67f, 0.95f, 0f),
+        color = argb("#31496d"),
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-cab"
+    )
+    SigilBox(
+        width = 0.16f,
+        height = 1.2f,
+        depth = 1.56f,
+        position = listOf(2.36f, 1.08f, 0f),
+        color = PACKAGE_TAPE,
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-windshield"
+    )
+    SigilBox(
+        width = 3.1f,
+        height = 0.18f,
+        depth = 2.2f,
+        position = listOf(-0.58f, 0.32f, 0f),
+        color = accent,
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "$name-route-stripe"
+    )
+    listOf(-1.34f, 1.55f).forEachIndexed { axleIndex, x ->
+        listOf(-1.12f, 1.12f).forEachIndexed { sideIndex, z ->
+            SigilMesh(
+                geometryType = GeometryType.CYLINDER,
+                geometryParams = GeometryParams(
+                    radiusTop = 0.42f,
+                    radiusBottom = 0.42f,
+                    height = 0.26f,
+                    radialSegments = 8
+                ),
+                position = listOf(x, 0.33f, z),
+                rotation = listOf(PI.toFloat() / 2f, 0f, 0f),
+                color = argb("#111820"),
+                metalness = 0f,
+                roughness = 1f,
+                castShadow = false,
+                receiveShadow = false,
+                name = "$name-wheel-$axleIndex-$sideIndex"
+            )
+        }
     }
 }
 
@@ -1909,8 +2106,8 @@ private fun TruckAccentMarker(
     }
     SigilSphere(
         radius = 0.14f,
-        widthSegments = 12,
-        heightSegments = 10,
+        widthSegments = 8,
+        heightSegments = 6,
         position = listOf(-1.1f, 3.02f, 0f),
         color = panelColor,
         metalness = 0.18f,
@@ -1935,16 +2132,10 @@ private fun ReturnBinBay(
         animations = listOf(targetPulseAnimation("return-bin-ready", delayMs = 260)),
         id = "return-bin-target"
     ) {
-        SigilModel(
-            url = fifthWallModelUrl("return-bin.glb"),
-            scale = uniformScale(2.25f),
-            castShadow = false,
-            receiveShadow = false,
-            name = "return-bin-model"
-        )
+        NativeReturnBin()
         SigilMesh(
             geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = 0.96f, tube = 0.08f, radialSegments = 16, tubularSegments = 48),
+            geometryParams = GeometryParams(radius = 0.96f, tube = 0.08f, radialSegments = 8, tubularSegments = 24),
             position = listOf(0f, 1.72f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = when {
@@ -1978,6 +2169,34 @@ private fun ReturnBinBay(
 }
 
 @Composable
+private fun NativeReturnBin() {
+    SigilBox(
+        width = 2.25f,
+        height = 1.5f,
+        depth = 2.25f,
+        position = listOf(0f, 0.78f, 0f),
+        color = argb("#1b3043"),
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "return-bin-body"
+    )
+    SigilBox(
+        width = 1.55f,
+        height = 0.08f,
+        depth = 1.55f,
+        position = listOf(0f, 1.56f, 0f),
+        color = argb("#090f15"),
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "return-bin-opening"
+    )
+}
+
+@Composable
 private fun InspectionDock(pkg: FifthWallPackage?) {
     SigilGroup(
         position = listOf(8.2f, 0f, -5.5f),
@@ -1986,16 +2205,10 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
         animations = listOf(targetPulseAnimation("inspection-dock-ready", delayMs = 180)),
         id = "inspection-dock-target"
     ) {
-        SigilModel(
-            url = fifthWallModelUrl("inspection-dock.glb"),
-            scale = uniformScale(4.1f),
-            castShadow = false,
-            receiveShadow = false,
-            name = "inspection-dock-model"
-        )
+        NativeInspectionDock()
         SigilMesh(
             geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 0.95f, outerRadius = 1.22f, radialSegments = 48),
+            geometryParams = GeometryParams(innerRadius = 0.95f, outerRadius = 1.22f, radialSegments = 24),
             position = listOf(0f, 2.38f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
             color = if (pkg?.validGeometry == false) SCENE_DANGER else SCENE_ACCENT,
@@ -2037,6 +2250,55 @@ private fun InspectionDock(pkg: FifthWallPackage?) {
         }
         ""
     }
+}
+
+@Composable
+private fun NativeInspectionDock() {
+    SigilMesh(
+        geometryType = GeometryType.CYLINDER,
+        geometryParams = GeometryParams(
+            radiusTop = 1.25f,
+            radiusBottom = 1.42f,
+            height = 0.34f,
+            radialSegments = 12
+        ),
+        position = listOf(0f, 0.2f, 0f),
+        color = argb("#263f59"),
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "inspection-dock-base"
+    )
+    SigilBox(
+        width = 0.32f,
+        height = 2.1f,
+        depth = 0.32f,
+        position = listOf(0f, 1.4f, 0f),
+        color = SCENE_ACCENT,
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "inspection-dock-column"
+    )
+    SigilMesh(
+        geometryType = GeometryType.TORUS,
+        geometryParams = GeometryParams(
+            radius = 1.05f,
+            tube = 0.1f,
+            radialSegments = 8,
+            tubularSegments = 20
+        ),
+        position = listOf(0f, 2.4f, 0f),
+        rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+        color = SCENE_ACCENT,
+        metalness = 0f,
+        roughness = 1f,
+        castShadow = false,
+        receiveShadow = false,
+        name = "inspection-dock-platform"
+    )
 }
 
 @Composable
@@ -2117,8 +2379,8 @@ private fun PackageMesh(
                         else -> 0.98f
                     },
                     tube = 0.06f,
-                    radialSegments = 18,
-                    tubularSegments = 44
+                    radialSegments = 10,
+                    tubularSegments = 24
                 ),
                 position = listOf(0f, 0.06f, 0f),
                 rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
@@ -2189,8 +2451,8 @@ private fun PackageColorAccent(
     } + hover
     SigilSphere(
         radius = 0.13f,
-        widthSegments = 12,
-        heightSegments = 10,
+        widthSegments = 8,
+        heightSegments = 6,
         position = listOf(-0.72f, markerY, 0.56f),
         color = color,
         metalness = 0.18f,
@@ -2315,8 +2577,8 @@ private fun PackageBadge(
             ).forEachIndexed { index, point ->
                 SigilSphere(
                     radius = 0.024f,
-                    widthSegments = 10,
-                    heightSegments = 8,
+                    widthSegments = 6,
+                    heightSegments = 4,
                     position = point,
                     color = PACKAGE_TAPE,
                     metalness = 0.08f,
@@ -2341,7 +2603,7 @@ private fun GeometryAura(
     if (pkg.validGeometry) {
         SigilMesh(
             geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = if (elevated) 0.64f else 0.54f, tube = 0.05f, radialSegments = 16, tubularSegments = 42),
+            geometryParams = GeometryParams(radius = if (elevated) 0.64f else 0.54f, tube = 0.05f, radialSegments = 8, tubularSegments = 24),
             position = listOf(0f, if (elevated) 1.52f else 1.34f, 0f),
             rotation = listOf(0.2f, 0.9f, 0f),
             color = SCENE_SUCCESS,
@@ -2366,7 +2628,7 @@ private fun GeometryAura(
         )
         SigilMesh(
             geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = if (elevated) 0.78f else 0.6f, tube = 0.04f, radialSegments = 16, tubularSegments = 42),
+            geometryParams = GeometryParams(radius = if (elevated) 0.78f else 0.6f, tube = 0.04f, radialSegments = 8, tubularSegments = 24),
             position = listOf(0f, if (elevated) 1.52f else 1.3f, 0f),
             rotation = listOf(0.4f, 0.38f, 0.72f),
             color = SCENE_WARM,
@@ -2380,7 +2642,7 @@ private fun GeometryAura(
 }
 
 private fun fifthWallModelUrl(fileName: String): String {
-    return "/static/models/fifth-wall/$fileName?v=$MODEL_ASSET_VERSION"
+    return "/static/models/fifth-wall/optimized/$fileName?v=$MODEL_ASSET_VERSION"
 }
 
 private fun packageFocusPadId(packageId: String): String = "package-focus-pad-$packageId"

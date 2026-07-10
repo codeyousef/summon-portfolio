@@ -115,6 +115,34 @@ class HydrationTest {
     }
 
     @Test
+    fun `should serve Fifth Wall in-canvas refresh runtime`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/static/fifth-wall-scene-refresh.js"))
+            .GET()
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode())
+        assertTrue(response.body().contains("sigil:scene-action-response"))
+        assertTrue(response.body().contains("currentCanvas.replaceWith(importedCanvas)"))
+        assertFalse(response.body().contains("location.reload"), "Canvas transitions must not reload the page")
+    }
+
+    @Test
+    fun `should pin Fifth Wall to WebGL before Sigil loads`() {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$baseUrl/static/fifth-wall-renderer.js"))
+            .GET()
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(200, response.statusCode())
+        assertTrue(response.body().contains("window.__SIGIL_RENDERER__ = 'webgl'"))
+    }
+
+    @Test
     fun `fifth wall serves Materia Sigil scene shell`() {
         val request = HttpRequest.newBuilder()
             .uri(URI.create("$baseUrl/fifth-wall?action=start"))
@@ -127,16 +155,22 @@ class HydrationTest {
 
         val body = response.body()
         assertTrue(body.contains("fifth-wall-scene"), "Should expose the Materia/Sigil scene mount")
-        assertTrue(body.contains("warehouse-bay-shell-kit"), "Should render the warehouse GLTF scene content")
-        assertTrue(body.contains("conveyor-deck"), "Should render the conveyor as scene content")
-        assertTrue(body.contains("delivery-truck"), "Should render trucks as scene content")
+        assertTrue(body.contains("warehouse-back-wall"), "Should render native Sigil warehouse geometry")
+        assertTrue(body.contains("conveyor-belt"), "Should render native Sigil conveyor geometry")
+        assertTrue(body.contains("truck-a-cargo"), "Should render native Sigil truck geometry")
         val pointerGuardIndex = body.indexOf("/static/fifth-wall-pointer-guard.js")
         val fpsIndex = body.indexOf("/static/fifth-wall-fps.js")
+        val sceneRefreshIndex = body.indexOf("/static/fifth-wall-scene-refresh.js")
+        val rendererIndex = body.indexOf("/static/fifth-wall-renderer.js")
         val sigilRuntimeIndex = body.indexOf("/sigil-hydration.js?v=0.4.2.2")
         assertTrue(pointerGuardIndex >= 0, "Should load the Fifth Wall drag-click guard")
         assertTrue(fpsIndex >= 0, "Should load the Fifth Wall FPS counter")
+        assertTrue(sceneRefreshIndex >= 0, "Should load the Fifth Wall canvas refresh runtime")
+        assertTrue(rendererIndex >= 0, "Should configure the Fifth Wall renderer")
         assertTrue(pointerGuardIndex < sigilRuntimeIndex, "Drag-click guard should run before Sigil handles canvas clicks")
         assertTrue(fpsIndex < sigilRuntimeIndex, "FPS counter should mount before Sigil finishes hydration")
+        assertTrue(sceneRefreshIndex < sigilRuntimeIndex, "Scene refresh listener should mount before Sigil handles callbacks")
+        assertTrue(rendererIndex < sigilRuntimeIndex, "WebGL selection must run before Sigil chooses a renderer")
         assertTrue(body.contains("/sigil-hydration.js?v=0.4.2.2"), "Should load the Sigil 0.4.2.2 runtime")
         assertTrue(body.contains("\"interactionId\":\"package:"), "Packages should expose Sigil interaction IDs")
         assertTrue(body.contains("\"interactionId\":\"truck:0\""), "Trucks should expose Sigil drop-target interaction IDs")
@@ -149,6 +183,13 @@ class HydrationTest {
         )
         assertSceneClickHandlerReload(body, interactionIdPrefix = "package:", reloadOnSuccess = false)
         assertSceneClickHandlerReload(body, interactionIdPrefix = "console-focus:", reloadOnSuccess = false)
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "console-route-truck:", reloadOnSuccess = false)
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "console-route-return", reloadOnSuccess = false)
+        assertFalse(body.contains("\"reloadOnSuccess\":true"), "Fifth Wall actions should never request a page reload")
+        assertTrue(
+            Regex("pkg-body-model").findAll(body).count() <= 7,
+            "The scene should render only the package lookahead window plus the inspection package"
+        )
         assertFalse(body.contains("\"drag\":{\"enabled\":true"), "Packages should not steal camera drags")
         assertTrue(body.contains("\"dropTarget\":{\"enabled\":true"), "Routing targets should declare Sigil drop-target metadata")
         assertTrue(body.contains("\"kind\":\"pulse\""), "Scene should declare Sigil animation metadata")
@@ -230,6 +271,10 @@ class HydrationTest {
         ).forEach { asset ->
             assertTrue(body.contains(asset), "Package meshes should use the textured package model asset: $asset")
         }
+        assertTrue(
+            body.contains("/static/models/fifth-wall/optimized/"),
+            "The game should use the performance-optimized GLB set"
+        )
         listOf(
             "valid-geometry-insert-set.glb",
             "penrose-loop.glb",

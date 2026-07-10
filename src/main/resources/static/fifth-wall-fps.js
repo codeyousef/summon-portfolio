@@ -6,6 +6,15 @@
     var sampleMs = 500;
     var started = false;
 
+    function rendererLabel() {
+        var hydrator = window.SigilEffectHydrator;
+        if (!hydrator || typeof hydrator.getAvailableRenderer !== 'function') {
+            return '';
+        }
+        var renderer = hydrator.getAvailableRenderer();
+        return renderer ? ' / ' + String(renderer).toUpperCase() : '';
+    }
+
     function startCounter(element) {
         if (started) {
             return;
@@ -20,7 +29,7 @@
             var elapsed = now - lastSample;
             if (elapsed >= sampleMs) {
                 var fps = Math.max(0, Math.round((frames * 1000) / elapsed));
-                element.textContent = 'FPS ' + fps;
+                element.textContent = 'FPS ' + fps + rendererLabel();
                 element.dataset.fps = String(fps);
                 frames = 0;
                 lastSample = now;
