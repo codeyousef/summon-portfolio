@@ -98,48 +98,21 @@ class HydrationTest {
     }
 
     @Test
-    fun `should serve Fifth Wall control font asset`() {
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("$baseUrl/static/fifth-wall-control-font.json"))
-            .GET()
-            .build()
-
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-
-        assertEquals(200, response.statusCode())
-        assertTrue(response.body().contains("\"familyName\": \"Fifth Wall Control\""), "Should serve the game text font")
-        assertTrue(response.body().contains("\"glyphs\""), "Should include vector glyph outlines")
-        listOf("\"D\"", "\"L\"", "\"G\"", "\"0\"", "\"/\"", "\":\"").forEach { glyph ->
-            assertTrue(response.body().contains(glyph), "Should include glyph $glyph for readable in-canvas game text")
+    fun `retired Fifth Wall browser assets are not served`() {
+        listOf(
+            "/static/fifth-wall-renderer.js",
+            "/static/fifth-wall-scene-refresh.js",
+            "/static/fifth-wall-fps.js",
+            "/static/fifth-wall-pointer-guard.js",
+            "/static/fifth-wall-telemetry.js",
+            "/static/fifth-wall.css"
+        ).forEach { path ->
+            val response = httpClient.send(
+                HttpRequest.newBuilder().uri(URI.create("$baseUrl$path")).GET().build(),
+                HttpResponse.BodyHandlers.ofString()
+            )
+            assertEquals(404, response.statusCode(), "Fifth Wall should not require app-authored browser asset $path")
         }
-    }
-
-    @Test
-    fun `should serve Fifth Wall in-canvas refresh runtime`() {
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("$baseUrl/static/fifth-wall-scene-refresh.js"))
-            .GET()
-            .build()
-
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-
-        assertEquals(200, response.statusCode())
-        assertTrue(response.body().contains("sigil:scene-action-response"))
-        assertTrue(response.body().contains("currentCanvas.replaceWith(importedCanvas)"))
-        assertFalse(response.body().contains("location.reload"), "Canvas transitions must not reload the page")
-    }
-
-    @Test
-    fun `should pin Fifth Wall to WebGL before Sigil loads`() {
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("$baseUrl/static/fifth-wall-renderer.js"))
-            .GET()
-            .build()
-
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-
-        assertEquals(200, response.statusCode())
-        assertTrue(response.body().contains("window.__SIGIL_RENDERER__ = 'webgl'"))
     }
 
     @Test
@@ -158,55 +131,42 @@ class HydrationTest {
         assertTrue(body.contains("warehouse-back-wall"), "Should render native Sigil warehouse geometry")
         assertTrue(body.contains("conveyor-belt"), "Should render native Sigil conveyor geometry")
         assertTrue(body.contains("optimized/delivery-truck.glb"), "Should render the textured truck LOD")
-        val pointerGuardIndex = body.indexOf("/static/fifth-wall-pointer-guard.js")
-        val fpsIndex = body.indexOf("/static/fifth-wall-fps.js")
-        val sceneRefreshIndex = body.indexOf("/static/fifth-wall-scene-refresh.js")
-        val rendererIndex = body.indexOf("/static/fifth-wall-renderer.js")
-        val sigilRuntimeIndex = body.indexOf("/sigil-hydration.js?v=0.4.2.2")
-        assertTrue(pointerGuardIndex >= 0, "Should load the Fifth Wall drag-click guard")
-        assertTrue(fpsIndex >= 0, "Should load the Fifth Wall FPS counter")
-        assertTrue(sceneRefreshIndex >= 0, "Should load the Fifth Wall canvas refresh runtime")
-        assertTrue(rendererIndex >= 0, "Should configure the Fifth Wall renderer")
-        assertTrue(pointerGuardIndex < sigilRuntimeIndex, "Drag-click guard should run before Sigil handles canvas clicks")
-        assertTrue(fpsIndex < sigilRuntimeIndex, "FPS counter should mount before Sigil finishes hydration")
-        assertTrue(sceneRefreshIndex < sigilRuntimeIndex, "Scene refresh listener should mount before Sigil handles callbacks")
-        assertTrue(rendererIndex < sigilRuntimeIndex, "WebGL selection must run before Sigil chooses a renderer")
-        assertTrue(body.contains("/sigil-hydration.js?v=0.4.2.2"), "Should load the Sigil 0.4.2.2 runtime")
-        assertTrue(body.contains("\"interactionId\":\"package:"), "Packages should expose Sigil interaction IDs")
-        assertTrue(body.contains("\"interactionId\":\"truck:0\""), "Trucks should expose Sigil drop-target interaction IDs")
-        assertTrue(body.contains("\"interactionId\":\"return-bin\""), "Return bin should expose a Sigil drop-target interaction ID")
-        assertTrue(body.contains("\"interactionId\":\"inspection-dock\""), "Inspection dock should expose a Sigil drop-target interaction ID")
-        assertTrue(body.contains("\"events\":[\"click\"]"), "Packages should use click-to-focus interactions")
-        assertFalse(
-            body.contains("\"type\":\"pointerdown\",\"interactionId\":\"package:"),
-            "Package focus should not reload the page when a camera drag starts over a package"
-        )
-        assertSceneClickHandlerReload(body, interactionIdPrefix = "package:", reloadOnSuccess = false)
-        assertSceneClickHandlerReload(body, interactionIdPrefix = "console-focus:", reloadOnSuccess = false)
-        assertSceneClickHandlerReload(body, interactionIdPrefix = "console-route-truck:", reloadOnSuccess = false)
-        assertSceneClickHandlerReload(body, interactionIdPrefix = "console-route-return", reloadOnSuccess = false)
-        assertFalse(body.contains("\"reloadOnSuccess\":true"), "Fifth Wall actions should never request a page reload")
         assertTrue(
-            Regex("pkg-body-model").findAll(body).count() <= 7,
-            "The scene should render only the package lookahead window plus the inspection package"
+            body.contains("id=\"fifth-wall-scene-container\" style=\"width: 100%; height: calc(100vh - 80px);"),
+            "The Sigil canvas should retain a definite responsive height through its SSR host wrapper"
         )
+        assertTrue(body.contains("/sigil-hydration.js?v=0.4.3.1"), "Should load the released Sigil 0.4.3.1 runtime")
+        assertTrue(body.contains("\"rendererPreference\":\"webgl\""), "Renderer preference should be declared through Sigil")
+        assertTrue(body.contains("\"adaptiveResolution\""), "Scene should declare adaptive render resolution")
+        assertTrue(body.contains("\"targetFps\":60.0"), "Adaptive resolution should target 60 FPS")
+        assertTrue(body.contains("\"minimumDpr\":0.75"), "Adaptive resolution should retain its 0.75 DPR floor")
+        assertTrue(body.contains("\"maximumDpr\":1.0"), "Adaptive resolution should avoid an expensive high-DPR warmup")
+        assertTrue(body.contains("\"sampleWindow\":20"), "Adaptive resolution should react within a short warmup window")
+        assertTrue(body.contains("\"type\":\"screenLayer\""), "Visible interface should use Sigil screen layers")
+        assertTrue(body.contains("\"type\":\"frameStatsText\""), "FPS should use Sigil frame statistics text")
+        assertTrue(body.contains("\"interactionId\":\"focus-package-0\""), "Stable package slots should expose focus actions")
+        assertTrue(body.contains("\"interactionId\":\"route-truck-0\""), "Stable truck slots should expose route actions")
+        assertTrue(body.contains("\"interactionId\":\"route-return-bin\""), "Return bin should expose a route action")
+        assertTrue(body.contains("\"interactionId\":\"camera-overview\""), "Camera presets should be canvas controls")
+        assertTrue(body.contains("\"events\":[\"click\"]"), "Packages should use click-to-focus interactions")
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "focus-package-", reloadOnSuccess = false)
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "route-truck-", reloadOnSuccess = false)
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "route-return-bin", reloadOnSuccess = false)
+        assertSceneClickHandlerReload(body, interactionIdPrefix = "prompt-choice-", reloadOnSuccess = false)
+        assertFalse(body.contains("\"reloadOnSuccess\":true"), "Fifth Wall actions should never request a page reload")
+        assertFalse(body.contains("scene-refresh"), "All gameplay and bay transitions should use scene patches")
+        assertEquals(3, Regex("package-slot-[0-2]-model").findAll(body).map { it.value }.toSet().size)
+        assertEquals(4, Regex("truck-slot-[0-3]-model").findAll(body).map { it.value }.toSet().size)
         assertFalse(body.contains("\"drag\":{\"enabled\":true"), "Packages should not steal camera drags")
-        assertTrue(body.contains("\"dropTarget\":{\"enabled\":true"), "Routing targets should declare Sigil drop-target metadata")
-        assertTrue(body.contains("\"kind\":\"pulse\""), "Scene should declare Sigil animation metadata")
         assertTrue(body.contains("\"type\":\"text\""), "Scene should serialize in-canvas Sigil text labels")
-        assertTrue(body.contains("\"facingMode\":\"BILLBOARD\""), "Target labels should face the camera as Sigil billboards")
-        assertTrue(body.contains("\"fontUrl\":\"/static/fifth-wall-control-font.json\""), "Fifth Wall text should use the readable game font")
-        assertTrue(body.contains("canvas-manifest-panel"), "Manifest should be serialized as in-canvas Sigil UI")
-        assertTrue(body.contains("canvas-rule-board-panel"), "Rule board should be serialized as in-canvas Sigil UI")
-        assertTrue(body.contains("MANIFEST"), "Manifest text should live in the Sigil scene")
-        assertTrue(body.contains("RULES"), "Rule board text should live in the Sigil scene")
-        assertTrue(body.contains("FOCUS"), "Focus controls should be visible in-scene text controls")
-        assertTrue(body.contains("INSPECT"), "Inspection should have visible in-scene text labels")
-        assertTrue(body.contains("COMPARE"), "Comparison guidance should be visible in-scene text labels")
-        assertTrue(body.contains("TRUCK"), "Truck controls should have visible in-scene text labels")
-        assertTrue(body.contains("RETURN"), "Return control should have a visible in-scene text label")
-        assertTrue(body.contains("RESET"), "Reset control should have a visible in-scene text label")
-        assertTrue(body.contains("text-control"), "Clickable control words should expose Sigil interaction metadata")
+        assertTrue(body.contains("\"facingMode\":\"BILLBOARD\""), "World labels should remain parented billboards")
+        assertTrue(
+            body.contains("\"fontUrl\":\"/static/fifth-wall-control-font.json\""),
+            "Fifth Wall should load its readable vector font through Sigil"
+        )
+        listOf("PACKAGE MANIFEST", "RULES", "FOCUS PACKAGE 1", "INSPECT", "TRUCK A", "RETURN BIN", "RESET", "SOUND: LOW").forEach { label ->
+            assertTrue(body.contains(label), "Canvas interface should contain $label")
+        }
         assertFalse(body.contains("fw-scene-dashboard"), "Should not render a DOM dashboard overlay")
         assertFalse(body.contains("fw-scene-hud"), "Should not render a DOM guidance overlay")
         assertFalse(body.contains("fw-modal"), "Should not render DOM prompt modals")
@@ -215,6 +175,8 @@ class HydrationTest {
         assertFalse(body.contains("model-viewer.min.js"), "Should not load model-viewer")
         assertFalse(body.contains("/static/fifth-wall-client-game.js"), "Should not load the temporary JS runtime")
         assertFalse(body.contains("/static/fifth-wall-sigil-hydration.js"), "Should not pin Fifth Wall to the old custom Sigil bundle")
+        assertFalse(body.contains("/static/fifth-wall.css"), "Should not load game-authored CSS")
+        assertFalse(body.contains("/static/fifth-wall-renderer.js"), "Should not load game-authored renderer JS")
         assertFalse(body.contains("Conveyor Queue"), "Should not render queue cards as primary website UI")
         assertFalse(body.contains("Routing Console"), "Should not render a website routing console")
     }
@@ -314,7 +276,12 @@ class HydrationTest {
         listOf(
             "/static/fifth-wall-client-game.js",
             "/static/fifth-wall-interactions.js",
-            "/static/fifth-wall-sigil-hydration.js"
+            "/static/fifth-wall-sigil-hydration.js",
+            "/static/fifth-wall-renderer.js",
+            "/static/fifth-wall-scene-refresh.js",
+            "/static/fifth-wall-fps.js",
+            "/static/fifth-wall-pointer-guard.js",
+            "/static/fifth-wall-telemetry.js"
         ).forEach { path ->
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$baseUrl$path"))
@@ -338,11 +305,11 @@ class HydrationTest {
         )
 
     private fun fifthWallProcessedCount(body: String): String {
-        val marker = "\"id\":\"canvas-stat-processed-value\""
+        val marker = "\"id\":\"desktop-info-footer\""
         val markerIndex = body.indexOf(marker)
         assertTrue(markerIndex >= 0, "Should render processed stat as in-canvas text")
-        val window = body.substring(markerIndex, (markerIndex + 600).coerceAtMost(body.length))
-        val match = Regex(""""text":"DONE ([^"]+)"""").find(window)
+        val window = body.substring(markerIndex, (markerIndex + 1_400).coerceAtMost(body.length))
+        val match = Regex("PROCESSED ([0-9]+/[0-9]+)").find(window)
         assertTrue(match != null, "Should serialize processed stat text")
         return match.groupValues[1]
     }
@@ -358,11 +325,14 @@ class HydrationTest {
         ).find(body)?.groupValues?.get(1)
         assertTrue(actionsJson != null, "Should serialize Fifth Wall scene action handlers")
 
-        val handlerPattern = Regex(
-            """"match":\{[^}]*"type":"click"[^}]*"interactionId":"${Regex.escape(interactionIdPrefix)}[^"]*"[^}]*}[^}]*"reloadOnSuccess":$reloadOnSuccess"""
-        )
+        val interactionIndex = actionsJson.indexOf("\"interactionId\":\"$interactionIdPrefix")
+        val handlerWindow = if (interactionIndex >= 0) {
+            actionsJson.substring(interactionIndex, (interactionIndex + 12_000).coerceAtMost(actionsJson.length))
+        } else {
+            ""
+        }
         assertTrue(
-            handlerPattern.containsMatchIn(actionsJson),
+            interactionIndex >= 0 && handlerWindow.contains("\"reloadOnSuccess\":$reloadOnSuccess"),
             "Click handler for $interactionIdPrefix should serialize reloadOnSuccess=$reloadOnSuccess"
         )
     }

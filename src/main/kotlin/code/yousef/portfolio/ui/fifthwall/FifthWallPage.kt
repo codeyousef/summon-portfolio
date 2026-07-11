@@ -3,14 +3,19 @@ package code.yousef.portfolio.ui.fifthwall
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.components.AppHeader
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
-import codes.yousef.summon.modifier.Display
+import codes.yousef.summon.extensions.percent
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.Modifier
-import codes.yousef.summon.modifier.className
-import codes.yousef.summon.modifier.dataAttribute
-import codes.yousef.summon.modifier.display
-import codes.yousef.summon.modifier.id
+import codes.yousef.summon.modifier.Overflow
+import codes.yousef.summon.modifier.backgroundColor
+import codes.yousef.summon.modifier.borderRadius
+import codes.yousef.summon.modifier.color
+import codes.yousef.summon.modifier.height
+import codes.yousef.summon.modifier.minHeight
+import codes.yousef.summon.modifier.overflow
+import codes.yousef.summon.modifier.style
+import codes.yousef.summon.modifier.width
 
 @Composable
 internal fun FifthWallPage(
@@ -19,45 +24,31 @@ internal fun FifthWallPage(
 ) {
     val level = FifthWallLevels[state.levelIndex.coerceIn(FifthWallLevels.indices)]
     val focusedPackage = state.focusPackage()
-    val sceneClasses = buildString {
-        append("fw-scene-shell is-canvas-only")
-        if (state.glitchActive) append(" is-glitched")
-        if (state.ruleShifted || state.priorityShifted) append(" is-shifted")
-    }
 
     FifthWallScaffold {
         AppHeader(
             locale = PortfolioLocale.EN,
+            modifier = Modifier()
+                .style("box-sizing", "border-box")
+                .color(FifthWallTheme.TEXT_PRIMARY),
             forceNativeLinks = true,
             forcePortfolioAnchors = true
         )
-        Box(modifier = Modifier().className("fw-root is-canvas-only")) {
-            Box(modifier = Modifier().className("fw-stage is-canvas-only")) {
-                Box(modifier = Modifier().className("fw-primary is-canvas-only")) {
-                    Box(modifier = Modifier().className(sceneClasses)) {
-                        FifthWallScene(
-                            controller = controller,
-                            level = level,
-                            state = state,
-                            focusedPackage = focusedPackage
-                        )
-                        TelemetryBridge(state = state)
-                    }
-                }
-            }
+        Box(
+            modifier = Modifier()
+                .width(100.percent)
+                .height("calc(100vh - 76px)")
+                .minHeight(640.px)
+                .backgroundColor(FifthWallTheme.BASE)
+                .overflow(Overflow.Hidden)
+                .borderRadius(8.px)
+        ) {
+            FifthWallScene(
+                controller = controller,
+                level = level,
+                state = state,
+                focusedPackage = focusedPackage
+            )
         }
-    }
-}
-
-@Composable
-private fun TelemetryBridge(state: FifthWallUiState) {
-    Box(
-        modifier = Modifier()
-            .id("fw-telemetry")
-            .display(Display.None)
-            .dataAttribute("session", state.telemetrySessionId)
-            .dataAttribute("revision", state.telemetryRevision.toString())
-    ) {
-        Text(text = state.telemetryPayloadJson)
     }
 }

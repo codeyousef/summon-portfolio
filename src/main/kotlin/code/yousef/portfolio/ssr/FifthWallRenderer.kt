@@ -6,7 +6,7 @@ import code.yousef.portfolio.ui.fifthwall.FifthWallPage
 import code.yousef.portfolio.ui.fifthwall.FifthWallUiState
 import codes.yousef.summon.seo.HeadScope
 
-private const val SIGIL_RUNTIME_VERSION = "0.4.2.2"
+private const val SIGIL_RUNTIME_VERSION = "0.4.3.1"
 
 class FifthWallRenderer {
 
@@ -32,22 +32,6 @@ class FifthWallRenderer {
         head.meta(null, "og:description", "Route packages through a real 3D warehouse built with Sigil and Materia.", null, null)
         head.meta(null, "og:type", "website", null, null)
 
-        head.link("preconnect", "https://fonts.googleapis.com", null, null, null, null)
-        head.link("preconnect", "https://fonts.gstatic.com", null, null, null, "anonymous")
-        head.link(
-            "stylesheet",
-            "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600;700&display=swap",
-            null,
-            null,
-            null,
-            null
-        )
-
-        head.link("stylesheet", "/static/fifth-wall.css", null, null, null, null)
-        head.script("/static/fifth-wall-renderer.js", "fifth-wall-renderer", "application/javascript", false, true, null)
-        head.script("/static/fifth-wall-pointer-guard.js", "fifth-wall-pointer-guard", "application/javascript", false, true, null)
-        head.script("/static/fifth-wall-fps.js", "fifth-wall-fps", "application/javascript", false, true, null)
-        head.script("/static/fifth-wall-scene-refresh.js", "fifth-wall-scene-refresh", "application/javascript", false, true, null)
         head.script(
             "/sigil-hydration.js?v=$SIGIL_RUNTIME_VERSION",
             "sigil-hydration-runtime",
@@ -57,6 +41,5 @@ class FifthWallRenderer {
             null
         )
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, true, null)
-        head.script("/static/fifth-wall-telemetry.js", "fifth-wall-telemetry", "application/javascript", false, true, null)
     }
 }

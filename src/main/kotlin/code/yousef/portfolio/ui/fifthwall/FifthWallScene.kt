@@ -1,19 +1,27 @@
 package code.yousef.portfolio.ui.fifthwall
 
+import codes.yousef.sigil.schema.AdaptiveResolutionData
+import codes.yousef.sigil.schema.AnimationEasing
+import codes.yousef.sigil.schema.AudioPatch
+import codes.yousef.sigil.schema.AudioPatchAction
+import codes.yousef.sigil.schema.CameraPatch
+import codes.yousef.sigil.schema.CursorHint
 import codes.yousef.sigil.schema.GeometryParams
 import codes.yousef.sigil.schema.GeometryType
 import codes.yousef.sigil.schema.HighlightPatch
-import codes.yousef.sigil.schema.AnimationEasing
-import codes.yousef.sigil.schema.AnimationKind
-import codes.yousef.sigil.schema.AnimationTrigger
-import codes.yousef.sigil.schema.CursorHint
-import codes.yousef.sigil.schema.DropTargetMetadata
 import codes.yousef.sigil.schema.HitVolumeData
 import codes.yousef.sigil.schema.HitVolumeShape
 import codes.yousef.sigil.schema.InteractionMetadata
-import codes.yousef.sigil.schema.SceneAnimationData
+import codes.yousef.sigil.schema.ProceduralAudioData
+import codes.yousef.sigil.schema.ProceduralWaveform
+import codes.yousef.sigil.schema.RendererPreference
 import codes.yousef.sigil.schema.SceneNodePatch
 import codes.yousef.sigil.schema.ScenePatch
+import codes.yousef.sigil.schema.ScreenAnchor
+import codes.yousef.sigil.schema.ScreenLayoutData
+import codes.yousef.sigil.schema.StorageBackend
+import codes.yousef.sigil.schema.StoragePatch
+import codes.yousef.sigil.schema.StoragePatchAction
 import codes.yousef.sigil.schema.TextAlignMode
 import codes.yousef.sigil.schema.TextBaselineMode
 import codes.yousef.sigil.schema.TextFacingMode
@@ -23,63 +31,83 @@ import codes.yousef.sigil.summon.canvas.SigilSceneEventCallbackResponse
 import codes.yousef.sigil.summon.canvas.SigilSceneEventHandler
 import codes.yousef.sigil.summon.canvas.SigilSceneEventMatch
 import codes.yousef.sigil.summon.components.SigilAmbientLight
+import codes.yousef.sigil.summon.components.SigilAudio
 import codes.yousef.sigil.summon.components.SigilBox
 import codes.yousef.sigil.summon.components.SigilCamera
 import codes.yousef.sigil.summon.components.SigilDirectionalLight
+import codes.yousef.sigil.summon.components.SigilFrameStatsText
 import codes.yousef.sigil.summon.components.SigilGroup
 import codes.yousef.sigil.summon.components.SigilMesh
 import codes.yousef.sigil.summon.components.SigilModel
 import codes.yousef.sigil.summon.components.SigilOrbitControls
 import codes.yousef.sigil.summon.components.SigilPlane
+import codes.yousef.sigil.summon.components.SigilScreenLayer
+import codes.yousef.sigil.summon.components.SigilSoundBus
 import codes.yousef.sigil.summon.components.SigilSphere
 import codes.yousef.sigil.summon.components.SigilText
 import codes.yousef.summon.annotation.Composable
 import io.materia.core.math.Color
 import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.sqrt
 
-private val WAREHOUSE_FLOOR = argb("#0d1721")
-private val SCENE_ACCENT = argb(FifthWallTheme.ACCENT)
-private val SCENE_WARM = argb(FifthWallTheme.ACCENT_WARM)
-private val SCENE_SUCCESS = argb(FifthWallTheme.SUCCESS)
-private val SCENE_DANGER = argb(FifthWallTheme.DANGER)
-private val SCENE_NEUTRAL_LIGHT = argb("#d9ddd8")
-private val SCENE_TEXT = argb("#f4f8ff")
-private val SCENE_TEXT_MUTED = argb("#9fb0c8")
-private val PACKAGE_TAPE = argb("#eef4fb")
-private val PACKAGE_SHADE = argb("#0b1219")
-private val PACKAGE_HIDDEN_POSITION = listOf(0f, -8f, -8f)
-private val ROUTING_TARGET_GROUP = listOf("fifth-wall-routing-target")
-private val PACKAGE_POINTER_EVENTS = listOf("click")
-private const val CONSOLE_FOCUS_SLOT_COUNT = 3
-private const val PACKAGE_RENDER_WINDOW = 6
-private const val CONSOLE_RETURN_INTERACTION_ID = "console-route-return"
-private const val CONSOLE_RESET_INTERACTION_ID = "console-reset"
-private const val ROUTE_PAD_RETURN_ID = "route-pad-return"
-private const val RESET_PAD_ID = "reset-shift-pad"
-private const val PROMPT_START_INTERACTION_ID = "prompt:start"
-private const val PROMPT_NEXT_INTERACTION_ID = "prompt:next"
-private const val PROMPT_RESET_INTERACTION_ID = "prompt:reset"
-private const val PROMPT_DISCUSSION_INTERACTION_ID = "prompt:discussion:resume"
-private const val PROMPT_RULE_ANSWER_INTERACTION_ID = "prompt:rule:answer"
-private val CONTROL_PAD_HIDDEN_POSITION = listOf(0f, -6f, 0f)
-private const val MODEL_ASSET_VERSION = "20260710-game-lod"
-private const val FIFTH_WALL_TEXT_FONT = "/static/fifth-wall-control-font.json"
-private val TRUCK_COLOR_FALLBACKS = listOf(
-    argb("#ff6b6b"),
-    argb("#5aa9ff"),
-    argb("#45e0a8"),
-    argb("#f7b955"),
-    argb("#9fb0c8"),
-    argb("#b690ff")
+private const val PACKAGE_SLOT_COUNT = 3
+private const val TRUCK_SLOT_COUNT = 4
+private const val MODEL_ASSET_VERSION = "20260711-sigil-0430"
+private const val SOUND_STORAGE_KEY = "fifth-wall-sound-volume-v1"
+private const val FIFTH_WALL_FONT = "/static/fifth-wall-control-font.json"
+
+private const val INTERACTION_RETURN = "route-return-bin"
+private const val INTERACTION_OVERVIEW = "camera-overview"
+private const val INTERACTION_INSPECT = "camera-inspect"
+private const val INTERACTION_RULES = "camera-rules"
+private const val INTERACTION_RESET = "reset-shift"
+private const val INTERACTION_SOUND = "cycle-sound"
+private const val INTERACTION_REPAIR = "repair-console"
+
+private const val AUDIO_BUS = "fifth-wall-master"
+private const val AUDIO_AMBIENCE = "fifth-wall-ambience"
+private const val AUDIO_FOCUS = "fifth-wall-focus"
+private const val AUDIO_ACCEPT = "fifth-wall-accept"
+private const val AUDIO_REJECT = "fifth-wall-reject"
+private const val AUDIO_CLEAR = "fifth-wall-clear"
+
+private val CHARCOAL = argb("#0b1118")
+private val FLOOR = argb("#142734")
+private val PANEL = argb("#101820")
+private val PANEL_STRONG = argb("#16232d")
+private val SAFETY_WHITE = argb("#f4f7f9")
+private val MUTED = argb("#9eb0be")
+private val CYAN = argb("#63d5ff")
+private val CORAL = argb("#ff6b6b")
+private val AMBER = argb("#f7b955")
+private val TEAL = argb("#45d7ad")
+private val BORDER = argb("#304552")
+private val SHADOW = argb("#071016")
+
+private val packageModelUrls = listOf(
+    fifthWallModelUrl("cube-crate.glb"),
+    fifthWallModelUrl("rectangular-parcel.glb"),
+    fifthWallModelUrl("cylinder-drum.glb"),
+    fifthWallModelUrl("sphere-package-with-cradle.glb")
 )
 
-private fun uniformScale(value: Float): List<Float> = listOf(value, value, value)
+private val packageColors = listOf(
+    "red" to CORAL,
+    "blue" to argb("#5aa9ff"),
+    "green" to TEAL,
+    "yellow" to AMBER,
+    "gray" to argb("#9fb0c8"),
+    "purple" to argb("#b690ff")
+)
 
-// Materia 0.4.1 scales positioned glyph offsets twice; compensate until the renderer fixes it.
-private fun meshTextLetterSpacing(size: Float): Float =
-    (620_000f / size) - 620f
+private enum class SceneCue {
+    NONE,
+    FOCUS,
+    ROUTE,
+    CLEAR,
+    REPAIR
+}
+
+private data class PromptChoice(val label: String)
 
 @Composable
 internal fun FifthWallScene(
@@ -88,2239 +116,905 @@ internal fun FifthWallScene(
     state: FifthWallUiState,
     focusedPackage: FifthWallPackage?
 ) {
-    val renderedPackages = state.queue.take(PACKAGE_RENDER_WINDOW)
     MateriaCanvas(
         id = "fifth-wall-scene",
         width = "100%",
-        height = "100%",
-        backgroundColor = argb(FifthWallTheme.BASE),
-        sceneEventHandlers = fifthWallSceneEventHandlers(
-            controller = controller,
-            level = level,
-            state = state,
-            renderedPackageIds = renderedPackages.map { it.id }
-        )
+        height = "calc(100vh - 80px)",
+        backgroundColor = CHARCOAL,
+        sceneEventHandlers = fifthWallSceneEventHandlers(controller)
     ) {
         SceneConfig(
-            backgroundColor = argb(FifthWallTheme.BASE),
+            backgroundColor = CHARCOAL,
             fogEnabled = false,
-            fogColor = argb("#0d1620"),
-            fogNear = 36f,
-            fogFar = 82f,
-            shadowsEnabled = false
+            shadowsEnabled = false,
+            rendererPreference = RendererPreference.WEBGL,
+            adaptiveResolution = AdaptiveResolutionData(
+                targetFps = 60f,
+                minimumDpr = 0.75f,
+                maximumDpr = 1f,
+                scaleStep = 0.1f,
+                sampleWindow = 20
+            )
         )
         SigilCamera(
-            position = listOf(0.6f, 7.4f, 11.4f),
-            lookAt = listOf(0.8f, 1.85f, 1.6f),
-            fov = 56f,
+            position = OVERVIEW_CAMERA_POSITION,
+            lookAt = OVERVIEW_CAMERA_TARGET,
+            fov = 58f,
             near = 0.1f,
-            far = 100f,
-            name = "dispatch-camera"
+            far = 90f,
+            name = "dispatch-camera",
+            id = "dispatch-camera"
         )
         SigilOrbitControls(
-            target = listOf(0.8f, 1.85f, 1.6f),
+            target = OVERVIEW_CAMERA_TARGET,
             enableDamping = true,
-            dampingFactor = 0.24f,
-            minDistance = 8.5f,
-            maxDistance = 15f,
-            minPolarAngle = 0.9f,
-            maxPolarAngle = 1.36f,
+            dampingFactor = 0.12f,
+            dampingTime = 0.075f,
+            settleEpsilon = 0.00035f,
+            maxDeltaTime = 0.033f,
+            minDistance = 9.4f,
+            maxDistance = 13.6f,
+            minPolarAngle = 0.84f,
+            maxPolarAngle = 1.3f,
+            minAzimuthAngle = -0.48f,
+            maxAzimuthAngle = 0.48f,
+            rotateSpeed = 0.38f,
+            zoomSpeed = 0.5f,
             enablePan = false,
-            autoRotate = false,
-            autoRotateSpeed = 0f,
-            rotateSpeed = 0.12f,
-            zoomSpeed = 0.45f,
-            name = "dispatch-orbit"
+            enableKeys = false,
+            name = "dispatch-orbit",
+            id = "dispatch-orbit"
         )
 
-        SigilAmbientLight(color = SCENE_NEUTRAL_LIGHT, intensity = 0.58f, name = "ambient-fill")
-        SigilDirectionalLight(
-            position = listOf(4f, 12f, 9f),
-            target = listOf(0f, 0f, 1f),
-            color = argb("#fff2d3"),
-            intensity = 0.88f,
-            castShadow = false,
-            name = "bay-sun"
-        )
+        FifthWallAudio(state.soundMode)
+        WarehouseLighting()
         WarehouseShell()
-        RoutingGuides(level = level, state = state)
-        RouteControlPads(level = level, state = state)
-        ConveyorDeck(level = level, state = state, renderedPackages = renderedPackages)
-        TruckBay(level = level, state = state)
-        ReturnBinBay(
-            selected = state.lastRouteTarget == "Return Bin",
-            routeAccepted = if (state.lastRouteTarget == "Return Bin") state.lastRouteAccepted else null,
-            glitchActive = state.glitchActive
-        )
-        InspectionDock(pkg = focusedPackage)
-        if (state.wrenchVisible) {
-            WrenchProp(visible = true)
+        ConveyorDeck()
+        state.visiblePackages().let { packages ->
+            repeat(PACKAGE_SLOT_COUNT) { index ->
+                PackageSlot(
+                    index = index,
+                    pkg = packages.getOrNull(index),
+                    selected = packages.getOrNull(index)?.id == focusedPackage?.id,
+                    interactionEnabled = state.prompt == FifthWallPrompt.None && !state.glitchActive
+                )
+            }
         }
-        InCanvasGameUi(
-            level = level,
-            state = state,
-            focusedPackage = focusedPackage,
-            renderedPackages = renderedPackages
+        repeat(TRUCK_SLOT_COUNT) { index ->
+            TruckSlot(
+                index = index,
+                visible = index < state.activeTrucks(level).size,
+                selected = state.lastRouteTarget == "Truck ${'A' + index}",
+                interactionEnabled = state.prompt == FifthWallPrompt.None && !state.glitchActive
+            )
+        }
+        ReturnBin(
+            selected = state.lastRouteTarget == "Return Bin",
+            interactionEnabled = state.prompt == FifthWallPrompt.None && !state.glitchActive
         )
+        InspectionStation()
+        RepairConsole(
+            visible = state.wrenchVisible,
+            interactionEnabled = state.wrenchVisible
+        )
+
+        DesktopStatusHud(level, state)
+        DesktopInfoHud(level, state, focusedPackage)
+        DesktopControlsHud(level, state)
+        MobileStatusHud(level, state)
+        MobileInfoHud(level, state, focusedPackage)
+        MobileControlsHud(level, state)
+        DesktopPromptHud(level, state)
+        MobilePromptHud(level, state)
         ""
     }
 }
 
-private fun fifthWallSceneEventHandlers(
-    controller: FifthWallController,
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    renderedPackageIds: List<String>
-): List<SigilSceneEventHandler> {
-    val handlers = mutableListOf<SigilSceneEventHandler>()
-
-    state.queue.forEach { pkg ->
-        handlers += patchingSceneEventHandler(
-            match = SigilSceneEventMatch(type = "click", interactionId = "package:${pkg.id}"),
-            onEvent = { controller.selectPackage(pkg.id) },
-            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
-        )
-        handlers += patchingSceneEventHandler(
-            match = SigilSceneEventMatch(type = "click", interactionId = consoleFocusInteractionId(pkg.id)),
-            onEvent = { controller.selectPackage(pkg.id) },
-            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
-        )
-    }
-
-    state.activeTrucks(level).forEachIndexed { index, _ ->
-        handlers += patchingSceneEventHandler(
-            match = SigilSceneEventMatch(
-                type = "drop",
-                sourceInteractionIdPrefix = "package:",
-                targetInteractionId = "truck:$index",
-                accepted = true
-            ),
-            onEvent = { controller.routeToTruck(index) },
-            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
-        )
-        handlers += patchingSceneEventHandler(
-            match = SigilSceneEventMatch(type = "click", interactionId = consoleTruckInteractionId(index)),
-            onEvent = { controller.routeToTruck(index) },
-            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
-        )
-        handlers += patchingSceneEventHandler(
-            match = SigilSceneEventMatch(type = "click", interactionId = "truck:$index"),
-            onEvent = { controller.routeToTruck(index) },
-            onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
-        )
-    }
-
-    handlers += patchingSceneEventHandler(
-        match = SigilSceneEventMatch(
-            type = "drop",
-            sourceInteractionIdPrefix = "package:",
-            targetInteractionId = "return-bin",
-            accepted = true
+@Composable
+private fun FifthWallAudio(soundMode: FifthWallSoundMode) {
+    SigilSoundBus(
+        bus = AUDIO_BUS,
+        volume = soundMode.volume,
+        storageKey = SOUND_STORAGE_KEY,
+        id = "fifth-wall-sound-bus"
+    )
+    SigilAudio(
+        id = AUDIO_AMBIENCE,
+        procedural = ProceduralAudioData(
+            waveform = ProceduralWaveform.SINE,
+            startFrequencyHz = 54f,
+            endFrequencyHz = 48f,
+            durationSeconds = 4f,
+            attackSeconds = 0.8f,
+            releaseSeconds = 0.8f,
+            oscillatorGain = 0.08f,
+            noiseGain = 0.2f,
+            lowPassFrequencyHz = 520f
         ),
-        onEvent = controller::routeToReturn,
-        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
+        bus = AUDIO_BUS,
+        volume = 0.42f,
+        loop = true
     )
-    handlers += patchingSceneEventHandler(
-        match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RETURN_INTERACTION_ID),
-        onEvent = controller::routeToReturn,
-        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
-    )
-    handlers += patchingSceneEventHandler(
-        match = SigilSceneEventMatch(type = "click", interactionId = "return-bin"),
-        onEvent = controller::routeToReturn,
-        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
-    )
-    handlers += sceneRefreshingEventHandler(
-        match = SigilSceneEventMatch(type = "click", interactionId = CONSOLE_RESET_INTERACTION_ID),
-        onEvent = controller::reset
-    )
-
-    handlers += patchingSceneEventHandler(
-        match = SigilSceneEventMatch(
-            type = "drop",
-            sourceInteractionIdPrefix = "package:",
-            targetInteractionId = "inspection-dock",
-            accepted = true
+    SigilAudio(
+        id = AUDIO_FOCUS,
+        procedural = ProceduralAudioData(
+            startFrequencyHz = 260f,
+            endFrequencyHz = 390f,
+            durationSeconds = 0.11f,
+            oscillatorGain = 0.35f
         ),
-        onEvent = { controller.state.value.selectedPackageId?.let(controller::selectPackage) },
-        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
+        bus = AUDIO_BUS,
+        volume = 0.46f
     )
-
-    handlers += patchingSceneEventHandler(
-        match = SigilSceneEventMatch(type = "click", interactionId = "repair-wrench"),
-        onEvent = controller::repairGlitch,
-        onResponse = { fifthWallSceneCallbackResponse(controller, state, renderedPackageIds) }
+    SigilAudio(
+        id = AUDIO_ACCEPT,
+        procedural = ProceduralAudioData(
+            waveform = ProceduralWaveform.TRIANGLE,
+            startFrequencyHz = 330f,
+            endFrequencyHz = 720f,
+            durationSeconds = 0.24f,
+            oscillatorGain = 0.45f
+        ),
+        bus = AUDIO_BUS,
+        volume = 0.58f
     )
-
-    handlers += promptSceneEventHandlers(controller, level, state)
-
-    return handlers
-}
-
-private fun sceneRefreshingEventHandler(
-    match: SigilSceneEventMatch,
-    onEvent: () -> Unit
-): SigilSceneEventHandler =
-    SigilSceneEventHandler(
-        match = match,
-        onEvent = onEvent,
-        onResponse = {
-            SigilSceneEventCallbackResponse(
-                action = "scene-refresh",
-                status = "ok"
-            )
-        },
-        reloadOnSuccess = false
+    SigilAudio(
+        id = AUDIO_REJECT,
+        procedural = ProceduralAudioData(
+            waveform = ProceduralWaveform.SQUARE,
+            startFrequencyHz = 190f,
+            endFrequencyHz = 92f,
+            durationSeconds = 0.22f,
+            oscillatorGain = 0.28f,
+            noiseGain = 0.08f,
+            lowPassFrequencyHz = 820f
+        ),
+        bus = AUDIO_BUS,
+        volume = 0.5f
     )
-
-private fun patchingSceneEventHandler(
-    match: SigilSceneEventMatch,
-    onEvent: () -> Unit,
-    onResponse: () -> SigilSceneEventCallbackResponse
-): SigilSceneEventHandler =
-    SigilSceneEventHandler(
-        match = match,
-        onEvent = onEvent,
-        onResponse = onResponse,
-        reloadOnSuccess = false
-    )
-
-private fun promptSceneEventHandlers(
-    controller: FifthWallController,
-    level: FifthWallLevel,
-    state: FifthWallUiState
-): List<SigilSceneEventHandler> =
-    when (state.prompt) {
-        FifthWallPrompt.Intro -> listOf(
-            sceneRefreshingEventHandler(
-                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_START_INTERACTION_ID),
-                onEvent = controller::startShift
-            )
-        )
-
-        FifthWallPrompt.ProbabilityPrediction -> predictionChoices(level).map { value ->
-            sceneRefreshingEventHandler(
-                match = SigilSceneEventMatch(type = "click", interactionId = promptPredictionInteractionId(value)),
-                onEvent = {
-                    controller.updatePredictionInput(value.toString())
-                    controller.submitPrediction()
-                }
-            )
-        }
-
-        FifthWallPrompt.TeamDiscussion -> listOf(
-            sceneRefreshingEventHandler(
-                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_DISCUSSION_INTERACTION_ID),
-                onEvent = {
-                    controller.updateDiscussionReply("")
-                    controller.submitDiscussionReply()
-                }
-            )
-        )
-
-        FifthWallPrompt.RuleGuess -> listOf(
-            sceneRefreshingEventHandler(
-                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_RULE_ANSWER_INTERACTION_ID),
-                onEvent = {
-                    controller.updateRuleGuess(hiddenRuleCanvasAnswer(level))
-                    controller.submitRuleGuess()
-                }
-            )
-        )
-
-        FifthWallPrompt.Confidence -> listOf("Low", "Medium", "High").map { value ->
-            sceneRefreshingEventHandler(
-                match = SigilSceneEventMatch(type = "click", interactionId = promptConfidenceInteractionId(value)),
-                onEvent = { controller.recordConfidence(value) }
-            )
-        }
-
-        FifthWallPrompt.LevelComplete -> listOf(
-            sceneRefreshingEventHandler(
-                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_NEXT_INTERACTION_ID),
-                onEvent = controller::advanceLevel
-            )
-        )
-
-        FifthWallPrompt.GameComplete -> listOf(
-            sceneRefreshingEventHandler(
-                match = SigilSceneEventMatch(type = "click", interactionId = PROMPT_RESET_INTERACTION_ID),
-                onEvent = controller::reset
-            )
-        )
-
-        FifthWallPrompt.None -> emptyList()
-    }
-
-private fun fifthWallSceneCallbackResponse(
-    controller: FifthWallController,
-    renderedState: FifthWallUiState,
-    renderedPackageIds: List<String>
-): SigilSceneEventCallbackResponse {
-    val nextState = controller.state.value
-    val nextLevel = FifthWallLevels[nextState.levelIndex.coerceIn(FifthWallLevels.indices)]
-    if (requiresSceneRefresh(renderedState, nextState, renderedPackageIds)) {
-        return SigilSceneEventCallbackResponse(
-            action = "scene-refresh",
-            status = "ok"
-        )
-    }
-    return SigilSceneEventCallbackResponse(
-        action = "patch",
-        status = "ok",
-        scenePatch = fifthWallScenePatch(
-            level = nextLevel,
-            state = nextState,
-            renderedPackageIds = renderedPackageIds
-        )
+    SigilAudio(
+        id = AUDIO_CLEAR,
+        procedural = ProceduralAudioData(
+            waveform = ProceduralWaveform.TRIANGLE,
+            startFrequencyHz = 360f,
+            endFrequencyHz = 880f,
+            durationSeconds = 0.48f,
+            oscillatorGain = 0.5f
+        ),
+        bus = AUDIO_BUS,
+        volume = 0.64f
     )
 }
 
-private fun requiresSceneRefresh(
-    renderedState: FifthWallUiState,
-    nextState: FifthWallUiState,
-    renderedPackageIds: List<String>
-): Boolean =
-    nextState.levelIndex != renderedState.levelIndex ||
-        nextState.prompt != renderedState.prompt ||
-        nextState.ruleShifted != renderedState.ruleShifted ||
-        nextState.priorityShifted != renderedState.priorityShifted ||
-        nextState.glitchActive != renderedState.glitchActive ||
-        nextState.wrenchVisible != renderedState.wrenchVisible ||
-        !renderedPackageIds.containsAll(nextState.visiblePackages().map { it.id })
-
-private fun fifthWallScenePatch(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    renderedPackageIds: List<String>
-): ScenePatch {
-    val visiblePackages = state.visiblePackages()
-    val visibleIds = visiblePackages.map { it.id }
-    val focusedId = state.focusPackage()?.id
-    val nodes = mutableListOf<SceneNodePatch>()
-
-    renderedPackageIds.forEach { packageId ->
-        val pkg = state.queue.firstOrNull { it.id == packageId }
-        val visibleIndex = visibleIds.indexOf(packageId)
-        val isVisible = visibleIndex >= 0
-        val focused = isVisible && packageId == focusedId
-        nodes += SceneNodePatch(
-            id = "package-$packageId",
-            position = if (isVisible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
-            rotation = pkg?.let { packageRotation(it, visibleIndex) },
-            scale = pkg?.let { packageScaleVector(enlarged = false, emphasized = focused) },
-            visible = isVisible,
-            highlight = HighlightPatch(
-                active = focused,
-                color = SCENE_ACCENT,
-                intensity = if (focused) 0.75f else 0f
-            )
-        )
-        nodes += SceneNodePatch(
-            id = "package-$packageId-body",
-            position = if (isVisible && pkg != null) packageBodyPosition(pkg, packageHover(enlarged = false, emphasized = focused)) else null
-        )
-    }
-
-    state.activeTrucks(level).forEachIndexed { index, rule ->
-        val routeLabel = "Truck ${'A' + index}"
-        val selected = state.lastRouteTarget == routeLabel
-        nodes += SceneNodePatch(
-            id = "truck-$index",
-            highlight = HighlightPatch(
-                active = selected,
-                color = when {
-                    !selected -> truckColor(index, rule)
-                    state.lastRouteAccepted == true -> SCENE_SUCCESS
-                    state.lastRouteAccepted == false -> SCENE_DANGER
-                    else -> truckColor(index, rule)
-                },
-                intensity = if (selected) 0.82f else 0f
-            )
-        )
-    }
-
-    val returnSelected = state.lastRouteTarget == "Return Bin"
-    nodes += SceneNodePatch(
-        id = "return-bin-target",
-        highlight = HighlightPatch(
-            active = returnSelected,
-            color = when {
-                !returnSelected -> SCENE_WARM
-                state.lastRouteAccepted == true -> SCENE_SUCCESS
-                state.lastRouteAccepted == false -> SCENE_DANGER
-                else -> SCENE_WARM
-            },
-            intensity = if (returnSelected) 0.82f else 0f
-        )
+@Composable
+private fun WarehouseLighting() {
+    SigilAmbientLight(color = argb("#dbe6ee"), intensity = 0.62f, name = "warehouse-fill")
+    SigilDirectionalLight(
+        position = listOf(5f, 11f, 8f),
+        target = listOf(0f, 0f, 1f),
+        color = argb("#fff1cf"),
+        intensity = 0.92f,
+        castShadow = false,
+        name = "warehouse-key"
     )
-    nodes += SceneNodePatch(id = "repair-wrench", visible = state.wrenchVisible)
-    nodes += manifestPatchNodes(
-        focusedPackageId = state.focusPackage()?.id,
-        renderedPackageIds = renderedPackageIds
+    SigilDirectionalLight(
+        position = listOf(-8f, 6f, -5f),
+        target = listOf(0f, 1f, 0f),
+        color = CYAN,
+        intensity = 0.32f,
+        castShadow = false,
+        name = "warehouse-rim"
     )
-    nodes += consolePatchNodes(level = level, state = state, renderedPackageIds = renderedPackageIds)
-
-    return ScenePatch(nodes)
-}
-
-private fun manifestPatchNodes(
-    focusedPackageId: String?,
-    renderedPackageIds: List<String>
-): List<SceneNodePatch> =
-    listOf(SceneNodePatch(id = "canvas-manifest-values-empty", visible = focusedPackageId == null)) +
-        renderedPackageIds.map { packageId ->
-            SceneNodePatch(id = manifestValueGroupId(packageId), visible = packageId == focusedPackageId)
-        }
-
-private fun consolePatchNodes(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    renderedPackageIds: List<String>
-): List<SceneNodePatch> {
-    val visibleIds = state.visiblePackages().map { it.id }
-    val focusedId = state.focusPackage()?.id
-    val nodes = mutableListOf<SceneNodePatch>()
-
-    renderedPackageIds.forEach { packageId ->
-        val visibleIndex = visibleIds.indexOf(packageId)
-        val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
-        val focused = visible && packageId == focusedId
-        nodes += SceneNodePatch(
-            id = packageFocusPadId(packageId),
-            position = if (visible) packageFocusPadPosition(visibleIndex) else CONTROL_PAD_HIDDEN_POSITION,
-            visible = visible,
-            highlight = HighlightPatch(
-                active = focused,
-                color = SCENE_ACCENT,
-                intensity = if (focused) 0.88f else 0.28f
-            )
-        )
-    }
-
-    state.activeTrucks(level).forEachIndexed { index, rule ->
-        val label = "Truck ${'A' + index}"
-        val selected = state.lastRouteTarget == label
-        nodes += SceneNodePatch(
-            id = routePadTruckId(index),
-            highlight = HighlightPatch(
-                active = selected,
-                color = routeFeedbackColor(
-                    selected = selected,
-                    routeAccepted = state.lastRouteAccepted,
-                    fallback = truckColor(index, rule)
-                ),
-                intensity = if (selected) 0.9f else 0.3f
-            )
-        )
-    }
-
-    val returnSelected = state.lastRouteTarget == "Return Bin"
-    nodes += SceneNodePatch(
-        id = ROUTE_PAD_RETURN_ID,
-        highlight = HighlightPatch(
-            active = returnSelected,
-            color = routeFeedbackColor(
-                selected = returnSelected,
-                routeAccepted = state.lastRouteAccepted,
-                fallback = SCENE_WARM
-            ),
-            intensity = if (returnSelected) 0.92f else 0.34f
-        )
-    )
-
-    return nodes
-}
-
-private fun routeFeedbackColor(
-    selected: Boolean,
-    routeAccepted: Boolean?,
-    fallback: Int
-): Int = when {
-    !selected -> fallback
-    routeAccepted == true -> SCENE_SUCCESS
-    routeAccepted == false -> SCENE_DANGER
-    else -> fallback
 }
 
 @Composable
 private fun WarehouseShell() {
     SigilPlane(
-        width = 34f,
-        height = 26f,
+        width = 28f,
+        height = 22f,
         position = listOf(0f, 0f, 0f),
         rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-        color = WAREHOUSE_FLOOR,
-        receiveShadow = true,
-        name = "warehouse-floor"
+        color = FLOOR,
+        receiveShadow = false,
+        name = "warehouse-floor",
+        id = "warehouse-floor"
     )
-    SigilGroup(name = "warehouse-shell") {
-        SigilBox(
-            width = 30f,
-            height = 6.4f,
-            depth = 0.28f,
-            position = listOf(0f, 3.2f, -9.2f),
-            color = argb("#263b5b"),
-            metalness = 0f,
-            roughness = 1f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "warehouse-back-wall"
-        )
-        SigilBox(
-            width = 0.28f,
-            height = 6.4f,
-            depth = 18.4f,
-            position = listOf(-12.2f, 3.2f, 0f),
-            color = argb("#263b5b"),
-            metalness = 0f,
-            roughness = 1f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "warehouse-side-wall"
-        )
-        listOf(-7.5f, 0f, 7.5f).forEachIndexed { index, x ->
-            SigilBox(
-                width = 0.22f,
-                height = 5.2f,
-                depth = 0.34f,
-                position = listOf(x, 2.8f, -9f),
-                color = SCENE_WARM,
-                metalness = 0f,
-                roughness = 1f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "warehouse-wall-marker-$index"
-            )
-        }
-        ""
-    }
-}
-
-@Composable
-private fun RoutingGuides(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-) {
-    val trucks = state.activeTrucks(level)
-    val spacing = truckSpacing(trucks.size)
-    val origin = truckOrigin(trucks.size, spacing)
-    val hubX = 1.25f
-    val hubZ = 3.1f
-    val focusedPackage = state.focusPackage()
-    val inspectionColor = if (focusedPackage?.validGeometry == false) SCENE_DANGER else SCENE_ACCENT
-
-    DockGuidePad(
-        position = listOf(8.2f, 0f, -5.5f),
-        width = 5.35f,
-        depth = 5f,
-        color = inspectionColor,
-        selected = focusedPackage != null,
-        name = "inspection-guide-pad"
-    )
-    GuideStrip(
-        startX = 3.1f,
-        startZ = 0.95f,
-        endX = 6.8f,
-        endZ = -3.95f,
-        color = inspectionColor,
-        thickness = 0.18f,
-        name = "inspection-guide"
-    )
-    GuideStrip(
-        startX = -2.2f,
-        startZ = 2.08f,
-        endX = hubX,
-        endZ = hubZ,
-        color = argb("#1a344c"),
-        thickness = 0.22f,
-        name = "routing-hub-guide"
-    )
-
-    trucks.forEachIndexed { index, rule ->
-        val x = origin + (spacing * index)
-        val routeLabel = "Truck ${'A' + index}"
-        val color = when {
-            state.lastRouteTarget == routeLabel && state.lastRouteAccepted == true -> SCENE_SUCCESS
-            state.lastRouteTarget == routeLabel && state.lastRouteAccepted == false -> SCENE_DANGER
-            else -> truckColor(index, rule)
-        }
-        DockGuidePad(
-            position = listOf(x, 0f, 4.65f),
-            width = 4.4f,
-            depth = 2.6f,
-            color = color,
-            selected = state.lastRouteTarget == routeLabel,
-            name = "truck-guide-pad-$index"
-        )
-        GuideStrip(
-            startX = hubX,
-            startZ = hubZ,
-            endX = x,
-            endZ = 4.15f,
-            color = color,
-            thickness = 0.17f,
-            name = "truck-guide-$index"
-        )
-    }
-
-    val returnColor = when {
-        state.lastRouteTarget == "Return Bin" && state.lastRouteAccepted == true -> SCENE_SUCCESS
-        state.lastRouteTarget == "Return Bin" && state.lastRouteAccepted == false -> SCENE_DANGER
-        else -> SCENE_WARM
-    }
-    DockGuidePad(
-        position = listOf(9.2f, 0f, 4.85f),
-        width = 3.1f,
-        depth = 3.1f,
-        color = returnColor,
-        selected = state.lastRouteTarget == "Return Bin",
-        name = "return-guide-pad"
-    )
-    GuideStrip(
-        startX = hubX,
-        startZ = hubZ,
-        endX = 8.45f,
-        endZ = 4.25f,
-        color = returnColor,
-        thickness = 0.17f,
-        name = "return-guide"
-    )
-}
-
-@Composable
-private fun DockGuidePad(
-    position: List<Float>,
-    width: Float,
-    depth: Float,
-    color: Int,
-    selected: Boolean,
-    name: String
-) {
-    SigilGroup(position = position, name = name) {
-        SigilBox(
-            width = width,
-            height = if (selected) 0.08f else 0.05f,
-            depth = depth,
-            position = listOf(0f, 0.03f, 0f),
-            color = if (selected) color else argb("#152132"),
-            metalness = if (selected) 0.42f else 0.18f,
-            roughness = 0.76f,
-            castShadow = false,
-            receiveShadow = true,
-            name = "$name-base"
-        )
-        ""
-    }
-}
-
-@Composable
-private fun GuideStrip(
-    startX: Float,
-    startZ: Float,
-    endX: Float,
-    endZ: Float,
-    color: Int,
-    thickness: Float,
-    name: String
-) {
-    val dx = endX - startX
-    val dz = endZ - startZ
-    val length = sqrt((dx * dx) + (dz * dz))
-    val angle = atan2(dz.toDouble(), dx.toDouble()).toFloat()
-    val midX = (startX + endX) / 2f
-    val midZ = (startZ + endZ) / 2f
-
     SigilBox(
-        width = length,
-        height = 0.05f,
-        depth = thickness,
-        position = listOf(midX, 0.035f, midZ),
-        rotation = listOf(0f, angle, 0f),
-        color = color,
-        metalness = 0.64f,
-        roughness = 0.2f,
+        width = 28f,
+        height = 5.8f,
+        depth = 0.26f,
+        position = listOf(0f, 2.9f, -7.7f),
+        color = argb("#22394a"),
         castShadow = false,
         receiveShadow = false,
-        name = name
+        name = "warehouse-back-wall"
     )
-}
-
-@Composable
-private fun BillboardTextLabel(
-    text: String,
-    position: List<Float>,
-    size: Float,
-    color: Int,
-    name: String,
-    id: String = name,
-    lineHeight: Float = 1.04f
-) {
-    SigilText(
-        text = text,
-        position = position,
-        color = color,
-        size = size,
-        depth = 0f,
-        curveSegments = 3,
-        letterSpacing = meshTextLetterSpacing(size),
-        lineHeight = lineHeight,
-        align = TextAlignMode.CENTER,
-        baseline = TextBaselineMode.MIDDLE,
-        facingMode = TextFacingMode.BILLBOARD,
-        fontUrl = FIFTH_WALL_TEXT_FONT,
-        name = name,
-        id = id
-    )
-}
-
-@Composable
-private fun BillboardTextControl(
-    text: String,
-    position: List<Float>,
-    size: Float,
-    color: Int,
-    interactionId: String,
-    actions: List<String>,
-    hitWidth: Float,
-    hitHeight: Float,
-    hitDepth: Float,
-    name: String,
-    id: String = name,
-    lineHeight: Float = 1.02f
-) {
-    SigilText(
-        text = text,
-        position = position,
-        color = color,
-        size = size,
-        depth = 0f,
-        curveSegments = 3,
-        letterSpacing = meshTextLetterSpacing(size),
-        lineHeight = lineHeight,
-        align = TextAlignMode.CENTER,
-        baseline = TextBaselineMode.MIDDLE,
-        facingMode = TextFacingMode.BILLBOARD,
-        fontUrl = FIFTH_WALL_TEXT_FONT,
-        interaction = routePadInteraction(
-            interactionId = interactionId,
-            width = hitWidth,
-            depth = hitDepth,
-            actions = actions,
-            height = hitHeight,
-            centerY = 0f
-        ),
-        name = name,
-        id = id
-    )
-}
-
-@Composable
-private fun InCanvasGameUi(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?,
-    renderedPackages: List<FifthWallPackage>
-) {
-    CanvasProgressLabel(level = level, state = state)
-    if (state.prompt == FifthWallPrompt.None) {
-        CanvasManifestPanel(
-            level = level,
-            state = state,
-            focusedPackage = focusedPackage,
-            renderedPackages = renderedPackages
+    listOf(-8.4f, 0f, 8.4f).forEachIndexed { index, x ->
+        SigilBox(
+            width = 0.2f,
+            height = 4.8f,
+            depth = 0.32f,
+            position = listOf(x, 2.5f, -7.5f),
+            color = AMBER,
+            castShadow = false,
+            receiveShadow = false,
+            name = "wall-marker-$index"
         )
-    } else {
-        CanvasPromptPanel(level = level, state = state)
+    }
+    repeat(8) { index ->
+        SigilBox(
+            width = 1.15f,
+            height = 0.035f,
+            depth = 0.22f,
+            position = listOf(-7.2f + index * 2.05f, 0.025f, 6.7f),
+            rotation = listOf(0f, if (index % 2 == 0) 0.45f else -0.45f, 0f),
+            color = if (index % 2 == 0) AMBER else CHARCOAL,
+            castShadow = false,
+            receiveShadow = false,
+            name = "hazard-stripe-$index"
+        )
     }
 }
 
 @Composable
-private fun CanvasProgressLabel(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-) {
-    SigilGroup(
-        position = CONTROL_PAD_HIDDEN_POSITION,
-        visible = false,
-        name = "canvas-progress-state"
-    ) {
-        BillboardTextLabel(
-            text = "DONE ${state.processedCount(level)}/${level.packageCount}",
-            position = listOf(0f, 0f, 0f),
-            size = 0.32f,
-            color = SCENE_TEXT,
-            name = "canvas-stat-processed-value",
-            id = "canvas-stat-processed-value"
+private fun ConveyorDeck() {
+    SigilGroup(position = listOf(-2.6f, 0f, -0.5f), name = "conveyor", id = "conveyor") {
+        SigilBox(
+            width = 10.4f,
+            height = 0.34f,
+            depth = 2.8f,
+            position = listOf(0f, 0.54f, 0f),
+            color = argb("#27343b"),
+            metalness = 0.18f,
+            roughness = 0.82f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "conveyor-belt"
         )
-        ""
-    }
-}
-
-@Composable
-private fun CanvasManifestPanel(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    focusedPackage: FifthWallPackage?,
-    renderedPackages: List<FifthWallPackage>
-) {
-    CanvasPanel(
-        name = "canvas-manifest-panel",
-        position = listOf(5.4f, 5.1f, 0.35f),
-        rotation = listOf(0f, -0.42f, 0f),
-        width = 5.25f,
-        height = 4.55f,
-        accentColor = SCENE_ACCENT
-    ) {
-        CanvasText(
-            text = "MANIFEST",
-            position = listOf(-2.25f, 1.82f, 0.18f),
-            size = 0.34f,
-            color = SCENE_ACCENT,
-            name = "canvas-manifest-title"
-        )
-        manifestRows(null).forEachIndexed { index, row ->
-            CanvasText(
-                text = row.label,
-                position = listOf(-2.25f, 1.34f - (index * 0.34f), 0.18f),
-                size = 0.25f,
-                color = SCENE_TEXT_MUTED,
-                name = "canvas-manifest-${row.idSuffix}-label"
+        listOf(-1.32f, 1.32f).forEachIndexed { index, z ->
+            SigilBox(
+                width = 10.7f,
+                height = 0.22f,
+                depth = 0.16f,
+                position = listOf(0f, 0.72f, z),
+                color = TEAL,
+                castShadow = false,
+                receiveShadow = false,
+                name = "conveyor-rail-$index"
             )
         }
-        CanvasManifestValueGroup(
-            packageId = null,
-            rows = manifestRows(null),
-            visible = focusedPackage == null
-        )
-        renderedPackages.forEach { pkg ->
-            CanvasManifestValueGroup(
-                packageId = pkg.id,
-                rows = manifestRows(pkg),
-                visible = pkg.id == focusedPackage?.id
-            )
-        }
-        SigilGroup(name = "canvas-rule-board-panel", id = "canvas-rule-board-panel") {
-            ""
-        }
-        CanvasText(
-            text = "COMPARE RULES",
-            position = listOf(-2.25f, -0.82f, 0.18f),
-            size = 0.31f,
-            color = if (state.ruleShifted) SCENE_WARM else SCENE_ACCENT,
-            name = "canvas-rule-board-title"
-        )
-        state.activeTrucks(level).forEachIndexed { index, rule ->
-            val revealed = level.hiddenRuleIndex != index || state.hiddenRuleRevealed || state.ruleShifted
-            CanvasText(
-                text = "${'A' + index}  ${rule.canvasShortLabel(revealed)}",
-                position = listOf(-2.25f, -1.18f - (index * 0.3f), 0.18f),
-                size = 0.27f,
-                color = if (revealed) SCENE_TEXT else SCENE_TEXT_MUTED,
-                name = "canvas-rule-truck-$index",
-                lineHeight = 1.12f
-            )
-        }
-        CanvasText(
-            text = "RET",
-            position = listOf(-2.25f, -1.88f, 0.18f),
-            size = 0.25f,
-            color = SCENE_TEXT,
-            name = "canvas-rule-return"
-        )
-        CanvasText(
-            text = "NO MATCH",
-            position = listOf(-1.38f, -1.88f, 0.18f),
-            size = 0.23f,
-            color = SCENE_TEXT,
-            name = "canvas-rule-return-value"
-        )
-    }
-}
-
-private data class CanvasManifestRow(
-    val label: String,
-    val value: String,
-    val idSuffix: String
-)
-
-private fun manifestRows(pkg: FifthWallPackage?): List<CanvasManifestRow> =
-    listOf(
-        CanvasManifestRow("COLOR", pkg?.color?.name?.uppercase() ?: "--", "color"),
-        CanvasManifestRow("SHAPE", pkg?.shape?.canvasShapeLabel() ?: "--", "shape"),
-        CanvasManifestRow("WEIGHT", pkg?.weight?.let { "$it KG" } ?: "--", "weight"),
-        CanvasManifestRow("VOLUME", pkg?.volume?.let { "$it L" } ?: "--", "volume"),
-        CanvasManifestRow("PATTERN", pkg?.pattern?.uppercase() ?: "--", "pattern"),
-        CanvasManifestRow("DEST", pkg?.destination?.uppercase() ?: "--", "destination")
-    )
-
-@Composable
-private fun CanvasManifestValueGroup(
-    packageId: String?,
-    rows: List<CanvasManifestRow>,
-    visible: Boolean
-) {
-    val groupId = packageId?.let(::manifestValueGroupId) ?: "canvas-manifest-values-empty"
-    SigilGroup(name = groupId, id = groupId, visible = visible) {
-        rows.forEachIndexed { index, row ->
-            CanvasText(
-                text = row.value,
-                position = listOf(0.18f, 1.34f - (index * 0.34f), 0.18f),
-                size = 0.27f,
-                color = SCENE_TEXT,
-                name = "$groupId-${row.idSuffix}",
-                id = "$groupId-${row.idSuffix}"
+        repeat(14) { index ->
+            SigilBox(
+                width = 0.08f,
+                height = 0.04f,
+                depth = 2.44f,
+                position = listOf(-4.75f + index * 0.73f, 0.74f, 0f),
+                color = argb("#8999a4"),
+                castShadow = false,
+                receiveShadow = false,
+                name = "conveyor-slat-$index"
             )
         }
         ""
     }
 }
 
-private fun manifestValueGroupId(packageId: String): String = "canvas-manifest-values-$packageId"
-
 @Composable
-private fun CanvasPromptPanel(
-    level: FifthWallLevel,
-    state: FifthWallUiState
+private fun PackageSlot(
+    index: Int,
+    pkg: FifthWallPackage?,
+    selected: Boolean,
+    interactionEnabled: Boolean
 ) {
-    if (state.prompt == FifthWallPrompt.None) return
-
-    CanvasPanel(
-        name = "canvas-prompt-panel",
-        position = listOf(-5.5f, 5.9f, 0.4f),
-        rotation = listOf(0f, 0.48f, 0f),
-        width = 6f,
-        height = 2.55f,
-        accentColor = SCENE_WARM
-    ) {
-        CanvasText(
-            text = promptTitle(state.prompt),
-            position = listOf(-2.62f, 0.92f, 0.18f),
-            size = 0.32f,
-            color = SCENE_TEXT,
-            name = "canvas-prompt-title"
-        )
-        promptCopyLines(level, state).forEachIndexed { index, line ->
-            CanvasText(
-                text = line,
-                position = listOf(-2.62f, 0.42f - (index * 0.3f), 0.18f),
-                size = 0.24f,
-                color = if (index == 0) SCENE_TEXT else SCENE_TEXT_MUTED,
-                name = "canvas-prompt-copy-$index"
-            )
-        }
-        CanvasPromptControls(level = level, state = state)
-    }
-}
-
-@Composable
-private fun CanvasPromptControls(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-) {
-    when (state.prompt) {
-        FifthWallPrompt.Intro -> {
-            CanvasButton(
-                text = "ENTER BAY",
-                position = listOf(-1.92f, -0.98f, 0.16f),
-                width = 2.0f,
-                height = 0.44f,
-                interactionId = PROMPT_START_INTERACTION_ID,
-                name = "canvas-prompt-start"
-            )
-        }
-
-        FifthWallPrompt.ProbabilityPrediction -> {
-            predictionChoices(level).forEachIndexed { index, value ->
-                CanvasButton(
-                    text = "$value/${level.packageCount}",
-                    position = listOf(-1.92f + (index * 1.65f), -0.98f, 0.16f),
-                    width = 1.4f,
-                    height = 0.44f,
-                    interactionId = promptPredictionInteractionId(value),
-                    name = "canvas-prompt-prediction-$value"
-                )
-            }
-        }
-
-        FifthWallPrompt.TeamDiscussion -> {
-            CanvasButton(
-                text = "RESUME",
-                position = listOf(-1.92f, -0.98f, 0.16f),
-                width = 1.85f,
-                height = 0.44f,
-                interactionId = PROMPT_DISCUSSION_INTERACTION_ID,
-                name = "canvas-prompt-discussion"
-            )
-        }
-
-        FifthWallPrompt.RuleGuess -> {
-            CanvasButton(
-                text = "CONFIRM RULE",
-                position = listOf(-1.92f, -0.98f, 0.16f),
-                width = 2.45f,
-                height = 0.44f,
-                interactionId = PROMPT_RULE_ANSWER_INTERACTION_ID,
-                name = "canvas-prompt-rule-answer"
-            )
-            CanvasText(
-                text = hiddenRuleCanvasAnswer(level),
-                position = listOf(-0.42f, -1.05f, 0.16f),
-                size = 0.18f,
-                color = SCENE_TEXT_MUTED,
-                name = "canvas-prompt-rule-answer-preview"
-            )
-        }
-
-        FifthWallPrompt.Confidence -> {
-            listOf("Low", "Medium", "High").forEachIndexed { index, value ->
-                CanvasButton(
-                    text = value.uppercase(),
-                    position = listOf(-1.92f + (index * 1.65f), -0.98f, 0.16f),
-                    width = 1.4f,
-                    height = 0.44f,
-                    interactionId = promptConfidenceInteractionId(value),
-                    name = "canvas-prompt-confidence-${value.lowercase()}"
-                )
-            }
-        }
-
-        FifthWallPrompt.LevelComplete -> {
-            CanvasButton(
-                text = "NEXT LEVEL",
-                position = listOf(-1.92f, -0.98f, 0.16f),
-                width = 2.2f,
-                height = 0.44f,
-                interactionId = PROMPT_NEXT_INTERACTION_ID,
-                name = "canvas-prompt-next"
-            )
-        }
-
-        FifthWallPrompt.GameComplete -> {
-            CanvasButton(
-                text = "RESTART",
-                position = listOf(-1.92f, -0.98f, 0.16f),
-                width = 1.9f,
-                height = 0.44f,
-                interactionId = PROMPT_RESET_INTERACTION_ID,
-                name = "canvas-prompt-reset"
-            )
-        }
-
-        FifthWallPrompt.None -> Unit
-    }
-}
-
-@Composable
-private fun CanvasRow(
-    label: String,
-    value: String,
-    y: Float,
-    valueId: String
-) {
-    CanvasText(
-        text = label,
-        position = listOf(-2.48f, y, 0.18f),
-        size = 0.25f,
-        color = SCENE_TEXT,
-        name = "$valueId-label"
+    val position = packageSlotPosition(index)
+    val interaction = worldInteraction(
+        interactionId = focusInteraction(index),
+        enabled = interactionEnabled && pkg != null,
+        size = listOf(2.7f, 3.2f, 2.7f),
+        center = listOf(0f, 1.35f, 0f)
     )
-    CanvasText(
-        text = value,
-        position = listOf(0.32f, y, 0.18f),
-        size = 0.28f,
-        color = SCENE_TEXT,
-        name = valueId,
-        id = valueId
-    )
-}
-
-@Composable
-private fun CanvasPanel(
-    name: String,
-    position: List<Float>,
-    rotation: List<Float> = listOf(0f, 0f, 0f),
-    width: Float,
-    height: Float,
-    accentColor: Int,
-    content: () -> Unit
-) {
-    SigilGroup(position = position, rotation = rotation, name = name, id = name) {
-        SigilBox(
-            width = width,
-            height = height,
-            depth = 0.1f,
-            position = listOf(0f, 0f, 0f),
-            color = argb("#08111b"),
-            metalness = 0.08f,
-            roughness = 0.86f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "$name-backing"
-        )
-        SigilBox(
-            width = width,
-            height = 0.04f,
-            depth = 0.16f,
-            position = listOf(0f, -(height / 2f) + 0.04f, 0.08f),
-            color = accentColor,
-            metalness = 0.32f,
-            roughness = 0.3f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "$name-bottom-accent"
-        )
-        SigilBox(
-            width = width,
-            height = 0.05f,
-            depth = 0.16f,
-            position = listOf(0f, (height / 2f) - 0.05f, 0.08f),
-            color = accentColor,
-            metalness = 0.36f,
-            roughness = 0.24f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "$name-accent"
-        )
-        content()
-        ""
-    }
-}
-
-@Composable
-private fun CanvasButton(
-    text: String,
-    position: List<Float>,
-    width: Float,
-    height: Float,
-    interactionId: String,
-    name: String,
-    color: Int = SCENE_ACCENT
-) {
     SigilGroup(
         position = position,
-        name = name,
-        interaction = routePadInteraction(
-            interactionId = interactionId,
-            width = width,
-            depth = 0.58f,
-            actions = listOf("prompt", "text-control"),
-            height = height,
-            centerY = 0f
-        ),
-        animations = listOf(targetPulseAnimation("$name-press", 0)),
-        id = name
+        rotation = listOf(0f, packageYaw(pkg, index), 0f),
+        visible = pkg != null,
+        name = "package-slot-$index",
+        interaction = interaction,
+        id = "package-slot-$index"
     ) {
-        SigilBox(
-            width = width,
-            height = height,
-            depth = 0.1f,
-            position = listOf(0f, 0f, 0f),
-            color = color,
-            metalness = 0.44f,
-            roughness = 0.28f,
+        SigilPlane(
+            width = 2.25f,
+            height = 1.8f,
+            position = listOf(0f, 0.79f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = SHADOW,
+            receiveShadow = false,
+            name = "package-slot-$index-contact",
+            id = "package-slot-$index-contact"
+        )
+        SigilModel(
+            url = pkg?.let(::packageModelUrl) ?: packageModelUrls.first(),
+            preloadUrls = packageModelUrls,
+            position = packageModelPosition(pkg),
+            rotation = packageModelRotation(pkg),
+            scale = packageModelScale(pkg),
             castShadow = false,
             receiveShadow = false,
-            name = "$name-plate"
+            name = "package-slot-$index-model",
+            id = "package-slot-$index-model"
         )
-        CanvasText(
-            text = text,
-            position = listOf(0f, 0f, 0.12f),
-            size = 0.22f,
-            color = SCENE_TEXT,
+        packageColors.forEach { (name, color) ->
+            SigilGroup(
+                visible = pkg?.color?.name == name,
+                name = "package-slot-$index-color-$name",
+                id = "package-slot-$index-color-$name"
+            ) {
+                SigilSphere(
+                    radius = 0.14f,
+                    widthSegments = 8,
+                    heightSegments = 6,
+                    position = listOf(-0.66f, 1.66f, 0.57f),
+                    color = color,
+                    castShadow = false,
+                    receiveShadow = false,
+                    name = "package-slot-$index-color-marker-$name"
+                )
+                SigilBox(
+                    width = 0.52f,
+                    height = 0.06f,
+                    depth = 0.08f,
+                    position = listOf(-0.4f, 1.66f, 0.57f),
+                    color = color,
+                    castShadow = false,
+                    receiveShadow = false,
+                    name = "package-slot-$index-color-stem-$name"
+                )
+                ""
+            }
+        }
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 1.16f, outerRadius = 1.35f, radialSegments = 28),
+            position = listOf(0f, 0.82f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = CYAN,
+            visible = selected,
+            castShadow = false,
+            receiveShadow = false,
+            name = "package-slot-$index-selection",
+            id = "package-slot-$index-selection"
+        )
+        SigilText(
+            text = "P${index + 1}",
+            position = listOf(0f, 2.42f, 0f),
+            color = SAFETY_WHITE,
+            size = 0.3f,
+            depth = 0.01f,
+            curveSegments = 6,
             align = TextAlignMode.CENTER,
             baseline = TextBaselineMode.MIDDLE,
-            name = "$name-text",
-            id = "$name-text"
+            facingMode = TextFacingMode.BILLBOARD,
+            fontUrl = FIFTH_WALL_FONT,
+            name = "package-slot-$index-world-label",
+            id = "package-slot-$index-world-label"
         )
         ""
     }
 }
 
 @Composable
-private fun CanvasText(
-    text: String,
-    position: List<Float>,
-    size: Float,
-    color: Int,
-    name: String,
-    id: String = name,
-    align: TextAlignMode = TextAlignMode.LEFT,
-    baseline: TextBaselineMode = TextBaselineMode.TOP,
-    lineHeight: Float = 1.05f
-) {
-    SigilText(
-        text = text.uppercase(),
-        position = position,
-        color = color,
-        size = size,
-        depth = 0f,
-        curveSegments = 3,
-        letterSpacing = meshTextLetterSpacing(size.coerceAtLeast(0.3f)),
-        lineHeight = lineHeight,
-        align = align,
-        baseline = baseline,
-        facingMode = TextFacingMode.FIXED,
-        fontUrl = FIFTH_WALL_TEXT_FONT,
-        name = name,
-        id = id
-    )
-}
-
-private fun promptTitle(prompt: FifthWallPrompt): String =
-    when (prompt) {
-        FifthWallPrompt.Intro -> "Courier Protocol 3D"
-        FifthWallPrompt.ProbabilityPrediction -> "Prediction Lock"
-        FifthWallPrompt.TeamDiscussion -> "Dispatch Pause"
-        FifthWallPrompt.RuleGuess -> "Name the Hidden Rule"
-        FifthWallPrompt.Confidence -> "Confidence Check"
-        FifthWallPrompt.LevelComplete -> "Shift Cleared"
-        FifthWallPrompt.GameComplete -> "All Bays Clear"
-        FifthWallPrompt.None -> ""
-    }
-
-private fun promptCopyLines(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-): List<String> =
-    when (state.prompt) {
-        FifthWallPrompt.Intro ->
-            listOf("FOCUS A PACKAGE", "READ ITS MANIFEST", "ROUTE OR RETURN")
-
-        FifthWallPrompt.ProbabilityPrediction ->
-            listOf("TRUCK A ACCEPTS 70 PERCENT", "PICK EXPECTED PASSES")
-
-        FifthWallPrompt.TeamDiscussion ->
-            listOf("DISPATCH PAUSE", "RESUME THE SHIFT")
-
-        FifthWallPrompt.RuleGuess ->
-            listOf("CONFIRM THE HIDDEN TRUCK A RULE")
-
-        FifthWallPrompt.Confidence ->
-            state.pendingConfidence?.let { listOf("${it.outcome} ON ${it.routeLabel}", "RECORD CONFIDENCE") }
-                ?: listOf("RECORD CONFIDENCE")
-
-        FifthWallPrompt.LevelComplete ->
-            listOf("${level.name} CLEAR", "SCORE ${state.score}")
-
-        FifthWallPrompt.GameComplete ->
-            listOf("ALL BAYS CLEAR", "RESTART SHIFT")
-
-        FifthWallPrompt.None -> emptyList()
-    }
-
-private fun predictionChoices(level: FifthWallLevel): List<Int> =
-    listOf(0, (level.packageCount * 7) / 10, level.packageCount).distinct()
-
-private fun promptPredictionInteractionId(value: Int): String =
-    "prompt:prediction:$value"
-
-private fun promptConfidenceInteractionId(value: String): String =
-    "prompt:confidence:${value.lowercase()}"
-
-private fun String.canvasShapeLabel(): String =
-    when (lowercase()) {
-        "rect" -> "RECT"
-        "cylinder" -> "CYL"
-        "sphere" -> "SPHERE"
-        "cube" -> "CUBE"
-        else -> uppercase()
-    }
-
-private fun FifthWallRule.canvasShortLabel(revealed: Boolean): String {
-    if (!revealed) return "HIDDEN"
-    return when (kind) {
-        FifthWallRuleKind.Color -> value.orEmpty().uppercase()
-        FifthWallRuleKind.Shape -> value.orEmpty().canvasShapeLabel()
-        FifthWallRuleKind.Pattern -> value.orEmpty().uppercase()
-        FifthWallRuleKind.Destination -> value.orEmpty().uppercase()
-        FifthWallRuleKind.Geometry -> value.orEmpty().uppercase()
-        FifthWallRuleKind.Weight -> "${comparator.orEmpty()} ${threshold ?: ""} KG".trim()
-        FifthWallRuleKind.Volume -> "${comparator.orEmpty()} ${threshold ?: ""} L".trim()
-        FifthWallRuleKind.Probability -> "${(probability?.times(100)?.toInt() ?: 0)}%"
-    }
-}
-
-private fun hiddenRuleCanvasAnswer(level: FifthWallLevel): String {
-    val hiddenRule = level.hiddenRuleIndex?.let { level.trucks.getOrNull(it) } ?: level.trucks.firstOrNull()
-    return when (hiddenRule?.kind) {
-        FifthWallRuleKind.Weight ->
-            "weight ${hiddenRule.comparator ?: ">="} ${hiddenRule.threshold ?: 0}"
-
-        FifthWallRuleKind.Color ->
-            "color ${hiddenRule.value.orEmpty()}"
-
-        FifthWallRuleKind.Shape ->
-            "shape ${hiddenRule.value.orEmpty()}"
-
-        FifthWallRuleKind.Pattern ->
-            "pattern ${hiddenRule.value.orEmpty()}"
-
-        FifthWallRuleKind.Destination ->
-            "destination ${hiddenRule.value.orEmpty()}"
-
-        FifthWallRuleKind.Geometry ->
-            "geometry ${hiddenRule.value.orEmpty()}"
-
-        FifthWallRuleKind.Volume ->
-            "volume ${hiddenRule.comparator ?: ">="} ${hiddenRule.threshold ?: 0}"
-
-        FifthWallRuleKind.Probability,
-        null -> "weight >= 8"
-    }
-}
-
-@Composable
-private fun RouteControlPads(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-) {
-    val trucks = state.activeTrucks(level)
-    val spacing = truckSpacing(trucks.size)
-    val origin = truckOrigin(trucks.size, spacing)
-
-    trucks.forEachIndexed { index, rule ->
-        val routeLabel = "Truck ${'A' + index}"
-        val selected = state.lastRouteTarget == routeLabel
-        RouteTruckPad(
-            index = index,
-            position = listOf(origin + (spacing * index), 0.08f, 6.0f),
-            color = truckColor(index, rule),
-            selected = selected,
-            routeAccepted = if (selected) state.lastRouteAccepted else null
-        )
-    }
-    RouteReturnPad(
-        selected = state.lastRouteTarget == "Return Bin",
-        routeAccepted = if (state.lastRouteTarget == "Return Bin") state.lastRouteAccepted else null
-    )
-    ResetShiftPad()
-}
-
-@Composable
-private fun RouteTruckPad(
+private fun TruckSlot(
     index: Int,
-    position: List<Float>,
-    color: Int,
-    selected: Boolean,
-    routeAccepted: Boolean?
-) {
-    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = color)
-    SigilGroup(
-        position = position,
-        name = "route-pad-truck-${'A' + index}",
-        interaction = routePadInteraction(
-            interactionId = consoleTruckInteractionId(index),
-            width = 4.35f,
-            depth = 2.75f,
-            actions = listOf("route", "truck", "control-pad"),
-            height = 1.85f,
-            centerY = 0.72f
-        ),
-        animations = listOf(targetPulseAnimation("route-pad-truck-$index-press", 80 + (index * 50))),
-        id = routePadTruckId(index)
-    ) {
-        SigilMesh(
-            geometryType = GeometryType.CIRCLE,
-            geometryParams = GeometryParams(radius = 1.3f, radialSegments = 28),
-            position = listOf(0f, 0.02f, 0f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = argb("#102131"),
-            metalness = 0.28f,
-            roughness = 0.64f,
-            castShadow = false,
-            receiveShadow = true,
-            name = "route-pad-truck-$index-disc"
-        )
-        SigilMesh(
-            geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 1.14f, outerRadius = 1.66f, radialSegments = 36),
-            position = listOf(0f, 0.045f, 0f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = feedback,
-            metalness = 0.72f,
-            roughness = 0.12f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-truck-$index-ring"
-        )
-        SigilBox(
-            width = 1.42f,
-            height = 0.12f,
-            depth = 0.24f,
-            position = listOf(-0.34f, 0.12f, -0.12f),
-            color = feedback,
-            metalness = 0.32f,
-            roughness = 0.36f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-truck-$index-arrow-a"
-        )
-        SigilBox(
-            width = 0.96f,
-            height = 0.12f,
-            depth = 0.24f,
-            position = listOf(0.2f, 0.12f, 0.26f),
-            color = feedback,
-            metalness = 0.32f,
-            roughness = 0.36f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-truck-$index-arrow-b"
-        )
-        listOf(-1.04f, 1.04f).forEachIndexed { beaconIndex, x ->
-            SigilMesh(
-                geometryType = GeometryType.CYLINDER,
-                geometryParams = GeometryParams(
-                    radiusTop = 0.1f,
-                    radiusBottom = 0.16f,
-                    height = 0.95f,
-                    radialSegments = 8
-                ),
-                position = listOf(x, 0.54f, 0.64f),
-                color = feedback,
-                metalness = 0.46f,
-                roughness = 0.24f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "route-pad-truck-$index-beacon-post-$beaconIndex"
-            )
-            SigilSphere(
-                radius = 0.28f,
-                widthSegments = 10,
-                heightSegments = 8,
-                position = listOf(x, 1.08f, 0.64f),
-                color = feedback,
-                metalness = 0.26f,
-                roughness = 0.26f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "route-pad-truck-$index-beacon-cap-$beaconIndex"
-            )
-        }
-        SigilSphere(
-            radius = 0.24f,
-            widthSegments = 10,
-            heightSegments = 8,
-            position = listOf(0f, 0.24f, -0.86f),
-            color = feedback,
-            metalness = 0.26f,
-            roughness = 0.38f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-truck-$index-beacon"
-        )
-        ""
-    }
-}
-
-@Composable
-private fun RouteReturnPad(
-    selected: Boolean,
-    routeAccepted: Boolean?
-) {
-    val feedback = routeFeedbackColor(selected = selected, routeAccepted = routeAccepted, fallback = SCENE_WARM)
-    SigilGroup(
-        position = listOf(3.8f, 0.08f, 3.4f),
-        name = "route-pad-return",
-        interaction = routePadInteraction(
-            interactionId = CONSOLE_RETURN_INTERACTION_ID,
-            width = 3.8f,
-            depth = 2.8f,
-            actions = listOf("route", "return", "control-pad"),
-            height = 1.75f,
-            centerY = 0.68f
-        ),
-        animations = listOf(targetPulseAnimation("route-pad-return-press", 220)),
-        id = ROUTE_PAD_RETURN_ID
-    ) {
-        SigilMesh(
-            geometryType = GeometryType.CIRCLE,
-            geometryParams = GeometryParams(radius = 1.24f, radialSegments = 28),
-            position = listOf(0f, 0.02f, 0f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = argb("#261f12"),
-            metalness = 0.28f,
-            roughness = 0.66f,
-            castShadow = false,
-            receiveShadow = true,
-            name = "route-pad-return-disc"
-        )
-        SigilMesh(
-            geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = 0.82f, tube = 0.1f, radialSegments = 10, tubularSegments = 32),
-            position = listOf(0f, 0.18f, 0f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = feedback,
-            metalness = 0.72f,
-            roughness = 0.14f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-return-loop"
-        )
-        SigilBox(
-            width = 0.46f,
-            height = 0.12f,
-            depth = 0.92f,
-            position = listOf(0.86f, 0.15f, 0f),
-            color = feedback,
-            metalness = 0.34f,
-            roughness = 0.32f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-return-tail"
-        )
-        SigilMesh(
-            geometryType = GeometryType.CYLINDER,
-            geometryParams = GeometryParams(
-                radiusTop = 0.12f,
-                radiusBottom = 0.18f,
-                height = 1.0f,
-                radialSegments = 8
-            ),
-            position = listOf(-0.95f, 0.56f, 0.58f),
-            color = feedback,
-            metalness = 0.46f,
-            roughness = 0.24f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-return-beacon-post"
-        )
-        SigilSphere(
-            radius = 0.32f,
-            widthSegments = 10,
-            heightSegments = 8,
-            position = listOf(-0.95f, 1.14f, 0.58f),
-            color = feedback,
-            metalness = 0.26f,
-            roughness = 0.28f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "route-pad-return-beacon-cap"
-        )
-        ""
-    }
-}
-
-@Composable
-private fun ResetShiftPad() {
-    SigilGroup(
-        position = listOf(-5.5f, 0.08f, 5.1f),
-        name = "reset-shift-pad",
-        interaction = routePadInteraction(
-            interactionId = CONSOLE_RESET_INTERACTION_ID,
-            width = 3.2f,
-            depth = 1.9f,
-            actions = listOf("reset", "control-pad"),
-            height = 1.15f,
-            centerY = 0.38f
-        ),
-        animations = listOf(targetPulseAnimation("reset-shift-pad-press", 260)),
-        id = RESET_PAD_ID
-    ) {
-        SigilBox(
-            width = 2.85f,
-            height = 0.14f,
-            depth = 1.42f,
-            position = listOf(0f, 0.06f, 0f),
-            color = argb("#27181c"),
-            metalness = 0.34f,
-            roughness = 0.56f,
-            castShadow = false,
-            receiveShadow = true,
-            name = "reset-shift-pad-base"
-        )
-        SigilMesh(
-            geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 0.42f, outerRadius = 0.7f, radialSegments = 24),
-            position = listOf(0f, 0.16f, 0f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = SCENE_DANGER,
-            metalness = 0.72f,
-            roughness = 0.14f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "reset-shift-pad-ring"
-        )
-        listOf(-0.52f, 0.52f).forEachIndexed { index, x ->
-            SigilBox(
-                width = 0.72f,
-                height = 0.1f,
-                depth = 0.16f,
-                position = listOf(x, 0.17f, 0f),
-                color = SCENE_DANGER,
-                metalness = 0.28f,
-                roughness = 0.42f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "reset-shift-pad-bar-$index"
-            )
-        }
-        SigilSphere(
-            radius = 0.24f,
-            widthSegments = 10,
-            heightSegments = 8,
-            position = listOf(1.14f, 0.34f, 0.46f),
-            color = SCENE_DANGER,
-            metalness = 0.24f,
-            roughness = 0.38f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "reset-shift-pad-warning"
-        )
-        BillboardTextControl(
-            text = "RESET",
-            position = listOf(0f, 1.22f, -0.05f),
-            size = 0.3f,
-            color = SCENE_TEXT,
-            interactionId = CONSOLE_RESET_INTERACTION_ID,
-            actions = listOf("reset", "text-control"),
-            hitWidth = 2.05f,
-            hitHeight = 0.9f,
-            hitDepth = 1.0f,
-            name = "reset-shift-pad-label",
-            id = "reset-shift-pad-label",
-            lineHeight = 1.06f
-        )
-        ""
-    }
-}
-
-@Composable
-private fun ConveyorDeck(
-    level: FifthWallLevel,
-    state: FifthWallUiState,
-    renderedPackages: List<FifthWallPackage>
-) {
-    SigilGroup(position = listOf(-2.2f, 0f, 0.5f), name = "conveyor-group") {
-        NativeConveyorDeck()
-        val visiblePackageIds = state.visiblePackages().map { it.id }
-        renderedPackages.forEach { pkg ->
-            val visibleIndex = visiblePackageIds.indexOf(pkg.id)
-            val visible = visibleIndex in 0 until CONSOLE_FOCUS_SLOT_COUNT
-            PackageFocusPad(
-                pkg = pkg,
-                position = if (visible) packageFocusPadPosition(visibleIndex) else CONTROL_PAD_HIDDEN_POSITION,
-                visible = visible,
-                focused = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0)),
-                label = "FOCUS P${visibleIndex.coerceAtLeast(0) + 1}"
-            )
-        }
-        renderedPackages.forEach { pkg ->
-            val visibleIndex = visiblePackageIds.indexOf(pkg.id)
-            val visible = visibleIndex >= 0
-            val selected = visible && (state.selectedPackageId == pkg.id || (state.selectedPackageId == null && visibleIndex == 0))
-            PackageMesh(
-                pkg = pkg,
-                position = if (visible) packageBeltPosition(visibleIndex) else PACKAGE_HIDDEN_POSITION,
-                selected = selected,
-                emphasized = selected,
-                beltIndex = visibleIndex,
-                level = level,
-                visible = visible
-            )
-        }
-        ""
-    }
-}
-
-@Composable
-private fun NativeConveyorDeck() {
-    SigilBox(
-        width = 11.8f,
-        height = 0.42f,
-        depth = 2.5f,
-        position = listOf(-1.7f, 1.3f, 0f),
-        color = argb("#26384a"),
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "conveyor-frame"
-    )
-    SigilBox(
-        width = 11.2f,
-        height = 0.12f,
-        depth = 1.82f,
-        position = listOf(-1.7f, 1.57f, 0f),
-        color = argb("#202a31"),
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "conveyor-belt"
-    )
-    listOf(-1.18f, 1.18f).forEachIndexed { index, z ->
-        SigilBox(
-            width = 11.8f,
-            height = 0.18f,
-            depth = 0.16f,
-            position = listOf(-1.7f, 1.72f, z),
-            color = argb("#6fbfc2"),
-            metalness = 0f,
-            roughness = 1f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "conveyor-rail-$index"
-        )
-    }
-    listOf(-6.6f, 3.2f).forEachIndexed { index, x ->
-        SigilBox(
-            width = 0.36f,
-            height = 1.3f,
-            depth = 1.9f,
-            position = listOf(x, 0.65f, 0f),
-            color = argb("#2f4256"),
-            metalness = 0f,
-            roughness = 1f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "conveyor-leg-$index"
-        )
-    }
-}
-
-@Composable
-private fun PackageFocusPad(
-    pkg: FifthWallPackage,
-    position: List<Float>,
     visible: Boolean,
-    focused: Boolean,
-    label: String
-) {
-    val color = argb(pkg.color.hex)
-    SigilGroup(
-        position = position,
-        visible = visible,
-        name = "package-focus-pad-${pkg.id}",
-        interaction = routePadInteraction(
-            interactionId = consoleFocusInteractionId(pkg.id),
-            width = 2.65f,
-            depth = 2.05f,
-            actions = listOf("focus", "package", "control-pad")
-        ),
-        animations = listOf(targetPulseAnimation("package-focus-pad-${pkg.id}-press", 0)),
-        id = packageFocusPadId(pkg.id)
-    ) {
-        SigilMesh(
-            geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 0.92f, outerRadius = 1.28f, radialSegments = 30),
-            position = listOf(0f, 0.02f, 0f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = if (focused) SCENE_ACCENT else color,
-            metalness = 0.78f,
-            roughness = 0.12f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "package-focus-pad-${pkg.id}-ring"
-        )
-        SigilBox(
-            width = 1.08f,
-            height = 0.08f,
-            depth = 0.16f,
-            position = listOf(-0.06f, 0.08f, -0.76f),
-            color = if (focused) SCENE_ACCENT else color,
-            metalness = 0.34f,
-            roughness = 0.34f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "package-focus-pad-${pkg.id}-signal-a"
-        )
-        SigilBox(
-            width = 0.78f,
-            height = 0.08f,
-            depth = 0.16f,
-            position = listOf(0.1f, 0.08f, -0.52f),
-            color = if (focused) SCENE_ACCENT else color,
-            metalness = 0.34f,
-            roughness = 0.34f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "package-focus-pad-${pkg.id}-signal-b"
-        )
-        SigilSphere(
-            radius = if (focused) 0.2f else 0.16f,
-            widthSegments = 8,
-            heightSegments = 6,
-            position = listOf(-0.82f, 0.14f, -0.55f),
-            color = color,
-            metalness = 0.24f,
-            roughness = 0.4f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "package-focus-pad-${pkg.id}-beacon"
-        )
-        BillboardTextControl(
-            text = label,
-            position = listOf(0f, 1.72f, -0.18f),
-            size = 0.24f,
-            color = SCENE_TEXT,
-            interactionId = consoleFocusInteractionId(pkg.id),
-            actions = listOf("focus", "package", "text-control"),
-            hitWidth = 2.35f,
-            hitHeight = 0.9f,
-            hitDepth = 1.15f,
-            name = "package-focus-pad-${pkg.id}-label",
-            id = "package-focus-pad-${pkg.id}-label",
-            lineHeight = 1.05f
-        )
-        ""
-    }
-}
-
-private fun packageBeltPosition(index: Int): List<Float> =
-    listOf(-4.9f + (index * 3.2f), 2.34f, 0f)
-
-private fun packageFocusPadPosition(index: Int): List<Float> =
-    listOf(-4.9f + (index * 3.2f), 2.2f, 0f)
-
-private fun packageScale(enlarged: Boolean, emphasized: Boolean): Float = when {
-    enlarged -> 1.38f
-    emphasized -> 1.08f
-    else -> 1f
-}
-
-private fun packageScaleVector(enlarged: Boolean, emphasized: Boolean): List<Float> {
-    val scale = packageScale(enlarged = enlarged, emphasized = emphasized)
-    return listOf(scale, scale, scale)
-}
-
-private fun packageRotation(pkg: FifthWallPackage, beltIndex: Int): List<Float> {
-    val yaw = when (pkg.shape) {
-        "rect" -> 0.18f
-        "cylinder" -> 0.08f
-        "sphere" -> 0.22f
-        else -> -0.12f
-    }
-    return listOf(0f, yaw + (beltIndex.coerceAtLeast(0) * 0.08f), 0f)
-}
-
-private fun packageHover(enlarged: Boolean, emphasized: Boolean): Float =
-    if (enlarged) 0.18f else if (emphasized) 0.1f else 0f
-
-private fun packageBodyPosition(pkg: FifthWallPackage, hover: Float): List<Float> {
-    val y = when (pkg.shape) {
-        "sphere" -> 0.05f
-        else -> 0.08f
-    }
-    return listOf(0f, y + hover, 0f)
-}
-
-@Composable
-private fun TruckBay(
-    level: FifthWallLevel,
-    state: FifthWallUiState
-) {
-    val trucks = state.activeTrucks(level)
-    val spacing = truckSpacing(trucks.size)
-    val origin = truckOrigin(trucks.size, spacing)
-
-    trucks.forEachIndexed { index, rule ->
-        val x = origin + (spacing * index)
-        val routeLabel = "Truck ${'A' + index}"
-        DeliveryTruck(
-            index = index,
-            label = routeLabel,
-            position = listOf(x, 0f, 4.7f),
-            color = truckColor(index, rule),
-            selected = state.lastRouteTarget == routeLabel,
-            routeAccepted = if (state.lastRouteTarget == routeLabel) state.lastRouteAccepted else null,
-            hidden = level.hiddenRuleIndex == index && !state.hiddenRuleRevealed && !state.ruleShifted,
-            glitched = state.glitchActive
-        )
-    }
-}
-
-@Composable
-private fun DeliveryTruck(
-    index: Int,
-    label: String,
-    position: List<Float>,
-    color: Int,
     selected: Boolean,
-    routeAccepted: Boolean?,
-    hidden: Boolean,
-    glitched: Boolean
+    interactionEnabled: Boolean
 ) {
-    val accent = if (hidden) argb("#3b4656") else color
+    val accent = listOf(CORAL, argb("#5aa9ff"), TEAL, AMBER)[index]
     SigilGroup(
-        position = position,
-        scale = listOf(1.08f, 1.08f, 1.08f),
-        name = label.lowercase().replace(" ", "-"),
-        interaction = truckInteraction(index, label),
-        animations = listOf(targetPulseAnimation("truck-$index-ready", delayMs = index * 80)),
-        id = "truck-$index"
+        position = truckSlotPosition(index),
+        visible = visible,
+        name = "truck-slot-$index",
+        interaction = worldInteraction(
+            interactionId = truckInteraction(index),
+            enabled = visible && interactionEnabled,
+            size = listOf(3.6f, 3.7f, 3f),
+            center = listOf(0f, 1.5f, 0f)
+        ),
+        id = "truck-slot-$index"
     ) {
+        SigilPlane(
+            width = 3.5f,
+            height = 2.45f,
+            position = listOf(0f, 0.03f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = SHADOW,
+            receiveShadow = false,
+            name = "truck-slot-$index-contact"
+        )
         SigilModel(
             url = fifthWallModelUrl("delivery-truck.glb"),
-            position = listOf(0.1f, 0f, 0f),
-            scale = uniformScale(4.2f),
+            position = listOf(0f, 0.02f, 0f),
+            scale = listOf(3.45f, 3.45f, 3.45f),
             castShadow = false,
             receiveShadow = false,
-            name = "$label-model"
+            name = "truck-slot-$index-model",
+            id = "truck-slot-$index-model"
         )
-        TruckAccentMarker(
-            accent = accent,
-            hidden = hidden,
-            name = label.lowercase().replace(" ", "-")
-        )
-        BillboardTextControl(
-            text = label.uppercase(),
-            position = listOf(0.1f, 2.55f, -0.12f),
-            size = 0.26f,
-            color = if (hidden) SCENE_TEXT_MUTED else SCENE_TEXT,
-            interactionId = consoleTruckInteractionId(index),
-            actions = listOf("route", "truck", "text-control"),
-            hitWidth = 1.8f,
-            hitHeight = 0.58f,
-            hitDepth = 0.72f,
-            name = "truck-$index-label",
-            id = "truck-$index-label",
-            lineHeight = 1.06f
-        )
-        if (selected) {
-            SigilMesh(
-                geometryType = GeometryType.RING,
-                geometryParams = GeometryParams(innerRadius = 1.55f, outerRadius = 1.85f, radialSegments = 24),
-                position = listOf(0.1f, 0.05f, 0f),
-                rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-                color = when (routeAccepted) {
-                    true -> SCENE_SUCCESS
-                    false -> SCENE_DANGER
-                    null -> SCENE_ACCENT
-                },
-                metalness = 0.8f,
-                roughness = 0.1f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "$label-ring"
-            )
-        }
-        if (glitched) {
-            SigilMesh(
-                geometryType = GeometryType.TORUS,
-                geometryParams = GeometryParams(radius = 0.72f, tube = 0.05f, radialSegments = 8, tubularSegments = 24),
-                position = listOf(0.35f, 2.1f, 0f),
-                rotation = listOf(0.35f, 0.62f, 0f),
-                color = SCENE_DANGER,
-                metalness = 0.74f,
-                roughness = 0.12f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "$label-glitch-halo"
-            )
-        }
-        ""
-    }
-}
-
-@Composable
-private fun TruckAccentMarker(
-    accent: Int,
-    hidden: Boolean,
-    name: String
-) {
-    val panelColor = if (hidden) argb("#6b7485") else accent
-    listOf(-0.36f, 0.36f).forEachIndexed { index, z ->
         SigilBox(
-            width = 0.58f,
+            width = 1.15f,
             height = 0.08f,
-            depth = 0.08f,
-            position = listOf(-0.36f, 2.86f, z),
-            color = panelColor,
-            metalness = 0.18f,
-            roughness = 0.72f,
+            depth = 0.12f,
+            position = listOf(-0.42f, 2.38f, 0.42f),
+            color = accent,
             castShadow = false,
             receiveShadow = false,
-            name = "$name-roof-rule-tag-$index"
+            name = "truck-slot-$index-accent"
         )
-    }
-    SigilSphere(
-        radius = 0.14f,
-        widthSegments = 8,
-        heightSegments = 6,
-        position = listOf(-1.1f, 3.02f, 0f),
-        color = panelColor,
-        metalness = 0.18f,
-        roughness = 0.68f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "$name-accent-beacon"
-    )
-}
-
-@Composable
-private fun ReturnBinBay(
-    selected: Boolean,
-    routeAccepted: Boolean?,
-    glitchActive: Boolean
-) {
-    SigilGroup(
-        position = listOf(9.2f, 0f, 4.85f),
-        scale = listOf(1.08f, 1.08f, 1.08f),
-        name = "return-bin",
-        interaction = returnBinInteraction(),
-        animations = listOf(targetPulseAnimation("return-bin-ready", delayMs = 260)),
-        id = "return-bin-target"
-    ) {
-        NativeReturnBin()
-        SigilMesh(
-            geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = 0.96f, tube = 0.08f, radialSegments = 8, tubularSegments = 24),
-            position = listOf(0f, 1.72f, 0f),
-            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = when {
-                !selected -> SCENE_WARM
-                routeAccepted == true -> SCENE_SUCCESS
-                routeAccepted == false -> SCENE_DANGER
-                else -> SCENE_ACCENT
-            },
-            metalness = 0.72f,
-            roughness = 0.16f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "return-ring"
-        )
-        BillboardTextControl(
-            text = "RETURN",
-            position = listOf(0f, 2.3f, 0f),
-            size = 0.28f,
-            color = SCENE_TEXT,
-            interactionId = CONSOLE_RETURN_INTERACTION_ID,
-            actions = listOf("route", "return", "text-control"),
-            hitWidth = 1.75f,
-            hitHeight = 0.6f,
-            hitDepth = 0.75f,
-            name = "return-bin-label",
-            id = "return-bin-label",
-            lineHeight = 1.06f
-        )
-        ""
-    }
-}
-
-@Composable
-private fun NativeReturnBin() {
-    SigilBox(
-        width = 2.25f,
-        height = 1.5f,
-        depth = 2.25f,
-        position = listOf(0f, 0.78f, 0f),
-        color = argb("#1b3043"),
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "return-bin-body"
-    )
-    SigilBox(
-        width = 1.55f,
-        height = 0.08f,
-        depth = 1.55f,
-        position = listOf(0f, 1.56f, 0f),
-        color = argb("#090f15"),
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "return-bin-opening"
-    )
-}
-
-@Composable
-private fun InspectionDock(pkg: FifthWallPackage?) {
-    SigilGroup(
-        position = listOf(8.2f, 0f, -5.5f),
-        name = "inspection-dock",
-        interaction = inspectionDockInteraction(),
-        animations = listOf(targetPulseAnimation("inspection-dock-ready", delayMs = 180)),
-        id = "inspection-dock-target"
-    ) {
-        NativeInspectionDock()
         SigilMesh(
             geometryType = GeometryType.RING,
-            geometryParams = GeometryParams(innerRadius = 0.95f, outerRadius = 1.22f, radialSegments = 24),
+            geometryParams = GeometryParams(innerRadius = 1.48f, outerRadius = 1.7f, radialSegments = 28),
+            position = listOf(0f, 0.06f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = accent,
+            visible = selected,
+            castShadow = false,
+            receiveShadow = false,
+            name = "truck-slot-$index-selection",
+            id = "truck-slot-$index-selection"
+        )
+        SigilText(
+            text = "TRUCK ${'A' + index}",
+            position = listOf(0f, 2.86f, 0f),
+            color = SAFETY_WHITE,
+            size = 0.28f,
+            depth = 0.01f,
+            curveSegments = 6,
+            align = TextAlignMode.CENTER,
+            baseline = TextBaselineMode.MIDDLE,
+            facingMode = TextFacingMode.BILLBOARD,
+            fontUrl = FIFTH_WALL_FONT,
+            name = "truck-slot-$index-world-label",
+            id = "truck-slot-$index-world-label"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun ReturnBin(selected: Boolean, interactionEnabled: Boolean) {
+    SigilGroup(
+        position = listOf(8.7f, 0f, 4.8f),
+        name = "return-bin",
+        interaction = worldInteraction(
+            interactionId = INTERACTION_RETURN,
+            enabled = interactionEnabled,
+            size = listOf(2.8f, 3.2f, 2.8f),
+            center = listOf(0f, 1.3f, 0f)
+        ),
+        id = "return-bin"
+    ) {
+        SigilBox(
+            width = 2.35f,
+            height = 1.6f,
+            depth = 2.35f,
+            position = listOf(0f, 0.82f, 0f),
+            color = argb("#1a2b35"),
+            metalness = 0.1f,
+            roughness = 0.9f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "return-bin-body"
+        )
+        SigilBox(
+            width = 1.62f,
+            height = 0.08f,
+            depth = 1.62f,
+            position = listOf(0f, 1.66f, 0f),
+            color = CHARCOAL,
+            castShadow = false,
+            receiveShadow = false,
+            name = "return-bin-opening"
+        )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 1.02f, outerRadius = 1.24f, radialSegments = 28),
+            position = listOf(0f, 0.05f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = AMBER,
+            visible = selected,
+            castShadow = false,
+            receiveShadow = false,
+            name = "return-bin-selection",
+            id = "return-bin-selection"
+        )
+        SigilText(
+            text = "RETURN BIN",
+            position = listOf(0f, 2.28f, 0f),
+            color = SAFETY_WHITE,
+            size = 0.27f,
+            depth = 0.01f,
+            curveSegments = 6,
+            align = TextAlignMode.CENTER,
+            baseline = TextBaselineMode.MIDDLE,
+            facingMode = TextFacingMode.BILLBOARD,
+            fontUrl = FIFTH_WALL_FONT,
+            name = "return-bin-world-label",
+            id = "return-bin-world-label"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun InspectionStation() {
+    SigilGroup(position = listOf(7.9f, 0f, -4.7f), name = "inspection-station", id = "inspection-station") {
+        SigilMesh(
+            geometryType = GeometryType.CYLINDER,
+            geometryParams = GeometryParams(radiusTop = 1.16f, radiusBottom = 1.32f, height = 0.28f, radialSegments = 14),
+            position = listOf(0f, 0.16f, 0f),
+            color = argb("#294456"),
+            castShadow = false,
+            receiveShadow = false,
+            name = "inspection-base"
+        )
+        SigilBox(
+            width = 0.24f,
+            height = 2.2f,
+            depth = 0.24f,
+            position = listOf(0f, 1.35f, 0f),
+            color = CYAN,
+            castShadow = false,
+            receiveShadow = false,
+            name = "inspection-column"
+        )
+        SigilMesh(
+            geometryType = GeometryType.TORUS,
+            geometryParams = GeometryParams(radius = 1f, tube = 0.08f, radialSegments = 8, tubularSegments = 24),
             position = listOf(0f, 2.38f, 0f),
             rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-            color = if (pkg?.validGeometry == false) SCENE_DANGER else SCENE_ACCENT,
-            metalness = 0.74f,
-            roughness = 0.14f,
+            color = CYAN,
             castShadow = false,
             receiveShadow = false,
             name = "inspection-ring"
         )
-        BillboardTextLabel(
-            text = "INSPECT",
-            position = listOf(0f, 4.1f, 0f),
-            size = 0.28f,
-            color = if (pkg?.validGeometry == false) SCENE_DANGER else SCENE_TEXT,
-            name = "inspection-dock-label"
-        )
-        if (pkg != null) {
-            PackageMesh(
-                pkg = pkg,
-                position = listOf(0f, 3.18f, 0f),
-                selected = true,
-                emphasized = true,
-                beltIndex = -1,
-                level = null,
-                enlarged = true,
-                interactive = false,
-                nodeId = "inspection-package-${pkg.id}"
-            )
-        } else {
-            SigilModel(
-                url = fifthWallModelUrl("special-delivery-package.glb"),
-                position = listOf(0f, 2.9f, 0f),
-                rotation = listOf(0f, 0.35f, 0f),
-                scale = uniformScale(1.28f),
-                castShadow = false,
-                receiveShadow = false,
-                name = "inspection-idle-package"
-            )
-        }
         ""
     }
 }
 
 @Composable
-private fun NativeInspectionDock() {
-    SigilMesh(
-        geometryType = GeometryType.CYLINDER,
-        geometryParams = GeometryParams(
-            radiusTop = 1.25f,
-            radiusBottom = 1.42f,
-            height = 0.34f,
-            radialSegments = 12
-        ),
-        position = listOf(0f, 0.2f, 0f),
-        color = argb("#263f59"),
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "inspection-dock-base"
-    )
-    SigilBox(
-        width = 0.32f,
-        height = 2.1f,
-        depth = 0.32f,
-        position = listOf(0f, 1.4f, 0f),
-        color = SCENE_ACCENT,
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "inspection-dock-column"
-    )
-    SigilMesh(
-        geometryType = GeometryType.TORUS,
-        geometryParams = GeometryParams(
-            radius = 1.05f,
-            tube = 0.1f,
-            radialSegments = 8,
-            tubularSegments = 20
-        ),
-        position = listOf(0f, 2.4f, 0f),
-        rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-        color = SCENE_ACCENT,
-        metalness = 0f,
-        roughness = 1f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "inspection-dock-platform"
-    )
-}
-
-@Composable
-private fun PackageMesh(
-    pkg: FifthWallPackage,
-    position: List<Float>,
-    selected: Boolean,
-    emphasized: Boolean,
-    beltIndex: Int,
-    level: FifthWallLevel?,
-    enlarged: Boolean = false,
-    visible: Boolean = true,
-    interactive: Boolean = true,
-    nodeId: String = "package-${pkg.id}"
-) {
-    val baseColor = argb(pkg.color.hex)
-    val scale = packageScale(enlarged = enlarged, emphasized = emphasized)
-    val hover = packageHover(enlarged = enlarged, emphasized = emphasized)
-
+private fun RepairConsole(visible: Boolean, interactionEnabled: Boolean) {
     SigilGroup(
-        position = position,
-        rotation = packageRotation(pkg, beltIndex),
-        scale = listOf(scale, scale, scale),
+        position = listOf(6.2f, 0.45f, -1.4f),
+        rotation = listOf(0f, 0.18f, -0.22f),
         visible = visible,
-        name = nodeId,
-        interaction = if (interactive) packageInteraction(pkg, enlarged) else null,
-        animations = if (visible || enlarged) {
-            packageAnimations(pkg, selected)
-        } else {
-            emptyList()
-        },
-        id = nodeId
+        name = "repair-console",
+        interaction = worldInteraction(
+            interactionId = INTERACTION_REPAIR,
+            enabled = interactionEnabled,
+            size = listOf(1.8f, 2.5f, 1.8f),
+            center = listOf(0f, 0.9f, 0f)
+        ),
+        id = "repair-console"
     ) {
-        if (visible || enlarged) {
-            SigilBox(
-                width = when (pkg.shape) {
-                    "rect" -> 2.08f
-                    "cylinder" -> 1.18f
-                    else -> 1.34f
-                },
-                height = 0.04f,
-                depth = when (pkg.shape) {
-                    "rect" -> 1.08f
-                    "sphere" -> 1.2f
-                    else -> 1.34f
-                },
-                position = listOf(0f, 0.04f, 0f),
-                color = PACKAGE_SHADE,
-                metalness = 0.06f,
-                roughness = 0.98f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-shadow"
-            )
-        }
-        PackageBodyModel(
-            pkg = pkg,
-            position = packageBodyPosition(pkg, hover),
-            id = "$nodeId-body"
+        SigilBox(
+            width = 0.34f,
+            height = 2f,
+            depth = 0.28f,
+            position = listOf(0f, 0.8f, 0f),
+            color = AMBER,
+            metalness = 0.5f,
+            roughness = 0.35f,
+            castShadow = false,
+            receiveShadow = false,
+            name = "repair-handle"
         )
-        if (visible || enlarged) {
-            PackageColorAccent(
-                shape = pkg.shape,
-                color = baseColor,
-                hover = hover
+        SigilMesh(
+            geometryType = GeometryType.TORUS,
+            geometryParams = GeometryParams(radius = 0.52f, tube = 0.14f, radialSegments = 8, tubularSegments = 20),
+            position = listOf(0f, 1.82f, 0f),
+            color = AMBER,
+            castShadow = false,
+            receiveShadow = false,
+            name = "repair-head"
+        )
+        SigilText(
+            text = "REPAIR",
+            position = listOf(0f, 2.65f, 0f),
+            color = AMBER,
+            size = 0.28f,
+            depth = 0.01f,
+            curveSegments = 6,
+            align = TextAlignMode.CENTER,
+            baseline = TextBaselineMode.MIDDLE,
+            facingMode = TextFacingMode.BILLBOARD,
+            fontUrl = FIFTH_WALL_FONT,
+            name = "repair-world-label"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun DesktopStatusHud(level: FifthWallLevel, state: FifthWallUiState) {
+    SigilScreenLayer(
+        id = "desktop-status-layer",
+        desktop = ScreenLayoutData(ScreenAnchor.TOP_LEFT, 18f, 18f, visible = true),
+        mobile = ScreenLayoutData(ScreenAnchor.TOP_LEFT, 0f, 0f, visible = false),
+        order = 10
+    ) {
+        HudPanel(width = 940f, height = 84f, centerX = 470f, centerY = -42f, id = "desktop-status-panel")
+        ScreenText("COURIER PROTOCOL", 18f, -17f, 16f, CYAN, "desktop-status-title")
+        ScreenText(statusBayText(level), 18f, -48f, 13f, SAFETY_WHITE, "desktop-status-bay")
+        ScreenText(level.name.uppercase(), 164f, -48f, 13f, MUTED, "desktop-status-level")
+        ScreenText("SCORE ${state.score}", 414f, -48f, 13f, SAFETY_WHITE, "desktop-status-score")
+        ScreenText("ACCURACY ${state.accuracyLabel()}", 552f, -48f, 13f, SAFETY_WHITE, "desktop-status-accuracy")
+        ScreenText("STREAK ${state.streak}", 728f, -48f, 13f, SAFETY_WHITE, "desktop-status-streak")
+        SigilFrameStatsText(
+            position = listOf(918f, -48f, 3f),
+            prefix = "FPS ",
+            size = 12f,
+            color = MUTED,
+            align = TextAlignMode.RIGHT,
+            baseline = TextBaselineMode.TOP,
+            fontUrl = FIFTH_WALL_FONT,
+            updateIntervalMs = 300,
+            id = "desktop-status-fps"
+        )
+        ""
+    }
+}
+
+@Composable
+private fun DesktopInfoHud(level: FifthWallLevel, state: FifthWallUiState, pkg: FifthWallPackage?) {
+    val title = infoTitle(state)
+    val body = infoBody(level, state, pkg)
+    SigilScreenLayer(
+        id = "desktop-info-layer",
+        desktop = ScreenLayoutData(ScreenAnchor.TOP_RIGHT, 18f, 116f, visible = true),
+        mobile = ScreenLayoutData(ScreenAnchor.TOP_RIGHT, 0f, 0f, visible = false),
+        order = 11
+    ) {
+        HudPanel(width = 392f, height = 456f, centerX = -196f, centerY = -228f, id = "desktop-info-panel")
+        ScreenText(title, -370f, -28f, 17f, CYAN, "desktop-info-title")
+        ScreenText(
+            text = body,
+            x = -370f,
+            y = -72f,
+            size = 14f,
+            color = SAFETY_WHITE,
+            id = "desktop-info-body",
+            maxWidth = 344f,
+            lineHeight = 1.38f,
+            wordWrap = false
+        )
+        ScreenText(
+            text = infoFooter(level, state),
+            x = -370f,
+            y = -404f,
+            size = 12f,
+            color = MUTED,
+            id = "desktop-info-footer",
+            maxWidth = 344f,
+            lineHeight = 1.28f,
+            wordWrap = false
+        )
+        ""
+    }
+}
+
+@Composable
+private fun DesktopControlsHud(level: FifthWallLevel, state: FifthWallUiState) {
+    SigilScreenLayer(
+        id = "desktop-controls-layer",
+        desktop = ScreenLayoutData(ScreenAnchor.BOTTOM_LEFT, 18f, 18f, visible = true),
+        mobile = ScreenLayoutData(ScreenAnchor.BOTTOM_LEFT, 0f, 0f, visible = false),
+        order = 12
+    ) {
+        HudPanel(width = 1000f, height = 174f, centerX = 500f, centerY = 87f, id = "desktop-controls-panel")
+        ScreenText(
+            text = state.feedback,
+            x = 18f,
+            y = 150f,
+            size = 14f,
+            color = feedbackColor(state.feedbackTone),
+            id = "desktop-controls-feedback",
+            maxWidth = 956f,
+            wordWrap = true
+        )
+        repeat(PACKAGE_SLOT_COUNT) { index ->
+            HudButton(
+                prefix = "desktop-controls",
+                id = "focus-$index",
+                label = "FOCUS PACKAGE ${index + 1}",
+                interactionId = focusInteraction(index),
+                centerX = 91f + index * 178f,
+                centerY = 108f,
+                width = 164f,
+                height = 34f,
+                enabled = state.visiblePackages().getOrNull(index) != null && state.prompt == FifthWallPrompt.None,
+                selected = state.visiblePackages().getOrNull(index)?.id == state.focusPackage()?.id
             )
-            PackageBadge(pkg = pkg, hover = hover)
-            GeometryAura(pkg = pkg, level = level, elevated = enlarged)
         }
-        if (selected) {
-            SigilMesh(
-                geometryType = GeometryType.TORUS,
-                geometryParams = GeometryParams(
-                    radius = when (pkg.shape) {
-                        "rect" -> 1.18f
-                        "cylinder" -> 0.8f
-                        "sphere" -> 0.9f
-                        else -> 0.98f
-                    },
-                    tube = 0.06f,
-                    radialSegments = 10,
-                    tubularSegments = 24
-                ),
-                position = listOf(0f, 0.06f, 0f),
-                rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
-                color = if (pkg.validGeometry) SCENE_ACCENT else SCENE_DANGER,
-                metalness = 0.84f,
-                roughness = 0.08f,
-                castShadow = false,
-                receiveShadow = false,
-                name = "pkg-selection"
+        listOf(
+            Triple("overview", "OVERVIEW", INTERACTION_OVERVIEW),
+            Triple("inspect", "INSPECT", INTERACTION_INSPECT),
+            Triple("rules", "RULES", INTERACTION_RULES)
+        ).forEachIndexed { index, (id, label, interactionId) ->
+            HudButton(
+                prefix = "desktop-controls",
+                id = id,
+                label = label,
+                interactionId = interactionId,
+                centerX = 603f + index * 128f,
+                centerY = 108f,
+                width = 116f,
+                height = 34f,
+                enabled = state.prompt == FifthWallPrompt.None,
+                selected = id == "rules" && state.hudView == FifthWallHudView.RULES
+            )
+        }
+        repeat(TRUCK_SLOT_COUNT) { index ->
+            HudButton(
+                prefix = "desktop-controls",
+                id = "truck-$index",
+                label = "TRUCK ${'A' + index}",
+                interactionId = truckInteraction(index),
+                centerX = 67f + index * 126f,
+                centerY = 63f,
+                width = 116f,
+                height = 34f,
+                enabled = index < state.activeTrucks(level).size && state.prompt == FifthWallPrompt.None && !state.glitchActive,
+                selected = state.lastRouteTarget == "Truck ${'A' + index}"
+            )
+        }
+        HudButton("desktop-controls", "return", "RETURN BIN", INTERACTION_RETURN, 574f, 63f, 136f, 34f, state.prompt == FifthWallPrompt.None && !state.glitchActive, state.lastRouteTarget == "Return Bin")
+        HudButton("desktop-controls", "reset", "RESET", INTERACTION_RESET, 704f, 63f, 100f, 34f, true, false, AMBER)
+        HudButton("desktop-controls", "sound", soundLabel(state), INTERACTION_SOUND, 847f, 63f, 166f, 34f, true, state.soundMode != FifthWallSoundMode.MUTE, TEAL)
+        ""
+    }
+}
+
+@Composable
+private fun MobileStatusHud(level: FifthWallLevel, state: FifthWallUiState) {
+    SigilScreenLayer(
+        id = "mobile-status-layer",
+        desktop = ScreenLayoutData(ScreenAnchor.TOP_LEFT, 0f, 0f, visible = false),
+        mobile = ScreenLayoutData(ScreenAnchor.TOP_LEFT, 8f, 8f, visible = true),
+        mobileBreakpoint = 640,
+        order = 20
+    ) {
+        HudPanel(width = 374f, height = 92f, centerX = 187f, centerY = -46f, id = "mobile-status-panel")
+        ScreenText("COURIER PROTOCOL", 12f, -15f, 13f, CYAN, "mobile-status-title")
+        ScreenText(statusBayText(level), 12f, -42f, 12f, SAFETY_WHITE, "mobile-status-bay")
+        ScreenText("SCORE ${state.score}", 154f, -42f, 12f, SAFETY_WHITE, "mobile-status-score")
+        ScreenText("ACC ${state.accuracyLabel()}", 252f, -42f, 12f, SAFETY_WHITE, "mobile-status-accuracy")
+        ScreenText("STK ${state.streak}", 362f, -42f, 12f, SAFETY_WHITE, "mobile-status-streak", align = TextAlignMode.RIGHT)
+        SigilFrameStatsText(
+            position = listOf(362f, -70f, 3f),
+            prefix = "FPS ",
+            size = 11f,
+            color = MUTED,
+            align = TextAlignMode.RIGHT,
+            baseline = TextBaselineMode.TOP,
+            fontUrl = FIFTH_WALL_FONT,
+            updateIntervalMs = 300,
+            id = "mobile-status-fps"
+        )
+        ScreenText(level.name.uppercase(), 12f, -70f, 11f, MUTED, "mobile-status-level")
+        ""
+    }
+}
+
+@Composable
+private fun MobileInfoHud(level: FifthWallLevel, state: FifthWallUiState, pkg: FifthWallPackage?) {
+    SigilScreenLayer(
+        id = "mobile-info-layer",
+        desktop = ScreenLayoutData(ScreenAnchor.BOTTOM_CENTER, 0f, 0f, visible = false),
+        mobile = ScreenLayoutData(ScreenAnchor.BOTTOM_CENTER, 0f, 154f, visible = true),
+        mobileBreakpoint = 640,
+        order = 21
+    ) {
+        HudPanel(width = 374f, height = 214f, centerX = 0f, centerY = 107f, id = "mobile-info-panel")
+        ScreenText(infoTitle(state), -174f, 190f, 14f, CYAN, "mobile-info-title")
+        ScreenText(
+            text = infoBody(level, state, pkg),
+            x = -174f,
+            y = 160f,
+            size = 11f,
+            color = SAFETY_WHITE,
+            id = "mobile-info-body",
+            maxWidth = 348f,
+            lineHeight = 1.27f,
+            wordWrap = false
+        )
+        ScreenText(
+            text = state.feedback,
+            x = -174f,
+            y = 27f,
+            size = 11f,
+            color = feedbackColor(state.feedbackTone),
+            id = "mobile-info-footer",
+            maxWidth = 348f,
+            wordWrap = true
+        )
+        ""
+    }
+}
+
+@Composable
+private fun MobileControlsHud(level: FifthWallLevel, state: FifthWallUiState) {
+    SigilScreenLayer(
+        id = "mobile-controls-layer",
+        desktop = ScreenLayoutData(ScreenAnchor.BOTTOM_CENTER, 0f, 0f, visible = false),
+        mobile = ScreenLayoutData(ScreenAnchor.BOTTOM_CENTER, 0f, 8f, visible = true),
+        mobileBreakpoint = 640,
+        order = 22
+    ) {
+        HudPanel(width = 374f, height = 140f, centerX = 0f, centerY = 70f, id = "mobile-controls-panel")
+        repeat(PACKAGE_SLOT_COUNT) { index ->
+            HudButton(
+                prefix = "mobile-controls",
+                id = "focus-$index",
+                label = "FOCUS PACKAGE ${index + 1}",
+                interactionId = focusInteraction(index),
+                centerX = -122f + index * 122f,
+                centerY = 116f,
+                width = 114f,
+                height = 28f,
+                enabled = state.visiblePackages().getOrNull(index) != null && state.prompt == FifthWallPrompt.None,
+                selected = state.visiblePackages().getOrNull(index)?.id == state.focusPackage()?.id,
+                textSize = 9.5f
+            )
+        }
+        repeat(TRUCK_SLOT_COUNT) { index ->
+            HudButton(
+                prefix = "mobile-controls",
+                id = "truck-$index",
+                label = "TRUCK ${'A' + index}",
+                interactionId = truckInteraction(index),
+                centerX = -138f + index * 92f,
+                centerY = 80f,
+                width = 84f,
+                height = 28f,
+                enabled = index < state.activeTrucks(level).size && state.prompt == FifthWallPrompt.None && !state.glitchActive,
+                selected = state.lastRouteTarget == "Truck ${'A' + index}",
+                textSize = 10f
+            )
+        }
+        val finalRow = listOf(
+            Triple("return", "RETURN", INTERACTION_RETURN),
+            Triple("overview", "VIEW", INTERACTION_OVERVIEW),
+            Triple("inspect", "INSPECT", INTERACTION_INSPECT),
+            Triple("rules", "RULES", INTERACTION_RULES),
+            Triple("reset", "RESET", INTERACTION_RESET),
+            Triple("sound", state.soundMode.name, INTERACTION_SOUND)
+        )
+        finalRow.forEachIndexed { index, (id, label, interactionId) ->
+            HudButton(
+                prefix = "mobile-controls",
+                id = id,
+                label = label,
+                interactionId = interactionId,
+                centerX = -153f + index * 61.2f,
+                centerY = 43f,
+                width = 56f,
+                height = 28f,
+                enabled = when (id) {
+                    "return" -> state.prompt == FifthWallPrompt.None && !state.glitchActive
+                    "overview", "inspect", "rules" -> state.prompt == FifthWallPrompt.None
+                    else -> true
+                },
+                selected = when (id) {
+                    "return" -> state.lastRouteTarget == "Return Bin"
+                    "rules" -> state.hudView == FifthWallHudView.RULES
+                    "sound" -> state.soundMode != FifthWallSoundMode.MUTE
+                    else -> false
+                },
+                accent = when (id) {
+                    "reset" -> AMBER
+                    "sound" -> TEAL
+                    else -> CYAN
+                },
+                textSize = 8.5f
             )
         }
         ""
@@ -2328,454 +1022,829 @@ private fun PackageMesh(
 }
 
 @Composable
-private fun PackageBodyModel(
-    pkg: FifthWallPackage,
-    position: List<Float>,
-    id: String
-) {
-    SigilModel(
-        url = fifthWallModelUrl(packageModelFile(pkg)),
-        position = position,
-        rotation = packageModelRotation(pkg),
-        scale = packageModelScale(pkg),
-        visible = true,
-        castShadow = false,
+private fun DesktopPromptHud(level: FifthWallLevel, state: FifthWallUiState) {
+    val choices = promptChoices(level, state)
+    SigilScreenLayer(
+        id = "desktop-prompt-layer",
+        visible = state.prompt != FifthWallPrompt.None,
+        desktop = ScreenLayoutData(ScreenAnchor.CENTER, 0f, 0f, visible = true),
+        mobile = ScreenLayoutData(ScreenAnchor.CENTER, 0f, 0f, visible = false),
+        order = 50
+    ) {
+        PromptShield(760f, 430f, "desktop-prompt-shield")
+        HudPanel(720f, 390f, 0f, 0f, "desktop-prompt-panel")
+        ScreenText(promptTitle(state.prompt), -320f, 148f, 23f, CYAN, "desktop-prompt-title")
+        ScreenText(promptBody(level, state), -320f, 100f, 16f, SAFETY_WHITE, "desktop-prompt-body", 640f, 1.35f, true)
+        repeat(5) { index ->
+            val choice = choices.getOrNull(index)
+            HudButton(
+                prefix = "desktop-prompt",
+                id = "choice-$index",
+                label = choice?.label ?: "--",
+                interactionId = promptInteraction(index),
+                centerX = -252f + (index % 3) * 252f,
+                centerY = if (index < 3) -80f else -132f,
+                width = 226f,
+                height = 42f,
+                enabled = choice != null,
+                selected = false,
+                visible = choice != null,
+                textSize = 14f
+            )
+        }
+        ""
+    }
+}
+
+@Composable
+private fun MobilePromptHud(level: FifthWallLevel, state: FifthWallUiState) {
+    val choices = promptChoices(level, state)
+    SigilScreenLayer(
+        id = "mobile-prompt-layer",
+        visible = state.prompt != FifthWallPrompt.None,
+        desktop = ScreenLayoutData(ScreenAnchor.CENTER, 0f, 0f, visible = false),
+        mobile = ScreenLayoutData(ScreenAnchor.CENTER, 0f, 0f, visible = true),
+        mobileBreakpoint = 640,
+        order = 51
+    ) {
+        PromptShield(384f, 650f, "mobile-prompt-shield")
+        HudPanel(360f, 430f, 0f, 0f, "mobile-prompt-panel")
+        ScreenText(promptTitle(state.prompt), -158f, 176f, 18f, CYAN, "mobile-prompt-title")
+        ScreenText(promptBody(level, state), -158f, 132f, 13f, SAFETY_WHITE, "mobile-prompt-body", 316f, 1.32f, true)
+        repeat(5) { index ->
+            val choice = choices.getOrNull(index)
+            HudButton(
+                prefix = "mobile-prompt",
+                id = "choice-$index",
+                label = choice?.label ?: "--",
+                interactionId = promptInteraction(index),
+                centerX = 0f,
+                centerY = 6f - index * 48f,
+                width = 316f,
+                height = 38f,
+                enabled = choice != null,
+                selected = false,
+                visible = choice != null,
+                textSize = 13f
+            )
+        }
+        ""
+    }
+}
+
+@Composable
+private fun HudPanel(width: Float, height: Float, centerX: Float, centerY: Float, id: String) {
+    SigilPlane(
+        width = width,
+        height = height,
+        position = listOf(centerX, centerY, 0f),
+        color = PANEL,
         receiveShadow = false,
-        name = "pkg-body-model",
+        name = id,
+        id = id
+    )
+    SigilPlane(
+        width = width,
+        height = 3f,
+        position = listOf(centerX, centerY + height / 2f - 1.5f, 1f),
+        color = CYAN,
+        receiveShadow = false,
+        name = "$id-accent"
+    )
+}
+
+@Composable
+private fun PromptShield(width: Float, height: Float, id: String) {
+    SigilPlane(
+        width = width,
+        height = height,
+        position = listOf(0f, 0f, -1f),
+        color = argb("#080d12"),
+        receiveShadow = false,
+        interaction = screenInteraction("prompt-shield", true, width, height),
+        name = id,
         id = id
     )
 }
 
-private fun packageModelFile(pkg: FifthWallPackage): String =
+@Composable
+private fun HudButton(
+    prefix: String,
+    id: String,
+    label: String,
+    interactionId: String,
+    centerX: Float,
+    centerY: Float,
+    width: Float,
+    height: Float,
+    enabled: Boolean,
+    selected: Boolean,
+    accent: Int = CYAN,
+    visible: Boolean = true,
+    textSize: Float = 12f
+) {
+    SigilGroup(visible = visible, name = "$prefix-$id", id = "$prefix-$id") {
+        SigilPlane(
+            width = width,
+            height = height,
+            position = listOf(centerX, centerY, 2f),
+            color = if (selected) PANEL_STRONG else argb("#18242c"),
+            receiveShadow = false,
+            interaction = screenInteraction(interactionId, enabled, width, height),
+            name = "$prefix-$id-surface",
+            id = "$prefix-$id-surface"
+        )
+        SigilPlane(
+            width = width,
+            height = if (selected) 3f else 1.5f,
+            position = listOf(centerX, centerY - height / 2f + 1.5f, 3f),
+            color = accent,
+            receiveShadow = false,
+            name = "$prefix-$id-accent"
+        )
+        ScreenText(
+            text = label,
+            x = centerX,
+            y = centerY,
+            size = textSize,
+            color = if (enabled) SAFETY_WHITE else MUTED,
+            id = "$prefix-$id-label",
+            align = TextAlignMode.CENTER,
+            baseline = TextBaselineMode.MIDDLE
+        )
+        ""
+    }
+}
+
+@Composable
+private fun ScreenText(
+    text: String,
+    x: Float,
+    y: Float,
+    size: Float,
+    color: Int,
+    id: String,
+    maxWidth: Float? = null,
+    lineHeight: Float = 1.18f,
+    wordWrap: Boolean = false,
+    align: TextAlignMode = TextAlignMode.LEFT,
+    baseline: TextBaselineMode = TextBaselineMode.TOP
+) {
+    SigilText(
+        text = text.uppercase().ifBlank { "-" },
+        position = listOf(x, y, 4f),
+        color = color,
+        size = size,
+        depth = 0f,
+        curveSegments = 6,
+        lineHeight = lineHeight,
+        align = align,
+        baseline = baseline,
+        maxWidth = maxWidth,
+        wordWrap = wordWrap,
+        fontUrl = FIFTH_WALL_FONT,
+        name = id,
+        id = id
+    )
+}
+
+private fun fifthWallSceneEventHandlers(controller: FifthWallController): List<SigilSceneEventHandler> {
+    val handlers = mutableListOf<SigilSceneEventHandler>()
+    repeat(PACKAGE_SLOT_COUNT) { index ->
+        handlers += sceneHandler(
+            interactionId = focusInteraction(index),
+            requestKey = "focus-$index",
+            optimisticPatch = focusOptimisticPatch(index),
+            onEvent = { controller.selectVisiblePackage(index) },
+            onResponse = { stateResponse(controller, cue = SceneCue.FOCUS) }
+        )
+    }
+    repeat(TRUCK_SLOT_COUNT) { index ->
+        handlers += sceneHandler(
+            interactionId = truckInteraction(index),
+            requestKey = "route-truck-$index",
+            optimisticPatch = routeOptimisticPatch("truck-slot-$index-selection"),
+            onEvent = { controller.routeToTruck(index) },
+            onResponse = { stateResponse(controller, cue = SceneCue.ROUTE) }
+        )
+    }
+    handlers += sceneHandler(
+        interactionId = INTERACTION_RETURN,
+        requestKey = "route-return",
+        optimisticPatch = routeOptimisticPatch("return-bin-selection"),
+        onEvent = controller::routeToReturn,
+        onResponse = { stateResponse(controller, cue = SceneCue.ROUTE) }
+    )
+    handlers += sceneHandler(
+        interactionId = INTERACTION_OVERVIEW,
+        requestKey = "camera-overview",
+        onEvent = controller::showManifest,
+        onResponse = { stateResponse(controller, camera = overviewCameraPatch()) }
+    )
+    handlers += sceneHandler(
+        interactionId = INTERACTION_INSPECT,
+        requestKey = "camera-inspect",
+        onEvent = controller::showManifest,
+        onResponse = { stateResponse(controller, camera = inspectCameraPatch()) }
+    )
+    handlers += sceneHandler(
+        interactionId = INTERACTION_RULES,
+        requestKey = "camera-rules",
+        onEvent = controller::showRules,
+        onResponse = { stateResponse(controller, camera = rulesCameraPatch()) }
+    )
+    handlers += sceneHandler(
+        interactionId = INTERACTION_RESET,
+        requestKey = "reset-shift",
+        onEvent = controller::reset,
+        onResponse = {
+            stateResponse(
+                controller,
+                camera = overviewCameraPatch(),
+                clearCheckpoint = true,
+                startAmbience = true
+            )
+        }
+    )
+    handlers += sceneHandler(
+        interactionId = INTERACTION_SOUND,
+        requestKey = "cycle-sound",
+        onEvent = controller::cycleSoundMode,
+        onResponse = { stateResponse(controller, updateSound = true) }
+    )
+    handlers += sceneHandler(
+        interactionId = INTERACTION_REPAIR,
+        requestKey = "repair-console",
+        onEvent = controller::repairGlitch,
+        onResponse = { stateResponse(controller, cue = SceneCue.REPAIR) }
+    )
+    repeat(5) { index ->
+        handlers += sceneHandler(
+            interactionId = promptInteraction(index),
+            requestKey = "prompt-choice-$index",
+            onEvent = { controller.activatePromptChoice(index) },
+            onResponse = {
+                val nextState = controller.state.value
+                val nextLevel = FifthWallLevels[nextState.levelIndex]
+                val freshShift = nextState.levelIndex == 0 &&
+                    nextState.score == 0 &&
+                    nextState.countedDecisions == 0 &&
+                    nextState.prompt == FifthWallPrompt.None
+                stateResponse(
+                    controller = controller,
+                    camera = if (nextState.prompt == FifthWallPrompt.None) overviewCameraPatch() else null,
+                    clearCheckpoint = freshShift,
+                    startAmbience = nextState.prompt == FifthWallPrompt.None && nextState.processedCount(nextLevel) == 0
+                )
+            }
+        )
+    }
+    return handlers
+}
+
+private fun sceneHandler(
+    interactionId: String,
+    requestKey: String,
+    optimisticPatch: ScenePatch? = null,
+    onEvent: () -> Unit,
+    onResponse: () -> SigilSceneEventCallbackResponse
+): SigilSceneEventHandler =
+    SigilSceneEventHandler(
+        match = SigilSceneEventMatch(type = "click", interactionId = interactionId),
+        onEvent = onEvent,
+        onResponse = onResponse,
+        optimisticPatch = optimisticPatch,
+        requestKey = "fifth-wall:$requestKey",
+        suppressWhilePending = true,
+        reloadOnSuccess = false,
+        preventDefault = true,
+        stopPropagation = true
+    )
+
+private fun stateResponse(
+    controller: FifthWallController,
+    cue: SceneCue = SceneCue.NONE,
+    camera: CameraPatch? = null,
+    clearCheckpoint: Boolean = false,
+    startAmbience: Boolean = false,
+    updateSound: Boolean = false
+): SigilSceneEventCallbackResponse {
+    val state = controller.state.value
+    val audio = mutableListOf<AudioPatch>()
+    if (startAmbience) {
+        audio += AudioPatch(AudioPatchAction.UNLOCK)
+        audio += AudioPatch(AudioPatchAction.SET_VOLUME, bus = AUDIO_BUS, volume = state.soundMode.volume, persist = true)
+        audio += AudioPatch(AudioPatchAction.PLAY, sourceId = AUDIO_AMBIENCE, loop = true)
+    }
+    if (updateSound) {
+        audio += AudioPatch(AudioPatchAction.UNLOCK)
+        audio += AudioPatch(AudioPatchAction.SET_VOLUME, bus = AUDIO_BUS, volume = state.soundMode.volume, persist = true)
+    }
+    when (cue) {
+        SceneCue.NONE -> Unit
+        SceneCue.FOCUS -> audio += AudioPatch(AudioPatchAction.PLAY, sourceId = AUDIO_FOCUS)
+        SceneCue.ROUTE -> audio += AudioPatch(
+            AudioPatchAction.PLAY,
+            sourceId = when {
+                state.prompt == FifthWallPrompt.LevelComplete || state.prompt == FifthWallPrompt.GameComplete -> AUDIO_CLEAR
+                state.feedbackTone == FifthWallFeedbackTone.Negative -> AUDIO_REJECT
+                else -> AUDIO_ACCEPT
+            }
+        )
+        SceneCue.CLEAR -> audio += AudioPatch(AudioPatchAction.PLAY, sourceId = AUDIO_CLEAR)
+        SceneCue.REPAIR -> audio += AudioPatch(AudioPatchAction.PLAY, sourceId = AUDIO_ACCEPT)
+    }
+    val storage = when {
+        clearCheckpoint -> checkpointRemovalPatches()
+        else -> checkpointSavePatches(state)
+    }.toMutableList()
+    if (updateSound) {
+        storage += soundModeStoragePatches(state.soundMode)
+    }
+    return SigilSceneEventCallbackResponse(
+        action = "patch",
+        status = "ok",
+        scenePatch = fifthWallScenePatch(state, camera, audio, storage)
+    )
+}
+
+private fun fifthWallScenePatch(
+    state: FifthWallUiState,
+    camera: CameraPatch? = null,
+    audio: List<AudioPatch> = emptyList(),
+    storage: List<StoragePatch> = emptyList()
+): ScenePatch {
+    val level = FifthWallLevels[state.levelIndex]
+    val packages = state.visiblePackages()
+    val focusedId = state.focusPackage()?.id
+    val interactionEnabled = state.prompt == FifthWallPrompt.None && !state.glitchActive
+    val nodes = mutableListOf<SceneNodePatch>()
+
+    repeat(PACKAGE_SLOT_COUNT) { index ->
+        val pkg = packages.getOrNull(index)
+        val selected = pkg?.id == focusedId
+        nodes += SceneNodePatch(
+            id = "package-slot-$index",
+            rotation = listOf(0f, packageYaw(pkg, index), 0f),
+            visible = pkg != null,
+            interactionEnabled = interactionEnabled && pkg != null
+        )
+        nodes += SceneNodePatch(
+            id = "package-slot-$index-model",
+            position = packageModelPosition(pkg),
+            rotation = packageModelRotation(pkg),
+            scale = packageModelScale(pkg),
+            modelUrl = pkg?.let(::packageModelUrl)
+        )
+        nodes += SceneNodePatch(
+            id = "package-slot-$index-selection",
+            visible = selected,
+            highlight = HighlightPatch(selected, CYAN, if (selected) 0.9f else 0f)
+        )
+        packageColors.forEach { (name, _) ->
+            nodes += SceneNodePatch(
+                id = "package-slot-$index-color-$name",
+                visible = pkg?.color?.name == name
+            )
+        }
+    }
+
+    repeat(TRUCK_SLOT_COUNT) { index ->
+        val active = index < state.activeTrucks(level).size
+        val selected = state.lastRouteTarget == "Truck ${'A' + index}"
+        nodes += SceneNodePatch(
+            id = "truck-slot-$index",
+            visible = active,
+            interactionEnabled = active && interactionEnabled
+        )
+        nodes += SceneNodePatch(
+            id = "truck-slot-$index-selection",
+            visible = selected,
+            highlight = HighlightPatch(
+                active = selected,
+                color = routeFeedbackColor(state, selected, listOf(CORAL, argb("#5aa9ff"), TEAL, AMBER)[index]),
+                intensity = if (selected) 0.94f else 0f
+            )
+        )
+    }
+    val returnSelected = state.lastRouteTarget == "Return Bin"
+    nodes += SceneNodePatch(id = "return-bin", interactionEnabled = interactionEnabled)
+    nodes += SceneNodePatch(
+        id = "return-bin-selection",
+        visible = returnSelected,
+        highlight = HighlightPatch(
+            active = returnSelected,
+            color = routeFeedbackColor(state, returnSelected, AMBER),
+            intensity = if (returnSelected) 0.94f else 0f
+        )
+    )
+    nodes += SceneNodePatch(
+        id = "repair-console",
+        visible = state.wrenchVisible,
+        interactionEnabled = state.wrenchVisible
+    )
+    nodes += hudPatchNodes(level, state)
+
+    return ScenePatch(nodes = nodes, camera = camera, audio = audio, storage = storage)
+}
+
+private fun hudPatchNodes(level: FifthWallLevel, state: FifthWallUiState): List<SceneNodePatch> {
+    val nodes = mutableListOf<SceneNodePatch>()
+    val pkg = state.focusPackage()
+    listOf("desktop", "mobile").forEach { prefix ->
+        nodes += SceneNodePatch(id = "$prefix-status-bay", text = statusBayText(level))
+        nodes += SceneNodePatch(id = "$prefix-status-level", text = level.name.uppercase())
+        nodes += SceneNodePatch(id = "$prefix-status-score", text = "SCORE ${state.score}")
+        nodes += SceneNodePatch(
+            id = "$prefix-status-accuracy",
+            text = if (prefix == "mobile") "ACC ${state.accuracyLabel()}" else "ACCURACY ${state.accuracyLabel()}"
+        )
+        nodes += SceneNodePatch(
+            id = "$prefix-status-streak",
+            text = if (prefix == "mobile") "STK ${state.streak}" else "STREAK ${state.streak}"
+        )
+        nodes += SceneNodePatch(id = "$prefix-info-title", text = infoTitle(state))
+        nodes += SceneNodePatch(id = "$prefix-info-body", text = infoBody(level, state, pkg))
+    }
+    nodes += SceneNodePatch(id = "desktop-info-footer", text = infoFooter(level, state))
+    nodes += SceneNodePatch(id = "mobile-info-footer", text = state.feedback)
+    nodes += SceneNodePatch(id = "desktop-controls-feedback", text = state.feedback)
+
+    listOf("desktop-controls", "mobile-controls").forEach { prefix ->
+        repeat(PACKAGE_SLOT_COUNT) { index ->
+            val packageAtIndex = state.visiblePackages().getOrNull(index)
+            nodes += buttonPatch(
+                prefix = prefix,
+                id = "focus-$index",
+                label = "FOCUS PACKAGE ${index + 1}",
+                visible = true,
+                enabled = packageAtIndex != null && state.prompt == FifthWallPrompt.None,
+                selected = packageAtIndex?.id == state.focusPackage()?.id,
+                color = CYAN
+            )
+        }
+        repeat(TRUCK_SLOT_COUNT) { index ->
+            val active = index < state.activeTrucks(level).size
+            nodes += buttonPatch(
+                prefix = prefix,
+                id = "truck-$index",
+                label = "TRUCK ${'A' + index}",
+                visible = true,
+                enabled = active && interactionEnabled(state),
+                selected = state.lastRouteTarget == "Truck ${'A' + index}",
+                color = listOf(CORAL, argb("#5aa9ff"), TEAL, AMBER)[index]
+            )
+        }
+        nodes += buttonPatch(prefix, "return", if (prefix.startsWith("mobile")) "RETURN" else "RETURN BIN", true, interactionEnabled(state), state.lastRouteTarget == "Return Bin", AMBER)
+        nodes += buttonPatch(prefix, "overview", if (prefix.startsWith("mobile")) "VIEW" else "OVERVIEW", true, state.prompt == FifthWallPrompt.None, false, CYAN)
+        nodes += buttonPatch(prefix, "inspect", "INSPECT", true, state.prompt == FifthWallPrompt.None, false, CYAN)
+        nodes += buttonPatch(prefix, "rules", "RULES", true, state.prompt == FifthWallPrompt.None, state.hudView == FifthWallHudView.RULES, CYAN)
+        nodes += buttonPatch(prefix, "reset", "RESET", true, true, false, AMBER)
+        nodes += buttonPatch(
+            prefix,
+            "sound",
+            if (prefix.startsWith("mobile")) state.soundMode.name else soundLabel(state),
+            true,
+            true,
+            state.soundMode != FifthWallSoundMode.MUTE,
+            TEAL
+        )
+    }
+
+    val promptVisible = state.prompt != FifthWallPrompt.None
+    val choices = promptChoices(level, state)
+    listOf("desktop", "mobile").forEach { prefix ->
+        nodes += SceneNodePatch(id = "$prefix-prompt-layer", visible = promptVisible)
+        nodes += SceneNodePatch(id = "$prefix-prompt-title", text = promptTitle(state.prompt))
+        nodes += SceneNodePatch(id = "$prefix-prompt-body", text = promptBody(level, state))
+        repeat(5) { index ->
+            val choice = choices.getOrNull(index)
+            nodes += buttonPatch(
+                prefix = "$prefix-prompt",
+                id = "choice-$index",
+                label = choice?.label ?: "--",
+                visible = choice != null,
+                enabled = choice != null,
+                selected = false,
+                color = CYAN
+            )
+        }
+    }
+    return nodes
+}
+
+private fun buttonPatch(
+    prefix: String,
+    id: String,
+    label: String,
+    visible: Boolean,
+    enabled: Boolean,
+    selected: Boolean,
+    color: Int
+): List<SceneNodePatch> = listOf(
+    SceneNodePatch(id = "$prefix-$id", visible = visible),
+    SceneNodePatch(
+        id = "$prefix-$id-surface",
+        interactionEnabled = enabled,
+        highlight = HighlightPatch(selected, color, if (selected) 0.72f else 0f)
+    ),
+    SceneNodePatch(id = "$prefix-$id-label", text = label)
+)
+
+private fun focusOptimisticPatch(index: Int): ScenePatch = ScenePatch(
+    nodes = buildList {
+        repeat(PACKAGE_SLOT_COUNT) { slot ->
+            add(SceneNodePatch(id = "package-slot-$slot-selection", visible = slot == index))
+            listOf("desktop-controls", "mobile-controls").forEach { prefix ->
+                add(
+                    SceneNodePatch(
+                        id = "$prefix-focus-$slot-surface",
+                        highlight = HighlightPatch(slot == index, CYAN, if (slot == index) 0.8f else 0f)
+                    )
+                )
+            }
+        }
+    }
+)
+
+private fun routeOptimisticPatch(selectionNodeId: String): ScenePatch = ScenePatch(
+    nodes = listOf(
+        SceneNodePatch(
+            id = selectionNodeId,
+            visible = true,
+            highlight = HighlightPatch(true, CYAN, 0.9f)
+        )
+    )
+)
+
+private fun checkpointSavePatches(state: FifthWallUiState): List<StoragePatch> {
+    val checkpoint = state.completedBayCheckpoint(System.currentTimeMillis()) ?: return emptyList()
+    val encoded = FifthWallCheckpointCodec.encode(checkpoint)
+    return listOf(StorageBackend.LOCAL_STORAGE, StorageBackend.COOKIE).map { backend ->
+        StoragePatch(
+            action = StoragePatchAction.SET,
+            key = FIFTH_WALL_CHECKPOINT_KEY,
+            value = encoded,
+            backend = backend,
+            expiresDays = FIFTH_WALL_CHECKPOINT_EXPIRES_DAYS
+        )
+    }
+}
+
+private fun checkpointRemovalPatches(): List<StoragePatch> =
+    listOf(StorageBackend.LOCAL_STORAGE, StorageBackend.COOKIE).map { backend ->
+        StoragePatch(
+            action = StoragePatchAction.REMOVE,
+            key = FIFTH_WALL_CHECKPOINT_KEY,
+            backend = backend,
+            expiresDays = FIFTH_WALL_CHECKPOINT_EXPIRES_DAYS
+        )
+    }
+
+private fun soundModeStoragePatches(soundMode: FifthWallSoundMode): List<StoragePatch> =
+    listOf(StorageBackend.LOCAL_STORAGE, StorageBackend.COOKIE).map { backend ->
+        StoragePatch(
+            action = StoragePatchAction.SET,
+            key = FIFTH_WALL_SOUND_MODE_KEY,
+            value = soundMode.name,
+            backend = backend,
+            expiresDays = FIFTH_WALL_CHECKPOINT_EXPIRES_DAYS
+        )
+    }
+
+private fun promptChoices(level: FifthWallLevel, state: FifthWallUiState): List<PromptChoice> =
+    when (state.prompt) {
+        FifthWallPrompt.None -> emptyList()
+        FifthWallPrompt.Intro -> if (state.resumeBay != null) {
+            listOf(PromptChoice("RESUME BAY ${state.resumeBay}"), PromptChoice("NEW SHIFT"))
+        } else {
+            listOf(PromptChoice("ENTER BAY"), PromptChoice("NEW SHIFT"))
+        }
+        FifthWallPrompt.ProbabilityPrediction -> {
+            val expected = ((level.trucks.firstOrNull()?.probability ?: 0.5) * level.packageCount).toInt()
+            listOf(0, expected, level.packageCount).distinct().map { PromptChoice("PREDICT $it") }
+        }
+        FifthWallPrompt.TeamDiscussion -> listOf(PromptChoice("CONTINUE SHIFT"))
+        FifthWallPrompt.RuleGuess -> listOf(PromptChoice("SUBMIT RULE"))
+        FifthWallPrompt.Confidence -> listOf("LOW", "MEDIUM", "HIGH").map(::PromptChoice)
+        FifthWallPrompt.LevelComplete -> listOf(PromptChoice("ENTER BAY ${level.id + 1}"))
+        FifthWallPrompt.GameComplete -> listOf(PromptChoice("NEW SHIFT"))
+    }
+
+private fun promptTitle(prompt: FifthWallPrompt): String = when (prompt) {
+    FifthWallPrompt.None -> " "
+    FifthWallPrompt.Intro -> "COURIER PROTOCOL 3D"
+    FifthWallPrompt.ProbabilityPrediction -> "PREDICTION LOCK"
+    FifthWallPrompt.TeamDiscussion -> "DISPATCH PAUSE"
+    FifthWallPrompt.RuleGuess -> "HIDDEN RULE"
+    FifthWallPrompt.Confidence -> "CONFIDENCE CHECK"
+    FifthWallPrompt.LevelComplete -> "BAY CLEARED"
+    FifthWallPrompt.GameComplete -> "SHIFT COMPLETE"
+}
+
+private fun promptBody(level: FifthWallLevel, state: FifthWallUiState): String = when (state.prompt) {
+    FifthWallPrompt.None -> " "
+    FifthWallPrompt.Intro -> when {
+        state.campaignCompleted -> "All 20 bays are complete. Start a clean shift to run the dispatch campaign again."
+        state.resumeBay != null -> "A validated checkpoint is ready. Resume at Bay ${state.resumeBay} with score ${state.score}, or begin a new shift."
+        else -> "Route each package to a matching truck or the Return Bin. The canvas keeps the whole campaign live without page reloads."
+    }
+    FifthWallPrompt.ProbabilityPrediction -> "How many of ${level.packageCount} packages will Truck A accept? Choose a forecast before the bay starts."
+    FifthWallPrompt.TeamDiscussion -> "Dispatch recorded the team discussion. Continue when you are ready to return to the lane."
+    FifthWallPrompt.RuleGuess -> "Six experiments are logged. Submit the inferred rule to unlock the bay."
+    FifthWallPrompt.Confidence -> "Record confidence in the route outcome before the next package enters the active slot."
+    FifthWallPrompt.LevelComplete -> "Bay ${level.id} report: score ${state.score}, accuracy ${state.accuracyLabel()}, best streak ${state.bestStreak}, average decision ${state.averageDecisionSecondsLabel()}. Progress is saved."
+    FifthWallPrompt.GameComplete -> "All 20 bays are clear. Final score ${state.score}, accuracy ${state.accuracyLabel()}, best streak ${state.bestStreak}. Campaign completion is saved."
+}
+
+private fun infoTitle(state: FifthWallUiState): String = when {
+    state.glitchActive -> "MANUAL OVERRIDE"
+    state.hudView == FifthWallHudView.RULES -> "RULE BOARD"
+    else -> "PACKAGE MANIFEST"
+}
+
+private fun infoBody(level: FifthWallLevel, state: FifthWallUiState, pkg: FifthWallPackage?): String {
+    if (state.glitchActive) {
+        return "ROUTING OFFLINE\n\nFind the amber REPAIR control in the warehouse and activate it to restore dispatch."
+    }
+    if (state.hudView == FifthWallHudView.RULES) {
+        return state.activeTrucks(level).mapIndexed { index, rule ->
+            val revealed = level.hiddenRuleIndex != index || state.hiddenRuleRevealed || state.ruleShifted
+            "${'A' + index}  ${rule.label(revealed).removePrefix("Rule: ").uppercase()}"
+        }.plus("RET  NO TRUCK MATCHES").joinToString("\n\n")
+    }
+    return if (pkg == null) {
+        "NO ACTIVE PACKAGE\n\nComplete the current prompt to load the next dispatch slot."
+    } else {
+        buildString {
+            appendLine("COLOR       ${pkg.color.name.uppercase()}")
+            appendLine("SHAPE       ${pkg.shapeDisplayLabel().uppercase()}")
+            appendLine("WEIGHT      ${pkg.weight} KG")
+            appendLine("VOLUME      ${pkg.volume} L")
+            appendLine("PATTERN     ${pkg.pattern.uppercase()}")
+            append("DEST        ${pkg.destination.uppercase()}")
+            pkg.geometry?.let { append("\nGEOMETRY    ${it.uppercase()}") }
+        }
+    }
+}
+
+private fun infoFooter(level: FifthWallLevel, state: FifthWallUiState): String {
+    val guidance = level.guidance()
+    val progress = "PROCESSED ${state.processedCount(level)}/${level.packageCount}"
+    val shift = when {
+        state.ruleShifted -> "RULE BOARD UPDATED"
+        state.priorityShifted -> "PRIORITY UPDATED"
+        else -> guidance.phase.uppercase()
+    }
+    return "$progress  |  $shift\n${wrapCanvasText(guidance.objective, 48)}"
+}
+
+private fun wrapCanvasText(text: String, maxCharacters: Int): String {
+    if (text.length <= maxCharacters) return text
+    val lines = mutableListOf<String>()
+    var current = StringBuilder()
+    text.split(' ').forEach { word ->
+        if (current.isNotEmpty() && current.length + word.length + 1 > maxCharacters) {
+            lines += current.toString()
+            current = StringBuilder(word)
+        } else {
+            if (current.isNotEmpty()) current.append(' ')
+            current.append(word)
+        }
+    }
+    if (current.isNotEmpty()) lines += current.toString()
+    return lines.joinToString("\n")
+}
+
+private fun statusBayText(level: FifthWallLevel): String = "BAY ${level.id.toString().padStart(2, '0')} / 20"
+
+private fun soundLabel(state: FifthWallUiState): String = "SOUND: ${state.soundMode.name}"
+
+private fun feedbackColor(tone: FifthWallFeedbackTone): Int = when (tone) {
+    FifthWallFeedbackTone.Neutral -> SAFETY_WHITE
+    FifthWallFeedbackTone.Positive -> TEAL
+    FifthWallFeedbackTone.Negative -> CORAL
+}
+
+private fun routeFeedbackColor(state: FifthWallUiState, selected: Boolean, fallback: Int): Int = when {
+    !selected -> fallback
+    state.lastRouteAccepted == true -> TEAL
+    state.lastRouteAccepted == false -> CORAL
+    else -> fallback
+}
+
+private fun interactionEnabled(state: FifthWallUiState): Boolean =
+    state.prompt == FifthWallPrompt.None && !state.glitchActive
+
+private fun worldInteraction(
+    interactionId: String,
+    enabled: Boolean,
+    size: List<Float>,
+    center: List<Float>
+): InteractionMetadata = InteractionMetadata(
+    interactionId = interactionId,
+    cursor = CursorHint.POINTER,
+    hitVolume = HitVolumeData(HitVolumeShape.BOX, center = center, size = size),
+    actions = listOf("activate"),
+    events = listOf("click"),
+    enabled = enabled
+)
+
+private fun screenInteraction(
+    interactionId: String,
+    enabled: Boolean,
+    width: Float,
+    height: Float
+): InteractionMetadata = InteractionMetadata(
+    interactionId = interactionId,
+    cursor = if (enabled) CursorHint.POINTER else CursorHint.AUTO,
+    hitVolume = HitVolumeData(
+        shape = HitVolumeShape.BOX,
+        center = listOf(0f, 0f, 0f),
+        size = listOf(width, height, 8f)
+    ),
+    actions = listOf("activate"),
+    events = listOf("click"),
+    enabled = enabled
+)
+
+private fun focusInteraction(index: Int): String = "focus-package-$index"
+
+private fun truckInteraction(index: Int): String = "route-truck-$index"
+
+private fun promptInteraction(index: Int): String = "prompt-choice-$index"
+
+private fun packageSlotPosition(index: Int): List<Float> =
+    listOf(-5.4f + index * 3.05f, 0f, -0.5f)
+
+private fun truckSlotPosition(index: Int): List<Float> =
+    listOf(-5.8f + index * 3.85f, 0f, 4.65f)
+
+private fun packageYaw(pkg: FifthWallPackage?, index: Int): Float = when (pkg?.shape) {
+    "rect" -> 0.14f + index * 0.04f
+    "cylinder" -> 0.08f + index * 0.04f
+    "sphere" -> -0.12f + index * 0.04f
+    else -> -0.08f + index * 0.04f
+}
+
+private fun packageModelUrl(pkg: FifthWallPackage): String = fifthWallModelUrl(
     when (pkg.shape) {
         "rect" -> "rectangular-parcel.glb"
         "cylinder" -> "cylinder-drum.glb"
         "sphere" -> "sphere-package-with-cradle.glb"
         else -> "cube-crate.glb"
     }
+)
 
-private fun packageModelScale(pkg: FifthWallPackage): List<Float> =
-    when (pkg.shape) {
-        "rect" -> listOf(2.08f, 1.22f, 1.08f)
-        "cylinder" -> listOf(1.34f, 1.36f, 1.34f)
-        "sphere" -> listOf(1.48f, 1.36f, 1.48f)
-        else -> listOf(1.36f, 1.18f, 1.36f)
-    }
-
-private fun packageModelRotation(pkg: FifthWallPackage): List<Float> =
-    when (pkg.shape) {
-        "cylinder" -> listOf(0f, 0.18f, 0f)
-        "sphere" -> listOf(0f, -0.12f, 0f)
-        else -> listOf(0f, 0f, 0f)
-    }
-
-@Composable
-private fun PackageColorAccent(
-    shape: String,
-    color: Int,
-    hover: Float
-) {
-    val markerY = when (shape) {
-        "cylinder" -> 1.22f
-        "sphere" -> 1.14f
-        else -> 1.04f
-    } + hover
-    SigilSphere(
-        radius = 0.13f,
-        widthSegments = 8,
-        heightSegments = 6,
-        position = listOf(-0.72f, markerY, 0.56f),
-        color = color,
-        metalness = 0.18f,
-        roughness = 0.48f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "pkg-color-marker"
-    )
-    SigilBox(
-        width = 0.42f,
-        height = 0.05f,
-        depth = 0.06f,
-        position = listOf(-0.72f, markerY - 0.18f, 0.56f),
-        color = color,
-        metalness = 0.2f,
-        roughness = 0.5f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "pkg-color-marker-stem"
-    )
-
+private fun packageModelPosition(pkg: FifthWallPackage?): List<Float> = when (pkg?.shape) {
+    "sphere" -> listOf(0f, 0.9f, 0f)
+    else -> listOf(0f, 0.84f, 0f)
 }
 
-@Composable
-private fun WrenchProp(visible: Boolean) {
-    SigilGroup(
-        position = listOf(13.1f, 0.06f, 9.2f),
-        rotation = listOf(0f, -0.42f, 0f),
-        visible = visible,
-        name = "repair-wrench-prop",
-        interaction = wrenchInteraction(),
-        animations = listOf(
-            SceneAnimationData(
-                id = "repair-wrench-pulse",
-                trigger = AnimationTrigger.SCENE_LOAD,
-                kind = AnimationKind.PULSE,
-                durationMs = 1400,
-                delayMs = 0,
-                easing = AnimationEasing.EASE_IN_OUT,
-                vector = null,
-                color = null,
-                intensity = 0.72f,
-                repeat = 24
-            )
-        ),
-        id = "repair-wrench"
-    ) {
-        SigilModel(
-            url = fifthWallModelUrl("repair-wrench.glb"),
-            scale = listOf(1.2f, 1.2f, 1.2f),
-            rotation = listOf(0f, 0.72f, 0f),
-            castShadow = false,
-            receiveShadow = false,
-            name = "repair-wrench-model"
-        )
-        BillboardTextLabel(
-            text = "REPAIR",
-            position = listOf(0f, 1.38f, 0f),
-            size = 0.22f,
-            color = SCENE_TEXT,
-            name = "repair-wrench-label"
-        )
-        ""
-    }
+private fun packageModelScale(pkg: FifthWallPackage?): List<Float> = when (pkg?.shape) {
+    "rect" -> listOf(2.08f, 1.22f, 1.08f)
+    "cylinder" -> listOf(1.34f, 1.36f, 1.34f)
+    "sphere" -> listOf(1.48f, 1.36f, 1.48f)
+    else -> listOf(1.36f, 1.18f, 1.36f)
 }
 
-@Composable
-private fun PackageBadge(
-    pkg: FifthWallPackage,
-    hover: Float
-) {
-    val badgeColor = when (pkg.destination) {
-        "house" -> argb("#7ad3ff")
-        "office" -> argb("#9af26c")
-        "factory" -> argb("#ffb15d")
-        else -> argb("#c6a9ff")
-    }
-    val anchor = when (pkg.shape) {
-        "rect" -> listOf(0.74f, 0.46f + hover, 0.56f)
-        "cylinder" -> listOf(0.42f, 0.68f + hover, 0.46f)
-        "sphere" -> listOf(0.48f, 0.88f + hover, 0.34f)
-        else -> listOf(0.58f, 0.72f + hover, 0.58f)
-    }
-
-    SigilBox(
-        width = 0.3f,
-        height = 0.22f,
-        depth = 0.06f,
-        position = anchor,
-        color = badgeColor,
-        metalness = 0.22f,
-        roughness = 0.42f,
-        castShadow = false,
-        receiveShadow = false,
-        name = "pkg-badge"
-    )
-
-    when (pkg.pattern) {
-        "striped" -> {
-            for (offset in listOf(-0.05f, 0.05f)) {
-                SigilBox(
-                    width = 0.22f,
-                    height = 0.035f,
-                    depth = 0.07f,
-                    position = listOf(anchor[0], anchor[1] + offset, anchor[2] + 0.015f),
-                    color = PACKAGE_TAPE,
-                    metalness = 0.08f,
-                    roughness = 0.88f,
-                    castShadow = false,
-                    receiveShadow = false,
-                    name = "pkg-badge-stripe-$offset"
-                )
-            }
-        }
-
-        "dotted" -> {
-            listOf(
-                listOf(anchor[0] - 0.055f, anchor[1] + 0.04f, anchor[2] + 0.02f),
-                listOf(anchor[0] + 0.055f, anchor[1] + 0.04f, anchor[2] + 0.02f),
-                listOf(anchor[0] - 0.055f, anchor[1] - 0.04f, anchor[2] + 0.02f),
-                listOf(anchor[0] + 0.055f, anchor[1] - 0.04f, anchor[2] + 0.02f)
-            ).forEachIndexed { index, point ->
-                SigilSphere(
-                    radius = 0.024f,
-                    widthSegments = 6,
-                    heightSegments = 4,
-                    position = point,
-                    color = PACKAGE_TAPE,
-                    metalness = 0.08f,
-                    roughness = 0.86f,
-                    castShadow = false,
-                    receiveShadow = false,
-                    name = "pkg-badge-dot-$index"
-                )
-            }
-        }
-    }
+private fun packageModelRotation(pkg: FifthWallPackage?): List<Float> = when (pkg?.shape) {
+    "cylinder" -> listOf(0f, 0.18f, 0f)
+    "sphere" -> listOf(0f, -0.12f, 0f)
+    else -> listOf(0f, 0f, 0f)
 }
 
-@Composable
-private fun GeometryAura(
-    pkg: FifthWallPackage,
-    level: FifthWallLevel?,
-    elevated: Boolean
-) {
-    if (pkg.geometry == null && level?.id !in 11..12) return
+private fun fifthWallModelUrl(fileName: String): String =
+    "/static/models/fifth-wall/optimized/$fileName?v=$MODEL_ASSET_VERSION"
 
-    if (pkg.validGeometry) {
-        SigilMesh(
-            geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = if (elevated) 0.64f else 0.54f, tube = 0.05f, radialSegments = 8, tubularSegments = 24),
-            position = listOf(0f, if (elevated) 1.52f else 1.34f, 0f),
-            rotation = listOf(0.2f, 0.9f, 0f),
-            color = SCENE_SUCCESS,
-            metalness = 0.72f,
-            roughness = 0.12f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "geometry-valid"
-        )
-    } else {
-        SigilMesh(
-            geometryType = GeometryType.TETRAHEDRON,
-            geometryParams = GeometryParams(radius = if (elevated) 0.72f else 0.56f, detail = 1),
-            position = listOf(0f, if (elevated) 1.58f else 1.36f, 0f),
-            rotation = listOf(0.54f, 0.84f, 0.14f),
-            color = SCENE_DANGER,
-            metalness = 0.7f,
-            roughness = 0.2f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "geometry-invalid"
-        )
-        SigilMesh(
-            geometryType = GeometryType.TORUS,
-            geometryParams = GeometryParams(radius = if (elevated) 0.78f else 0.6f, tube = 0.04f, radialSegments = 8, tubularSegments = 24),
-            position = listOf(0f, if (elevated) 1.52f else 1.3f, 0f),
-            rotation = listOf(0.4f, 0.38f, 0.72f),
-            color = SCENE_WARM,
-            metalness = 0.78f,
-            roughness = 0.12f,
-            castShadow = false,
-            receiveShadow = false,
-            name = "geometry-warning"
-        )
-    }
-}
+private val OVERVIEW_CAMERA_POSITION = listOf(0.7f, 8.8f, 14.2f)
+private val OVERVIEW_CAMERA_TARGET = listOf(0.5f, 1.2f, 0.9f)
 
-private fun fifthWallModelUrl(fileName: String): String {
-    return "/static/models/fifth-wall/optimized/$fileName?v=$MODEL_ASSET_VERSION"
-}
+private fun overviewCameraPatch(): CameraPatch = CameraPatch(
+    position = OVERVIEW_CAMERA_POSITION,
+    lookAt = OVERVIEW_CAMERA_TARGET,
+    orbitTarget = OVERVIEW_CAMERA_TARGET,
+    durationMs = 600,
+    easing = AnimationEasing.EASE_IN_OUT,
+    cancelMomentum = true
+)
 
-private fun packageFocusPadId(packageId: String): String = "package-focus-pad-$packageId"
+private fun inspectCameraPatch(): CameraPatch = CameraPatch(
+    position = listOf(5.9f, 5.6f, 8.8f),
+    lookAt = listOf(-2.2f, 1.25f, -0.4f),
+    orbitTarget = listOf(-2.2f, 1.25f, -0.4f),
+    durationMs = 600,
+    easing = AnimationEasing.EASE_IN_OUT,
+    cancelMomentum = true
+)
 
-private fun consoleFocusInteractionId(packageId: String): String = "console-focus:$packageId"
-
-private fun routePadTruckId(index: Int): String = "route-pad-truck-$index"
-
-private fun consoleTruckInteractionId(index: Int): String = "console-route-truck:$index"
-
-private fun routePadInteraction(
-    interactionId: String,
-    width: Float,
-    depth: Float,
-    actions: List<String>,
-    height: Float = 0.78f,
-    centerY: Float = 0.16f
-): InteractionMetadata =
-    InteractionMetadata(
-        interactionId = interactionId,
-        cursor = CursorHint.POINTER,
-        hitVolume = boxHitVolume(width = width, height = height, depth = depth, centerY = centerY),
-        actions = actions,
-        events = listOf("click"),
-        enabled = true,
-        drag = null,
-        dropTarget = null
-    )
-
-private fun packageInteraction(pkg: FifthWallPackage, enlarged: Boolean): InteractionMetadata =
-    InteractionMetadata(
-        interactionId = "package:${pkg.id}",
-        cursor = CursorHint.POINTER,
-        hitVolume = boxHitVolume(
-            width = when (pkg.shape) {
-                "rect" -> 2.28f
-                "cylinder" -> 1.58f
-                else -> 1.74f
-            } * if (enlarged) 1.25f else 1f,
-            height = if (enlarged) 2.45f else 1.85f,
-            depth = when (pkg.shape) {
-                "rect" -> 1.28f
-                "sphere" -> 1.55f
-                else -> 1.62f
-            } * if (enlarged) 1.2f else 1f,
-            centerY = if (enlarged) 1.1f else 0.82f
-        ),
-        actions = listOf("package", "focus", "inspect"),
-        events = PACKAGE_POINTER_EVENTS,
-        enabled = true,
-        drag = null,
-        dropTarget = null
-    )
-
-private fun truckInteraction(index: Int, label: String): InteractionMetadata =
-    routingTargetInteraction(
-        interactionId = "truck:$index",
-        targetId = "truck:$index",
-        actions = listOf("route", "truck", "truck:$index", label.lowercase().replace(" ", "-")),
-        cursor = CursorHint.POINTER,
-        hitVolume = boxHitVolume(width = 4.4f, height = 3.35f, depth = 2.45f, centerY = 1.55f)
-    )
-
-private fun returnBinInteraction(): InteractionMetadata =
-    routingTargetInteraction(
-        interactionId = "return-bin",
-        targetId = "return-bin",
-        actions = listOf("route", "return", "return-bin"),
-        cursor = CursorHint.POINTER,
-        hitVolume = boxHitVolume(width = 2.8f, height = 2.7f, depth = 2.8f, centerY = 1.25f)
-    )
-
-private fun inspectionDockInteraction(): InteractionMetadata =
-    routingTargetInteraction(
-        interactionId = "inspection-dock",
-        targetId = "inspection-dock",
-        actions = listOf("inspect", "inspection-dock"),
-        cursor = CursorHint.CROSSHAIR,
-        hitVolume = boxHitVolume(width = 4.8f, height = 3.2f, depth = 4.6f, centerY = 1.45f)
-    )
-
-private fun wrenchInteraction(): InteractionMetadata =
-    InteractionMetadata(
-        interactionId = "repair-wrench",
-        cursor = CursorHint.POINTER,
-        hitVolume = sphereHitVolume(radius = 1.05f, centerY = 0.5f),
-        actions = listOf("repair", "glitch", "wrench"),
-        events = listOf("pointerdown", "click"),
-        enabled = true,
-        drag = null,
-        dropTarget = null
-    )
-
-private fun routingTargetInteraction(
-    interactionId: String,
-    targetId: String,
-    actions: List<String>,
-    cursor: CursorHint,
-    hitVolume: HitVolumeData
-): InteractionMetadata =
-    InteractionMetadata(
-        interactionId = interactionId,
-        cursor = cursor,
-        hitVolume = hitVolume,
-        actions = actions + listOf("drop-target"),
-        events = listOf("click", "dragenter", "dragleave", "drop"),
-        enabled = true,
-        drag = null,
-        dropTarget = DropTargetMetadata(
-            enabled = true,
-            targetId = targetId,
-            groups = ROUTING_TARGET_GROUP,
-            accepts = listOf("package")
-        )
-    )
-
-private fun packageAnimations(
-    pkg: FifthWallPackage,
-    selected: Boolean
-): List<SceneAnimationData> {
-    val interactionAnimation = SceneAnimationData(
-        id = "package-${pkg.id}-grab-feedback",
-        trigger = AnimationTrigger.INTERACTION,
-        kind = AnimationKind.BOUNCE,
-        durationMs = 220,
-        delayMs = 0,
-        easing = AnimationEasing.EASE_OUT,
-        vector = null,
-        color = null,
-        intensity = if (selected) 0.7f else 0.5f,
-        repeat = 0
-    )
-    return listOf(interactionAnimation)
-}
-
-private fun targetPulseAnimation(id: String, delayMs: Int): SceneAnimationData =
-    SceneAnimationData(
-        id = id,
-        trigger = AnimationTrigger.INTERACTION,
-        kind = AnimationKind.PULSE,
-        durationMs = 260,
-        delayMs = delayMs,
-        easing = AnimationEasing.EASE_OUT,
-        vector = null,
-        color = null,
-        intensity = 0.5f,
-        repeat = 0
-    )
-
-private fun boxHitVolume(
-    width: Float,
-    height: Float,
-    depth: Float,
-    centerY: Float
-): HitVolumeData =
-    HitVolumeData(
-        shape = HitVolumeShape.BOX,
-        center = listOf(0f, centerY, 0f),
-        size = listOf(width, height, depth),
-        radius = null
-    )
-
-private fun sphereHitVolume(radius: Float, centerY: Float): HitVolumeData =
-    HitVolumeData(
-        shape = HitVolumeShape.SPHERE,
-        center = listOf(0f, centerY, 0f),
-        size = emptyList(),
-        radius = radius
-    )
-
-private fun truckSpacing(count: Int): Float = when (count) {
-    1 -> 0f
-    2 -> 5.2f
-    3 -> 4.2f
-    else -> 3.6f
-}
-
-private fun truckOrigin(
-    count: Int,
-    spacing: Float = truckSpacing(count)
-): Float = -((count - 1) * spacing) / 2f
-
-private fun truckColor(index: Int, rule: FifthWallRule): Int = when (rule.kind) {
-    FifthWallRuleKind.Color -> when (rule.value) {
-        "red" -> argb("#ff6b6b")
-        "blue" -> argb("#5aa9ff")
-        "green" -> argb("#45e0a8")
-        "yellow" -> argb("#f7b955")
-        "gray" -> argb("#9fb0c8")
-        "purple" -> argb("#b690ff")
-        else -> TRUCK_COLOR_FALLBACKS[index % TRUCK_COLOR_FALLBACKS.size]
-    }
-    FifthWallRuleKind.Geometry -> SCENE_ACCENT
-    FifthWallRuleKind.Probability -> SCENE_WARM
-    FifthWallRuleKind.Pattern -> argb("#72d2ff")
-    FifthWallRuleKind.Destination -> when (rule.value) {
-        "factory" -> argb("#ff9b4f")
-        "office" -> argb("#7fe36b")
-        "house" -> argb("#7ad3ff")
-        else -> argb("#b695ff")
-    }
-    else -> listOf(SCENE_ACCENT, SCENE_WARM, SCENE_SUCCESS, argb("#b38cff"))[index % 4]
-}
+private fun rulesCameraPatch(): CameraPatch = CameraPatch(
+    position = listOf(8.8f, 5.9f, 8.9f),
+    lookAt = listOf(0.3f, 1.15f, 4.4f),
+    orbitTarget = listOf(0.3f, 1.15f, 4.4f),
+    durationMs = 600,
+    easing = AnimationEasing.EASE_IN_OUT,
+    cancelMomentum = true
+)
 
 private fun argb(hex: String): Int = (0xFF shl 24) or Color(hex).getHex()

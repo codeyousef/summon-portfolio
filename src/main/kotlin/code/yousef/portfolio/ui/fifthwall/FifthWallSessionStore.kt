@@ -28,6 +28,14 @@ internal class FifthWallSessionStore {
             )
         )
 
-        return controllers.computeIfAbsent(sessionId) { FifthWallController() }
+        val checkpoint = FifthWallCheckpointCodec.decode(
+            exchange.request.cookies[FIFTH_WALL_CHECKPOINT_KEY]?.value
+        )
+        val soundMode = decodeFifthWallSoundMode(
+            exchange.request.cookies[FIFTH_WALL_SOUND_MODE_KEY]?.value
+        )
+        return controllers.computeIfAbsent(sessionId) {
+            FifthWallController(initialCheckpoint = checkpoint, initialSoundMode = soundMode)
+        }
     }
 }
