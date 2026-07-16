@@ -289,8 +289,7 @@ jobs:
             for secret_name in "${PUBLISHER_SECRET}" "${ROOT_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_SECRET}"; do
               gcloud secrets describe "${secret_name}" >/dev/null 2>&1 \
                 || owner_bootstrap_required "Secret Manager secret ${secret_name} is missing"
-              latest_version="$(gcloud secrets versions list \
-                --secret "${secret_name}" \
+              latest_version="$(gcloud secrets versions list "${secret_name}" \
                 --filter='state=ENABLED' \
                 --sort-by='~name' \
                 --limit=1 \
