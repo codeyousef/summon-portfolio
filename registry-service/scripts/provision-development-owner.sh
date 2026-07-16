@@ -85,6 +85,11 @@ if ! gcloud kms keyrings describe "${KMS_KEY_RING}" \
   --location "${REGION}" >/dev/null 2>&1; then
   gcloud kms keyrings create "${KMS_KEY_RING}" --location "${REGION}"
 fi
+gcloud kms keyrings add-iam-policy-binding "${KMS_KEY_RING}" \
+  --location "${REGION}" \
+  --member="serviceAccount:${DEPLOY_EMAIL}" \
+  --role=roles/cloudkms.viewer \
+  --condition=None >/dev/null
 
 for role in releases security snapshot timestamp; do
   key="seen-registry-dev-${role}"
@@ -130,6 +135,11 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${RUNTIME_EMAIL}" \
   --role=roles/datastore.user \
   --condition="^:^title=seen_registry_dev_database:expression=resource.name == '${DATABASE_RESOURCE}' || resource.name.startsWith('${DATABASE_RESOURCE}/')" \
+  >/dev/null
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${DEPLOY_EMAIL}" \
+  --role=roles/datastore.viewer \
+  --condition="^:^title=seen_registry_dev_database_view:expression=resource.name == '${DATABASE_RESOURCE}' || resource.name.startsWith('${DATABASE_RESOURCE}/')" \
   >/dev/null
 
 gcloud iam service-accounts describe "${RUNTIME_EMAIL}" --format='value(email)' >/dev/null
