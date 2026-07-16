@@ -50,6 +50,7 @@ dependencies {
     implementation(platform(libs.google.cloud.bom))
     implementation(libs.google.cloud.firestore)
     implementation(libs.google.cloud.storage)
+    implementation(libs.google.auth.oauth2.http)
 
     // Apache POI for Excel (.xlsx) import
     implementation(libs.poi.ooxml)

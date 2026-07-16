@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/codeyousef/SeenLang",
+  "commit": "44b14e7e7b08de59fbeb1b7ba62dc07c5f08eb1e",
+  "files": {
+    "openapi.yaml": "b283f9724aaf370a1cb259ea01e90be84a65762b67e629a62280799ea37e71c5",
+    "fixtures/registry-api-conformance-v1.json": "afa1026c9a91387d5ca52d56995e3cf06928fba4da5b7924efd56279013dd0ca",
+    "schemas/registry-api-workflows-v1.schema.json": "2a91bb2bfe100e6fe07ce8aad8c8564b8492a1bb057c4705ec4868f6850711ce"
+  }
+}
