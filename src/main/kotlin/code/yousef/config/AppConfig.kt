@@ -10,7 +10,8 @@ data class AppConfig(
     val photographyUploadBucket: String? = null,
     val photographyUploadPrefix: String = "photography",
     val photographyUploadDir: Path = Path.of("storage/uploads/photography"),
-    val photographyMaxUploadBytes: Long = 15_728_640
+    val photographyMaxUploadBytes: Long = 15_728_640,
+    val registryUpstreamUrl: String? = null
 )
 
 fun loadAppConfig(): AppConfig {
@@ -27,6 +28,9 @@ fun loadAppConfig(): AppConfig {
     val uploadPrefix = env["PHOTOGRAPHY_UPLOAD_PREFIX"]?.trim()?.trim('/')?.takeIf { it.isNotEmpty() } ?: "photography"
     val uploadDir = Path.of(env["PHOTOGRAPHY_UPLOAD_DIR"] ?: "storage/uploads/photography")
     val maxUploadBytes = env["PHOTOGRAPHY_MAX_UPLOAD_BYTES"]?.toLongOrNull() ?: 15_728_640
+    val registryUpstreamUrl = env["SEEN_REGISTRY_UPSTREAM_URL"]
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
     
     return AppConfig(
         projectId = projectId,
@@ -36,6 +40,7 @@ fun loadAppConfig(): AppConfig {
         photographyUploadBucket = uploadBucket,
         photographyUploadPrefix = uploadPrefix,
         photographyUploadDir = uploadDir,
-        photographyMaxUploadBytes = maxUploadBytes
+        photographyMaxUploadBytes = maxUploadBytes,
+        registryUpstreamUrl = registryUpstreamUrl
     )
 }

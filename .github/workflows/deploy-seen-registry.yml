@@ -1,0 +1,933 @@
+name: Deploy Seen registry (dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Provision online keys first, then deploy with offline-signed envelopes
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - provision
+  push:
+    branches: [dev]
+    paths:
+      - registry-service/**
+      - src/main/kotlin/code/yousef/Application.kt
+      - src/main/kotlin/code/yousef/config/AppConfig.kt
+      - src/main/kotlin/code/yousef/portfolio/server/RegistryGatewayMiddleware.kt
+      - build.gradle.kts
+      - gradle/libs.versions.toml
+      - .dockerignore
+      - .github/workflows/deploy-seen-registry.yml
+
+concurrency:
+  group: seen-registry-development
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: portfolio-476219
+  GCP_REGION: us-central1
+  ARTIFACT_REPOSITORY: seen-registry
+  REGISTRY_SERVICE: seen-registry-dev
+  REGISTRY_BOOTSTRAP_JOB: seen-registry-dev-bootstrap
+  REGISTRY_RUNTIME_ACCOUNT: seen-registry-dev
+  FIRESTORE_DATABASE: seen-registry-dev
+  KMS_KEY_RING: seen-registry-dev
+  PUBLISHER_SECRET: seen-registry-dev-publisher-token
+  ROOT_ENVELOPE_SECRET: seen-registry-dev-root-envelope
+  TARGETS_ENVELOPE_SECRET: seen-registry-dev-targets-envelope
+  PORTFOLIO_SERVICE: portfolio-dev
+
+jobs:
+  deploy:
+    name: Verify, provision, and deploy development registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: |
+            registry-service/*.gradle.kts
+            registry-service/gradle.properties
+
+      - name: Test and build isolated registry
+        shell: bash
+        env:
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+        run: |
+          set -euo pipefail
+          ./gradlew \
+            -p registry-service \
+            --no-daemon \
+            --max-workers=2 \
+            clean test shadowJar
+          mapfile -t jars < <(find registry-service/build/libs -maxdepth 1 -type f -name '*-all.jar')
+          if [ "${#jars[@]}" -ne 1 ]; then
+            echo "Expected exactly one standalone registry JAR; found ${#jars[@]}" >&2
+            exit 1
+          fi
+
+      # This gate intentionally runs before cloud authentication or mutation.
+      # The official development trust root may not be created by an online
+      # single-key bootstrap, even temporarily.
+      - name: Enforce official development signing profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find registry-service/build/libs -maxdepth 1 -type f -name '*-all.jar' -print -quit)"
+          EXPECTED_PROFILE="seen-tuf-development-v1 root=offline:2/3 targets=offline:2/2 releases=kms:1/1 security=kms:1/1 snapshot=kms:1/1 timestamp=kms:1/1 public-delay=259200 promotion=disabled"
+          if ! PROFILE="$(java -jar "${JAR}" describe-signing-policy)"; then
+            echo "Registry deployment is blocked: the service does not expose the required multi-role signing interface." >&2
+            echo "A single online signer must never bootstrap the official Seen trust root." >&2
+            exit 1
+          fi
+          if [ "${PROFILE}" != "${EXPECTED_PROFILE}" ]; then
+            echo "Registry deployment is blocked: the service signing profile does not match the official development policy." >&2
+            exit 1
+          fi
+
+      - name: Resolve safe deployment operation
+        id: operation
+        shell: bash
+        env:
+          REQUESTED_OPERATION: ${{ inputs.operation || '' }}
+          PUBLISHER_TOKEN: ${{ secrets.SEEN_REGISTRY_DEV_PUBLISHER_TOKEN }}
+          ROOT_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_ROOT_ENVELOPE_BASE64 }}
+          TARGETS_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_TARGETS_ENVELOPE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            OPERATION="${REQUESTED_OPERATION}"
+          elif [ -n "${PUBLISHER_TOKEN}" ] && [ -n "${ROOT_ENVELOPE_BASE64}" ] && [ -n "${TARGETS_ENVELOPE_BASE64}" ]; then
+            OPERATION=deploy
+          else
+            # The first dev push cannot safely deploy until online KMS public
+            # keys have been incorporated into threshold-signed offline roles.
+            OPERATION=provision
+          fi
+          case "${OPERATION}" in
+            provision|deploy) ;;
+            *) echo "Invalid registry operation" >&2; exit 64 ;;
+          esac
+          echo "value=${OPERATION}" >> "${GITHUB_OUTPUT}"
+          echo "Registry operation: ${OPERATION}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Verify deployment inputs are configured
+        shell: bash
+        env:
+          OPERATION: ${{ steps.operation.outputs.value }}
+          PUBLISHER_TOKEN: ${{ secrets.SEEN_REGISTRY_DEV_PUBLISHER_TOKEN }}
+          ROOT_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_ROOT_ENVELOPE_BASE64 }}
+          TARGETS_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_TARGETS_ENVELOPE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ "${OPERATION}" = "provision" ]; then
+            exit 0
+          fi
+          if [ -z "${PUBLISHER_TOKEN}" ]; then
+            echo "Missing required GitHub secret SEEN_REGISTRY_DEV_PUBLISHER_TOKEN" >&2
+            exit 1
+          fi
+          if [ "${#PUBLISHER_TOKEN}" -lt 32 ]; then
+            echo "SEEN_REGISTRY_DEV_PUBLISHER_TOKEN must contain at least 32 characters" >&2
+            exit 1
+          fi
+          if [ -z "${ROOT_ENVELOPE_BASE64}" ] || [ -z "${TARGETS_ENVELOPE_BASE64}" ]; then
+            echo "Missing threshold-signed development root/targets envelope secret" >&2
+            echo "Configure SEEN_REGISTRY_DEV_ROOT_ENVELOPE_BASE64 and SEEN_REGISTRY_DEV_TARGETS_ENVELOPE_BASE64 after the offline signing ceremony." >&2
+            exit 1
+          fi
+          printf '%s' "${ROOT_ENVELOPE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/1.root.json"
+          printf '%s' "${TARGETS_ENVELOPE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/1.targets.json"
+          jq --exit-status 'type == "object" and (.signed._type == "root")' "${RUNNER_TEMP}/1.root.json" >/dev/null
+          jq --exit-status 'type == "object" and (.signed._type == "targets")' "${RUNNER_TEMP}/1.targets.json" >/dev/null
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Enable required Google Cloud APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud services enable \
+            artifactregistry.googleapis.com \
+            cloudkms.googleapis.com \
+            firestore.googleapis.com \
+            iamcredentials.googleapis.com \
+            run.googleapis.com \
+            secretmanager.googleapis.com \
+            storage.googleapis.com \
+            --project "${GCP_PROJECT_ID}"
+
+      - name: Prepare isolated runtime resources
+        id: resources
+        shell: bash
+        env:
+          OPERATION: ${{ steps.operation.outputs.value }}
+          PUBLISHER_TOKEN: ${{ secrets.SEEN_REGISTRY_DEV_PUBLISHER_TOKEN }}
+          ROOT_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_ROOT_ENVELOPE_BASE64 }}
+          TARGETS_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_TARGETS_ENVELOPE_BASE64 }}
+        run: |
+          set -euo pipefail
+
+          RUNTIME_EMAIL="${REGISTRY_RUNTIME_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          QUARANTINE_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-quarantine"
+          BLOB_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-blobs"
+          METADATA_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-metadata"
+
+          if ! gcloud iam service-accounts describe "${RUNTIME_EMAIL}" >/dev/null 2>&1; then
+            gcloud iam service-accounts create "${REGISTRY_RUNTIME_ACCOUNT}" \
+              --display-name="Seen registry development runtime"
+          fi
+
+          if ! gcloud artifacts repositories describe "${ARTIFACT_REPOSITORY}" \
+            --location "${GCP_REGION}" >/dev/null 2>&1; then
+            gcloud artifacts repositories create "${ARTIFACT_REPOSITORY}" \
+              --location "${GCP_REGION}" \
+              --repository-format docker \
+              --description="Isolated Seen registry images"
+          fi
+
+          if ! gcloud firestore databases describe \
+            --database "${FIRESTORE_DATABASE}" >/dev/null 2>&1; then
+            gcloud firestore databases create \
+              --database "${FIRESTORE_DATABASE}" \
+              --location "${GCP_REGION}" \
+              --type firestore-native \
+              --delete-protection
+          fi
+
+          for bucket in "${QUARANTINE_BUCKET}" "${BLOB_BUCKET}" "${METADATA_BUCKET}"; do
+            if ! gcloud storage buckets describe "gs://${bucket}" >/dev/null 2>&1; then
+              gcloud storage buckets create "gs://${bucket}" \
+                --location "${GCP_REGION}" \
+                --uniform-bucket-level-access \
+                --public-access-prevention \
+                --soft-delete-duration=7d
+            fi
+            gcloud storage buckets update "gs://${bucket}" \
+              --uniform-bucket-level-access \
+              --public-access-prevention >/dev/null
+          done
+          gcloud storage buckets update "gs://${METADATA_BUCKET}" --versioning >/dev/null
+
+          if ! gcloud kms keyrings describe "${KMS_KEY_RING}" \
+            --location "${GCP_REGION}" >/dev/null 2>&1; then
+            gcloud kms keyrings create "${KMS_KEY_RING}" --location "${GCP_REGION}"
+          fi
+
+          # Root (2/3) and top-level targets (2/2) keys stay offline and are
+          # never created, imported, or used by this workflow. Only the four
+          # development online roles receive distinct KMS keys.
+          for role in releases security snapshot timestamp; do
+            key="seen-registry-dev-${role}"
+            if ! gcloud kms keys describe "${key}" \
+              --keyring "${KMS_KEY_RING}" \
+              --location "${GCP_REGION}" >/dev/null 2>&1; then
+              gcloud kms keys create "${key}" \
+                --keyring "${KMS_KEY_RING}" \
+                --location "${GCP_REGION}" \
+                --purpose asymmetric-signing \
+                --default-algorithm ec-sign-ed25519 \
+                --protection-level software
+            fi
+
+            version_id="$(gcloud kms keys versions list \
+              --key "${key}" \
+              --keyring "${KMS_KEY_RING}" \
+              --location "${GCP_REGION}" \
+              --filter='state=ENABLED' \
+              --sort-by='~name' \
+              --limit=1 \
+              --format='value(name)')"
+            version_id="${version_id##*/}"
+            if ! [[ "${version_id}" =~ ^[1-9][0-9]*$ ]]; then
+              echo "No enabled Ed25519 key version is available for ${role}" >&2
+              exit 1
+            fi
+            version="projects/${GCP_PROJECT_ID}/locations/${GCP_REGION}/keyRings/${KMS_KEY_RING}/cryptoKeys/${key}/cryptoKeyVersions/${version_id}"
+
+            public_der="${RUNNER_TEMP}/seen-registry-dev-${role}.der"
+            gcloud kms keys versions get-public-key "${version_id}" \
+              --key "${key}" \
+              --keyring "${KMS_KEY_RING}" \
+              --location "${GCP_REGION}" \
+              --public-key-format der \
+              --output-file "${public_der}"
+            if [ "$(wc -c < "${public_der}")" -ne 44 ]; then
+              echo "KMS returned an unexpected Ed25519 public key for ${role}" >&2
+              exit 1
+            fi
+            public_hex="$(tail -c 32 "${public_der}" | od -An -vtx1 | tr -d ' \n')"
+            if ! [[ "${public_hex}" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "Could not derive the raw Ed25519 public key for ${role}" >&2
+              exit 1
+            fi
+
+            gcloud kms keys add-iam-policy-binding "${key}" \
+              --keyring "${KMS_KEY_RING}" \
+              --location "${GCP_REGION}" \
+              --member="serviceAccount:${RUNTIME_EMAIL}" \
+              --role=roles/cloudkms.signerVerifier \
+              --condition=None >/dev/null
+
+            echo "${role}_kms_version=${version}" >> "${GITHUB_OUTPUT}"
+            echo "${role}_kms_public_key_hex=${public_hex}" >> "${GITHUB_OUTPUT}"
+          done
+
+          upsert_secret() {
+            local secret_name="$1"
+            local secret_value="$2"
+            if ! gcloud secrets describe "${secret_name}" >/dev/null 2>&1; then
+              printf '%s' "${secret_value}" | gcloud secrets create "${secret_name}" \
+                --data-file=- \
+                --replication-policy=user-managed \
+                --locations="${GCP_REGION}"
+              return
+            fi
+            local current_value
+            current_value="$(gcloud secrets versions access latest --secret "${secret_name}" 2>/dev/null || true)"
+            if [ "${current_value}" != "${secret_value}" ]; then
+              printf '%s' "${secret_value}" | gcloud secrets versions add "${secret_name}" --data-file=-
+            fi
+            unset current_value
+          }
+          if [ "${OPERATION}" = "deploy" ]; then
+            upsert_secret "${PUBLISHER_SECRET}" "${PUBLISHER_TOKEN}"
+            # These contain already signed public envelopes, never offline
+            # private keys. They are transient bootstrap inputs.
+            upsert_secret "${ROOT_ENVELOPE_SECRET}" "${ROOT_ENVELOPE_BASE64}"
+            upsert_secret "${TARGETS_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_BASE64}"
+          fi
+
+          # Bucket roles are granted on each bucket, not at project scope.
+          gcloud storage buckets add-iam-policy-binding "gs://${QUARANTINE_BUCKET}" \
+            --member="serviceAccount:${RUNTIME_EMAIL}" \
+            --role=roles/storage.objectUser \
+            --condition=None >/dev/null
+          gcloud storage buckets add-iam-policy-binding "gs://${BLOB_BUCKET}" \
+            --member="serviceAccount:${RUNTIME_EMAIL}" \
+            --role=roles/storage.objectUser \
+            --condition=None >/dev/null
+          gcloud storage buckets add-iam-policy-binding "gs://${METADATA_BUCKET}" \
+            --member="serviceAccount:${RUNTIME_EMAIL}" \
+            --role=roles/storage.objectUser \
+            --condition=None >/dev/null
+
+          if [ "${OPERATION}" = "deploy" ]; then
+            gcloud secrets add-iam-policy-binding "${PUBLISHER_SECRET}" \
+              --member="serviceAccount:${RUNTIME_EMAIL}" \
+              --role=roles/secretmanager.secretAccessor \
+              --condition=None >/dev/null
+          fi
+
+          DATABASE_RESOURCE="projects/${GCP_PROJECT_ID}/databases/${FIRESTORE_DATABASE}"
+          gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
+            --member="serviceAccount:${RUNTIME_EMAIL}" \
+            --role=roles/datastore.user \
+            --condition="^:^title=seen_registry_dev_database:expression=resource.name == '${DATABASE_RESOURCE}' || resource.name.startsWith('${DATABASE_RESOURCE}/')" \
+            >/dev/null
+
+          {
+            echo "runtime_email=${RUNTIME_EMAIL}"
+            echo "quarantine_bucket=${QUARANTINE_BUCKET}"
+            echo "blob_bucket=${BLOB_BUCKET}"
+            echo "metadata_bucket=${METADATA_BUCKET}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Record online signing inputs for the offline ceremony
+        if: ${{ steps.operation.outputs.value == 'provision' }}
+        id: signing-inputs
+        shell: bash
+        run: |
+          ARTIFACT_FILE="${RUNNER_TEMP}/seen-registry-dev-online-keys.json"
+          jq --null-input \
+            --arg releases_version "${{ steps.resources.outputs.releases_kms_version }}" \
+            --arg releases_public_key_hex "${{ steps.resources.outputs.releases_kms_public_key_hex }}" \
+            --arg security_version "${{ steps.resources.outputs.security_kms_version }}" \
+            --arg security_public_key_hex "${{ steps.resources.outputs.security_kms_public_key_hex }}" \
+            --arg snapshot_version "${{ steps.resources.outputs.snapshot_kms_version }}" \
+            --arg snapshot_public_key_hex "${{ steps.resources.outputs.snapshot_kms_public_key_hex }}" \
+            --arg timestamp_version "${{ steps.resources.outputs.timestamp_kms_version }}" \
+            --arg timestamp_public_key_hex "${{ steps.resources.outputs.timestamp_kms_public_key_hex }}" \
+            '{
+              contract_version: 1,
+              environment: "development",
+              repository_id: "seen-dev-registry-v1",
+              registry_origin: "https://seen.dev.yousef.codes/packages",
+              roles: {
+                releases: {kms_key_version: $releases_version, public_key_hex: $releases_public_key_hex},
+                security: {kms_key_version: $security_version, public_key_hex: $security_public_key_hex},
+                snapshot: {kms_key_version: $snapshot_version, public_key_hex: $snapshot_public_key_hex},
+                timestamp: {kms_key_version: $timestamp_version, public_key_hex: $timestamp_public_key_hex}
+              }
+            }' > "${ARTIFACT_FILE}"
+          echo "artifact_file=${ARTIFACT_FILE}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "## Seen development online signing keys"
+            echo "Use these public values in the offline 2/3 root and 2/2 targets signing ceremony."
+            echo '```text'
+            echo "releases_version=${{ steps.resources.outputs.releases_kms_version }}"
+            echo "releases_public_key_hex=${{ steps.resources.outputs.releases_kms_public_key_hex }}"
+            echo "security_version=${{ steps.resources.outputs.security_kms_version }}"
+            echo "security_public_key_hex=${{ steps.resources.outputs.security_kms_public_key_hex }}"
+            echo "snapshot_version=${{ steps.resources.outputs.snapshot_kms_version }}"
+            echo "snapshot_public_key_hex=${{ steps.resources.outputs.snapshot_kms_public_key_hex }}"
+            echo "timestamp_version=${{ steps.resources.outputs.timestamp_kms_version }}"
+            echo "timestamp_public_key_hex=${{ steps.resources.outputs.timestamp_kms_public_key_hex }}"
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload online signing inputs
+        if: ${{ steps.operation.outputs.value == 'provision' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: seen-registry-dev-online-keys-${{ github.run_id }}
+          path: ${{ steps.signing-inputs.outputs.artifact_file }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build and push registry-only image
+        if: ${{ steps.operation.outputs.value == 'deploy' }}
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          HOST="${GCP_REGION}-docker.pkg.dev"
+          IMAGE="${HOST}/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${REGISTRY_SERVICE}:${GITHUB_SHA}"
+          gcloud auth print-access-token | docker login \
+            --username oauth2accesstoken \
+            --password-stdin \
+            "https://${HOST}"
+          docker build \
+            --file registry-service/Dockerfile \
+            --build-arg "VCS_REF=${GITHUB_SHA}" \
+            --build-arg "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --tag "${IMAGE}" \
+            .
+          docker push "${IMAGE}"
+          echo "uri=${IMAGE}" >> "${GITHUB_OUTPUT}"
+
+      - name: Bootstrap signed development metadata
+        if: ${{ steps.operation.outputs.value == 'deploy' }}
+        id: bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENV_VARS="^|^GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID}|REGISTRY_ENVIRONMENT=development|REGISTRY_REPOSITORY_ID=seen-dev-registry-v1|REGISTRY_ORIGIN=https://seen.dev.yousef.codes/packages|REGISTRY_STORAGE_MODE=gcp|REGISTRY_FIRESTORE_DATABASE=${FIRESTORE_DATABASE}|REGISTRY_QUARANTINE_BUCKET=${{ steps.resources.outputs.quarantine_bucket }}|REGISTRY_PUBLIC_BUCKET=${{ steps.resources.outputs.blob_bucket }}|REGISTRY_METADATA_BUCKET=${{ steps.resources.outputs.metadata_bucket }}|REGISTRY_OBJECT_PREFIX=v1|REGISTRY_WRITER_MODE=opaque-dev|REGISTRY_WRITER_PRINCIPAL=internal-dev-publisher|REGISTRY_OWNER_ALLOWLIST=seen|REGISTRY_WRITERS_ENABLED=true|REGISTRY_PUBLIC_DELAY_SECONDS=259200|REGISTRY_PROMOTION_MODE=disabled|REGISTRY_KMS_RELEASES_KEY_VERSION=${{ steps.resources.outputs.releases_kms_version }}|REGISTRY_KMS_RELEASES_PUBLIC_KEY_HEX=${{ steps.resources.outputs.releases_kms_public_key_hex }}|REGISTRY_KMS_SECURITY_KEY_VERSION=${{ steps.resources.outputs.security_kms_version }}|REGISTRY_KMS_SECURITY_PUBLIC_KEY_HEX=${{ steps.resources.outputs.security_kms_public_key_hex }}|REGISTRY_KMS_SNAPSHOT_KEY_VERSION=${{ steps.resources.outputs.snapshot_kms_version }}|REGISTRY_KMS_SNAPSHOT_PUBLIC_KEY_HEX=${{ steps.resources.outputs.snapshot_kms_public_key_hex }}|REGISTRY_KMS_TIMESTAMP_KEY_VERSION=${{ steps.resources.outputs.timestamp_kms_version }}|REGISTRY_KMS_TIMESTAMP_PUBLIC_KEY_HEX=${{ steps.resources.outputs.timestamp_kms_public_key_hex }}"
+
+          cleanup_bootstrap() {
+            gcloud run jobs delete "${REGISTRY_BOOTSTRAP_JOB}" \
+              --region "${GCP_REGION}" \
+              --quiet >/dev/null 2>&1 || true
+            for secret_name in "${ROOT_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_SECRET}"; do
+              gcloud secrets remove-iam-policy-binding "${secret_name}" \
+                --member="serviceAccount:${{ steps.resources.outputs.runtime_email }}" \
+                --role=roles/secretmanager.secretAccessor \
+                --condition=None >/dev/null 2>&1 || true
+            done
+          }
+          trap cleanup_bootstrap EXIT
+
+          ROOT_OBJECT="gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata/1.root.json"
+          BOOTSTRAP_TARGETS_OBJECT="gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata/1.targets.json"
+          TIMESTAMP_OBJECT="gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata/timestamp.json"
+          existing_count=0
+          for object in "${ROOT_OBJECT}" "${BOOTSTRAP_TARGETS_OBJECT}" "${TIMESTAMP_OBJECT}"; do
+            if gcloud storage objects describe "${object}" >/dev/null 2>&1; then
+              existing_count=$((existing_count + 1))
+            fi
+          done
+          if [ "${existing_count}" -ne 0 ] && [ "${existing_count}" -ne 3 ]; then
+            echo "Partial registry metadata bootstrap exists; refusing to overwrite or repair it online" >&2
+            exit 1
+          fi
+
+          if [ "${existing_count}" -eq 0 ]; then
+            for secret_name in "${ROOT_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_SECRET}"; do
+              gcloud secrets add-iam-policy-binding "${secret_name}" \
+                --member="serviceAccount:${{ steps.resources.outputs.runtime_email }}" \
+                --role=roles/secretmanager.secretAccessor \
+                --condition=None >/dev/null
+            done
+
+            gcloud run jobs deploy "${REGISTRY_BOOTSTRAP_JOB}" \
+              --image "${{ steps.image.outputs.uri }}" \
+              --region "${GCP_REGION}" \
+              --service-account "${{ steps.resources.outputs.runtime_email }}" \
+              --args=bootstrap \
+              --set-env-vars "${ENV_VARS}" \
+              --set-secrets="REGISTRY_WRITER_TOKEN=${PUBLISHER_SECRET}:latest,REGISTRY_BOOTSTRAP_ROOT_ENVELOPE_BASE64=${ROOT_ENVELOPE_SECRET}:latest,REGISTRY_BOOTSTRAP_TARGETS_ENVELOPE_BASE64=${TARGETS_ENVELOPE_SECRET}:latest" \
+              --tasks=1 \
+              --max-retries=0 \
+              --task-timeout=5m \
+              --cpu=1 \
+              --memory=1Gi \
+              --quiet
+            gcloud run jobs execute "${REGISTRY_BOOTSTRAP_JOB}" \
+              --region "${GCP_REGION}" \
+              --wait \
+              --quiet
+          else
+            echo "Existing signed bootstrap detected; preserving the current targets generation." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+          ROOT_FILE="${RUNNER_TEMP}/seen-registry-dev-root.json"
+          BOOTSTRAP_TARGETS_FILE="${RUNNER_TEMP}/seen-registry-dev-bootstrap-targets.json"
+          TIMESTAMP_FILE="${RUNNER_TEMP}/seen-registry-dev-timestamp.json"
+          gcloud storage cp "${ROOT_OBJECT}" "${ROOT_FILE}" >/dev/null
+          gcloud storage cp "${BOOTSTRAP_TARGETS_OBJECT}" "${BOOTSTRAP_TARGETS_FILE}" >/dev/null
+          gcloud storage cp "${TIMESTAMP_OBJECT}" "${TIMESTAMP_FILE}" >/dev/null
+          METADATA_VERSION="$(jq --raw-output '.signed.meta["snapshot.json"].version' "${TIMESTAMP_FILE}")"
+          if ! [[ "${METADATA_VERSION}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Initial timestamp does not identify a valid snapshot version" >&2
+            exit 1
+          fi
+          SNAPSHOT_FILE="${RUNNER_TEMP}/seen-registry-dev-snapshot.json"
+          RELEASES_FILE="${RUNNER_TEMP}/seen-registry-dev-releases.json"
+          SECURITY_FILE="${RUNNER_TEMP}/seen-registry-dev-security.json"
+          gcloud storage cp \
+            "gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata/${METADATA_VERSION}.snapshot.json" \
+            "${SNAPSHOT_FILE}" >/dev/null
+          TARGETS_VERSION="$(jq --raw-output '.signed.meta["targets.json"].version' "${SNAPSHOT_FILE}")"
+          if ! [[ "${TARGETS_VERSION}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Initial snapshot does not identify a valid targets version" >&2
+            exit 1
+          fi
+          TARGETS_FILE="${RUNNER_TEMP}/seen-registry-dev-${TARGETS_VERSION}.targets.json"
+          gcloud storage cp \
+            "gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata/${TARGETS_VERSION}.targets.json" \
+            "${TARGETS_FILE}" >/dev/null
+          require_unexpired_metadata() {
+            local role="$1"
+            local file="$2"
+            local expires expires_epoch now_epoch
+            expires="$(jq --raw-output '.signed.expires' "${file}")"
+            expires_epoch="$(date --utc --date="${expires}" +%s 2>/dev/null || true)"
+            now_epoch="$(date --utc +%s)"
+            if ! [[ "${expires_epoch}" =~ ^[0-9]+$ ]] || [ "${expires_epoch}" -le "${now_epoch}" ]; then
+              echo "Trusted ${role} metadata is expired or has an invalid expiry" >&2
+              exit 1
+            fi
+          }
+          require_unexpired_metadata root "${ROOT_FILE}"
+          require_unexpired_metadata targets "${TARGETS_FILE}"
+          gcloud storage cp \
+            "gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata/${METADATA_VERSION}.releases.json" \
+            "${RELEASES_FILE}" >/dev/null
+          gcloud storage cp \
+            "gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata/${METADATA_VERSION}.security.json" \
+            "${SECURITY_FILE}" >/dev/null
+          ROOT_SHA256="$(sha256sum "${ROOT_FILE}" | cut -d' ' -f1)"
+          TARGETS_SHA256="$(sha256sum "${TARGETS_FILE}" | cut -d' ' -f1)"
+          TIMESTAMP_SHA256="$(sha256sum "${TIMESTAMP_FILE}" | cut -d' ' -f1)"
+          SNAPSHOT_SHA256="$(sha256sum "${SNAPSHOT_FILE}" | cut -d' ' -f1)"
+          RELEASES_SHA256="$(sha256sum "${RELEASES_FILE}" | cut -d' ' -f1)"
+          SECURITY_SHA256="$(sha256sum "${SECURITY_FILE}" | cut -d' ' -f1)"
+          TARGETS_LENGTH="$(wc -c < "${TARGETS_FILE}" | tr -d ' ')"
+          SNAPSHOT_LENGTH="$(wc -c < "${SNAPSHOT_FILE}" | tr -d ' ')"
+          RELEASES_LENGTH="$(wc -c < "${RELEASES_FILE}" | tr -d ' ')"
+          SECURITY_LENGTH="$(wc -c < "${SECURITY_FILE}" | tr -d ' ')"
+          EXPECTED_ROOT_SHA256="$(sha256sum "${RUNNER_TEMP}/1.root.json" | cut -d' ' -f1)"
+          EXPECTED_TARGETS_SHA256="$(sha256sum "${RUNNER_TEMP}/1.targets.json" | cut -d' ' -f1)"
+          BOOTSTRAP_TARGETS_SHA256="$(sha256sum "${BOOTSTRAP_TARGETS_FILE}" | cut -d' ' -f1)"
+          if [ "${ROOT_SHA256}" != "${EXPECTED_ROOT_SHA256}" ] || \
+             [ "${BOOTSTRAP_TARGETS_SHA256}" != "${EXPECTED_TARGETS_SHA256}" ]; then
+            echo "Bootstrap did not persist the exact offline-signed metadata envelopes" >&2
+            exit 1
+          fi
+          if ! jq --exit-status \
+            --argjson version "${METADATA_VERSION}" \
+            --argjson length "${SNAPSHOT_LENGTH}" \
+            --arg digest "${SNAPSHOT_SHA256}" \
+            '.signed._type == "timestamp" and .signed.version == $version and .signed.environment == "development" and .signed.repository_id == "seen-dev-registry-v1" and (.signatures | length) == 1 and .signed.meta["snapshot.json"] == {version: $version, length: $length, hashes: {sha256: $digest}}' \
+            "${TIMESTAMP_FILE}" >/dev/null; then
+            echo "Initial timestamp does not bind the stored snapshot" >&2
+            exit 1
+          fi
+          if ! jq --exit-status \
+            --argjson version "${METADATA_VERSION}" \
+            --argjson targets_version "${TARGETS_VERSION}" \
+            --argjson targets_length "${TARGETS_LENGTH}" \
+            --arg targets_digest "${TARGETS_SHA256}" \
+            --argjson releases_length "${RELEASES_LENGTH}" \
+            --arg releases_digest "${RELEASES_SHA256}" \
+            --argjson security_length "${SECURITY_LENGTH}" \
+            --arg security_digest "${SECURITY_SHA256}" \
+            '.signed._type == "snapshot" and .signed.version == $version and .signed.environment == "development" and .signed.repository_id == "seen-dev-registry-v1" and (.signatures | length) == 1 and (.signed.meta | keys | sort) == ["releases.json", "security.json", "targets.json"] and .signed.meta["targets.json"] == {version: $targets_version, length: $targets_length, hashes: {sha256: $targets_digest}} and .signed.meta["releases.json"] == {version: $version, length: $releases_length, hashes: {sha256: $releases_digest}} and .signed.meta["security.json"] == {version: $version, length: $security_length, hashes: {sha256: $security_digest}}' \
+            "${SNAPSHOT_FILE}" >/dev/null; then
+            echo "Initial snapshot does not bind targets, releases, and security" >&2
+            exit 1
+          fi
+          for delegated in "${RELEASES_FILE}" "${SECURITY_FILE}"; do
+            if ! jq --exit-status \
+              --argjson version "${METADATA_VERSION}" \
+              '.signed._type == "targets" and .signed.version == $version and .signed.environment == "development" and .signed.repository_id == "seen-dev-registry-v1" and (.signatures | length) == 1 and .signed.targets == {}' \
+              "${delegated}" >/dev/null; then
+              echo "Initial delegated targets metadata is invalid" >&2
+              exit 1
+            fi
+          done
+          if ! jq --exit-status \
+            --argjson targets_version "${TARGETS_VERSION}" \
+            '.signed._type == "targets" and .signed.version == $targets_version and .signed.environment == "development" and .signed.repository_id == "seen-dev-registry-v1" and .signed.targets == {} and (.signatures | length) == 2' \
+            "${TARGETS_FILE}" >/dev/null; then
+            echo "Offline top-level targets metadata is invalid" >&2
+            exit 1
+          fi
+          if ! jq --exit-status \
+            --arg snapshot_public_key "${{ steps.resources.outputs.snapshot_kms_public_key_hex }}" \
+            --arg timestamp_public_key "${{ steps.resources.outputs.timestamp_kms_public_key_hex }}" \
+            '(.signed.roles.snapshot.keyids | length) == 1 and
+             (.signed.roles.timestamp.keyids | length) == 1 and
+             (.signed.roles.snapshot.keyids[0] as $keyid | .signed.keys[$keyid].keyval.public == $snapshot_public_key) and
+             (.signed.roles.timestamp.keyids[0] as $keyid | .signed.keys[$keyid].keyval.public == $timestamp_public_key)' \
+            "${ROOT_FILE}" >/dev/null; then
+            echo "Selected snapshot/timestamp KMS keys are not bound by the trusted root" >&2
+            exit 1
+          fi
+          if ! jq --exit-status \
+            --arg releases_public_key "${{ steps.resources.outputs.releases_kms_public_key_hex }}" \
+            --arg security_public_key "${{ steps.resources.outputs.security_kms_public_key_hex }}" \
+            '([.signed.delegations.roles[] | select(.name == "releases")]) as $releases_roles |
+             ([.signed.delegations.roles[] | select(.name == "security")]) as $security_roles |
+             ($releases_roles[0].keyids[0]) as $releases_keyid |
+             ($security_roles[0].keyids[0]) as $security_keyid |
+             ($releases_roles | length) == 1 and
+             ($security_roles | length) == 1 and
+             (.signed.delegations.keys[$releases_keyid].keyval.public == $releases_public_key) and
+             (.signed.delegations.keys[$security_keyid].keyval.public == $security_public_key)' \
+            "${TARGETS_FILE}" >/dev/null; then
+            echo "Selected releases/security KMS keys are not bound by the trusted targets metadata" >&2
+            exit 1
+          fi
+          echo "root_sha256=${ROOT_SHA256}" >> "${GITHUB_OUTPUT}"
+          echo "targets_sha256=${TARGETS_SHA256}" >> "${GITHUB_OUTPUT}"
+          echo "targets_version=${TARGETS_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "timestamp_sha256=${TIMESTAMP_SHA256}" >> "${GITHUB_OUTPUT}"
+          echo "metadata_version=${METADATA_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "snapshot_sha256=${SNAPSHOT_SHA256}" >> "${GITHUB_OUTPUT}"
+          echo "releases_sha256=${RELEASES_SHA256}" >> "${GITHUB_OUTPUT}"
+          echo "security_sha256=${SECURITY_SHA256}" >> "${GITHUB_OUTPUT}"
+          echo "Signed root SHA-256: ${ROOT_SHA256}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Signed targets SHA-256: ${TARGETS_SHA256}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Signed targets version: ${TARGETS_VERSION}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Initial timestamp SHA-256: ${TIMESTAMP_SHA256}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Initial metadata transaction version: ${METADATA_VERSION}" >> "${GITHUB_STEP_SUMMARY}"
+
+          # The runtime must never retain bootstrap-envelope secret access or
+          # an executable bootstrap job after the ceremony has succeeded.
+          cleanup_bootstrap
+          trap - EXIT
+
+      - name: Deploy private registry service
+        if: ${{ steps.operation.outputs.value == 'deploy' }}
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENV_VARS="^|^GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID}|REGISTRY_ENVIRONMENT=development|REGISTRY_REPOSITORY_ID=seen-dev-registry-v1|REGISTRY_ORIGIN=https://seen.dev.yousef.codes/packages|REGISTRY_STORAGE_MODE=gcp|REGISTRY_FIRESTORE_DATABASE=${FIRESTORE_DATABASE}|REGISTRY_QUARANTINE_BUCKET=${{ steps.resources.outputs.quarantine_bucket }}|REGISTRY_PUBLIC_BUCKET=${{ steps.resources.outputs.blob_bucket }}|REGISTRY_METADATA_BUCKET=${{ steps.resources.outputs.metadata_bucket }}|REGISTRY_OBJECT_PREFIX=v1|REGISTRY_WRITER_MODE=opaque-dev|REGISTRY_WRITER_PRINCIPAL=internal-dev-publisher|REGISTRY_OWNER_ALLOWLIST=seen|REGISTRY_WRITERS_ENABLED=true|REGISTRY_PUBLIC_DELAY_SECONDS=259200|REGISTRY_PROMOTION_MODE=disabled|REGISTRY_KMS_RELEASES_KEY_VERSION=${{ steps.resources.outputs.releases_kms_version }}|REGISTRY_KMS_RELEASES_PUBLIC_KEY_HEX=${{ steps.resources.outputs.releases_kms_public_key_hex }}|REGISTRY_KMS_SECURITY_KEY_VERSION=${{ steps.resources.outputs.security_kms_version }}|REGISTRY_KMS_SECURITY_PUBLIC_KEY_HEX=${{ steps.resources.outputs.security_kms_public_key_hex }}|REGISTRY_KMS_SNAPSHOT_KEY_VERSION=${{ steps.resources.outputs.snapshot_kms_version }}|REGISTRY_KMS_SNAPSHOT_PUBLIC_KEY_HEX=${{ steps.resources.outputs.snapshot_kms_public_key_hex }}|REGISTRY_KMS_TIMESTAMP_KEY_VERSION=${{ steps.resources.outputs.timestamp_kms_version }}|REGISTRY_KMS_TIMESTAMP_PUBLIC_KEY_HEX=${{ steps.resources.outputs.timestamp_kms_public_key_hex }}"
+
+          gcloud run deploy "${REGISTRY_SERVICE}" \
+            --image "${{ steps.image.outputs.uri }}" \
+            --region "${GCP_REGION}" \
+            --service-account "${{ steps.resources.outputs.runtime_email }}" \
+            --set-env-vars "${ENV_VARS}" \
+            --set-secrets="REGISTRY_WRITER_TOKEN=${PUBLISHER_SECRET}:latest" \
+            --port=8080 \
+            --cpu=1 \
+            --memory=2Gi \
+            --concurrency=2 \
+            --timeout=60s \
+            --min-instances=0 \
+            --max-instances=3 \
+            --ingress=all \
+            --no-allow-unauthenticated \
+            --quiet
+
+          REGISTRY_URL="$(gcloud run services describe "${REGISTRY_SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format='value(status.url)')"
+          if ! [[ "${REGISTRY_URL}" =~ ^https:// ]]; then
+            echo "Registry deployment did not return an HTTPS service URL" >&2
+            exit 1
+          fi
+          echo "url=${REGISTRY_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Wire the portfolio development gateway
+        if: ${{ steps.operation.outputs.value == 'deploy' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gcloud run services describe "${PORTFOLIO_SERVICE}" \
+            --region "${GCP_REGION}" >/dev/null 2>&1; then
+            echo "Required gateway service ${PORTFOLIO_SERVICE} does not exist" >&2
+            exit 1
+          fi
+
+          PORTFOLIO_RUNTIME_EMAIL="$(gcloud run services describe "${PORTFOLIO_SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format='value(spec.template.spec.serviceAccountName)')"
+          if [ -z "${PORTFOLIO_RUNTIME_EMAIL}" ]; then
+            PROJECT_NUMBER="$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')"
+            PORTFOLIO_RUNTIME_EMAIL="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          fi
+
+          gcloud run services add-iam-policy-binding "${REGISTRY_SERVICE}" \
+            --region "${GCP_REGION}" \
+            --member="serviceAccount:${PORTFOLIO_RUNTIME_EMAIL}" \
+            --role=roles/run.invoker \
+            --condition=None >/dev/null
+
+          gcloud run services update "${PORTFOLIO_SERVICE}" \
+            --region "${GCP_REGION}" \
+            --update-env-vars="SEEN_REGISTRY_UPSTREAM_URL=${{ steps.deploy.outputs.url }}" \
+            --quiet
+
+      - name: Verify private ingress and public signed bootstrap metadata
+        if: ${{ steps.operation.outputs.value == 'deploy' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DIRECT_STATUS="$(curl --silent --show-error \
+            --output /dev/null \
+            --write-out '%{http_code}' \
+            "${{ steps.deploy.outputs.url }}/health")"
+          if [ "${DIRECT_STATUS}" != "401" ] && [ "${DIRECT_STATUS}" != "403" ]; then
+            echo "Registry Cloud Run origin is unexpectedly public (HTTP ${DIRECT_STATUS})" >&2
+            exit 1
+          fi
+
+          IDENTITY_TOKEN="$(gcloud auth print-identity-token \
+            --audiences="${{ steps.deploy.outputs.url }}")"
+          HEALTH_BODY="${RUNNER_TEMP}/seen-registry-dev-health.json"
+          READY_BODY="${RUNNER_TEMP}/seen-registry-dev-ready.json"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${IDENTITY_TOKEN}" \
+            --connect-timeout 10 \
+            --max-time 30 \
+            "${{ steps.deploy.outputs.url }}/health" \
+            --output "${HEALTH_BODY}"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${IDENTITY_TOKEN}" \
+            --connect-timeout 10 \
+            --max-time 30 \
+            "${{ steps.deploy.outputs.url }}/health/ready" \
+            --output "${READY_BODY}"
+          unset IDENTITY_TOKEN
+          jq --exit-status '.status == "ok"' "${HEALTH_BODY}" >/dev/null
+          jq --exit-status '.status == "ready"' "${READY_BODY}" >/dev/null
+
+          # Service startup may refresh the short-lived online roles after the
+          # bootstrap step. Capture the authoritative GCS transaction only
+          # after readiness so public verification cannot compare against a
+          # pre-startup timestamp generation.
+          EXPECTED_ROOT="${RUNNER_TEMP}/seen-registry-dev-expected-root.json"
+          EXPECTED_TIMESTAMP="${RUNNER_TEMP}/seen-registry-dev-expected-timestamp.json"
+          EXPECTED_SNAPSHOT="${RUNNER_TEMP}/seen-registry-dev-expected-snapshot.json"
+          EXPECTED_TARGETS="${RUNNER_TEMP}/seen-registry-dev-expected-targets.json"
+          EXPECTED_RELEASES="${RUNNER_TEMP}/seen-registry-dev-expected-releases.json"
+          EXPECTED_SECURITY="${RUNNER_TEMP}/seen-registry-dev-expected-security.json"
+          METADATA_PREFIX="gs://${{ steps.resources.outputs.metadata_bucket }}/v1/metadata"
+          gcloud storage cp "${METADATA_PREFIX}/1.root.json" "${EXPECTED_ROOT}" >/dev/null
+          gcloud storage cp "${METADATA_PREFIX}/timestamp.json" "${EXPECTED_TIMESTAMP}" >/dev/null
+          METADATA_VERSION="$(jq --raw-output '.signed.meta["snapshot.json"].version' "${EXPECTED_TIMESTAMP}")"
+          if ! [[ "${METADATA_VERSION}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Deployed timestamp does not identify a valid snapshot version" >&2
+            exit 1
+          fi
+          gcloud storage cp "${METADATA_PREFIX}/${METADATA_VERSION}.snapshot.json" "${EXPECTED_SNAPSHOT}" >/dev/null
+          TARGETS_VERSION="$(jq --raw-output '.signed.meta["targets.json"].version' "${EXPECTED_SNAPSHOT}")"
+          if ! [[ "${TARGETS_VERSION}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Deployed snapshot does not identify a valid targets version" >&2
+            exit 1
+          fi
+          gcloud storage cp "${METADATA_PREFIX}/${TARGETS_VERSION}.targets.json" "${EXPECTED_TARGETS}" >/dev/null
+          gcloud storage cp "${METADATA_PREFIX}/${METADATA_VERSION}.releases.json" "${EXPECTED_RELEASES}" >/dev/null
+          gcloud storage cp "${METADATA_PREFIX}/${METADATA_VERSION}.security.json" "${EXPECTED_SECURITY}" >/dev/null
+          require_unexpired_metadata() {
+            local role="$1"
+            local file="$2"
+            local expires expires_epoch now_epoch
+            expires="$(jq --raw-output '.signed.expires' "${file}")"
+            expires_epoch="$(date --utc --date="${expires}" +%s 2>/dev/null || true)"
+            now_epoch="$(date --utc +%s)"
+            if ! [[ "${expires_epoch}" =~ ^[0-9]+$ ]] || [ "${expires_epoch}" -le "${now_epoch}" ]; then
+              echo "Deployed ${role} metadata is expired or has an invalid expiry" >&2
+              exit 1
+            fi
+          }
+          require_unexpired_metadata root "${EXPECTED_ROOT}"
+          require_unexpired_metadata targets "${EXPECTED_TARGETS}"
+          EXPECTED_ROOT_SHA256="$(sha256sum "${EXPECTED_ROOT}" | cut -d' ' -f1)"
+          EXPECTED_TARGETS_SHA256="$(sha256sum "${EXPECTED_TARGETS}" | cut -d' ' -f1)"
+          EXPECTED_TIMESTAMP_SHA256="$(sha256sum "${EXPECTED_TIMESTAMP}" | cut -d' ' -f1)"
+          EXPECTED_SNAPSHOT_SHA256="$(sha256sum "${EXPECTED_SNAPSHOT}" | cut -d' ' -f1)"
+          EXPECTED_RELEASES_SHA256="$(sha256sum "${EXPECTED_RELEASES}" | cut -d' ' -f1)"
+          EXPECTED_SECURITY_SHA256="$(sha256sum "${EXPECTED_SECURITY}" | cut -d' ' -f1)"
+
+          PUBLIC_ROOT="${RUNNER_TEMP}/seen-registry-dev-public-root.json"
+          PUBLIC_TARGETS="${RUNNER_TEMP}/seen-registry-dev-public-targets.json"
+          PUBLIC_TIMESTAMP="${RUNNER_TEMP}/seen-registry-dev-public-timestamp.json"
+          PUBLIC_SNAPSHOT="${RUNNER_TEMP}/seen-registry-dev-public-snapshot.json"
+          PUBLIC_RELEASES="${RUNNER_TEMP}/seen-registry-dev-public-releases.json"
+          PUBLIC_SECURITY="${RUNNER_TEMP}/seen-registry-dev-public-security.json"
+          PUBLIC_ROOT_HEADERS="${RUNNER_TEMP}/seen-registry-dev-public-root.headers"
+          PUBLIC_TARGETS_HEADERS="${RUNNER_TEMP}/seen-registry-dev-public-targets.headers"
+          PUBLIC_TIMESTAMP_HEADERS="${RUNNER_TEMP}/seen-registry-dev-public-timestamp.headers"
+          PUBLIC_SNAPSHOT_HEADERS="${RUNNER_TEMP}/seen-registry-dev-public-snapshot.headers"
+          PUBLIC_RELEASES_HEADERS="${RUNNER_TEMP}/seen-registry-dev-public-releases.headers"
+          PUBLIC_SECURITY_HEADERS="${RUNNER_TEMP}/seen-registry-dev-public-security.headers"
+          PUBLIC_ROOT_URL="https://seen.dev.yousef.codes/packages/api/v1/metadata/1.root.json"
+          PUBLIC_TARGETS_URL="https://seen.dev.yousef.codes/packages/api/v1/metadata/${TARGETS_VERSION}.targets.json"
+          PUBLIC_TIMESTAMP_URL="https://seen.dev.yousef.codes/packages/api/v1/metadata/timestamp.json"
+          PUBLIC_SNAPSHOT_URL="https://seen.dev.yousef.codes/packages/api/v1/metadata/${METADATA_VERSION}.snapshot.json"
+          PUBLIC_RELEASES_URL="https://seen.dev.yousef.codes/packages/api/v1/metadata/${METADATA_VERSION}.releases.json"
+          PUBLIC_SECURITY_URL="https://seen.dev.yousef.codes/packages/api/v1/metadata/${METADATA_VERSION}.security.json"
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --dump-header "${PUBLIC_ROOT_HEADERS}" \
+              "${PUBLIC_ROOT_URL}" \
+              --output "${PUBLIC_ROOT}" && \
+              curl --fail --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --dump-header "${PUBLIC_TARGETS_HEADERS}" \
+              "${PUBLIC_TARGETS_URL}" \
+              --output "${PUBLIC_TARGETS}" && \
+              curl --fail --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --dump-header "${PUBLIC_TIMESTAMP_HEADERS}" \
+              "${PUBLIC_TIMESTAMP_URL}" \
+              --output "${PUBLIC_TIMESTAMP}" && \
+              curl --fail --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --dump-header "${PUBLIC_SNAPSHOT_HEADERS}" \
+              "${PUBLIC_SNAPSHOT_URL}" \
+              --output "${PUBLIC_SNAPSHOT}" && \
+              curl --fail --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --dump-header "${PUBLIC_RELEASES_HEADERS}" \
+              "${PUBLIC_RELEASES_URL}" \
+              --output "${PUBLIC_RELEASES}" && \
+              curl --fail --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --dump-header "${PUBLIC_SECURITY_HEADERS}" \
+              "${PUBLIC_SECURITY_URL}" \
+              --output "${PUBLIC_SECURITY}"; then
+              break
+            fi
+            if [ "${attempt}" -eq 40 ]; then
+              echo "Public registry gateway did not become ready" >&2
+              exit 1
+            fi
+            sleep 15
+          done
+
+          PUBLIC_SHA256="$(sha256sum "${PUBLIC_ROOT}" | cut -d' ' -f1)"
+          PUBLIC_TARGETS_SHA256="$(sha256sum "${PUBLIC_TARGETS}" | cut -d' ' -f1)"
+          PUBLIC_TIMESTAMP_SHA256="$(sha256sum "${PUBLIC_TIMESTAMP}" | cut -d' ' -f1)"
+          PUBLIC_SNAPSHOT_SHA256="$(sha256sum "${PUBLIC_SNAPSHOT}" | cut -d' ' -f1)"
+          PUBLIC_RELEASES_SHA256="$(sha256sum "${PUBLIC_RELEASES}" | cut -d' ' -f1)"
+          PUBLIC_SECURITY_SHA256="$(sha256sum "${PUBLIC_SECURITY}" | cut -d' ' -f1)"
+          if [ "${PUBLIC_SHA256}" != "${EXPECTED_ROOT_SHA256}" ] || \
+             [ "${PUBLIC_TARGETS_SHA256}" != "${EXPECTED_TARGETS_SHA256}" ] || \
+             [ "${PUBLIC_TIMESTAMP_SHA256}" != "${EXPECTED_TIMESTAMP_SHA256}" ] || \
+             [ "${PUBLIC_SNAPSHOT_SHA256}" != "${EXPECTED_SNAPSHOT_SHA256}" ] || \
+             [ "${PUBLIC_RELEASES_SHA256}" != "${EXPECTED_RELEASES_SHA256}" ] || \
+             [ "${PUBLIC_SECURITY_SHA256}" != "${EXPECTED_SECURITY_SHA256}" ]; then
+            echo "Public metadata differs from the deployed registry transaction" >&2
+            exit 1
+          fi
+
+          header_value() {
+            local name="$1"
+            local headers="$2"
+            awk -v name="${name}" '
+              index(tolower($0), tolower(name) ":") == 1 {
+                sub(/^[^:]*:[[:space:]]*/, "")
+                sub(/\r$/, "")
+                value = $0
+              }
+              END { print value }
+            ' "${headers}"
+          }
+          verify_metadata_headers() {
+            local headers="$1"
+            local digest="$2"
+            local cache_control="$3"
+            local content_type cache_value metadata_digest etag
+            content_type="$(header_value Content-Type "${headers}")"
+            cache_value="$(header_value Cache-Control "${headers}")"
+            metadata_digest="$(header_value X-Seen-Metadata-Sha256 "${headers}")"
+            etag="$(header_value ETag "${headers}")"
+            if [ "${content_type}" != "application/vnd.seen.tuf+json" ] || \
+               [ "${cache_value}" != "${cache_control}" ] || \
+               [ "${metadata_digest}" != "${digest}" ] || \
+               [ "${etag}" != "\"sha256:${digest}\"" ]; then
+              echo "Public metadata response headers violate the registry contract" >&2
+              exit 1
+            fi
+          }
+          IMMUTABLE_CACHE="public,max-age=31536000,immutable"
+          verify_metadata_headers "${PUBLIC_ROOT_HEADERS}" "${PUBLIC_SHA256}" "${IMMUTABLE_CACHE}"
+          verify_metadata_headers "${PUBLIC_TARGETS_HEADERS}" "${PUBLIC_TARGETS_SHA256}" "${IMMUTABLE_CACHE}"
+          verify_metadata_headers "${PUBLIC_TIMESTAMP_HEADERS}" "${PUBLIC_TIMESTAMP_SHA256}" "public,max-age=300,must-revalidate"
+          verify_metadata_headers "${PUBLIC_SNAPSHOT_HEADERS}" "${PUBLIC_SNAPSHOT_SHA256}" "${IMMUTABLE_CACHE}"
+          verify_metadata_headers "${PUBLIC_RELEASES_HEADERS}" "${PUBLIC_RELEASES_SHA256}" "${IMMUTABLE_CACHE}"
+          verify_metadata_headers "${PUBLIC_SECURITY_HEADERS}" "${PUBLIC_SECURITY_SHA256}" "${IMMUTABLE_CACHE}"
+          jq --exit-status \
+            --argjson version "${METADATA_VERSION}" \
+            '.signed._type == "timestamp" and .signed.version == $version and .signed.environment == "development" and .signed.repository_id == "seen-dev-registry-v1" and (.signatures | length) == 1 and .signed.meta["snapshot.json"].version == $version' \
+            "${PUBLIC_TIMESTAMP}" >/dev/null
+          jq --exit-status \
+            --argjson version "${METADATA_VERSION}" \
+            --argjson targets_version "${TARGETS_VERSION}" \
+            '.signed._type == "snapshot" and .signed.version == $version and .signed.environment == "development" and .signed.repository_id == "seen-dev-registry-v1" and (.signatures | length) == 1 and (.signed.meta | keys | sort) == ["releases.json", "security.json", "targets.json"] and .signed.meta["targets.json"].version == $targets_version' \
+            "${PUBLIC_SNAPSHOT}" >/dev/null
+          jq --exit-status \
+            --argjson targets_version "${TARGETS_VERSION}" \
+            '.signed._type == "targets" and .signed.version == $targets_version and .signed.environment == "development" and .signed.repository_id == "seen-dev-registry-v1" and .signed.targets == {} and (.signatures | length) == 2' \
+            "${PUBLIC_TARGETS}" >/dev/null
+
+          {
+            echo "Registry origin: https://seen.dev.yousef.codes/packages"
+            echo "Cloud Run origin: ${{ steps.deploy.outputs.url }} (authenticated only)"
+            echo "Public root SHA-256: ${PUBLIC_SHA256}"
+            echo "Public targets SHA-256: ${PUBLIC_TARGETS_SHA256}"
+            echo "Public targets version: ${TARGETS_VERSION}"
+            echo "Public timestamp SHA-256: ${PUBLIC_TIMESTAMP_SHA256}"
+            echo "Public snapshot SHA-256: ${PUBLIC_SNAPSHOT_SHA256}"
+            echo "Public releases SHA-256: ${PUBLIC_RELEASES_SHA256}"
+            echo "Public security SHA-256: ${PUBLIC_SECURITY_SHA256}"
+            echo "Authenticated health/readiness: ok"
+          } >> "${GITHUB_STEP_SUMMARY}"

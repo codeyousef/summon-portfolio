@@ -312,6 +312,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val staticHandler = StaticResourceHandler("static", "/static")
     // Root-level handler for hydration scripts (loaded by sigil-summon inline JS at /sigil-hydration.js)
     val rootHydrationHandler = StaticResourceHandler("static", "/")
+    val registryGateway = appConfig.registryUpstreamUrl?.let(::RegistryGatewayMiddleware)
 
     val pipeline = Pipeline().apply {
         // Custom debug recovery to print stack traces
@@ -340,6 +341,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 next()
             }
         }
+
+        registryGateway?.let { use(it.middleware) }
 
         use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
         
@@ -403,7 +406,17 @@ fun main() {
     val appConfig = loadAppConfig()
     val resources = buildApplication(appConfig)
 
-    val config = VertxServerConfig(port = appConfig.port)
+    // Aether buffers request bodies before middleware. Only raise the global
+    // server cap on the development service that actually fronts the registry;
+    // other portfolio deployments retain Aether's smaller default.
+    val config = if (appConfig.registryUpstreamUrl != null) {
+        VertxServerConfig(
+            port = appConfig.port,
+            maxRequestBodySize = REGISTRY_GATEWAY_MAX_REQUEST_BYTES
+        )
+    } else {
+        VertxServerConfig(port = appConfig.port)
+    }
     val server = VertxServer(config, resources.pipeline) { exchange ->
         exchange.notFound("Route not found")
     }

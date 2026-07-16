@@ -107,12 +107,20 @@ jobs:
       - name: Deploy to Cloud Run
         shell: bash
         run: |
+          set -euo pipefail
+          DEPLOY_LIMITS=()
+          if [ "${GITHUB_REF_NAME}" = "dev" ]; then
+            # Aether buffers request bodies before middleware. Keep the public
+            # development gateway's worst-case buffered body set bounded.
+            DEPLOY_LIMITS=(--memory 2Gi --concurrency 4 --max-instances 3)
+          fi
           gcloud run deploy "${{ steps.svc.outputs.name }}" \
             --image "${{ steps.bp.outputs.image }}" \
             --region "${GCP_REGION}" \
             --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ steps.svc.outputs.name }}" \
             --allow-unauthenticated \
-            --port 8080
+            --port 8080 \
+            "${DEPLOY_LIMITS[@]}"
 
       - name: Show Service URL
         shell: bash

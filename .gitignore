@@ -62,6 +62,9 @@ docs/private/
 gh-deployer.json
 *.key.json
 
+# Offline registry signing material is encrypted locally and never tracked.
+/.offline-keys/
+
 # Guides
 HAMBURGER_MENU_GUIDE.md
 hamburger.md
