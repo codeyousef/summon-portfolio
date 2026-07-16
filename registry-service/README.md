@@ -21,6 +21,25 @@ oversized archive uploads are rejected before materialization.
 Release upload reservations last 25 hours so the contract's full 24-hour
 byte-exact idempotency replay window always returns usable upload instructions.
 
+## Development owner bootstrap
+
+The GitHub deployment identity intentionally cannot create service accounts or
+rewrite project IAM. An authenticated project owner performs the idempotent
+one-time bootstrap instead:
+
+```bash
+GCP_PROJECT_ID=portfolio-476219 \
+  ./registry-service/scripts/provision-development-owner.sh
+```
+
+The script creates only the development runtime identity, named Firestore
+database, three private buckets, isolated image repository, and four online
+Ed25519 KMS keys. It grants bucket, database, signing, image-push, and
+service-account-use permissions at the narrowest supported resource scope.
+It does not create offline keys, TUF envelopes, publisher tokens, or Secret
+Manager values. The deployment workflow verifies these pre-provisioned
+resources and fails closed instead of escalating its own permissions.
+
 ## Signing boundary
 
 `describe-signing-policy` prints the machine-checkable deployment policy without

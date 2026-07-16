@@ -205,14 +205,11 @@ jobs:
             exit 1
           fi
 
-      - name: Prepare isolated runtime resources
+      - name: Verify isolated runtime resources
         id: resources
         shell: bash
         env:
           OPERATION: ${{ steps.operation.outputs.value }}
-          PUBLISHER_TOKEN: ${{ secrets.SEEN_REGISTRY_DEV_PUBLISHER_TOKEN }}
-          ROOT_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_ROOT_ENVELOPE_BASE64 }}
-          TARGETS_ENVELOPE_BASE64: ${{ secrets.SEEN_REGISTRY_DEV_TARGETS_ENVELOPE_BASE64 }}
         run: |
           set -euo pipefail
 
@@ -221,62 +218,36 @@ jobs:
           BLOB_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-blobs"
           METADATA_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-metadata"
 
-          if ! gcloud iam service-accounts describe "${RUNTIME_EMAIL}" >/dev/null 2>&1; then
-            gcloud iam service-accounts create "${REGISTRY_RUNTIME_ACCOUNT}" \
-              --display-name="Seen registry development runtime"
-          fi
+          owner_bootstrap_required() {
+            echo "The isolated registry owner bootstrap is incomplete: $1" >&2
+            exit 1
+          }
 
-          if ! gcloud artifacts repositories describe "${ARTIFACT_REPOSITORY}" \
-            --location "${GCP_REGION}" >/dev/null 2>&1; then
-            gcloud artifacts repositories create "${ARTIFACT_REPOSITORY}" \
-              --location "${GCP_REGION}" \
-              --repository-format docker \
-              --description="Isolated Seen registry images"
-          fi
-
-          if ! gcloud firestore databases describe \
-            --database "${FIRESTORE_DATABASE}" >/dev/null 2>&1; then
-            gcloud firestore databases create \
-              --database "${FIRESTORE_DATABASE}" \
-              --location "${GCP_REGION}" \
-              --type firestore-native \
-              --delete-protection
-          fi
-
+          gcloud iam service-accounts describe "${RUNTIME_EMAIL}" >/dev/null 2>&1 \
+            || owner_bootstrap_required "runtime service account ${RUNTIME_EMAIL} is missing"
+          gcloud artifacts repositories describe "${ARTIFACT_REPOSITORY}" \
+            --location "${GCP_REGION}" >/dev/null 2>&1 \
+            || owner_bootstrap_required "Artifact Registry repository ${ARTIFACT_REPOSITORY} is missing"
+          gcloud firestore databases describe \
+            --database "${FIRESTORE_DATABASE}" >/dev/null 2>&1 \
+            || owner_bootstrap_required "Firestore database ${FIRESTORE_DATABASE} is missing"
           for bucket in "${QUARANTINE_BUCKET}" "${BLOB_BUCKET}" "${METADATA_BUCKET}"; do
-            if ! gcloud storage buckets describe "gs://${bucket}" >/dev/null 2>&1; then
-              gcloud storage buckets create "gs://${bucket}" \
-                --location "${GCP_REGION}" \
-                --uniform-bucket-level-access \
-                --public-access-prevention \
-                --soft-delete-duration=7d
-            fi
-            gcloud storage buckets update "gs://${bucket}" \
-              --uniform-bucket-level-access \
-              --public-access-prevention >/dev/null
+            gcloud storage buckets describe "gs://${bucket}" >/dev/null 2>&1 \
+              || owner_bootstrap_required "bucket ${bucket} is missing"
           done
-          gcloud storage buckets update "gs://${METADATA_BUCKET}" --versioning >/dev/null
-
-          if ! gcloud kms keyrings describe "${KMS_KEY_RING}" \
-            --location "${GCP_REGION}" >/dev/null 2>&1; then
-            gcloud kms keyrings create "${KMS_KEY_RING}" --location "${GCP_REGION}"
-          fi
+          gcloud kms keyrings describe "${KMS_KEY_RING}" \
+            --location "${GCP_REGION}" >/dev/null 2>&1 \
+            || owner_bootstrap_required "KMS key ring ${KMS_KEY_RING} is missing"
 
           # Root (2/3) and top-level targets (2/2) keys stay offline and are
-          # never created, imported, or used by this workflow. Only the four
-          # development online roles receive distinct KMS keys.
+          # never created, imported, or used by this workflow. A project owner
+          # pre-provisions only the four distinct development online keys.
           for role in releases security snapshot timestamp; do
             key="seen-registry-dev-${role}"
-            if ! gcloud kms keys describe "${key}" \
+            gcloud kms keys describe "${key}" \
               --keyring "${KMS_KEY_RING}" \
-              --location "${GCP_REGION}" >/dev/null 2>&1; then
-              gcloud kms keys create "${key}" \
-                --keyring "${KMS_KEY_RING}" \
-                --location "${GCP_REGION}" \
-                --purpose asymmetric-signing \
-                --default-algorithm ec-sign-ed25519 \
-                --protection-level software
-            fi
+              --location "${GCP_REGION}" >/dev/null 2>&1 \
+              || owner_bootstrap_required "KMS key ${key} is missing"
 
             version_id="$(gcloud kms keys versions list \
               --key "${key}" \
@@ -310,69 +281,24 @@ jobs:
               exit 1
             fi
 
-            gcloud kms keys add-iam-policy-binding "${key}" \
-              --keyring "${KMS_KEY_RING}" \
-              --location "${GCP_REGION}" \
-              --member="serviceAccount:${RUNTIME_EMAIL}" \
-              --role=roles/cloudkms.signerVerifier \
-              --condition=None >/dev/null
-
             echo "${role}_kms_version=${version}" >> "${GITHUB_OUTPUT}"
             echo "${role}_kms_public_key_hex=${public_hex}" >> "${GITHUB_OUTPUT}"
           done
 
-          upsert_secret() {
-            local secret_name="$1"
-            local secret_value="$2"
-            if ! gcloud secrets describe "${secret_name}" >/dev/null 2>&1; then
-              printf '%s' "${secret_value}" | gcloud secrets create "${secret_name}" \
-                --data-file=- \
-                --replication-policy=user-managed \
-                --locations="${GCP_REGION}"
-              return
-            fi
-            local current_value
-            current_value="$(gcloud secrets versions access latest --secret "${secret_name}" 2>/dev/null || true)"
-            if [ "${current_value}" != "${secret_value}" ]; then
-              printf '%s' "${secret_value}" | gcloud secrets versions add "${secret_name}" --data-file=-
-            fi
-            unset current_value
-          }
           if [ "${OPERATION}" = "deploy" ]; then
-            upsert_secret "${PUBLISHER_SECRET}" "${PUBLISHER_TOKEN}"
-            # These contain already signed public envelopes, never offline
-            # private keys. They are transient bootstrap inputs.
-            upsert_secret "${ROOT_ENVELOPE_SECRET}" "${ROOT_ENVELOPE_BASE64}"
-            upsert_secret "${TARGETS_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_BASE64}"
+            for secret_name in "${PUBLISHER_SECRET}" "${ROOT_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_SECRET}"; do
+              gcloud secrets describe "${secret_name}" >/dev/null 2>&1 \
+                || owner_bootstrap_required "Secret Manager secret ${secret_name} is missing"
+              latest_version="$(gcloud secrets versions list \
+                --secret "${secret_name}" \
+                --filter='state=ENABLED' \
+                --sort-by='~name' \
+                --limit=1 \
+                --format='value(name)')"
+              [ -n "${latest_version}" ] \
+                || owner_bootstrap_required "Secret Manager secret ${secret_name} has no enabled version"
+            done
           fi
-
-          # Bucket roles are granted on each bucket, not at project scope.
-          gcloud storage buckets add-iam-policy-binding "gs://${QUARANTINE_BUCKET}" \
-            --member="serviceAccount:${RUNTIME_EMAIL}" \
-            --role=roles/storage.objectUser \
-            --condition=None >/dev/null
-          gcloud storage buckets add-iam-policy-binding "gs://${BLOB_BUCKET}" \
-            --member="serviceAccount:${RUNTIME_EMAIL}" \
-            --role=roles/storage.objectUser \
-            --condition=None >/dev/null
-          gcloud storage buckets add-iam-policy-binding "gs://${METADATA_BUCKET}" \
-            --member="serviceAccount:${RUNTIME_EMAIL}" \
-            --role=roles/storage.objectUser \
-            --condition=None >/dev/null
-
-          if [ "${OPERATION}" = "deploy" ]; then
-            gcloud secrets add-iam-policy-binding "${PUBLISHER_SECRET}" \
-              --member="serviceAccount:${RUNTIME_EMAIL}" \
-              --role=roles/secretmanager.secretAccessor \
-              --condition=None >/dev/null
-          fi
-
-          DATABASE_RESOURCE="projects/${GCP_PROJECT_ID}/databases/${FIRESTORE_DATABASE}"
-          gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-            --member="serviceAccount:${RUNTIME_EMAIL}" \
-            --role=roles/datastore.user \
-            --condition="^:^title=seen_registry_dev_database:expression=resource.name == '${DATABASE_RESOURCE}' || resource.name.startsWith('${DATABASE_RESOURCE}/')" \
-            >/dev/null
 
           {
             echo "runtime_email=${RUNTIME_EMAIL}"
@@ -466,12 +392,6 @@ jobs:
             gcloud run jobs delete "${REGISTRY_BOOTSTRAP_JOB}" \
               --region "${GCP_REGION}" \
               --quiet >/dev/null 2>&1 || true
-            for secret_name in "${ROOT_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_SECRET}"; do
-              gcloud secrets remove-iam-policy-binding "${secret_name}" \
-                --member="serviceAccount:${{ steps.resources.outputs.runtime_email }}" \
-                --role=roles/secretmanager.secretAccessor \
-                --condition=None >/dev/null 2>&1 || true
-            done
           }
           trap cleanup_bootstrap EXIT
 
@@ -490,13 +410,6 @@ jobs:
           fi
 
           if [ "${existing_count}" -eq 0 ]; then
-            for secret_name in "${ROOT_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_SECRET}"; do
-              gcloud secrets add-iam-policy-binding "${secret_name}" \
-                --member="serviceAccount:${{ steps.resources.outputs.runtime_email }}" \
-                --role=roles/secretmanager.secretAccessor \
-                --condition=None >/dev/null
-            done
-
             gcloud run jobs deploy "${REGISTRY_BOOTSTRAP_JOB}" \
               --image "${{ steps.image.outputs.uri }}" \
               --region "${GCP_REGION}" \
