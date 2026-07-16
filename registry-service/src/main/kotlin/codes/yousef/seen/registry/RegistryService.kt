@@ -6,11 +6,13 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.security.SecureRandom
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.Base64
+import java.security.MessageDigest
 
 class RegistryService(
     private val config: RegistryConfig,
@@ -114,21 +116,75 @@ class RegistryService(
         return reservationFor(stored)
     }
 
-    fun uploadArchive(uploadId: String, digestHeader: String?, bytes: ByteArray, principal: WriterPrincipal) {
+    fun uploadArchive(uploadId: String, digestHeader: String?, bytes: ByteArray, principal: WriterPrincipal) =
+        uploadArchive(
+            uploadId,
+            digestHeader,
+            ReopenableArchiveSource { bytes.inputStream() },
+            bytes.size.toLong(),
+            principal,
+        )
+
+    fun uploadArchive(
+        uploadId: String,
+        digestHeader: String?,
+        source: ReopenableArchiveSource,
+        declaredBytes: Long,
+        principal: WriterPrincipal,
+    ) = uploadArchive(
+        uploadId = uploadId,
+        digestHeader = digestHeader,
+        source = source,
+        declaredBytes = declaredBytes,
+        principal = principal,
+        observedUpload = null,
+    )
+
+    internal fun uploadStreamedArchive(
+        uploadId: String,
+        digestHeader: String?,
+        source: ReopenableArchiveSource,
+        observedBytes: Long,
+        observedSha256: String,
+        principal: WriterPrincipal,
+    ) = uploadArchive(
+        uploadId = uploadId,
+        digestHeader = digestHeader,
+        source = source,
+        declaredBytes = observedBytes,
+        principal = principal,
+        observedUpload = observedBytes to observedSha256,
+    )
+
+    private fun uploadArchive(
+        uploadId: String,
+        digestHeader: String?,
+        source: ReopenableArchiveSource,
+        declaredBytes: Long,
+        principal: WriterPrincipal,
+        observedUpload: Pair<Long, String>?,
+    ) {
         requireWritersEnabled()
         val release = ownedUpload(uploadId, principal)
         if (release.record.state.lifecycle == "reserved" && clock.instant().isAfter(Instant.parse(release.uploadExpiresAt))) notFound()
         if (digestHeader == null) throw RegistryException(400, "digest_required", "Archive digest header is required")
         IdentityRules.requireDigest(digestHeader)
-        if (bytes.size > ArchivePolicy.MAX_COMPRESSED_BYTES) throw RegistryException(413, "archive_too_large", "Archive exceeds the compressed byte limit")
-        if (bytes.size.toLong() != release.record.archive.compressedBytes || digestHeader != release.record.archive.sha256 || sha256(bytes) != digestHeader) {
+        if (declaredBytes !in 1..ArchivePolicy.MAX_COMPRESSED_BYTES) {
+            throw RegistryException(413, "archive_too_large", "Archive exceeds the compressed byte limit")
+        }
+        if (declaredBytes != release.record.archive.compressedBytes || digestHeader != release.record.archive.sha256) {
             throw RegistryException(422, "digest_mismatch", "Archive bytes do not match the reservation")
         }
         if (release.record.state.lifecycle in setOf("quarantined", "delayed", "ready", "active")) return
         if (release.record.state.lifecycle != "reserved") {
             throw RegistryException(409, "release_not_ready", "Release upload is not ready for archive storage", true, 5)
         }
-        storage.putQuarantine(uploadId, bytes)
+        val observed = observedUpload ?: inspectArchiveUpload(source)
+        IdentityRules.requireDigest(observed.second, "observed archive digest")
+        if (observed.first != declaredBytes || observed.second != digestHeader) {
+            throw RegistryException(422, "digest_mismatch", "Archive bytes do not match the reservation")
+        }
+        storage.putQuarantine(uploadId, source)
         val now = clock.instant().utc()
         val updated = release.copy(record = release.record.copy(
             state = release.record.state.copy(lifecycle = "quarantined"),
@@ -151,101 +207,18 @@ class RegistryService(
         if (request.archiveSha256 != release.record.archive.sha256 || request.compressedBytes != release.record.archive.compressedBytes) {
             throw RegistryException(422, "digest_mismatch", "Completion does not match the reservation")
         }
-        if (release.record.state.lifecycle in setOf("delayed", "ready", "active")) return release.record
         if (release.record.state.lifecycle != "quarantined") {
+            if (release.record.state.lifecycle in setOf(
+                    "first-scanning", "delayed", "second-scanning", "ready", "active", "rejected",
+                )
+            ) return release.record
             throw RegistryException(409, "release_not_ready", "Release upload is not ready for completion", true, 5)
         }
-        val bytes = storage.getQuarantine(uploadId) ?: throw RegistryException(409, "release_not_ready", "Archive upload is not complete", true, 5)
-        val validation = validator.validate(
-            bytes = bytes,
-            expectedArchiveSha256 = release.record.archive.sha256,
-            expectedManifestSha256 = release.record.manifestSha256,
-            expectedIdentity = release.record.`package`,
-            expectedVersion = release.record.version,
-            reservedManifest = release.manifest,
-        )
-        val now = clock.instant()
-        val delayEnds = now.plus(config.publicDelay)
-        val updated = release.copy(record = release.record.copy(
-            archive = release.record.archive.copy(
-                expandedBytes = validation.expandedBytes,
-                entryCount = validation.entryCount,
-                largestRegularFileBytes = validation.largestRegularFileBytes,
-                longestPathBytes = validation.longestPathBytes,
-                maximumPathDepth = validation.maximumPathDepth,
-            ),
-            state = release.record.state.copy(lifecycle = "delayed"),
-            verification = ReleaseVerification(integrity = "passed"),
-            timestamps = release.record.timestamps.copy(
-                publicDelayStartedAt = now.utc(),
-                publicDelayEndsAt = delayEnds.utc(),
-                updatedAt = now.utc(),
-            ),
-        ), revision = release.revision + 1)
-        return when (val transition = repository.transitionRelease(release.revision, updated)) {
-            is ReleaseTransitionResult.Applied -> transition.value.record
-            is ReleaseTransitionResult.Conflict -> when (transition.current.record.state.lifecycle) {
-                "delayed", "ready", "active" -> transition.current.record
-                else -> throw RegistryException(409, "release_not_ready", "Release upload is not ready for completion", true, 5)
-            }
-            ReleaseTransitionResult.Missing -> notFound()
-        }
-    }
-
-    @Synchronized
-    fun promoteDue(): List<ReleaseRecord> {
-        if (config.promotionMode != "test-static") {
-            throw RegistryException(503, "writer_disabled", "Release promotion is disabled pending scanner evidence")
-        }
-        val now = clock.instant()
-        val promoted = mutableListOf<ReleaseRecord>()
-        repository.listReleases().filter { stored ->
-            stored.record.state.lifecycle == "delayed" && stored.record.timestamps.publicDelayEndsAt
-                ?.let(Instant::parse)?.let { !it.isAfter(now) } == true
-        }.forEach { stored ->
-            val bytes = storage.getQuarantine(stored.uploadId) ?: return@forEach
-            if (sha256(bytes) != stored.record.archive.sha256) return@forEach
-            runCatching {
-                validator.validate(
-                    bytes,
-                    stored.record.archive.sha256,
-                    stored.record.manifestSha256,
-                    stored.record.`package`,
-                    stored.record.version,
-                    stored.manifest,
-                )
-            }.getOrElse { return@forEach }
-            storage.putPublicBlob(stored.record.archive.sha256, bytes)
-            val active = stored.copy(record = stored.record.copy(
-                state = stored.record.state.copy(lifecycle = "active", availability = "available"),
-                timestamps = stored.record.timestamps.copy(readyAt = now.utc(), activatedAt = now.utc(), updatedAt = now.utc()),
-                links = stored.record.links.copy(
-                    download = "/packages/api/v1/packages/${stored.record.`package`}/releases/${stored.record.version}/download",
-                ),
-            ))
-            val candidates = repository.listReleases().filter {
-                it.record.state.visibility == "public" && it.record.state.availability == "available"
-            }.filterNot { it.record.`package` == active.record.`package` && it.record.version == active.record.version } + active
-            val metadataVersion = tuf.publish(candidates)
-            val committed = active.copy(
-                record = active.record.copy(resolverMetadataVersion = metadataVersion),
-                revision = stored.revision + 1,
-            )
-            when (val transition = repository.transitionRelease(stored.revision, committed)) {
-                is ReleaseTransitionResult.Applied -> {
-                    updateLatestPackage(transition.value.record)
-                    storage.deleteQuarantine(stored.uploadId)
-                    promoted += transition.value.record
-                }
-                is ReleaseTransitionResult.Conflict -> if (transition.current.record.state.lifecycle == "active") {
-                    // Finish idempotent post-commit cleanup if another promoter won the CAS.
-                    updateLatestPackage(transition.current.record)
-                    storage.deleteQuarantine(transition.current.uploadId)
-                }
-                ReleaseTransitionResult.Missing -> Unit
-            }
-        }
-        return promoted
+        storage.quarantineSource(uploadId)
+            ?: throw RegistryException(409, "release_not_ready", "Archive upload is not complete", true, 5)
+        // Completion seals the object but cannot start the public delay. The
+        // first independently persisted source proof and passed scan do that.
+        return release.record
     }
 
     fun listReleases(identity: String, principal: WriterPrincipal? = null): ReleasePage {
@@ -262,6 +235,41 @@ class RegistryService(
         val release = repository.getRelease(identity, version) ?: notFound()
         if (release.record.state.availability == "unavailable" && principal?.subject != release.ownerPrincipal) notFound()
         return release.record
+    }
+
+    fun listSourceProofs(identity: String, version: String, principal: WriterPrincipal? = null): SourceProofPage {
+        val release = getRelease(identity, version, principal)
+        val proofs = repository.listReviewArtifacts(identity, version, SOURCE_PROOF_ARTIFACT)
+            .asSequence()
+            .mapNotNull { artifact ->
+                runCatching { RegistryJson.decodeFromJsonElement<SourceProofRecord>(artifact.payload) }.getOrNull()
+            }
+            .filter { proof ->
+                proof.packageIdentity == identity && proof.version == version &&
+                    proof.archive.packageSha256 == release.archive.sha256
+            }
+            .take(101)
+            .toList()
+        return SourceProofPage(items = proofs.take(100), hasMore = proofs.size > 100)
+    }
+
+    fun getSourceProof(
+        identity: String,
+        version: String,
+        proofId: String,
+        principal: WriterPrincipal? = null,
+    ): SourceProofRecord {
+        if (!Regex("^prf_[A-Za-z0-9_-]{16,96}$").matches(proofId)) notFound()
+        val release = getRelease(identity, version, principal)
+        val artifact = repository.getReviewArtifact(proofId)
+            ?.takeIf { it.kind == SOURCE_PROOF_ARTIFACT && it.packageIdentity == identity && it.version == version }
+            ?: notFound()
+        val proof = runCatching { RegistryJson.decodeFromJsonElement<SourceProofRecord>(artifact.payload) }
+            .getOrElse { notFound() }
+        if (proof.packageIdentity != identity || proof.version != version || proof.archive.packageSha256 != release.archive.sha256) {
+            notFound()
+        }
+        return proof
     }
 
     fun metadata(filename: String): ByteArray {
@@ -283,7 +291,8 @@ class RegistryService(
     fun publicBlob(digest: String): ByteArray {
         IdentityRules.requireDigest(digest)
         val authorized = repository.listReleases().any {
-            it.record.archive.sha256 == digest && it.record.state.visibility == "public" && it.record.state.availability == "available"
+            it.record.archive.sha256 == digest && it.record.state.visibility == "public" &&
+                it.record.state.availability in setOf("available", "yanked")
         }
         if (!authorized) notFound()
         return storage.getPublicBlob(digest) ?: notFound()
@@ -291,7 +300,7 @@ class RegistryService(
 
     fun downloadRelease(identity: String, version: String, principal: WriterPrincipal? = null): Pair<ReleaseRecord, ByteArray> {
         val release = getRelease(identity, version, principal)
-        if (release.state.visibility != "public" || release.state.availability != "available") notFound()
+        if (release.state.visibility != "public" || release.state.availability !in setOf("available", "yanked")) notFound()
         val bytes = storage.getPublicBlob(release.archive.sha256) ?: notFound()
         if (bytes.size.toLong() != release.archive.compressedBytes || sha256(bytes) != release.archive.sha256) {
             throw RegistryException(503, "temporarily_unavailable", "Release archive is temporarily unavailable", true, 30)
@@ -304,14 +313,6 @@ class RegistryService(
         val stored = repository.findReleaseByUpload(uploadId) ?: notFound()
         if (stored.ownerPrincipal != principal.subject) notFound()
         return stored
-    }
-
-    private fun updateLatestPackage(release: ReleaseRecord) {
-        val stored = repository.getPackage(release.`package`) ?: return
-        repository.savePackage(stored.copy(record = stored.record.copy(
-            latestActiveVersion = release.version,
-            updatedAt = clock.instant().utc(),
-        )))
     }
 
     private fun recoverReservation(
@@ -427,6 +428,25 @@ class RegistryService(
     }
 
     private fun randomId(): String = ByteArray(18).also(random::nextBytes).let { Base64.getUrlEncoder().withoutPadding().encodeToString(it) }
+
+    private fun inspectArchiveUpload(source: ReopenableArchiveSource): Pair<Long, String> {
+        val digest = MessageDigest.getInstance("SHA-256")
+        var total = 0L
+        source.openStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (read == 0) continue
+                total += read
+                if (total > ArchivePolicy.MAX_COMPRESSED_BYTES) {
+                    throw RegistryException(413, "archive_too_large", "Archive exceeds the compressed byte limit")
+                }
+                digest.update(buffer, 0, read)
+            }
+        }
+        return total to digest.digest().joinToString("") { "%02x".format(it) }
+    }
     private fun requireWritersEnabled() {
         if (!config.writersEnabled) throw RegistryException(503, "writer_disabled", "Registry writers are disabled")
     }

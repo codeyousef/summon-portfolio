@@ -9,14 +9,12 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class RegistryFlowTest {
     @Test
-    fun `injected clock drives full reservation upload delay promotion and public fetch`() {
+    fun `upload completion remains quarantined until source proof and first scan succeed`() {
         val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
         val repository = InMemoryRegistryRepository()
         val storage = InMemoryRegistryObjectStorage()
@@ -47,19 +45,11 @@ class RegistryFlowTest {
         val uploadJson = RegistryJson.parseToJsonElement(RegistryJson.encodeToString(reservation.upload)).jsonObject
         assertEquals(false, uploadJson["required_headers"]!!.jsonObject["Content-Length"]!!.jsonPrimitive.isString)
         service.uploadArchive(reservation.upload.uploadId, sha256(archive), archive, principal)
-        val delayed = service.completeUpload(reservation.upload.uploadId, CompleteUploadRequest(sha256(archive), archive.size.toLong()), principal)
-        assertEquals("delayed", delayed.state.lifecycle)
+        val quarantined = service.completeUpload(reservation.upload.uploadId, CompleteUploadRequest(sha256(archive), archive.size.toLong()), principal)
+        assertEquals("quarantined", quarantined.state.lifecycle)
+        assertEquals(null, quarantined.timestamps.publicDelayStartedAt)
+        assertEquals(null, quarantined.timestamps.publicDelayEndsAt)
         assertTrue(service.listPublicPackages().items.isEmpty())
-        assertTrue(service.promoteDue().isEmpty())
-
-        clock.advance(Duration.ofHours(72))
-        val promoted = service.promoteDue().single()
-        assertEquals("available", promoted.state.availability)
-        assertNotNull(promoted.resolverMetadataVersion)
-        assertEquals("1.2.3", service.listPublicPackages().items.single().latestActiveVersion)
-        assertContentEquals(archive, service.publicBlob(sha256(archive)))
-        assertTrue(service.metadata("timestamp.json").isNotEmpty())
-        assertTrue(service.metadata("${promoted.resolverMetadataVersion}.releases.json").decodeToString().contains("seen/demo"))
     }
 }
 
@@ -80,7 +70,6 @@ internal fun testConfig() = RegistryConfig(
     writerPrincipal = "publisher",
     ownerAllowlist = setOf("seen"),
     writersEnabled = true,
-    promotionMode = "test-static",
     publicDelay = Duration.ofHours(72),
     localOnlineSigningKeysPkcs8Base64 = TufRole.ONLINE.associateWith { "configured-for-direct-test-signer-$it" },
     kmsOnlineKeyVersions = emptyMap(),

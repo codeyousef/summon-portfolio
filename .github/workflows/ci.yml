@@ -14,7 +14,37 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Build
-        run: ./gradlew --no-daemon build
+        env:
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+        run: ./gradlew --no-daemon --max-workers=2 build
+
+  registry-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            registry-service/*.gradle.kts
+            registry-service/gradle.properties
+      - name: Check registry deployment scripts
+        run: bash -n registry-service/scripts/provision-development-owner.sh
+      - name: Test isolated registry
+        env:
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+        run: |
+          ./gradlew \
+            -p registry-service \
+            --no-daemon \
+            --max-workers=2 \
+            test
 
   deploy:
     if: github.ref == 'refs/heads/main'

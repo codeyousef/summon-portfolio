@@ -6,13 +6,15 @@ quarantine/public objects, and Cloud KMS or a local Ed25519 key for TUF signing.
 
 The `opaque-dev` writer mode is deliberately temporary and internal-only. It is
 rejected outside `development`; `REGISTRY_WRITERS_ENABLED` defaults to `false`.
-Public account writers are not implemented. Promotion defaults to disabled and
-cannot be enabled with GCP storage until scanner evidence is integrated.
+Public account writers are not implemented. The serving process has no
+promotion path: dedicated source-verification, isolated-scanner, and promoter
+jobs advance only the exact evidence-bound release state.
 
 Run tests with the repository wrapper:
 
 ```bash
-GRADLE_OPTS=-Xmx4g ../gradlew -p . test --max-workers=2
+GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dorg.gradle.workers.max=2' \
+  ../gradlew -p . test --no-daemon --max-workers=2
 ```
 
 Required deployment configuration is documented by `RegistryConfig` and
@@ -32,16 +34,21 @@ GCP_PROJECT_ID=portfolio-476219 \
   ./registry-service/scripts/provision-development-owner.sh
 ```
 
-The script creates only the development runtime identity, named Firestore
-database, three private buckets, isolated image repository, and four online
-Ed25519 KMS keys. It grants bucket, database, signing, image-push, and
-service-account-use permissions at the narrowest supported resource scope. The
-deployment identity receives read-only visibility limited to the named registry
-database and registry KMS key ring so its preflight can distinguish missing
-resources from denied access.
-It does not create offline keys, TUF envelopes, publisher tokens, or Secret
-Manager values. The deployment workflow verifies these pre-provisioned
-resources and fails closed instead of escalating its own permissions.
+The script creates separate service, source-verifier, scanner, promoter, and
+security identities; the named Firestore database; three private buckets; the
+isolated image repository; four online Ed25519 KMS keys; generated
+trust-and-safety/security credentials; and empty forge-credential secret
+containers. It grants each worker only its database, bucket, signing, and
+secret roles, while the deployment identity receives the bounded visibility and
+service-account-use permissions needed by deployment preflight.
+
+It does not create offline keys, TUF envelopes, the publisher token, or GitHub
+App/GitLab credential values. Add the read-only GitHub App ID and PEM key out of
+band before deployment. Review schedules remain disabled by default; after all
+three jobs are deployed and exercised successfully, an owner reruns with
+`REGISTRY_ENABLE_REVIEW_SCHEDULES=true`. The deployment workflow verifies every
+pre-provisioned dependency and fails closed instead of escalating its own
+permissions.
 
 ## Signing boundary
 

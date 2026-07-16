@@ -19,7 +19,6 @@ data class RegistryConfig(
     val writerPrincipal: String,
     val ownerAllowlist: Set<String>,
     val writersEnabled: Boolean,
-    val promotionMode: String,
     val publicDelay: Duration,
     val localOnlineSigningKeysPkcs8Base64: Map<String, String>,
     val kmsOnlineKeyVersions: Map<String, String>,
@@ -30,6 +29,10 @@ data class RegistryConfig(
     val offlineTargetsSigningKeysPkcs8Base64: List<String>,
     val bootstrapRootEnvelopeBase64: String?,
     val bootstrapTargetsEnvelopeBase64: String?,
+    val trustAndSafetyToken: String? = null,
+    val trustAndSafetyPrincipal: String = "registry-dev-reviewer",
+    val securityToken: String? = null,
+    val securityPrincipal: String = "registry-dev-security",
 ) {
     init {
         require(environment == "development") {
@@ -42,9 +45,21 @@ data class RegistryConfig(
         require(writerToken.none(Char::isWhitespace)) { "REGISTRY_WRITER_TOKEN must not contain whitespace" }
         require(ownerAllowlist.isNotEmpty()) { "REGISTRY_OWNER_ALLOWLIST must not be empty" }
         require(publicDelay >= Duration.ofHours(72)) { "Development public delay must be at least 72 hours" }
-        require(promotionMode == "disabled" || (promotionMode == "test-static" && storageMode == "memory")) {
-            "REGISTRY_PROMOTION_MODE must be disabled; test-static is allowed only with memory storage"
+        listOfNotNull(trustAndSafetyToken, securityToken).forEach { token ->
+            require(token.toByteArray().size in 32..4096 && token.none(Char::isWhitespace)) {
+                "Development enforcement tokens must contain 32 to 4096 non-whitespace bytes"
+            }
+            require(token != writerToken) { "Development enforcement tokens must differ from the publisher token" }
         }
+        require(trustAndSafetyToken == null || securityToken == null || trustAndSafetyToken != securityToken) {
+            "Development enforcement tokens must be distinct"
+        }
+        require(trustAndSafetyPrincipal.isNotBlank() && securityPrincipal.isNotBlank()) {
+            "Development enforcement principal IDs must not be blank"
+        }
+        require(trustAndSafetyPrincipal != writerPrincipal && securityPrincipal != writerPrincipal &&
+            trustAndSafetyPrincipal != securityPrincipal
+        ) { "Development enforcement principal IDs must be distinct" }
         if (storageMode == "gcp") {
             require(!projectId.isNullOrBlank()) { "GOOGLE_CLOUD_PROJECT is required for GCP storage" }
             require(!quarantineBucket.isNullOrBlank()) { "REGISTRY_QUARANTINE_BUCKET is required" }
@@ -84,8 +99,6 @@ data class RegistryConfig(
             writerPrincipal = env["REGISTRY_WRITER_PRINCIPAL"] ?: "internal-dev-publisher",
             ownerAllowlist = env["REGISTRY_OWNER_ALLOWLIST"].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty).toSet(),
             writersEnabled = env["REGISTRY_WRITERS_ENABLED"]?.toBooleanStrictOrNull() ?: false,
-            promotionMode = env["REGISTRY_PROMOTION_MODE"]
-                ?: if (env["REGISTRY_PROMOTION_ENABLED"]?.toBooleanStrictOrNull() == true) "test-static" else "disabled",
             publicDelay = Duration.ofSeconds(env["REGISTRY_PUBLIC_DELAY_SECONDS"]?.toLongOrNull() ?: 259_200L),
             localOnlineSigningKeysPkcs8Base64 = TufRole.ONLINE.mapNotNull { role ->
                 env["REGISTRY_${role.uppercase()}_SIGNING_KEY_PKCS8_BASE64"]?.let { role to it }
@@ -102,6 +115,10 @@ data class RegistryConfig(
             offlineTargetsSigningKeysPkcs8Base64 = env.csv("REGISTRY_OFFLINE_TARGETS_SIGNING_KEYS_PKCS8_BASE64"),
             bootstrapRootEnvelopeBase64 = env["REGISTRY_BOOTSTRAP_ROOT_ENVELOPE_BASE64"],
             bootstrapTargetsEnvelopeBase64 = env["REGISTRY_BOOTSTRAP_TARGETS_ENVELOPE_BASE64"],
+            trustAndSafetyToken = env["REGISTRY_TRUST_AND_SAFETY_TOKEN"]?.trim()?.takeIf(String::isNotEmpty),
+            trustAndSafetyPrincipal = env["REGISTRY_TRUST_AND_SAFETY_PRINCIPAL"] ?: "registry-dev-reviewer",
+            securityToken = env["REGISTRY_SECURITY_TOKEN"]?.trim()?.takeIf(String::isNotEmpty),
+            securityPrincipal = env["REGISTRY_SECURITY_PRINCIPAL"] ?: "registry-dev-security",
         )
     }
 }

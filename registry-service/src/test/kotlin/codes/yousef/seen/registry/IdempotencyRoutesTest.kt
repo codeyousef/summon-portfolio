@@ -246,7 +246,7 @@ class IdempotencyRoutesTest {
         assertEquals(202, alternateKey.testResponse.statusCode)
         assertEquals(firstRecord.timestamps.publicDelayStartedAt, alternateRecord.timestamps.publicDelayStartedAt)
         assertEquals(firstRecord.timestamps.publicDelayEndsAt, alternateRecord.timestamps.publicDelayEndsAt)
-        assertEquals("delayed", fixture.service.getRelease("seen/demo", "1.2.3", principal).state.lifecycle)
+        assertEquals("quarantined", fixture.service.getRelease("seen/demo", "1.2.3", principal).state.lifecycle)
 
         val changed = fixture.exchange(
             HttpMethod.POST,
@@ -332,7 +332,7 @@ private fun routeFixture(
     tuf.ensureInitialTransaction()
     val service = RegistryService(config, repository, storage, ArchiveValidator(), tuf, clock)
     val auth = OpaqueDevWriterAuthenticator(config.writerToken, config.writerPrincipal, config.ownerAllowlist)
-    return RouteFixture(service, RegistryRoutes(service, auth, clock, config.promotionMode), config)
+    return RouteFixture(service, RegistryRoutes(service, auth, clock), config)
 }
 
 private class RegistryTestExchange(

@@ -24,6 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlin.test.assertNull
 
 class TufTest {
     @Test
@@ -150,6 +151,38 @@ class TufTest {
         clock.advance(Duration.ofHours(2).plusMinutes(30))
         assertEquals(2, publisher().ensureFreshTransaction())
         assertEquals("2026-07-16T10:01:00Z", signed(renewed)["expires"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `promotion authority reuses security metadata without its signing key`() {
+        val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+        val repository = InMemoryRegistryRepository()
+        val storage = InMemoryRegistryObjectStorage()
+        val authority = testOnlineSigners()
+        bootstrap(storage, authority, clock)
+        TufPublisher(
+            repository, storage, authority, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        ).ensureInitialTransaction()
+        val promoter = TufOnlineSigners(
+            authority.releases,
+            PublicKeyOnlyTufSigner(authority.security.publicKey),
+            authority.snapshot,
+            authority.timestamp,
+        )
+        val publisher = TufPublisher(
+            repository, storage, promoter, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        )
+
+        assertEquals(2, publisher.publish(emptyList()))
+        assertNull(storage.getMetadata("2.security.json"))
+        val snapshot = signed(storage.getMetadata("2.snapshot.json")!!)
+        assertEquals(1, snapshot["meta"]!!.jsonObject["security.json"]!!.jsonObject["version"]!!.jsonPrimitive.content.toLong())
+
+        clock.advance(Duration.ofHours(5).plusMinutes(56))
+        val failure = assertFailsWith<RegistryException> { publisher.publish(emptyList()) }
+        assertEquals("temporarily_unavailable", failure.code)
     }
 
     @Test

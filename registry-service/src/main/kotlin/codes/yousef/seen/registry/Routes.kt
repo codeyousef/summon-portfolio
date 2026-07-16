@@ -20,7 +20,6 @@ class RegistryRoutes(
     private val service: RegistryService,
     private val auth: OpaqueDevWriterAuthenticator,
     private val clock: Clock,
-    private val promotionMode: String = "disabled",
     private val json: kotlinx.serialization.json.Json = RegistryJson,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -62,6 +61,23 @@ class RegistryRoutes(
         get("/packages/api/v1/packages/:owner/:name/releases/:version") { exchange -> safe(exchange) {
             exchange.respondJson(200, service.getRelease(identity(exchange), exchange.pathParamOrThrow("version"), optionalWriter(exchange)), json)
         } }
+        get("/packages/api/v1/packages/:owner/:name/releases/:version/source-proofs") { exchange -> safe(exchange) {
+            exchange.respondJson(
+                200,
+                service.listSourceProofs(identity(exchange), exchange.pathParamOrThrow("version"), optionalWriter(exchange)),
+                json,
+            )
+        } }
+        get("/packages/api/v1/packages/:owner/:name/releases/:version/source-proofs/:proofId") { exchange -> safe(exchange) {
+            val proof = service.getSourceProof(
+                identity(exchange),
+                exchange.pathParamOrThrow("version"),
+                exchange.pathParamOrThrow("proofId"),
+                optionalWriter(exchange),
+            )
+            exchange.response.setHeader("ETag", "\"sha256:${proof.sha256()}\"")
+            exchange.respondJson(200, proof, json)
+        } }
         put("/packages/api/v1/uploads/:uploadId/archive") { exchange -> safe(exchange) {
             val principal = writer(exchange)
             val bytes = exchange.request.bodyBytes()
@@ -77,13 +93,6 @@ class RegistryRoutes(
                 mapOf("Location" to value.links.self)
             }) { request -> service.completeUpload(exchange.pathParamOrThrow("uploadId"), request, principal) }
         } }
-        if (promotionMode == "test-static") {
-            post("/packages/internal/v1/promote-due") { exchange -> safe(exchange) {
-                requireIdempotency(exchange)
-                writer(exchange)
-                exchange.respondJson(200, mapOf("promoted" to service.promoteDue().size), json)
-            } }
-        }
         get("/packages/api/v1/metadata/:filename") { exchange -> safe(exchange) {
             val filename = exchange.pathParamOrThrow("filename")
             val bytes = service.metadata(filename)
@@ -131,6 +140,34 @@ class RegistryRoutes(
             exchange.respondHtml(200, CatalogRenderer.renderRelease(pkg, release))
         } }
     }
+
+    internal fun authorizeStreamingArchive(exchange: Exchange): WriterPrincipal = writer(exchange)
+
+    internal suspend fun completeStreamingArchive(
+        exchange: Exchange,
+        uploadId: String,
+        digestHeader: String?,
+        source: ReopenableArchiveSource,
+        byteLength: Long,
+        observedSha256: String,
+        principal: WriterPrincipal,
+    ) = safe(exchange) {
+        service.uploadStreamedArchive(
+            uploadId = uploadId,
+            digestHeader = digestHeader,
+            source = source,
+            observedBytes = byteLength,
+            observedSha256 = observedSha256,
+            principal = principal,
+        )
+        exchange.response.statusCode = 204
+        exchange.response.setHeader("X-Seen-Archive-Sha256", observedSha256)
+        exchange.response.setHeader("ETag", "\"sha256:$observedSha256\"")
+        exchange.response.end()
+    }
+
+    internal suspend fun rejectStreamingArchive(exchange: Exchange, error: RegistryException) =
+        safe(exchange) { throw error }
 
     private suspend inline fun safe(exchange: Exchange, crossinline action: suspend (String) -> Unit) {
         val requestId = requestId()

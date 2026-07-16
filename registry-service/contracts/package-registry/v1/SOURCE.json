@@ -1,9 +1,18 @@
 {
   "repository": "https://github.com/codeyousef/SeenLang",
-  "commit": "44b14e7e7b08de59fbeb1b7ba62dc07c5f08eb1e",
+  "commit": "e5575948879469305c8d42d56d300d437183e41e",
   "files": {
-    "openapi.yaml": "b283f9724aaf370a1cb259ea01e90be84a65762b67e629a62280799ea37e71c5",
+    "README.md": "3b336763916d0a5321d4d11da0a3aca6a2007cf5b7c007fc01134c6ea5bee422",
+    "openapi.yaml": "1cb87704b1ed29f0d679b3f04ad1471a5573c10795ea44fdc9665156de8201b7",
+    "fixtures/archive-policy-cases.json": "e62a1d21b49c10cf5e9713bf77ec0a69951cec8a454f7364a0b92b46a9a83d27",
+    "fixtures/release-transitions.json": "7b2377110752169277c1f234f9c10e032b31fed1f2faf3dc8948fd10d569b04d",
     "fixtures/registry-api-conformance-v1.json": "afa1026c9a91387d5ca52d56995e3cf06928fba4da5b7924efd56279013dd0ca",
-    "schemas/registry-api-workflows-v1.schema.json": "2a91bb2bfe100e6fe07ce8aad8c8564b8492a1bb057c4705ec4868f6850711ce"
+    "fixtures/scan-attestation-failure-cases-v1.json": "76ac7b4b06bf1d3c8f7e373a17f6b143a38a88640f2e6b606f96c1b499bab57a",
+    "fixtures/scan-attestation-v1.json": "f8ab0a7bad458eaec3b5c54b1f3ada662b55bcd698f42d80dc5dfa0c3d2b80b9",
+    "fixtures/source-proof-failure-cases.json": "6e719e77a76c29ae08d265176f79791d0e4e7aa871e54f5b082dae2d8ed96d6f",
+    "fixtures/source-proof-v1.json": "98128f24979b14c653bc99542b2e040e84e15839edac55966d8b3ef9ba7158d5",
+    "schemas/registry-api-workflows-v1.schema.json": "2a91bb2bfe100e6fe07ce8aad8c8564b8492a1bb057c4705ec4868f6850711ce",
+    "schemas/scan-attestation-v1.schema.json": "2d7fd6663415f4a170705e2e1c3a2441b8e2eae5293d298dc61da27ee1d442df",
+    "schemas/source-proof.schema.json": "38fb812783385af1cee8a91602d546db6b70ed6683f46ae08a914d5c8cec0963"
   }
 }

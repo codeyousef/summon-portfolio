@@ -26,6 +26,9 @@ class CatalogTest {
         val releasePage = CatalogRenderer.renderRelease(pkg, release)
 
         assertContains(catalog, "/packages/seen/demo")
+        assertContains(catalog, "complete registry review")
+        assertFalse(catalog.contains("safe", ignoreCase = true))
+        assertFalse(catalog.contains("verified source packages", ignoreCase = true))
         assertContains(packagePage, "/packages/seen/demo/1.2.3")
         assertContains(packagePage, "A source-only Seen package")
         assertContains(releasePage, release.archive.sha256)
