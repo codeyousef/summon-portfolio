@@ -167,19 +167,43 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Enable required Google Cloud APIs
+      - name: Verify required Google Cloud APIs are enabled
         shell: bash
         run: |
           set -euo pipefail
-          gcloud services enable \
-            artifactregistry.googleapis.com \
-            cloudkms.googleapis.com \
-            firestore.googleapis.com \
-            iamcredentials.googleapis.com \
-            run.googleapis.com \
-            secretmanager.googleapis.com \
-            storage.googleapis.com \
-            --project "${GCP_PROJECT_ID}"
+          required_services=(
+            artifactregistry.googleapis.com
+            cloudkms.googleapis.com
+            firestore.googleapis.com
+            iamcredentials.googleapis.com
+            run.googleapis.com
+            secretmanager.googleapis.com
+            storage.googleapis.com
+          )
+          mapfile -t enabled_services < <(
+            gcloud services list \
+              --enabled \
+              --project "${GCP_PROJECT_ID}" \
+              --format='value(config.name)'
+          )
+          missing_services=()
+          for service in "${required_services[@]}"; do
+            present=false
+            for enabled in "${enabled_services[@]}"; do
+              if [ "${enabled}" = "${service}" ]; then
+                present=true
+                break
+              fi
+            done
+            if [ "${present}" != true ]; then
+              missing_services+=("${service}")
+            fi
+          done
+          if [ "${#missing_services[@]}" -ne 0 ]; then
+            echo "A project owner must enable these Google Cloud APIs before registry provisioning:" >&2
+            printf '  %s\n' "${missing_services[@]}" >&2
+            exit 1
+          fi
 
       - name: Prepare isolated runtime resources
         id: resources
