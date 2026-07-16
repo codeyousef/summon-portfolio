@@ -35,7 +35,9 @@ GCP_PROJECT_ID=portfolio-476219 \
 The script creates only the development runtime identity, named Firestore
 database, three private buckets, isolated image repository, and four online
 Ed25519 KMS keys. It grants bucket, database, signing, image-push, and
-service-account-use permissions at the narrowest supported resource scope.
+service-account-use permissions at the narrowest supported resource scope. The
+deployment identity receives read-only visibility limited to the named registry
+database so its preflight can distinguish a missing database from denied access.
 It does not create offline keys, TUF envelopes, publisher tokens, or Secret
 Manager values. The deployment workflow verifies these pre-provisioned
 resources and fails closed instead of escalating its own permissions.
