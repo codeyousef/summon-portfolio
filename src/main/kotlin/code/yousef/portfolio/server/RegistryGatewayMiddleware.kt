@@ -27,6 +27,9 @@ private const val REGISTRY_PUBLIC_PREFIX = "/packages"
 private const val SERVERLESS_AUTHORIZATION = "X-Serverless-Authorization"
 private const val GATEWAY_RETRY_AFTER_SECONDS = 30
 private val REGISTRY_STRIPPED_REQUEST_HEADERS = listOf(
+    // Keep Host in the case-insensitive removal set. Aether's final
+    // preserveHostHeader=false cleanup does not catch a lowercase wire name.
+    "Host",
     SERVERLESS_AUTHORIZATION,
     "Cookie",
     "Forwarded",

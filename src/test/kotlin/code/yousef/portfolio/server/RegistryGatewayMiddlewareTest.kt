@@ -32,6 +32,7 @@ class RegistryGatewayMiddlewareTest {
         data class ObservedRequest(
             val method: String,
             val target: String,
+            val host: String?,
             val authorization: String?,
             val serverlessAuthorization: String?,
             val cookie: String?,
@@ -52,6 +53,7 @@ class RegistryGatewayMiddlewareTest {
                     ObservedRequest(
                         method = request.requestMethod,
                         target = target,
+                        host = request.requestHeaders.getFirst("Host"),
                         authorization = request.requestHeaders.getFirst("Authorization"),
                         serverlessAuthorization = request.requestHeaders.getFirst("X-Serverless-Authorization"),
                         cookie = request.requestHeaders.getFirst("Cookie"),
@@ -78,7 +80,8 @@ class RegistryGatewayMiddlewareTest {
                     path = "/packages/api/v1/publish",
                     query = "dryRun=true",
                     headers = Headers.of(
-                        "Host" to "seen.dev.yousef.codes",
+                        // Vert.x exposes the HTTP/1 wire name in lowercase.
+                        "host" to "seen.dev.yousef.codes",
                         "Authorization" to "Bearer publisher-token",
                         "X-Serverless-Authorization" to "Bearer attacker-token",
                         "Cookie" to "admin_session=portfolio-secret",
@@ -98,6 +101,7 @@ class RegistryGatewayMiddlewareTest {
             assertFalse(calledNext)
             assertEquals("POST", upstreamRequest.method)
             assertEquals("/packages/api/v1/publish?dryRun=true", upstreamRequest.target)
+            assertEquals("127.0.0.1:${upstream.address.port}", upstreamRequest.host)
             assertEquals("Bearer publisher-token", upstreamRequest.authorization)
             assertNull(upstreamRequest.serverlessAuthorization)
             assertNull(upstreamRequest.cookie)
