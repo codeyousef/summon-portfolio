@@ -85,6 +85,11 @@ if ! gcloud kms keyrings describe "${KMS_KEY_RING}" \
   --location "${REGION}" >/dev/null 2>&1; then
   gcloud kms keyrings create "${KMS_KEY_RING}" --location "${REGION}"
 fi
+gcloud kms keyrings add-iam-policy-binding "${KMS_KEY_RING}" \
+  --location "${REGION}" \
+  --member="serviceAccount:${DEPLOY_EMAIL}" \
+  --role=roles/cloudkms.viewer \
+  --condition=None >/dev/null
 
 for role in releases security snapshot timestamp; do
   key="seen-registry-dev-${role}"
