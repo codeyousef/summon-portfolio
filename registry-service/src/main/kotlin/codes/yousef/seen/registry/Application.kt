@@ -1,10 +1,8 @@
 package codes.yousef.seen.registry
 
-import codes.yousef.aether.core.jvm.VertxServer
 import codes.yousef.aether.core.jvm.VertxServerConfig
 import codes.yousef.aether.core.pipeline.Pipeline
 import codes.yousef.aether.core.respondJson
-import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.concurrent.CountDownLatch
@@ -12,6 +10,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 fun main(args: Array<String>) {
+    args.singleOrNull()?.let(RegistryWorkerMode::fromArgument)?.let { mode ->
+        RegistryWorkerRuntime.run(RegistryWorkerConfig.fromEnvironment(mode))
+        return
+    }
     if (args.singleOrNull() == "describe-signing-policy") {
         println("seen-tuf-development-v1 root=offline:2/3 targets=offline:2/2 releases=kms:1/1 security=kms:1/1 snapshot=kms:1/1 timestamp=kms:1/1 public-delay=259200 promotion=disabled")
         return
@@ -64,7 +66,7 @@ fun main(args: Array<String>) {
         return
     }
     require(args.isEmpty()) {
-        "Usage: registry-service [bootstrap|describe-signing-policy|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|import-offline-targets-renewal <N.targets.json>]"
+        "Usage: registry-service [bootstrap|describe-signing-policy|verify-source-once|scan-once|promote-once|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|import-offline-targets-renewal <N.targets.json>]"
     }
     resources.startAndWait()
 }
@@ -78,12 +80,13 @@ class RegistryResources private constructor(
     private val clock: Clock,
     private val service: RegistryService,
     private val routes: RegistryRoutes,
+    private val enforcementRoutes: EnforcementRoutes,
 ) : AutoCloseable {
     private val log = LoggerFactory.getLogger(javaClass)
     private val scheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "registry-maintenance").apply { isDaemon = true }
     }
-    private var server: VertxServer? = null
+    private var server: RegistryHttpServer? = null
 
     fun bootstrap(): TufBootstrapResult {
         val rootEnvelope = config.bootstrapRootEnvelopeBase64
@@ -129,11 +132,16 @@ class RegistryResources private constructor(
     fun startAndWait() {
         tuf.requireBootstrap()
         tuf.ensureInitialTransaction()
-        val pipeline = Pipeline().apply { use(routes.router.asMiddleware()) }
-        server = VertxServer(
-            config = VertxServerConfig(port = config.port, maxRequestBodySize = ArchivePolicy.MAX_COMPRESSED_BYTES.toInt() + 1),
+        val pipeline = routePipeline()
+        server = RegistryHttpServer(
+            config = VertxServerConfig(
+                port = config.port,
+                decompressionSupported = false,
+                maxRequestBodySize = ArchivePolicy.MAX_COMPRESSED_BYTES.toInt() + 1,
+            ),
             pipeline = pipeline,
-            handler = { exchange -> exchange.respondJson(404, ErrorEnvelope(ApiError(
+            routes = routes,
+            fallback = { exchange -> exchange.respondJson(404, ErrorEnvelope(ApiError(
                 code = "not_found",
                 message = "Resource was not found",
                 requestId = "req_0000000000000000",
@@ -141,26 +149,26 @@ class RegistryResources private constructor(
                 retryable = false,
             )), RegistryJson) },
         )
-        runBlocking { requireNotNull(server).start() }
+        requireNotNull(server).start()
         scheduler.scheduleWithFixedDelay({
             runCatching { tuf.ensureFreshTransaction() }.onFailure { log.error("Scheduled metadata refresh failed", it) }
         }, 1, 5, TimeUnit.MINUTES)
-        if (config.promotionMode != "disabled") {
-            scheduler.scheduleWithFixedDelay({
-                runCatching { service.promoteDue() }.onFailure { log.error("Scheduled promotion failed", it) }
-            }, 1, 1, TimeUnit.MINUTES)
-        }
         val latch = CountDownLatch(1)
         Runtime.getRuntime().addShutdownHook(Thread { close(); latch.countDown() })
         log.info("Seen registry listening on port {}", config.port)
         latch.await()
     }
 
+    internal fun routePipeline(): Pipeline = Pipeline().apply {
+        use(enforcementRoutes.router.asMiddleware())
+        use(routes.router.asMiddleware())
+    }
+
     fun importTargetsRenewal(candidate: ByteArray): TufTargetsRenewalImportResult = tuf.importTargetsRenewal(candidate)
 
     override fun close() {
         scheduler.shutdownNow()
-        runBlocking { server?.close() }
+        server?.close()
         onlineSigners.close()
         repository.close()
     }
@@ -183,7 +191,45 @@ class RegistryResources private constructor(
             val tuf = TufPublisher(repository, storage, online, config.environment, config.repositoryId, config.registryOrigin, clock)
             val service = RegistryService(config, repository, storage, ArchiveValidator(), tuf, clock)
             val auth = OpaqueDevWriterAuthenticator(config.writerToken, config.writerPrincipal, config.ownerAllowlist)
-            return RegistryResources(config, repository, storage, online, tuf, clock, service, RegistryRoutes(service, auth, clock, config.promotionMode))
+            val enforcementAuth = OpaqueEnforcementAuthenticator(buildList {
+                add(OpaqueEnforcementCredential(
+                    config.writerToken,
+                    EnforcementPrincipal(config.writerPrincipal, setOf(EnforcementRoles.PUBLISHER)),
+                ))
+                config.trustAndSafetyToken?.let { token ->
+                    add(OpaqueEnforcementCredential(
+                        token,
+                        EnforcementPrincipal(
+                            config.trustAndSafetyPrincipal,
+                            setOf(EnforcementRoles.TRUST_AND_SAFETY),
+                        ),
+                    ))
+                }
+                config.securityToken?.let { token ->
+                    add(OpaqueEnforcementCredential(
+                        token,
+                        EnforcementPrincipal(config.securityPrincipal, setOf(EnforcementRoles.SECURITY)),
+                    ))
+                }
+            })
+            val enforcement = EnforcementRoutes(
+                service = EnforcementService(repository, config.environment, clock),
+                repository = repository,
+                auth = enforcementAuth,
+                metadataPublisher = TufEnforcementMetadataPublisher(repository, tuf),
+                clock = clock,
+            )
+            return RegistryResources(
+                config,
+                repository,
+                storage,
+                online,
+                tuf,
+                clock,
+                service,
+                RegistryRoutes(service, auth, clock),
+                enforcement,
+            )
         }
     }
 }

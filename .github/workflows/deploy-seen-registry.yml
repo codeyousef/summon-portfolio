@@ -38,11 +38,23 @@ env:
   REGISTRY_SERVICE: seen-registry-dev
   REGISTRY_BOOTSTRAP_JOB: seen-registry-dev-bootstrap
   REGISTRY_RUNTIME_ACCOUNT: seen-registry-dev
+  REGISTRY_SOURCE_JOB: seen-registry-dev-source-verify
+  REGISTRY_SCANNER_JOB: seen-registry-dev-scan
+  REGISTRY_PROMOTER_JOB: seen-registry-dev-promote
+  REGISTRY_SOURCE_ACCOUNT: seen-registry-dev-source
+  REGISTRY_SCANNER_ACCOUNT: seen-registry-dev-scanner
+  REGISTRY_PROMOTER_ACCOUNT: seen-registry-dev-promoter
+  REGISTRY_SECURITY_ACCOUNT: seen-registry-dev-security
   FIRESTORE_DATABASE: seen-registry-dev
   KMS_KEY_RING: seen-registry-dev
   PUBLISHER_SECRET: seen-registry-dev-publisher-token
   ROOT_ENVELOPE_SECRET: seen-registry-dev-root-envelope
   TARGETS_ENVELOPE_SECRET: seen-registry-dev-targets-envelope
+  GITHUB_APP_ID_SECRET: seen-registry-dev-github-app-id
+  GITHUB_APP_PRIVATE_KEY_SECRET: seen-registry-dev-github-app-private-key
+  GITLAB_FORGE_SECRET: seen-registry-dev-gitlab-forge-token
+  TRUST_AND_SAFETY_SECRET: seen-registry-dev-trust-and-safety-token
+  SECURITY_TOKEN_SECRET: seen-registry-dev-security-token
   PORTFOLIO_SERVICE: portfolio-dev
 
 jobs:
@@ -214,6 +226,10 @@ jobs:
           set -euo pipefail
 
           RUNTIME_EMAIL="${REGISTRY_RUNTIME_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          SOURCE_EMAIL="${REGISTRY_SOURCE_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          SCANNER_EMAIL="${REGISTRY_SCANNER_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          PROMOTER_EMAIL="${REGISTRY_PROMOTER_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          SECURITY_EMAIL="${REGISTRY_SECURITY_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
           QUARANTINE_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-quarantine"
           BLOB_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-blobs"
           METADATA_BUCKET="${GCP_PROJECT_ID}-seen-registry-dev-metadata"
@@ -225,6 +241,39 @@ jobs:
 
           gcloud iam service-accounts describe "${RUNTIME_EMAIL}" >/dev/null 2>&1 \
             || owner_bootstrap_required "runtime service account ${RUNTIME_EMAIL} is missing"
+
+          for review_email in \
+            "${SOURCE_EMAIL}" \
+            "${SCANNER_EMAIL}" \
+            "${PROMOTER_EMAIL}" \
+            "${SECURITY_EMAIL}"; do
+            gcloud iam service-accounts describe "${review_email}" >/dev/null 2>&1 \
+              || owner_bootstrap_required "review worker identity ${review_email} is missing"
+          done
+
+          enabled_secret_version() {
+            local secret_name="$1"
+            gcloud secrets describe "${secret_name}" >/dev/null 2>&1 || return 1
+            local version
+            version="$(gcloud secrets versions list "${secret_name}" \
+              --filter='state=ENABLED' \
+              --sort-by='~createTime' \
+              --limit=1 \
+              --format='value(name)' 2>/dev/null)"
+            version="${version##*/}"
+            [[ "${version}" =~ ^[1-9][0-9]*$ ]] || return 1
+            printf '%s' "${version}"
+          }
+          GITLAB_FORGE_TOKEN_READY=false
+          GITHUB_APP_ID_VERSION="$(enabled_secret_version "${GITHUB_APP_ID_SECRET}" || true)"
+          GITHUB_APP_PRIVATE_KEY_VERSION="$(enabled_secret_version "${GITHUB_APP_PRIVATE_KEY_SECRET}" || true)"
+          GITLAB_FORGE_TOKEN_VERSION="$(enabled_secret_version "${GITLAB_FORGE_SECRET}" || true)"
+          if [ -n "${GITLAB_FORGE_TOKEN_VERSION}" ]; then
+            GITLAB_FORGE_TOKEN_READY=true
+          else
+            echo "GitLab source verification token is optional and is not configured." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
           gcloud artifacts repositories describe "${ARTIFACT_REPOSITORY}" \
             --location "${GCP_REGION}" >/dev/null 2>&1 \
             || owner_bootstrap_required "Artifact Registry repository ${ARTIFACT_REPOSITORY} is missing"
@@ -254,7 +303,7 @@ jobs:
               --keyring "${KMS_KEY_RING}" \
               --location "${GCP_REGION}" \
               --filter='state=ENABLED' \
-              --sort-by='~name' \
+              --sort-by='~createTime' \
               --limit=1 \
               --format='value(name)')"
             version_id="${version_id##*/}"
@@ -286,21 +335,38 @@ jobs:
           done
 
           if [ "${OPERATION}" = "deploy" ]; then
-            for secret_name in "${PUBLISHER_SECRET}" "${ROOT_ENVELOPE_SECRET}" "${TARGETS_ENVELOPE_SECRET}"; do
+            for secret_name in \
+              "${PUBLISHER_SECRET}" \
+              "${ROOT_ENVELOPE_SECRET}" \
+              "${TARGETS_ENVELOPE_SECRET}" \
+              "${TRUST_AND_SAFETY_SECRET}" \
+              "${SECURITY_TOKEN_SECRET}"; do
               gcloud secrets describe "${secret_name}" >/dev/null 2>&1 \
                 || owner_bootstrap_required "Secret Manager secret ${secret_name} is missing"
               latest_version="$(gcloud secrets versions list "${secret_name}" \
                 --filter='state=ENABLED' \
-                --sort-by='~name' \
+                --sort-by='~createTime' \
                 --limit=1 \
                 --format='value(name)')"
               [ -n "${latest_version}" ] \
                 || owner_bootstrap_required "Secret Manager secret ${secret_name} has no enabled version"
             done
+            if [ -z "${GITHUB_APP_ID_VERSION}" ] || [ -z "${GITHUB_APP_PRIVATE_KEY_VERSION}" ]; then
+              owner_bootstrap_required \
+                "GitHub App ID/private-key secrets need enabled versions for source verification"
+            fi
           fi
 
           {
             echo "runtime_email=${RUNTIME_EMAIL}"
+            echo "source_email=${SOURCE_EMAIL}"
+            echo "scanner_email=${SCANNER_EMAIL}"
+            echo "promoter_email=${PROMOTER_EMAIL}"
+            echo "security_email=${SECURITY_EMAIL}"
+            echo "github_app_id_version=${GITHUB_APP_ID_VERSION}"
+            echo "github_app_private_key_version=${GITHUB_APP_PRIVATE_KEY_VERSION}"
+            echo "gitlab_forge_token_ready=${GITLAB_FORGE_TOKEN_READY}"
+            echo "gitlab_forge_token_version=${GITLAB_FORGE_TOKEN_VERSION}"
             echo "quarantine_bucket=${QUARANTINE_BUCKET}"
             echo "blob_bucket=${BLOB_BUCKET}"
             echo "metadata_bucket=${METADATA_BUCKET}"
@@ -591,14 +657,15 @@ jobs:
             --region "${GCP_REGION}" \
             --service-account "${{ steps.resources.outputs.runtime_email }}" \
             --set-env-vars "${ENV_VARS}" \
-            --set-secrets="REGISTRY_WRITER_TOKEN=${PUBLISHER_SECRET}:latest" \
+            --set-secrets="REGISTRY_WRITER_TOKEN=${PUBLISHER_SECRET}:latest,REGISTRY_TRUST_AND_SAFETY_TOKEN=${TRUST_AND_SAFETY_SECRET}:latest,REGISTRY_SECURITY_TOKEN=${SECURITY_TOKEN_SECRET}:latest" \
             --port=8080 \
             --cpu=1 \
             --memory=2Gi \
             --concurrency=2 \
             --timeout=60s \
-            --min-instances=0 \
+            --min-instances=1 \
             --max-instances=3 \
+            --no-cpu-throttling \
             --ingress=all \
             --no-allow-unauthenticated \
             --quiet
@@ -611,6 +678,90 @@ jobs:
             exit 1
           fi
           echo "url=${REGISTRY_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Deploy dedicated review worker jobs
+        if: ${{ steps.operation.outputs.value == 'deploy' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          COMMON_ENV="^|^GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID}|REGISTRY_ENVIRONMENT=development|REGISTRY_REPOSITORY_ID=seen-dev-registry-v1|REGISTRY_ORIGIN=https://seen.dev.yousef.codes/packages|REGISTRY_STORAGE_MODE=gcp|REGISTRY_FIRESTORE_DATABASE=${FIRESTORE_DATABASE}|REGISTRY_QUARANTINE_BUCKET=${{ steps.resources.outputs.quarantine_bucket }}|REGISTRY_OBJECT_PREFIX=v1"
+          PROMOTER_ENV="${COMMON_ENV}|REGISTRY_PUBLIC_BUCKET=${{ steps.resources.outputs.blob_bucket }}|REGISTRY_METADATA_BUCKET=${{ steps.resources.outputs.metadata_bucket }}|REGISTRY_PUBLIC_DELAY_SECONDS=259200|REGISTRY_KMS_RELEASES_KEY_VERSION=${{ steps.resources.outputs.releases_kms_version }}|REGISTRY_KMS_RELEASES_PUBLIC_KEY_HEX=${{ steps.resources.outputs.releases_kms_public_key_hex }}|REGISTRY_KMS_SECURITY_PUBLIC_KEY_HEX=${{ steps.resources.outputs.security_kms_public_key_hex }}|REGISTRY_KMS_SNAPSHOT_KEY_VERSION=${{ steps.resources.outputs.snapshot_kms_version }}|REGISTRY_KMS_SNAPSHOT_PUBLIC_KEY_HEX=${{ steps.resources.outputs.snapshot_kms_public_key_hex }}|REGISTRY_KMS_TIMESTAMP_KEY_VERSION=${{ steps.resources.outputs.timestamp_kms_version }}|REGISTRY_KMS_TIMESTAMP_PUBLIC_KEY_HEX=${{ steps.resources.outputs.timestamp_kms_public_key_hex }}"
+
+          gcloud run jobs deploy "${REGISTRY_SCANNER_JOB}" \
+            --image "${{ steps.image.outputs.uri }}" \
+            --region "${GCP_REGION}" \
+            --service-account "${{ steps.resources.outputs.scanner_email }}" \
+            --args=scan-once \
+            --set-env-vars "${COMMON_ENV}" \
+            --clear-secrets \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=2m \
+            --cpu=1 \
+            --memory=1Gi \
+            --quiet
+
+          gcloud run jobs deploy "${REGISTRY_PROMOTER_JOB}" \
+            --image "${{ steps.image.outputs.uri }}" \
+            --region "${GCP_REGION}" \
+            --service-account "${{ steps.resources.outputs.promoter_email }}" \
+            --args=promote-once \
+            --set-env-vars "${PROMOTER_ENV}" \
+            --clear-secrets \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=5m \
+            --cpu=1 \
+            --memory=1Gi \
+            --quiet
+
+          SOURCE_SECRETS="REGISTRY_GITHUB_APP_ID=${GITHUB_APP_ID_SECRET}:${{ steps.resources.outputs.github_app_id_version }},REGISTRY_GITHUB_APP_PRIVATE_KEY_PEM=${GITHUB_APP_PRIVATE_KEY_SECRET}:${{ steps.resources.outputs.github_app_private_key_version }}"
+          if [ "${{ steps.resources.outputs.gitlab_forge_token_ready }}" = true ]; then
+            SOURCE_SECRETS="${SOURCE_SECRETS},REGISTRY_GITLAB_FORGE_TOKEN=${GITLAB_FORGE_SECRET}:${{ steps.resources.outputs.gitlab_forge_token_version }}"
+          fi
+          gcloud run jobs deploy "${REGISTRY_SOURCE_JOB}" \
+            --image "${{ steps.image.outputs.uri }}" \
+            --region "${GCP_REGION}" \
+            --service-account "${{ steps.resources.outputs.source_email }}" \
+            --args=verify-source-once \
+            --set-env-vars "${COMMON_ENV}" \
+            --set-secrets "${SOURCE_SECRETS}" \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=5m \
+            --cpu=1 \
+            --memory=1Gi \
+            --quiet
+
+          {
+            echo "## Review worker jobs"
+            echo "Scanner and promoter definitions were deployed with dedicated identities and no mounted secrets."
+            echo "Source verification mints a repository-scoped GitHub App installation token per execution; GitLab is mounted only when configured."
+            echo "This workflow does not create or enable schedules; schedule activation remains an explicit owner action."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Exercise source and scanner worker definitions
+        if: ${{ steps.operation.outputs.value == 'deploy' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs execute "${REGISTRY_SOURCE_JOB}" \
+            --region "${GCP_REGION}" \
+            --wait \
+            --quiet
+          gcloud run jobs execute "${REGISTRY_SCANNER_JOB}" \
+            --region "${GCP_REGION}" \
+            --wait \
+            --quiet
+          gcloud run jobs execute "${REGISTRY_PROMOTER_JOB}" \
+            --region "${GCP_REGION}" \
+            --wait \
+            --quiet
+          echo "Source, scanner, and promoter one-shot executions completed." >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Wire the portfolio development gateway
         if: ${{ steps.operation.outputs.value == 'deploy' }}

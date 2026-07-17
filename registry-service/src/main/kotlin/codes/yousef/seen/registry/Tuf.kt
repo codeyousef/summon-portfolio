@@ -3,6 +3,7 @@ package codes.yousef.seen.registry
 import com.google.cloud.kms.v1.AsymmetricSignRequest
 import com.google.cloud.kms.v1.KeyManagementServiceClient
 import com.google.protobuf.ByteString
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -63,6 +64,13 @@ class KmsEd25519Signer(
         AsymmetricSignRequest.newBuilder().setName(keyVersionName).setData(ByteString.copyFrom(canonicalSignedBytes)).build(),
     ).signature.toByteArray().also { require(it.size == 64) { "KMS returned a non-Ed25519 signature" } }
     override fun close() = client.close()
+}
+
+/** Public-key placeholder used by roles that may verify but must never sign. */
+class PublicKeyOnlyTufSigner(override val publicKey: ByteArray) : TufSigner {
+    init { require(publicKey.size == 32) { "TUF public key must contain 32 raw bytes" } }
+    override fun sign(canonicalSignedBytes: ByteArray): ByteArray =
+        error("This workload has no signing authority for the requested TUF role")
 }
 
 data class TufOnlineSigners(
@@ -564,6 +572,20 @@ class TufPublisher(
     }
 
     /**
+     * Publishes a higher-priority security target for the exact immutable
+     * release target. The releases role remains byte-for-byte bound to the
+     * pre-quarantine available/yanked projection beneath this override.
+     */
+    @Synchronized
+    fun publishSecurityQuarantine(release: StoredRelease): SignedMetadataReference =
+        publishSecurityChange(release, quarantine = true)
+
+    /** Removes only this release's security override, preserving every other incident. */
+    @Synchronized
+    fun publishReviewedSecurityReinstatement(release: StoredRelease): SignedMetadataReference =
+        publishSecurityChange(release, quarantine = false)
+
+    /**
      * Imports one sequential offline targets envelope and immediately rotates the
      * online releases/security/snapshot/timestamp transaction to reference it.
      */
@@ -606,6 +628,7 @@ class TufPublisher(
         publicReleases: List<StoredRelease>,
         targetsOverride: ByteArray? = null,
         expectedTimestamp: ByteArray?,
+        securityTargetsOverride: JsonObject? = null,
     ): Long {
         requireBootstrap()
         val currentTargets = if (targetsOverride == null) {
@@ -616,19 +639,25 @@ class TufPublisher(
         val targets = currentTargets.targets
         val targetsVersion = currentTargets.version
         val version = repository.nextMetadataVersion()
+        val releaseTargets = releaseTargets(publicReleases)
         val releasesSigned = commonMetadata("targets", version, Duration.ofDays(7), environment, repositoryId, clock).toMutableMap().apply {
-            put("targets", JsonObject(publicReleases.associate { targetFor(it) }))
-        }.let(::JsonObject)
-        val securitySigned = commonMetadata("targets", version, Duration.ofHours(6), environment, repositoryId, clock).toMutableMap().apply {
-            put("targets", JsonObject(emptyMap()))
+            put("targets", releaseTargets)
         }.let(::JsonObject)
         val releases = envelope(releasesSigned, listOf(online.releases))
-        val security = envelope(securitySigned, listOf(online.security))
+        val (securityVersion, security) = if (online.security is PublicKeyOnlyTufSigner) {
+            require(securityTargetsOverride == null) { "A public-key-only authority cannot change security metadata" }
+            retainedSecurityMetadata(releaseTargets)
+        } else {
+            val securitySigned = commonMetadata("targets", version, Duration.ofHours(6), environment, repositoryId, clock).toMutableMap().apply {
+                put("targets", securityTargetsOverride ?: securityTargetsForState(releaseTargets))
+            }.let(::JsonObject)
+            version to envelope(securitySigned, listOf(online.security))
+        }
         val snapshotSigned = commonMetadata("snapshot", version, Duration.ofDays(1), environment, repositoryId, clock).toMutableMap().apply {
             put("meta", buildJsonObject {
                 put("targets.json", fileMeta(targetsVersion, targets))
                 put("releases.json", fileMeta(version, releases))
-                put("security.json", fileMeta(version, security))
+                put("security.json", fileMeta(securityVersion, security))
             })
         }.let(::JsonObject)
         val snapshot = envelope(snapshotSigned, listOf(online.snapshot))
@@ -638,7 +667,7 @@ class TufPublisher(
         val timestamp = envelope(timestampSigned, listOf(online.timestamp))
 
         storage.putMetadata("$version.releases.json", releases)
-        storage.putMetadata("$version.security.json", security)
+        if (securityVersion == version) storage.putMetadata("$version.security.json", security)
         storage.putMetadata("$version.snapshot.json", snapshot)
         if (!storage.replaceMetadataIfUnchanged("timestamp.json", expectedTimestamp, timestamp)) {
             throw RegistryException(
@@ -652,16 +681,332 @@ class TufPublisher(
         return version
     }
 
+    private fun publishSecurityChange(
+        release: StoredRelease,
+        quarantine: Boolean,
+    ): SignedMetadataReference {
+        requireBootstrap()
+        if (online.security is PublicKeyOnlyTufSigner) {
+            throw RegistryException(
+                503,
+                "temporarily_unavailable",
+                "Security signing authority is unavailable",
+                retryable = true,
+                retryAfterSeconds = 30,
+            )
+        }
+        requireSecuritySubject(release)
+        val now = clock.instant()
+        val expectedTimestamp = storage.getMetadata("timestamp.json")
+        if (!repository.tryAcquireMetadataPublication(publicationHolder, now, now.plus(PUBLICATION_LEASE))) {
+            throw RegistryException(503, "temporarily_unavailable", "Signed security metadata is being published", true, 5)
+        }
+        return try {
+            val path = targetPath(release)
+            val releasesTargets = currentDelegatedTargets(TufRole.RELEASES)
+                ?: unavailableMetadata("Signed releases metadata is unavailable")
+            val securityTargets = securityTargetsForState(releasesTargets).toMutableMap()
+            if (quarantine) {
+                val releasesTarget = releasesTargets[path]
+                    ?: unavailableMetadata("The release is absent from signed releases metadata")
+                validateExactTarget(release, releasesTarget, setOf("available", "yanked"))
+                securityTargets[path]?.let { validateExactTarget(release, it, setOf("security-quarantined")) }
+                securityTargets[path] = securityOverride(releasesTarget)
+            } else {
+                val existing = securityTargets.remove(path)
+                    ?: unavailableMetadata("The signed security override is unavailable")
+                validateExactTarget(release, existing, setOf("security-quarantined"))
+            }
+            val version = publishUnlocked(
+                publicReleases = currentPublicReleases(),
+                expectedTimestamp = expectedTimestamp,
+                securityTargetsOverride = JsonObject(securityTargets),
+            )
+            signedSecurityReference(version)
+        } finally {
+            repository.releaseMetadataPublication(publicationHolder)
+        }
+    }
+
     private fun currentPublicReleases(): List<StoredRelease> = repository.listReleases().filter {
-        it.record.state.visibility == "public" && it.record.state.availability == "available"
+        resolverEligible(it, setOf("available", "yanked"))
+    }
+
+    private fun retainedSecurityMetadata(releaseTargets: JsonObject): Pair<Long, ByteArray> {
+        val timestamp = storage.getMetadata("timestamp.json")
+            ?: throw RegistryException(503, "temporarily_unavailable", "Signed security metadata is unavailable", true, 30)
+        val timestampSigned = signedObject(timestamp, "timestamp")
+        val (_, snapshot) = referencedMetadata(
+            timestampSigned["meta"]!!.jsonObject["snapshot.json"]!!.jsonObject,
+            "snapshot",
+        )
+        val snapshotSigned = signedObject(snapshot, "snapshot")
+        val (securityVersion, security) = referencedMetadata(
+            snapshotSigned["meta"]!!.jsonObject["security.json"]!!.jsonObject,
+            "security",
+        )
+        val securitySigned = signedObject(security, "targets", securityVersion)
+        validateCurrentSecurityTargets(
+            securitySigned["targets"]!!.jsonObject,
+            releaseTargets,
+        )
+        val expires = Instant.parse(securitySigned["expires"]!!.jsonPrimitive.content)
+        if (!expires.isAfter(clock.instant().plus(SECURITY_RETAIN_WINDOW))) {
+            throw RegistryException(
+                503,
+                "temporarily_unavailable",
+                "Security authority must refresh signed metadata before promotion",
+                retryable = true,
+                retryAfterSeconds = 300,
+            )
+        }
+        return securityVersion to security
     }
 
     private fun mergePublicReleases(additions: List<StoredRelease>): List<StoredRelease> =
-        (currentPublicReleases() + additions)
-            .filter { it.record.state.visibility == "public" && it.record.state.availability == "available" }
+        (currentPublicReleases() + additions.filter(::isExactActivationDraft))
             .associateBy { "${it.record.`package`}@${it.record.version}" }
             .values
             .sortedWith(compareBy<StoredRelease> { it.record.`package` }.thenBy { it.record.version })
+
+    private fun isExactActivationDraft(candidate: StoredRelease): Boolean {
+        val current = repository.getRelease(candidate.record.`package`, candidate.record.version) ?: return false
+        val before = current.record
+        val after = candidate.record
+        return current.revision + 1 == candidate.revision &&
+            current.ownerPrincipal == candidate.ownerPrincipal &&
+            current.uploadId == candidate.uploadId &&
+            current.uploadExpiresAt == candidate.uploadExpiresAt &&
+            current.manifest == candidate.manifest &&
+            current.source == candidate.source &&
+            current.dependencies == candidate.dependencies &&
+            current.review == candidate.review &&
+            current.review.promotionAttemptId != null &&
+            current.review.promotionInputSha256 != null &&
+            before.state.lifecycle == "ready" &&
+            before.state.visibility == "public" &&
+            before.state.availability == "unavailable" &&
+            before.state.retention == "retained" &&
+            after.state.lifecycle == "active" &&
+            after.state.visibility == before.state.visibility &&
+            after.state.availability == "available" &&
+            after.state.retention == before.state.retention &&
+            after.`package` == before.`package` &&
+            after.version == before.version &&
+            after.archive == before.archive &&
+            after.manifestSha256 == before.manifestSha256 &&
+            after.capabilities == before.capabilities &&
+            after.sourceProofId == before.sourceProofId &&
+            after.verification == before.verification &&
+            after.timestamps.copy(activatedAt = before.timestamps.activatedAt, updatedAt = before.timestamps.updatedAt) ==
+                before.timestamps &&
+            after.resolverMetadataVersion != null &&
+            after.resolverMetadataVersion > 0 &&
+            after.links.copy(download = before.links.download) == before.links &&
+            resolverEligible(candidate, setOf("available"))
+    }
+
+    private fun releaseTargets(publicReleases: List<StoredRelease>): JsonObject {
+        val targets = linkedMapOf<String, JsonElement>()
+        val current = currentDelegatedTargets(TufRole.RELEASES)
+        repository.listReleases()
+            .filter { resolverEligible(it, setOf("security-quarantined")) }
+            .sortedWith(compareBy<StoredRelease> { it.record.`package` }.thenBy { it.record.version })
+            .forEach { quarantined ->
+                val path = targetPath(quarantined)
+                val retained = current?.get(path)
+                    ?: unavailableMetadata("A quarantined release is absent from signed releases metadata")
+                validateExactTarget(quarantined, retained, setOf("available", "yanked"))
+                targets[path] = retained
+            }
+        publicReleases
+            .filter { resolverEligible(it, setOf("available", "yanked")) }
+            .sortedWith(compareBy<StoredRelease> { it.record.`package` }.thenBy { it.record.version })
+            .forEach { release ->
+                val (path, target) = targetFor(release)
+                targets[path] = target
+            }
+        return JsonObject(targets)
+    }
+
+    private fun currentDelegatedTargets(role: String): JsonObject? {
+        val timestamp = storage.getMetadata("timestamp.json") ?: return null
+        val timestampSigned = signedObject(timestamp, "timestamp")
+        val (_, snapshot) = referencedMetadata(
+            timestampSigned["meta"]!!.jsonObject["snapshot.json"]!!.jsonObject,
+            "snapshot",
+        )
+        val snapshotSigned = signedObject(snapshot, "snapshot")
+        val (roleVersion, roleBytes) = referencedMetadata(
+            snapshotSigned["meta"]!!.jsonObject["$role.json"]!!.jsonObject,
+            role,
+        )
+        return signedObject(roleBytes, "targets", roleVersion)["targets"]?.jsonObject
+            ?: unavailableMetadata("Signed $role metadata has no targets")
+    }
+
+    private fun resolverEligible(stored: StoredRelease, allowedAvailability: Set<String>): Boolean {
+        val state = stored.record.state
+        return state.visibility == "public" &&
+            state.lifecycle == "active" &&
+            state.retention == "retained" &&
+            state.availability in allowedAvailability &&
+            hasExactReviewedEvidence(stored)
+    }
+
+    private fun hasExactReviewedEvidence(stored: StoredRelease): Boolean = runCatching {
+        val release = stored.record
+        val review = stored.review
+        val pkg = repository.getPackage(release.`package`) ?: return@runCatching false
+        if (
+            review.validatedArchiveSha256 != release.archive.sha256 ||
+            release.sourceProofId != review.secondSourceProofId ||
+            release.verification.origin != "passed" ||
+            release.verification.integrity != "passed" ||
+            release.verification.source != "passed" ||
+            release.verification.firstScan != "passed" ||
+            release.verification.secondScan != "passed"
+        ) return@runCatching false
+
+        val firstProof = exactSourceProof(
+            stored,
+            pkg,
+            review.firstSourceProofId ?: return@runCatching false,
+            review.firstSourceProofSha256 ?: return@runCatching false,
+        ) ?: return@runCatching false
+        val firstScan = exactScan(
+            stored,
+            ReviewPhase.FIRST,
+            review.firstScanAttestationId ?: return@runCatching false,
+            review.firstScanAttestationSha256 ?: return@runCatching false,
+            firstProof,
+        ) ?: return@runCatching false
+        val secondProof = exactSourceProof(
+            stored,
+            pkg,
+            review.secondSourceProofId ?: return@runCatching false,
+            review.secondSourceProofSha256 ?: return@runCatching false,
+        ) ?: return@runCatching false
+        val secondScan = exactScan(
+            stored,
+            ReviewPhase.SECOND,
+            review.secondScanAttestationId ?: return@runCatching false,
+            review.secondScanAttestationSha256 ?: return@runCatching false,
+            secondProof,
+        ) ?: return@runCatching false
+
+        firstProof.previousProofId == null &&
+            secondProof.proofId != firstProof.proofId &&
+            secondProof.previousProofId == firstProof.proofId &&
+            firstScan.previousAttestationId == null &&
+            secondScan.previousAttestationId == firstScan.attestationId &&
+            firstProof.sequence < firstScan.sequence &&
+            firstScan.sequence < secondProof.sequence &&
+            secondProof.sequence < secondScan.sequence &&
+            release.verification.attestationSequence == secondScan.sequence
+    }.getOrDefault(false)
+
+    private fun exactSourceProof(
+        release: StoredRelease,
+        pkg: StoredPackage,
+        id: String,
+        digest: String,
+    ): SourceProofRecord? {
+        val artifact = repository.getReviewArtifact(id) ?: return null
+        if (
+            artifact.kind != SOURCE_PROOF_ARTIFACT ||
+            artifact.packageIdentity != release.record.`package` ||
+            artifact.version != release.record.version ||
+            artifact.archiveSha256 != release.record.archive.sha256
+        ) return null
+        val proof = runCatching {
+            RegistryJson.decodeFromJsonElement<SourceProofRecord>(artifact.payload)
+        }.getOrNull() ?: return null
+        return proof.takeIf {
+            it.proofId == id &&
+                it.sha256() == digest &&
+                ReviewEvidenceValidator.sourceProofMatches(it, release, pkg)
+        }
+    }
+
+    private fun exactScan(
+        release: StoredRelease,
+        phase: ReviewPhase,
+        id: String,
+        digest: String,
+        proof: SourceProofRecord,
+    ): ScanAttestationRecord? {
+        val artifact = repository.getReviewArtifact(id) ?: return null
+        if (
+            artifact.kind != SCAN_ATTESTATION_ARTIFACT ||
+            artifact.packageIdentity != release.record.`package` ||
+            artifact.version != release.record.version ||
+            artifact.archiveSha256 != release.record.archive.sha256
+        ) return null
+        val scan = runCatching {
+            RegistryJson.decodeFromJsonElement<ScanAttestationRecord>(artifact.payload)
+        }.getOrNull() ?: return null
+        return scan.takeIf {
+            it.attestationId == id &&
+                it.sha256() == digest &&
+                ReviewEvidenceValidator.scanMatches(it, release, phase, proof, requirePassed = true)
+        }
+    }
+
+    private fun requireSecuritySubject(release: StoredRelease) {
+        if (!resolverEligible(release, setOf("security-quarantined"))) {
+            unavailableMetadata("Security metadata subject is not resolver-eligible")
+        }
+    }
+
+    private fun validateExactTarget(
+        release: StoredRelease,
+        target: JsonElement,
+        allowedAvailability: Set<String>,
+    ) {
+        if (!hasExactReviewedEvidence(release)) {
+            unavailableMetadata("Signed target review evidence is unavailable")
+        }
+        val availability = runCatching {
+            target.jsonObject["custom"]!!.jsonObject["availability"]!!.jsonPrimitive.content
+        }.getOrElse { unavailableMetadata("Signed target availability is invalid") }
+        if (availability !in allowedAvailability || target != targetValue(release, availability)) {
+            unavailableMetadata("Signed target does not match the immutable reviewed release")
+        }
+    }
+
+    private fun securityOverride(releasesTarget: JsonElement): JsonElement {
+        val target = releasesTarget.jsonObject
+        val custom = target["custom"]!!.jsonObject.toMutableMap().apply {
+            put("availability", JsonPrimitive("security-quarantined"))
+        }
+        return JsonObject(target.toMutableMap().apply { put("custom", JsonObject(custom)) })
+    }
+
+    private fun signedSecurityReference(version: Long): SignedMetadataReference {
+        val filename = "$version.security.json"
+        val bytes = storage.getMetadata(filename)
+            ?: unavailableMetadata("Published security metadata is unavailable")
+        val signed = signedObject(bytes, "targets", version)
+        return SignedMetadataReference(
+            environment = environment,
+            role = TufRole.SECURITY,
+            filename = filename,
+            version = version,
+            length = bytes.size.toLong(),
+            sha256 = sha256(bytes),
+            publishedAt = clock.instant().utc(),
+            expiresAt = signed["expires"]!!.jsonPrimitive.content,
+        )
+    }
+
+    private fun unavailableMetadata(message: String): Nothing = throw RegistryException(
+        503,
+        "temporarily_unavailable",
+        message,
+        retryable = true,
+        retryAfterSeconds = 30,
+    )
 
     private fun readOnlineState(): OnlineState? {
         val timestamp = storage.getMetadata("timestamp.json") ?: return null
@@ -678,10 +1023,22 @@ class TufPublisher(
         val meta = snapshotSigned["meta"]!!.jsonObject
         val (targetsVersion, targets) = referencedMetadata(meta["targets.json"]!!.jsonObject, "targets")
         signedObject(targets, "targets", targetsVersion)
-        val roleExpiries = listOf(TufRole.RELEASES, TufRole.SECURITY).map { role ->
-            val (roleVersion, roleBytes) = referencedMetadata(meta["$role.json"]!!.jsonObject, role)
-            expiry(signedObject(roleBytes, "targets", roleVersion))
-        }
+        val (releasesVersion, releasesBytes) = referencedMetadata(
+            meta["${TufRole.RELEASES}.json"]!!.jsonObject,
+            TufRole.RELEASES,
+        )
+        val releasesSigned = signedObject(releasesBytes, "targets", releasesVersion)
+        validateCurrentReleaseTargets(releasesSigned["targets"]!!.jsonObject)
+        val (securityVersion, securityBytes) = referencedMetadata(
+            meta["${TufRole.SECURITY}.json"]!!.jsonObject,
+            TufRole.SECURITY,
+        )
+        val securitySigned = signedObject(securityBytes, "targets", securityVersion)
+        validateCurrentSecurityTargets(
+            securitySigned["targets"]!!.jsonObject,
+            releasesSigned["targets"]!!.jsonObject,
+        )
+        val roleExpiries = listOf(expiry(releasesSigned), expiry(securitySigned))
         return OnlineState(
             version = version,
             minimumExpiry = (roleExpiries + expiry(snapshotSigned) + expiry(timestampSigned)).min(),
@@ -709,15 +1066,73 @@ class TufPublisher(
 
     private fun expiry(signed: JsonObject): Instant = Instant.parse(signed["expires"]!!.jsonPrimitive.content)
 
+    private fun validateCurrentReleaseTargets(targets: JsonObject) {
+        val eligible = repository.listReleases().filter { release ->
+            resolverEligible(release, setOf("available", "yanked", "security-quarantined"))
+        }.associateBy(::targetPath)
+        if (targets.keys != eligible.keys) {
+            unavailableMetadata("Signed releases metadata contains stale or missing targets")
+        }
+        targets.forEach { (path, target) ->
+            val release = eligible.getValue(path)
+            val allowed = if (release.record.state.availability == "security-quarantined") {
+                setOf("available", "yanked")
+            } else {
+                setOf(release.record.state.availability)
+            }
+            validateExactTarget(release, target, allowed)
+        }
+    }
+
+    /**
+     * Derives the complete deny role from durable release state. A missing deny
+     * target is fail-open; a stale extra target keeps an approved release denied.
+     * Both are rejected by reads and replaced by the next online transaction.
+     */
+    private fun securityTargetsForState(releaseTargets: JsonObject): JsonObject {
+        val targets = linkedMapOf<String, JsonElement>()
+        repository.listReleases()
+            .filter { resolverEligible(it, setOf("security-quarantined")) }
+            .sortedWith(compareBy<StoredRelease> { it.record.`package` }.thenBy { it.record.version })
+            .forEach { release ->
+                val path = targetPath(release)
+                val releasesTarget = releaseTargets[path]
+                    ?: unavailableMetadata("A quarantined release is absent from signed releases metadata")
+                validateExactTarget(release, releasesTarget, setOf("available", "yanked"))
+                targets[path] = securityOverride(releasesTarget)
+            }
+        return JsonObject(targets)
+    }
+
+    private fun validateCurrentSecurityTargets(
+        securityTargets: JsonObject,
+        releaseTargets: JsonObject,
+    ) {
+        val expected = securityTargetsForState(releaseTargets)
+        if (securityTargets != expected) {
+            unavailableMetadata("Signed security metadata does not match durable quarantine state")
+        }
+    }
+
     private data class OnlineState(val version: Long, val minimumExpiry: Instant)
 
-    private fun targetFor(stored: StoredRelease): Pair<String, JsonElement> {
+    private fun targetPath(stored: StoredRelease): String {
         val release = stored.record
         val (_, name) = IdentityRules.requireIdentity(release.`package`)
         val filename = "$name-${release.version}.seenpkg.tgz"
-        val path = "packages/${release.`package`}/${release.version}/${release.archive.sha256}/$filename"
-        val sourceDigest = sha256(RegistryJson.encodeToString(stored.source).toByteArray())
-        return path to buildJsonObject {
+        return "packages/${release.`package`}/${release.version}/${release.archive.sha256}/$filename"
+    }
+
+    private fun targetFor(stored: StoredRelease): Pair<String, JsonElement> =
+        targetPath(stored) to targetValue(stored, stored.record.state.availability)
+
+    private fun targetValue(stored: StoredRelease, availability: String): JsonElement {
+        val release = stored.record
+        val (_, name) = IdentityRules.requireIdentity(release.`package`)
+        val filename = "$name-${release.version}.seenpkg.tgz"
+        val sourceProofSha256 = stored.review.secondSourceProofSha256
+            ?: unavailableMetadata("Reviewed second source proof is unavailable")
+        return buildJsonObject {
             put("length", release.archive.compressedBytes)
             put("hashes", buildJsonObject { put("sha256", release.archive.sha256) })
             put("custom", buildJsonObject {
@@ -730,9 +1145,9 @@ class TufPublisher(
                 put("visibility", "public")
                 put("lifecycle", release.state.lifecycle)
                 put("retention", release.state.retention)
-                put("availability", release.state.availability)
-                put("source_proof_sha256", sourceDigest)
-                put("provenance_sha256", sourceDigest)
+                put("availability", availability)
+                put("source_proof_sha256", sourceProofSha256)
+                put("provenance_sha256", sourceProofSha256)
                 put("dependencies", RegistryJson.encodeToJsonElement(ListSerializer, stored.dependencies))
                 put("capabilities", buildJsonArray { release.capabilities.forEach { add(JsonPrimitive(it)) } })
             })
@@ -742,6 +1157,7 @@ class TufPublisher(
     private companion object {
         val REFRESH_WINDOW: Duration = Duration.ofHours(2)
         val PUBLICATION_LEASE: Duration = Duration.ofMinutes(2)
+        val SECURITY_RETAIN_WINDOW: Duration = Duration.ofMinutes(5)
         val ListSerializer = kotlinx.serialization.builtins.ListSerializer(SignedDependency.serializer())
     }
 }

@@ -98,8 +98,8 @@ class ReleaseTransitionTest {
             staleUpload.get(5, TimeUnit.SECONDS)
 
             val persisted = repository.getRelease("seen/demo", "1.2.3")!!
-            assertEquals("delayed", persisted.record.state.lifecycle)
-            assertEquals(2, persisted.revision)
+            assertEquals("quarantined", persisted.record.state.lifecycle)
+            assertEquals(1, persisted.revision)
             assertEquals(completed.timestamps.publicDelayStartedAt, persisted.record.timestamps.publicDelayStartedAt)
             assertEquals(completed.timestamps.publicDelayEndsAt, persisted.record.timestamps.publicDelayEndsAt)
         } finally {

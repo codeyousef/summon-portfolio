@@ -12,15 +12,25 @@ import org.slf4j.LoggerFactory
 import java.security.SecureRandom
 import java.security.MessageDigest
 import java.nio.ByteBuffer
+import java.nio.channels.ClosedChannelException
 import java.time.Clock
 import java.time.Duration
 import java.util.Base64
+
+internal fun Throwable.isClosedChannelTransportFailure(): Boolean {
+    var current: Throwable? = this
+    repeat(16) {
+        val failure = current ?: return false
+        if (failure is ClosedChannelException) return true
+        current = failure.cause?.takeUnless { it === failure }
+    }
+    return false
+}
 
 class RegistryRoutes(
     private val service: RegistryService,
     private val auth: OpaqueDevWriterAuthenticator,
     private val clock: Clock,
-    private val promotionMode: String = "disabled",
     private val json: kotlinx.serialization.json.Json = RegistryJson,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -62,6 +72,23 @@ class RegistryRoutes(
         get("/packages/api/v1/packages/:owner/:name/releases/:version") { exchange -> safe(exchange) {
             exchange.respondJson(200, service.getRelease(identity(exchange), exchange.pathParamOrThrow("version"), optionalWriter(exchange)), json)
         } }
+        get("/packages/api/v1/packages/:owner/:name/releases/:version/source-proofs") { exchange -> safe(exchange) {
+            exchange.respondJson(
+                200,
+                service.listSourceProofs(identity(exchange), exchange.pathParamOrThrow("version"), optionalWriter(exchange)),
+                json,
+            )
+        } }
+        get("/packages/api/v1/packages/:owner/:name/releases/:version/source-proofs/:proofId") { exchange -> safe(exchange) {
+            val proof = service.getSourceProof(
+                identity(exchange),
+                exchange.pathParamOrThrow("version"),
+                exchange.pathParamOrThrow("proofId"),
+                optionalWriter(exchange),
+            )
+            exchange.response.setHeader("ETag", "\"sha256:${proof.sha256()}\"")
+            exchange.respondJson(200, proof, json)
+        } }
         put("/packages/api/v1/uploads/:uploadId/archive") { exchange -> safe(exchange) {
             val principal = writer(exchange)
             val bytes = exchange.request.bodyBytes()
@@ -77,13 +104,6 @@ class RegistryRoutes(
                 mapOf("Location" to value.links.self)
             }) { request -> service.completeUpload(exchange.pathParamOrThrow("uploadId"), request, principal) }
         } }
-        if (promotionMode == "test-static") {
-            post("/packages/internal/v1/promote-due") { exchange -> safe(exchange) {
-                requireIdempotency(exchange)
-                writer(exchange)
-                exchange.respondJson(200, mapOf("promoted" to service.promoteDue().size), json)
-            } }
-        }
         get("/packages/api/v1/metadata/:filename") { exchange -> safe(exchange) {
             val filename = exchange.pathParamOrThrow("filename")
             val bytes = service.metadata(filename)
@@ -132,37 +152,70 @@ class RegistryRoutes(
         } }
     }
 
+    internal fun authorizeStreamingArchive(exchange: Exchange): WriterPrincipal = writer(exchange)
+
+    internal suspend fun completeStreamingArchive(
+        exchange: Exchange,
+        uploadId: String,
+        digestHeader: String?,
+        source: ReopenableArchiveSource,
+        byteLength: Long,
+        observedSha256: String,
+        principal: WriterPrincipal,
+    ) = safe(exchange) {
+        service.uploadStreamedArchive(
+            uploadId = uploadId,
+            digestHeader = digestHeader,
+            source = source,
+            observedBytes = byteLength,
+            observedSha256 = observedSha256,
+            principal = principal,
+        )
+        exchange.response.statusCode = 204
+        exchange.response.setHeader("X-Seen-Archive-Sha256", observedSha256)
+        exchange.response.setHeader("ETag", "\"sha256:$observedSha256\"")
+        exchange.response.end()
+    }
+
+    internal suspend fun rejectStreamingArchive(exchange: Exchange, error: RegistryException) =
+        safe(exchange) { throw error }
+
     private suspend inline fun safe(exchange: Exchange, crossinline action: suspend (String) -> Unit) {
         val requestId = requestId()
         exchange.response.setHeader("X-Request-Id", requestId)
         try {
             action(requestId)
         } catch (error: RegistryException) {
-            if (error.status == 401) exchange.response.setHeader("WWW-Authenticate", "Bearer realm=\"seen-registry\"")
-            if (error.retryAfterSeconds != null) exchange.response.setHeader("Retry-After", error.retryAfterSeconds.toString())
-            if (exchange.request.headers["Idempotency-Key"] != null) exchange.response.setHeader("Idempotency-Replayed", "false")
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.respondJson(error.status, ErrorEnvelope(ApiError(
-                code = error.code,
-                message = error.publicMessage,
-                requestId = requestId,
-                occurredAt = clock.instant().utc(),
-                retryable = error.retryable,
-                retryAfterSeconds = error.retryAfterSeconds,
-                details = JsonObject(emptyMap()),
-            )), json)
+            finishResponse(requestId) {
+                if (error.status == 401) exchange.response.setHeader("WWW-Authenticate", "Bearer realm=\"seen-registry\"")
+                if (error.retryAfterSeconds != null) exchange.response.setHeader("Retry-After", error.retryAfterSeconds.toString())
+                if (exchange.request.headers["Idempotency-Key"] != null) exchange.response.setHeader("Idempotency-Replayed", "false")
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.respondJson(error.status, ErrorEnvelope(ApiError(
+                    code = error.code,
+                    message = error.publicMessage,
+                    requestId = requestId,
+                    occurredAt = clock.instant().utc(),
+                    retryable = error.retryable,
+                    retryAfterSeconds = error.retryAfterSeconds,
+                    details = JsonObject(emptyMap()),
+                )), json)
+            }
         } catch (error: Exception) {
+            if (transportCompleted(requestId, error)) return
             log.error("Unhandled registry request failure requestId={}", requestId, error)
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.response.setHeader("Retry-After", "30")
-            exchange.respondJson(500, ErrorEnvelope(ApiError(
-                code = "internal_error",
-                message = "The registry could not complete the request",
-                requestId = requestId,
-                occurredAt = clock.instant().utc(),
-                retryable = true,
-                retryAfterSeconds = 30,
-            )), json)
+            finishResponse(requestId) {
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.response.setHeader("Retry-After", "30")
+                exchange.respondJson(500, ErrorEnvelope(ApiError(
+                    code = "internal_error",
+                    message = "The registry could not complete the request",
+                    requestId = requestId,
+                    occurredAt = clock.instant().utc(),
+                    retryable = true,
+                    retryAfterSeconds = 30,
+                )), json)
+            }
         }
     }
 
@@ -173,13 +226,32 @@ class RegistryRoutes(
             action()
         } catch (error: RegistryException) {
             val notFound = error.status == 400 || error.status == 404
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.respondHtml(if (notFound) 404 else error.status, CatalogRenderer.renderUnavailable(notFound))
+            finishResponse(requestId) {
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.respondHtml(if (notFound) 404 else error.status, CatalogRenderer.renderUnavailable(notFound))
+            }
         } catch (error: Exception) {
+            if (transportCompleted(requestId, error)) return
             log.error("Unhandled registry catalog failure requestId={}", requestId, error)
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.respondHtml(500, CatalogRenderer.renderUnavailable(false))
+            finishResponse(requestId) {
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.respondHtml(500, CatalogRenderer.renderUnavailable(false))
+            }
         }
+    }
+
+    private suspend inline fun finishResponse(requestId: String, crossinline response: suspend () -> Unit) {
+        try {
+            response()
+        } catch (error: Exception) {
+            if (!transportCompleted(requestId, error)) throw error
+        }
+    }
+
+    private fun transportCompleted(requestId: String, error: Throwable): Boolean {
+        if (!error.isClosedChannelTransportFailure()) return false
+        log.debug("Registry response transport completed requestId={} cause={}", requestId, error.javaClass.simpleName)
+        return true
     }
 
     private suspend inline fun <reified Request, reified Result> idempotentJson(

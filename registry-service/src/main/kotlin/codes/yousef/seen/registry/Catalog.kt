@@ -58,7 +58,7 @@ private fun Catalog(packages: List<PackageRecord>) {
             .gap("20px"),
     ) {
         Text("Seen packages", Modifier().fontSize(36).fontWeight(700).color("#14213d"), semantic = "heading")
-        Text("Verified source packages published to the Seen development registry.", Modifier().fontSize(18).color("#41516d"), semantic = "paragraph")
+        Text("Source packages that complete registry review appear here.", Modifier().fontSize(18).color("#41516d"), semantic = "paragraph")
         if (packages.isEmpty()) {
             Text("No public packages yet.", Modifier().padding(24).backgroundColor("#f4f7fb").borderRadius(12))
         } else {
