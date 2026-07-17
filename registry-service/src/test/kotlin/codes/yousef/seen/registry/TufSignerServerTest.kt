@@ -2,6 +2,7 @@ package codes.yousef.seen.registry
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -238,6 +239,29 @@ class TufSignerHttpServerTest {
             val noncanonical = " ${releasesMetadata().decodeToString()}".encodeToByteArray()
             assertEquals(422, request(server.actualPort, noncanonical).statusCode())
             assertEquals(413, request(server.actualPort, ByteArray(513)).statusCode())
+            assertEquals(0, authority.calls.get())
+        }
+    }
+
+    @Test
+    fun `returns retryable service failure when caller verification is unavailable`() {
+        val authority = CountingSigner(LocalEd25519Signer.fromSeed(ByteArray(32) { (it + 96).toByte() }))
+        TufSignerHttpServer.create(
+            config(authority),
+            authority,
+            TufSignerStatePolicyGuard {
+                throw TufSignerCallerVerificationUnavailableException(
+                    "TUF signer caller identity verification is temporarily unavailable",
+                    IOException("certificate endpoint timed out"),
+                )
+            },
+            clock,
+        ).use { server ->
+            server.start()
+            val response = request(server.actualPort, releasesMetadata())
+
+            assertEquals(503, response.statusCode())
+            assertEquals("1", response.headers().firstValue("Retry-After").orElse(null))
             assertEquals(0, authority.calls.get())
         }
     }

@@ -113,6 +113,13 @@ class RemoteTufSignerTest {
         val token = RemoteTufTokenProvider { "token" }
         val transport = RemoteTufHttpTransport { RemoteTufHttpResponse(500, byteArrayOf()) }
 
+        lateinit var defaultRequest: RemoteTufHttpRequest
+        remote(authority) { request ->
+            defaultRequest = request
+            RemoteTufHttpResponse(200, authority.sign(request.body))
+        }.sign(metadata(TufRole.RELEASES))
+        assertEquals(Duration.ofSeconds(30), defaultRequest.timeout)
+
         assertFailsWith<IllegalArgumentException> {
             RemoteTufSigner(
                 URI("http://signer.example.test/sign"),

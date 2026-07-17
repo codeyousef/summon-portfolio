@@ -1,5 +1,6 @@
 package codes.yousef.seen.registry
 
+import com.google.auth.oauth2.TokenVerifier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -9,10 +10,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import java.io.IOException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.concurrent.ExecutionException
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -95,6 +98,22 @@ class TufSignerStateGuardTest {
         assertFailsWith<TufSigningRequestException> { verifier.verify("unverified", AUDIENCE) }
         assertFailsWith<TufSigningRequestException> { verifier.verify("forged", AUDIENCE) }
         assertFailsWith<TufSigningRequestException> { verifier.verify("expired", AUDIENCE) }
+
+        val unavailable = GoogleOidcTufSignerCallerTokenVerifier { _, _, _ ->
+            throw TokenVerifier.VerificationException(
+                "Error fetching PublicKey from certificate location",
+                ExecutionException(IOException("certificate endpoint timed out")),
+            )
+        }
+        val failure = assertFailsWith<TufSignerCallerVerificationUnavailableException> {
+            unavailable.verify("valid", AUDIENCE)
+        }
+        assertEquals("TUF signer caller identity verification is temporarily unavailable", failure.message)
+
+        val malformed = GoogleOidcTufSignerCallerTokenVerifier { _, _, _ ->
+            throw TokenVerifier.VerificationException("Error parsing JsonWebSignature token", IOException("malformed JWT"))
+        }
+        assertFailsWith<TufSigningRequestException> { malformed.verify("malformed", AUDIENCE) }
     }
 
     @Test

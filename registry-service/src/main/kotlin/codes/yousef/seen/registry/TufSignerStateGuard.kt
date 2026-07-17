@@ -1,6 +1,7 @@
 package codes.yousef.seen.registry
 
 import com.google.auth.oauth2.TokenVerifier
+import com.google.common.util.concurrent.UncheckedExecutionException
 import com.google.cloud.ServiceOptions
 import com.google.cloud.http.HttpTransportOptions
 import com.google.cloud.storage.BlobId
@@ -20,6 +21,7 @@ import kotlinx.serialization.json.put
 import java.time.Clock
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
 
 data class TufSignerStateGuardConfig(
     val metadataBucket: String,
@@ -128,6 +130,9 @@ class GcsTufSignerMetadataStore(
 
 data class VerifiedTufSignerCaller(val email: String)
 
+internal class TufSignerCallerVerificationUnavailableException(message: String, cause: Throwable) :
+    IllegalStateException(message, cause)
+
 fun interface TufSignerCallerTokenVerifier {
     fun verify(token: String, audience: String): VerifiedTufSignerCaller
 }
@@ -144,7 +149,13 @@ class GoogleOidcTufSignerCallerTokenVerifier private constructor(
     override fun verify(token: String, audience: String): VerifiedTufSignerCaller {
         val payload = try {
             verifier.verify(token, audience, GOOGLE_ISSUER)
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+            if (failure.isPublicKeyLoadFailure()) {
+                throw TufSignerCallerVerificationUnavailableException(
+                    "TUF signer caller identity verification is temporarily unavailable",
+                    failure,
+                )
+            }
             rejectSigning("TUF signer caller identity token is invalid")
         }
         val email = payload["email"] as? String
@@ -159,6 +170,9 @@ class GoogleOidcTufSignerCallerTokenVerifier private constructor(
         const val GOOGLE_ISSUER = "https://accounts.google.com"
     }
 }
+
+private fun Throwable.isPublicKeyLoadFailure(): Boolean =
+    cause is ExecutionException || cause is UncheckedExecutionException
 
 private fun interface GoogleIdTokenVerifier {
     fun verify(token: String, audience: String, issuer: String): Map<String, Any?>

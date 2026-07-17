@@ -69,6 +69,29 @@ check "feature_dependencies" {
   }
 }
 
+check "signer_oidc_egress_is_dev_only" {
+  assert {
+    condition     = !var.signer_jwks_all_apis_enabled || var.environment == "dev"
+    error_message = "The all-APIs signer OIDC egress exception is limited to the development canary."
+  }
+}
+
+check "signer_oidc_egress_shape" {
+  assert {
+    condition = !var.enabled || !var.signer_jwks_all_apis_enabled || (
+      try(google_dns_record_set.oidc_certificates_private[0].name, null) == "www.googleapis.com." &&
+      toset(try(google_dns_record_set.oidc_certificates_private[0].rrdatas, [])) == toset(["private.googleapis.com."]) &&
+      toset(try(google_compute_firewall.oidc_certificates_private_egress[0].destination_ranges, [])) == toset(["199.36.153.8/30"]) &&
+      toset(try(google_compute_firewall.oidc_certificates_private_egress[0].target_tags, [])) == toset(["${var.name_prefix}-signer"]) &&
+      try(one(google_compute_firewall.oidc_certificates_private_egress[0].allow).protocol, null) == "tcp" &&
+      toset(try(one(google_compute_firewall.oidc_certificates_private_egress[0].allow).ports, [])) == toset(["443"]) &&
+      toset(try(google_compute_firewall.restricted_egress_deny[0].destination_ranges, [])) == toset(["0.0.0.0/0"]) &&
+      toset(try(google_compute_firewall.restricted_egress_deny[0].target_tags, [])) == toset(["${var.name_prefix}-restricted-egress"])
+    )
+    error_message = "Signer OIDC egress must retain its exact DNS, private VIP, signer tag, TCP port, and fallback deny shape."
+  }
+}
+
 check "workload_secret_inputs" {
   assert {
     condition = !var.enabled || !var.workloads_enabled || (

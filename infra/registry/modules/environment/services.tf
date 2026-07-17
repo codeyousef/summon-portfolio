@@ -92,7 +92,7 @@ resource "google_cloud_run_v2_service" "signer" {
 
   template {
     service_account                  = google_service_account.runtime[each.value.identity].email
-    timeout                          = "30s"
+    timeout                          = "35s"
     max_instance_request_concurrency = 8
     execution_environment            = "EXECUTION_ENVIRONMENT_GEN2"
 
