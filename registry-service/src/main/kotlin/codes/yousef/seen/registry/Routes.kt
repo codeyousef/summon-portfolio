@@ -153,7 +153,7 @@ class RegistryRoutes(
     }
 
     private suspend fun respondCatalog(exchange: Exchange) {
-        val query = normalizeCatalogQuery(exchange.request.queryParameter("q"))
+        val query = normalizeCatalogQueryParameter(exchange.request.queryParameter("q"))
         exchange.response.setHeader("Cache-Control", "public,max-age=60,must-revalidate")
         exchange.respondHtml(200, CatalogRenderer.render(service.listPublicPackages().items, query))
     }

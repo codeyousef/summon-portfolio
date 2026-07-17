@@ -57,6 +57,8 @@ import codes.yousef.summon.runtime.LocalPlatformRenderer
 import codes.yousef.summon.runtime.PlatformRenderer
 import codes.yousef.summon.runtime.clearPlatformRenderer
 import codes.yousef.summon.runtime.setPlatformRenderer
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 
 internal const val CATALOG_QUERY_MAX_LENGTH = 128
@@ -123,6 +125,14 @@ object CatalogRenderer {
 
 internal fun normalizeCatalogQuery(rawQuery: String?): String =
     rawQuery.orEmpty().trim().take(CATALOG_QUERY_MAX_LENGTH)
+
+internal fun normalizeCatalogQueryParameter(rawQuery: String?): String {
+    val decoded = rawQuery?.let { encoded ->
+        runCatching { URLDecoder.decode(encoded, StandardCharsets.UTF_8) }
+            .getOrDefault(encoded)
+    }
+    return normalizeCatalogQuery(decoded)
+}
 
 internal fun filterCatalogPackages(
     packages: List<PackageRecord>,
