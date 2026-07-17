@@ -194,6 +194,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             aiCurriculumRenderer = aiCurriculumRenderer,
             aiProgressStore = aiProgressStore,
             fifthWallTelemetryStore = fifthWallTelemetryStore,
+            markdownRenderer = markdownRenderer,
         )
     }
 
@@ -363,7 +364,12 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             val host = exchange.request.headers["Host"]?.substringBefore(":")
             val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
             val path = exchange.request.path
-            if (!isBuildingSite && (path == "/admin" || path.startsWith("/admin/photography"))) {
+            if (
+                !isBuildingSite &&
+                (path == "/admin" ||
+                    path.startsWith("/admin/photography") ||
+                    path == "/admin/markdown-preview")
+            ) {
                 val session = exchange.session()
                 val username = session?.get("username") as? String
                 if (username == null) {
@@ -381,13 +387,6 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 if (username == null) {
                     exchange.redirect("/admin/login")
                 } else {
-                    @Suppress("UNCHECKED_CAST")
-                    val hooks = exchange.attributes.getOrPut(Exchange.HtmlResponseHooksKey) {
-                        mutableListOf<(String) -> String>()
-                    } as MutableList<(String) -> String>
-                    hooks.add { html ->
-                        html.replace("</body>", """<script src="/static/markdown-preview.js"></script></body>""")
-                    }
                     adminRouter.asMiddleware()(exchange, next)
                 }
             } else if (!isBuildingSite && (path == "/ai" || path.startsWith("/ai/"))) {

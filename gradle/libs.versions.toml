@@ -3,14 +3,13 @@ kotlin = "2.3.21"
 ktor = "3.3.1"
 logback = "1.5.13"
 aether = "0.6.0.0"
-summon = "0.7.0.2"
+summon = "0.7.0.3"
 materia = "0.4.2.2"
 sigil = "0.4.3.1"
 shadow = "9.1.0"
 kotlinx-datetime = "0.6.1"
 caffeine = "3.1.8"
 commonmark = "0.22.0"
-owasp-sanitizer = "20240325.1"
 jsoup = "1.18.1"
 google-cloud-bom = "26.51.0"
 poi = "5.2.5"
@@ -51,7 +50,6 @@ commonmark = { module = "org.commonmark:commonmark", version.ref = "commonmark" 
 commonmark-ext-yaml-front-matter = { module = "org.commonmark:commonmark-ext-yaml-front-matter", version.ref = "commonmark" }
 commonmark-ext-autolink = { module = "org.commonmark:commonmark-ext-autolink", version.ref = "commonmark" }
 commonmark-ext-gfm-tables = { module = "org.commonmark:commonmark-ext-gfm-tables", version.ref = "commonmark" }
-owasp-html-sanitizer = { module = "com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer", version.ref = "owasp-sanitizer" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
 # Caching

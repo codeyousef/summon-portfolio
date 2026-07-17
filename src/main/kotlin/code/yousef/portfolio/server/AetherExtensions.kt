@@ -19,15 +19,6 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 
 private val summonSsrRenderMutex = Mutex()
-private val HTML_TITLE_OPTIONS = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
-private val SUMMON_DEFAULT_TITLE = Regex(
-    "<title(?:\\s[^>]*)?>\\s*Summon App\\s*</title>",
-    HTML_TITLE_OPTIONS,
-)
-private val HTML_TITLE_ELEMENT = Regex(
-    "<title(?:\\s[^>]*)?>.*?</title>",
-    HTML_TITLE_OPTIONS,
-)
 
 /**
  * Workaround for Aether 0.2.0.0 bug - sets Content-Length to avoid Vert.x chunked encoding error.
@@ -158,16 +149,8 @@ internal fun PlatformRenderer.renderSummonDocument(page: SummonPage): String {
     // synchronously while it creates the hydrated document.
     renderHeadElements(page.head)
 
-    val html = renderComposableRootWithHydration(page.locale.code, page.locale.direction) {
+    return renderComposableRootWithHydration(page.locale.code, page.locale.direction) {
         page.content()
-    }
-    val headHtml = html.substringBefore("</head>", html)
-    val hasCustomTitle = HTML_TITLE_ELEMENT.findAll(headHtml).count() > 1
-
-    return if (hasCustomTitle) {
-        SUMMON_DEFAULT_TITLE.replaceFirst(html, "")
-    } else {
-        html
     }
 }
 

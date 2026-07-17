@@ -25,7 +25,8 @@ import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.Link
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.*
+import codes.yousef.summon.core.style.Color
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -88,7 +89,7 @@ fun SiteNavigation(
     compact: Boolean = false,
     showLocale: Boolean = true,
 ) {
-    GlobalStyle(SITE_NAVIGATION_CSS)
+    SiteNavigationStyleSheet()
 
     Header(
         modifier = modifier
@@ -302,7 +303,7 @@ private fun EcosystemNavigationLink(
         Image(
             src = item.logoPath,
             alt = "",
-            modifier = Modifier().width(22.px).height(22.px).style("object-fit", "contain"),
+            modifier = Modifier().width(22.px).height(22.px).objectFit(ObjectFit.Contain),
         )
         Text(item.label)
     }
@@ -344,7 +345,7 @@ private fun ContextNavigation(context: PageNavigationContext) {
             .className("site-context-nav")
             .attribute("aria-label", "${context.name} navigation")
             .dataAttribute("navigation-layer", "context")
-            .style("--context-accent", context.accentColor)
+            .cssVar("context-accent", context.accentColor)
             .borderWidth(1, BorderSide.Top)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER),
@@ -376,7 +377,7 @@ private fun ContextNavigation(context: PageNavigationContext) {
                     Image(
                         src = logoPath,
                         alt = "",
-                        modifier = Modifier().width(24.px).height(24.px).style("object-fit", "contain"),
+                        modifier = Modifier().width(24.px).height(24.px).objectFit(ObjectFit.Contain),
                     )
                 }
                 Text(context.name)
@@ -499,108 +500,223 @@ private fun currentPageModifier(modifier: Modifier, active: Boolean): Modifier =
 private fun activeVisualModifier(modifier: Modifier, active: Boolean): Modifier =
     if (active) modifier.dataAttribute("active", "true") else modifier
 
-private val SITE_NAVIGATION_CSS = """
-    .site-navigation-shell {
-        position: sticky;
-        top: 16px;
-        overflow: visible;
-        backdrop-filter: blur(22px);
-        -webkit-backdrop-filter: blur(22px);
-    }
-    .site-navigation-compact { top: 0; }
-    .site-nav-primary-menu { min-width: 0; }
-    .site-nav-primary-toggle { display: none !important; }
-    .site-nav-primary-panel {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-    }
-    .site-navigation-shell a,
-    .site-navigation-shell summary,
-    .site-nav-primary-toggle { transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
-    .site-navigation-shell a:hover,
-    .site-navigation-shell summary:hover,
-    .site-nav-primary-toggle:hover { color: #ffffff !important; background: rgba(255, 255, 255, 0.09) !important; }
-    .site-navigation-shell a:focus-visible,
-    .site-navigation-shell summary:focus-visible,
-    .site-nav-primary-toggle:focus-visible {
-        outline: 3px solid #8fe3ff !important;
-        outline-offset: 3px;
-    }
-    .site-navigation-shell a[aria-current="page"],
-    .site-nav-ecosystem-link[data-active="true"],
-    .site-nav-ecosystem-disclosure[data-active="true"] > summary {
-        color: #ffffff !important;
-        background: rgba(106, 215, 255, 0.14);
-    }
-    .site-nav-work-link[aria-current="page"] { box-shadow: 0 0 0 3px rgba(255, 137, 176, 0.3); }
-    .site-nav-ecosystem-disclosure > summary { list-style: none; }
-    .site-nav-ecosystem-disclosure > summary::-webkit-details-marker { display: none; }
-    .site-nav-ecosystem-disclosure:not([open]) .site-nav-ecosystem-panel { display: none; }
-    .site-nav-ecosystem-panel { z-index: 1000; }
-    .site-nav-ecosystem-disclosure[open] > summary { color: #ffffff !important; background: rgba(255, 255, 255, 0.1); }
-    .site-context-nav-rail { scrollbar-width: thin; scrollbar-color: rgba(143, 227, 255, 0.35) transparent; }
-    .site-context-link[aria-current="page"] {
-        color: #ffffff !important;
-        background: color-mix(in srgb, var(--context-accent) 18%, transparent);
-        box-shadow: inset 0 -2px 0 var(--context-accent);
-    }
-    @media (max-width: 1040px) {
-        .site-nav-primary-row { padding: 10px 12px !important; }
-        .site-nav-primary-menu { flex: 0 0 auto !important; }
-        .site-nav-primary-toggle {
-            display: flex !important;
-            background: transparent !important;
-            border: 0 !important;
+@Composable
+private fun SiteNavigationStyleSheet() {
+    TypedStyleSheet {
+        val shell = StyleSelector.className("site-navigation-shell")
+        val compact = StyleSelector.className("site-navigation-compact")
+        val primaryMenu = StyleSelector.className("site-nav-primary-menu")
+        val primaryToggle = StyleSelector.className("site-nav-primary-toggle")
+        val primaryPanel = StyleSelector.className("site-nav-primary-panel")
+        val mainLinks = StyleSelector.className("site-nav-main-links")
+        val actions = StyleSelector.className("site-nav-actions")
+        val navLink = StyleSelector.className("site-nav-link")
+        val workLink = StyleSelector.className("site-nav-work-link")
+        val disclosure = StyleSelector.className("site-nav-ecosystem-disclosure")
+        val disclosureSummary = StyleSelector.className("site-nav-ecosystem-summary")
+        val ecosystemLink = StyleSelector.className("site-nav-ecosystem-link")
+        val ecosystemPanel = StyleSelector.className("site-nav-ecosystem-panel")
+        val contextRail = StyleSelector.className("site-context-nav-rail")
+        val contextBrand = StyleSelector.className("site-context-brand")
+        val shellAnchor = shell.descendant(StyleSelector.element(StyleElement.Anchor))
+        val shellSummary = shell.descendant(StyleSelector.element(StyleElement.Summary))
+        val summaryElement = StyleSelector.element(StyleElement.Summary)
+
+        rule(
+            shell,
+            Modifier()
+                .position(Position.Sticky)
+                .top(16.px)
+                .overflow(Overflow.Visible)
+                .backdropBlur(22),
+        )
+        rule(compact, Modifier().top(0.px))
+        rule(primaryMenu, Modifier().minWidth(0))
+        rule(primaryToggle, Modifier().display(Display.None), StyleRulePriority.Important)
+        rule(
+            primaryPanel,
+            Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .justifyContent(JustifyContent.SpaceBetween)
+                .gap(16.px),
+        )
+
+        val interactive = StyleSelector.all(shellAnchor, shellSummary, primaryToggle)
+        rule(
+            interactive,
+            Modifier().transition(
+                property = TransitionProperty.All,
+                duration = 160,
+                timingFunction = TransitionTimingFunction.Ease,
+            ),
+        )
+        rule(
+            StyleSelector.all(
+                shellAnchor.pseudoClass(StylePseudoClass.Hover),
+                shellSummary.pseudoClass(StylePseudoClass.Hover),
+                primaryToggle.pseudoClass(StylePseudoClass.Hover),
+            ),
+            Modifier()
+                .color(Color.WHITE)
+                .backgroundColor(Color.rgba(255, 255, 255, 0.09f)),
+            StyleRulePriority.Important,
+        )
+        rule(
+            StyleSelector.all(
+                shellAnchor.pseudoClass(StylePseudoClass.FocusVisible),
+                shellSummary.pseudoClass(StylePseudoClass.FocusVisible),
+                primaryToggle.pseudoClass(StylePseudoClass.FocusVisible),
+            ),
+            Modifier()
+                .outline(3, OutlineStyle.Solid, "#8fe3ff")
+                .outlineOffset(3),
+            StyleRulePriority.Important,
+        )
+
+        rule(
+            StyleSelector.all(
+                shellAnchor.attribute(StyleAttribute.AriaCurrent, "page"),
+                ecosystemLink.attribute(StyleAttribute.data("active"), "true"),
+                disclosure.attribute(StyleAttribute.data("active"), "true").child(summaryElement),
+            ),
+            Modifier()
+                .color(Color.WHITE)
+                .backgroundColor(Color.rgba(106, 215, 255, 0.14f)),
+            StyleRulePriority.Important,
+        )
+        rule(
+            workLink.attribute(StyleAttribute.AriaCurrent, "page"),
+            Modifier().boxShadow("0 0 0 3px rgba(255, 137, 176, 0.3)"),
+        )
+        rule(disclosure.child(summaryElement), Modifier().listStyle(ListStyleType.None))
+        rule(
+            disclosure.child(summaryElement.pseudoElement(StylePseudoElement.WebkitDetailsMarker)),
+            Modifier().display(Display.None),
+        )
+        rule(
+            disclosure
+                .not(StyleSelector.Universal.attribute(StyleAttribute.Open))
+                .descendant(ecosystemPanel),
+            Modifier().display(Display.None),
+        )
+        rule(ecosystemPanel, Modifier().zIndex(1000))
+        rule(
+            disclosure.attribute(StyleAttribute.Open).child(summaryElement),
+            Modifier()
+                .color(Color.WHITE)
+                .backgroundColor(Color.rgba(255, 255, 255, 0.1f)),
+            StyleRulePriority.Important,
+        )
+        rule(
+            contextRail,
+            Modifier()
+                .scrollbarWidth(ScrollbarWidth.Thin)
+                .scrollbarColor(Color.rgba(143, 227, 255, 0.35f), Color.TRANSPARENT),
+        )
+        rule(
+            StyleSelector.className("site-context-link")
+                .attribute(StyleAttribute.AriaCurrent, "page"),
+            Modifier()
+                .color(Color.WHITE)
+                .backgroundColor("color-mix(in srgb, ${cssVar("context-accent")} 18%, transparent)")
+                .boxShadow("inset 0 -2px 0 ${cssVar("context-accent")}"),
+            StyleRulePriority.Important,
+        )
+
+        media(MediaQuery.MaxWidth(1040)) {
+            rule(
+                StyleSelector.className("site-nav-primary-row"),
+                Modifier().padding(10.px, 12.px),
+                StyleRulePriority.Important,
+            )
+            rule(
+                primaryMenu,
+                Modifier().flex(grow = 0, shrink = 0, basis = "auto"),
+                StyleRulePriority.Important,
+            )
+            rule(
+                primaryToggle,
+                Modifier()
+                    .display(Display.Flex)
+                    .backgroundColor(Color.TRANSPARENT)
+                    .borderWidth(0),
+                StyleRulePriority.Important,
+            )
+            rule(
+                primaryPanel,
+                Modifier()
+                    .display(Display.None)
+                    .position(Position.Absolute)
+                    .insetInlineEnd(0)
+                    .top("calc(100% + 10px)")
+                    .zIndex(1000)
+                    .width("min(88vw, 340px)")
+                    .maxHeight("calc(100vh - 110px)")
+                    .overflowY(Overflow.Auto)
+                    .flexDirection(FlexDirection.Column)
+                    .alignItems(AlignItems.Stretch)
+                    .padding(14.px)
+                    .backgroundColor("#071b2e")
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(Color.rgba(255, 255, 255, 0.25f))
+                    .borderRadius(16.px)
+                    .boxShadow("0 24px 70px rgba(0, 0, 0, 0.5)"),
+                StyleRulePriority.Important,
+            )
+            rule(
+                StyleSelector.all(mainLinks, actions),
+                Modifier()
+                    .width(100.percent)
+                    .flexDirection(FlexDirection.Column)
+                    .alignItems(AlignItems.Stretch)
+                    .gap(6.px),
+                StyleRulePriority.Important,
+            )
+            rule(
+                StyleSelector.all(navLink, workLink, disclosureSummary, ecosystemLink),
+                Modifier().display(Display.Flex).width(100.percent),
+                StyleRulePriority.Important,
+            )
+            rule(disclosureSummary, Modifier().justifyContent(JustifyContent.SpaceBetween))
+            rule(disclosure, Modifier().width(100.percent))
+            rule(
+                ecosystemPanel,
+                Modifier()
+                    .position(Position.Static)
+                    .minWidth(0)
+                    .width(100.percent)
+                    .marginTop(6.px)
+                    .boxShadow("none"),
+                StyleRulePriority.Important,
+            )
         }
-        .site-nav-primary-panel {
-            display: none;
-            position: absolute !important;
-            inset-inline-end: 0;
-            top: calc(100% + 10px);
-            z-index: 1000;
-            width: min(88vw, 340px);
-            max-height: calc(100vh - 110px);
-            overflow-y: auto;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            padding: 14px;
-            background: #071b2e;
-            border: 1px solid rgba(255,255,255,0.25);
-            border-radius: 16px;
-            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+
+        media(MediaQuery.MaxWidth(640)) {
+            rule(
+                shell,
+                Modifier().top(8.px).borderRadius(16.px),
+                StyleRulePriority.Important,
+            )
+            rule(compact, Modifier().top(0.px), StyleRulePriority.Important)
+            rule(
+                contextRail,
+                Modifier().padding(8.px, 10.px),
+                StyleRulePriority.Important,
+            )
+            rule(
+                contextBrand,
+                Modifier()
+                    .position(Position.Sticky)
+                    .insetInlineStart(0)
+                    .backgroundColor("#071b2e")
+                    .zIndex(2),
+            )
         }
-        .site-nav-main-links,
-        .site-nav-actions {
-            width: 100%;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 6px !important;
-        }
-        .site-nav-link,
-        .site-nav-work-link,
-        .site-nav-ecosystem-summary,
-        .site-nav-ecosystem-link { display: flex !important; width: 100%; }
-        .site-nav-ecosystem-summary { justify-content: space-between; }
-        .site-nav-ecosystem-disclosure { width: 100%; }
-        .site-nav-ecosystem-panel {
-            position: static !important;
-            min-width: 0 !important;
-            width: 100%;
-            margin-top: 6px;
-            box-shadow: none !important;
+
+        media(MediaQuery.PrefersReducedMotion) {
+            rule(interactive, Modifier().transitionProperty(TransitionProperty.None), StyleRulePriority.Important)
         }
     }
-    @media (max-width: 640px) {
-        .site-navigation-shell { top: 8px; border-radius: 16px !important; }
-        .site-navigation-compact { top: 0; }
-        .site-context-nav-rail { padding: 8px 10px !important; }
-        .site-context-brand { position: sticky; inset-inline-start: 0; background: #071b2e; z-index: 2; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .site-navigation-shell a,
-        .site-navigation-shell summary,
-        .site-nav-primary-toggle { transition: none !important; }
-    }
-""".trimIndent()
+}

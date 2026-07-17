@@ -30,7 +30,7 @@ class DocsRouter(
     fun render(
         requestPath: String,
         origin: String,
-        html: String,
+        document: MarkdownDocument,
         meta: MarkdownMeta,
         toc: List<TocEntry>,
         sidebar: DocsNavTree,
@@ -45,7 +45,7 @@ class DocsRouter(
                 DocsPageFrame(branding, requestPath, basePath, seenPackagesEnabled) {
                     DocsShell(
                         requestPath = requestPath,
-                        html = html,
+                        document = document,
                         toc = toc,
                         sidebar = sidebar,
                         meta = meta,

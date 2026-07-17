@@ -1,6 +1,7 @@
 package code.yousef.portfolio.docs.summon
 
 import code.yousef.portfolio.docs.DocsNavTree
+import code.yousef.portfolio.docs.MarkdownDocument
 import code.yousef.portfolio.docs.MarkdownMeta
 import code.yousef.portfolio.docs.NeighborLinks
 import code.yousef.portfolio.docs.TocEntry
@@ -24,7 +25,7 @@ import codes.yousef.summon.modifier.*
 @Composable
 fun DocsShell(
     requestPath: String,
-    html: String,
+    document: MarkdownDocument,
     toc: List<TocEntry>,
     sidebar: DocsNavTree,
     meta: MarkdownMeta,
@@ -72,7 +73,7 @@ fun DocsShell(
                         padding(PortfolioTheme.Spacing.sm)
                     }
             ) {
-                Prose(html = html)
+                Prose(document = document)
                 NeighborRow(neighbors, basePath)
             }
             Toc(entries = toc)

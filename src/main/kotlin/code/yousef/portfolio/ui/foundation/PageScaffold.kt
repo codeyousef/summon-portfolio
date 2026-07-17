@@ -2,14 +2,20 @@ package code.yousef.portfolio.ui.foundation
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioHeroGradient
 import code.yousef.portfolio.ui.aurora.AuroraBackground
 import code.yousef.portfolio.ui.aurora.AuroraConfig
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StyleAttribute
+import codes.yousef.summon.components.styles.StyleElement
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.vw
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.runtime.LocalPlatformRenderer
 
@@ -21,51 +27,55 @@ fun PageScaffold(
     content: () -> Unit
 ) {
     InjectFontAssets()
-    PostHogAnalytics()
 
-    // Global styles to prevent zoom and horizontal overflow on mobile.
-    // When aurora is enabled, keep a matching gradient underlay so canvas or section
-    // boundaries never expose a flat color seam.
-    val bodyBackground = if (enableAuroraEffects) {
-        """
-            background-color: #02030a;
-            background-image: ${PortfolioTheme.Gradients.HERO};
-            background-attachment: fixed;
-        """.trimIndent()
-    } else {
-        "background-color: inherit;"
+    TypedStyleSheet {
+        val documentRoots = StyleSelector.all(
+            StyleSelector.element(StyleElement.Html),
+            StyleSelector.element(StyleElement.Body),
+        )
+        val documentBackground = if (enableAuroraEffects) {
+            Modifier()
+                .backgroundColor("#02030a")
+                .portfolioHeroGradient()
+                .backgroundAttachment(BackgroundAttachment.Fixed)
+        } else {
+            Modifier().backgroundColor("inherit")
+        }
+        rule(
+            documentRoots,
+            documentBackground
+                .overflowX(Overflow.Hidden)
+                .maxWidth(100.vw),
+        )
+        rule(StyleSelector.Universal, Modifier().boxSizing(BoxSizing.BorderBox))
+
+        val dropdownPanels = StyleSelector.all(
+            StyleSelector.Universal.attribute(StyleAttribute.data("dropdown-content"), "true"),
+            StyleSelector.className("summon-dropdown-content"),
+        )
+        rule(
+            dropdownPanels,
+            Modifier()
+                .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                .borderRadius(PortfolioTheme.Radii.md)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(PortfolioTheme.Colors.BORDER)
+                .overflow(Overflow.Hidden),
+            priority = StyleRulePriority.Important,
+        )
+
+        media(MediaQuery.MaxWidth(768)) {
+            rule(
+                StyleSelector.Universal.attribute(StyleAttribute.data("page-content"), "true"),
+                Modifier()
+                    .padding(PortfolioTheme.Spacing.sm)
+                    .paddingLeft(PortfolioTheme.Spacing.sm)
+                    .paddingRight(PortfolioTheme.Spacing.sm),
+                priority = StyleRulePriority.Important,
+            )
+        }
     }
-    GlobalStyle(
-        """
-        html, body {
-            overflow-x: hidden;
-            max-width: 100vw;
-            $bodyBackground
-        }
-        
-        * {
-            box-sizing: border-box;
-        }
-        
-        /* Style dropdown panels with dark background */
-        [data-dropdown-content="true"],
-        .summon-dropdown-content,
-        div[style*="position: absolute"][style*="z-index"] {
-            background-color: ${PortfolioTheme.Colors.SURFACE} !important;
-            border-radius: ${PortfolioTheme.Radii.md} !important;
-            border: 1px solid ${PortfolioTheme.Colors.BORDER} !important;
-            overflow: hidden !important;
-        }
-        
-        @media (max-width: 768px) {
-            [data-page-content="true"] {
-                padding: ${PortfolioTheme.Spacing.sm} !important;
-                padding-left: ${PortfolioTheme.Spacing.sm} !important;
-                padding-right: ${PortfolioTheme.Spacing.sm} !important;
-            }
-        }
-        """
-    )
 
     val scaffoldModifier = modifier
         .minHeight("100vh")
@@ -148,10 +158,15 @@ private fun AuroraBlendLayer() {
             .top("64vh")
             .height("56vh")
             .pointerEvents(PointerEvents.None)
-            .style(
-                "background",
-                "linear-gradient(180deg, rgba(2,3,10,0) 0%, rgba(2,3,10,0.18) 34%, rgba(0,18,31,0.72) 74%, rgba(0,26,44,0.96) 100%)"
-            )
+            .backgroundLayers {
+                linearGradient {
+                    direction("180deg")
+                    colorStop("rgba(2,3,10,0)", "0%")
+                    colorStop("rgba(2,3,10,0.18)", "34%")
+                    colorStop("rgba(0,18,31,0.72)", "74%")
+                    colorStop("rgba(0,26,44,0.96)", "100%")
+                }
+            }
             .zIndex(1)
             .dataAttribute("aurora-blend", "true")
     ) {}

@@ -7,11 +7,14 @@ import code.yousef.portfolio.building.payment.isUnpaidPastDue
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.*
-import codes.yousef.summon.components.foundation.RawHtml
+import codes.yousef.summon.components.html.H3
+import codes.yousef.summon.components.html.Section
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.Link
+import codes.yousef.summon.core.style.Color
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.modifier.*
 
 // ===================== Login Page =====================
@@ -132,9 +135,9 @@ fun ResetPasswordPage(token: String?, errorMessage: String?) {
                     .padding(BuildingTheme.Spacing.md)
                     .borderRadius(BuildingTheme.BorderRadius.md)
                     .fontWeight("600")
-                    .style("text-align", "center")
-                    .style("text-decoration", "none")
-                    .style("display", "block")
+                    .textAlign(TextAlign.Center)
+                    .textDecoration(TextDecoration.None)
+                    .display(Display.Block)
             )
         } else {
             // Valid token - show password reset form
@@ -206,7 +209,9 @@ fun UserManagementPage(
                         .borderRadius(BuildingTheme.BorderRadius.md)
                         .padding(BuildingTheme.Spacing.lg)
                         .margin("0", "0", BuildingTheme.Spacing.lg, "0")
-                        .style("border", "1px solid #c3e6cb")
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor("#c3e6cb")
                 ) {
                     Column(modifier = Modifier().fillMaxWidth()) {
                         Text(
@@ -230,8 +235,8 @@ fun UserManagementPage(
                                 .backgroundColor(BuildingTheme.Colors.BG_PRIMARY)
                                 .borderRadius(BuildingTheme.BorderRadius.sm)
                                 .padding(BuildingTheme.Spacing.sm)
-                                .style("word-break", "break-all")
-                                .style("font-family", "monospace")
+                                .wordBreak(WordBreak.BreakAll)
+                                .fontFamily("monospace")
                                 .fontSize(BuildingTheme.FontSize.sm)
                         ) {
                             Text(text = generatedLink)
@@ -246,14 +251,14 @@ fun UserManagementPage(
                     .fillMaxWidth()
                     .backgroundColor(BuildingTheme.Colors.BG_CARD)
                     .borderRadius(BuildingTheme.BorderRadius.lg)
-                    .style("overflow", "hidden")
+                    .overflow(Overflow.Hidden)
             ) {
                 if (users.isEmpty()) {
                     Box(
                         modifier = Modifier()
                             .fillMaxWidth()
                             .padding(BuildingTheme.Spacing.xl)
-                            .style("text-align", "center")
+                            .textAlign(TextAlign.Center)
                     ) {
                         Text(
                             text = BuildingStrings.NO_USERS,
@@ -267,11 +272,16 @@ fun UserManagementPage(
                                 modifier = Modifier()
                                     .fillMaxWidth()
                                     .padding(BuildingTheme.Spacing.md, BuildingTheme.Spacing.lg)
-                                    .style("align-items", "center")
-                                    .style("justify-content", "space-between")
+                                    .alignItems(AlignItems.Center)
+                                    .justifyContent(JustifyContent.SpaceBetween)
                                     .let { 
                                         if (index < users.size - 1) 
-                                            it.style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                                            it.border(
+                                                BorderSide.Bottom,
+                                                1,
+                                                BorderStyle.Solid,
+                                                BuildingTheme.Colors.BORDER,
+                                            )
                                         else it
                                     }
                             ) {
@@ -314,14 +324,16 @@ private fun BuildingAuthScaffold(
     errorMessage: String?,
     content: @Composable () -> Unit
 ) {
+    BuildingBaseStyles()
+
     Box(
         modifier = Modifier()
             .fillMaxWidth()
             .minHeight("100vh")
             .backgroundColor(BuildingTheme.Colors.BG_PRIMARY)
-            .style("display", "flex")
-            .style("align-items", "center")
-            .style("justify-content", "center")
+            .display(Display.Flex)
+            .alignItems(AlignItems.Center)
+            .justifyContent(JustifyContent.Center)
     ) {
         Column(
             modifier = Modifier()
@@ -336,7 +348,7 @@ private fun BuildingAuthScaffold(
                     .fontSize(BuildingTheme.FontSize.xxl)
                     .fontWeight("700")
                     .color(BuildingTheme.Colors.PRIMARY)
-                    .style("text-align", "center")
+                    .textAlign(TextAlign.Center)
                     .margin("0", "0", BuildingTheme.Spacing.lg, "0")
             )
             
@@ -347,7 +359,7 @@ private fun BuildingAuthScaffold(
                     .backgroundColor(BuildingTheme.Colors.BG_CARD)
                     .borderRadius(BuildingTheme.BorderRadius.lg)
                     .padding(BuildingTheme.Spacing.xl)
-                    .style("box-shadow", "0 4px 6px ${BuildingTheme.Colors.SHADOW}")
+                    .boxShadow("0 4px 6px ${BuildingTheme.Colors.SHADOW}")
             ) {
                 Text(
                     text = title,
@@ -381,7 +393,7 @@ private fun FormGroup(label: String, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier()
             .fillMaxWidth()
-            .margin("0", "0", BuildingTheme.Spacing.md, "0")
+            .margin(0.px, 0.px, BuildingTheme.Spacing.md, 0.px)
     ) {
         Text(
             text = label,
@@ -400,7 +412,9 @@ private fun inputModifier() = Modifier()
     .padding(BuildingTheme.Spacing.md)
     .backgroundColor(BuildingTheme.Colors.BG_PRIMARY)
     .borderRadius(BuildingTheme.BorderRadius.md)
-    .style("border", "1px solid ${BuildingTheme.Colors.BORDER}")
+    .borderWidth(1)
+    .borderStyle(BorderStyle.Solid)
+    .borderColor(BuildingTheme.Colors.BORDER)
     .color(BuildingTheme.Colors.TEXT_PRIMARY)
     .fontSize(BuildingTheme.FontSize.base)
 
@@ -433,9 +447,9 @@ fun BuildingDashboardPage(
             Box(
                 modifier = Modifier()
                     .fillMaxWidth()
-                    .style("display", "grid")
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(180px, 1fr))")
-                    .style("gap", BuildingTheme.Spacing.md)
+                    .display(Display.Grid)
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(180.px), gridFraction())))
+                    .gap(BuildingTheme.Spacing.md)
                     .margin("0", "0", BuildingTheme.Spacing.lg, "0")
             ) {
                 StatCard(
@@ -531,10 +545,15 @@ fun BuildingsListPage(
                         Row(
                             modifier = Modifier()
                                 .fillMaxWidth()
-                                .style("display", "grid")
-                                .style("grid-template-columns", "52px 1fr 1fr 200px")
+                                .display(Display.Grid)
+                                .gridTemplateColumns(
+                                    gridTrack(52.px),
+                                    gridFraction(),
+                                    gridFraction(),
+                                    gridTrack(200.px),
+                                )
                                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
-                                .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                                .border(BorderSide.Bottom, 1, BorderStyle.Solid, BuildingTheme.Colors.BORDER)
                         ) {
                             GridHeaderCell(BuildingStrings.SELECT)
                             GridHeaderCell(BuildingStrings.BUILDING_NAME)
@@ -546,9 +565,14 @@ fun BuildingsListPage(
                             Row(
                                 modifier = Modifier()
                                     .fillMaxWidth()
-                                    .style("display", "grid")
-                                    .style("grid-template-columns", "52px 1fr 1fr 200px")
-                                    .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                                    .display(Display.Grid)
+                                    .gridTemplateColumns(
+                                        gridTrack(52.px),
+                                        gridFraction(),
+                                        gridFraction(),
+                                        gridTrack(200.px),
+                                    )
+                                    .border(BorderSide.Bottom, 1, BorderStyle.Solid, BuildingTheme.Colors.BORDER)
                             ) {
                                 GridCell { BulkCheckbox(building.id) }
                                 GridCell { Text(building.name) }
@@ -556,8 +580,8 @@ fun BuildingsListPage(
                                 GridCell {
                                     Row(
                                         modifier = Modifier()
-                                            .style("gap", BuildingTheme.Spacing.sm)
-                                            .style("flex-wrap", "wrap")
+                                            .gap(BuildingTheme.Spacing.sm)
+                                            .flexWrap(FlexWrap.Wrap)
                                     ) {
                                         Link(
                                             href = "/buildings/${building.id}",
@@ -613,7 +637,7 @@ fun BuildingUnitsPage(
             Row(
                 modifier = Modifier()
                     .margin("0", "0", BuildingTheme.Spacing.md, "0")
-                    .style("gap", BuildingTheme.Spacing.sm)
+                    .gap(BuildingTheme.Spacing.sm)
             ) {
                 codes.yousef.summon.components.navigation.Link(
                     href = "/buildings",
@@ -651,10 +675,18 @@ fun BuildingUnitsPage(
                         Row(
                             modifier = Modifier()
                                 .fillMaxWidth()
-                                .style("display", "grid")
-                                .style("grid-template-columns", "52px 80px 1fr 120px 160px 100px 150px")
+                                .display(Display.Grid)
+                                .gridTemplateColumns(
+                                    gridTrack(52.px),
+                                    gridTrack(80.px),
+                                    gridFraction(),
+                                    gridTrack(120.px),
+                                    gridTrack(160.px),
+                                    gridTrack(100.px),
+                                    gridTrack(150.px),
+                                )
                                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
-                                .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                                .border(BorderSide.Bottom, 1, BorderStyle.Solid, BuildingTheme.Colors.BORDER)
                         ) {
                             GridHeaderCell(BuildingStrings.SELECT)
                             GridHeaderCell(BuildingStrings.UNIT_NUMBER)
@@ -669,9 +701,17 @@ fun BuildingUnitsPage(
                             Row(
                                 modifier = Modifier()
                                     .fillMaxWidth()
-                                    .style("display", "grid")
-                                    .style("grid-template-columns", "52px 80px 1fr 120px 160px 100px 150px")
-                                    .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                                    .display(Display.Grid)
+                                    .gridTemplateColumns(
+                                        gridTrack(52.px),
+                                        gridTrack(80.px),
+                                        gridFraction(),
+                                        gridTrack(120.px),
+                                        gridTrack(160.px),
+                                        gridTrack(100.px),
+                                        gridTrack(150.px),
+                                    )
+                                    .border(BorderSide.Bottom, 1, BorderStyle.Solid, BuildingTheme.Colors.BORDER)
                             ) {
                                 GridCell { BulkCheckbox(detail.apartment.id) }
                                 GridCell { Text(detail.apartment.unitNumber) }
@@ -714,8 +754,8 @@ fun BuildingUnitsPage(
                                 GridCell {
                                     Row(
                                         modifier = Modifier()
-                                            .style("gap", BuildingTheme.Spacing.sm)
-                                            .style("flex-wrap", "wrap")
+                                            .gap(BuildingTheme.Spacing.sm)
+                                            .flexWrap(FlexWrap.Wrap)
                                     ) {
                                         codes.yousef.summon.components.navigation.Link(
                                             href = "/apartments/${detail.apartment.id}/edit",
@@ -767,7 +807,7 @@ fun PaymentsListPage(
             Row(
                 modifier = Modifier()
                     .margin("0", "0", BuildingTheme.Spacing.md, "0")
-                    .style("gap", BuildingTheme.Spacing.sm)
+                    .gap(BuildingTheme.Spacing.sm)
             ) {
                 FilterButton(BuildingStrings.ALL, null, currentFilter)
                 FilterButton(BuildingStrings.OVERDUE, "OVERDUE", currentFilter)
@@ -801,7 +841,7 @@ fun PaymentsListPage(
                         PaymentTable(payments, selectable = true, showStatusActions = true)
                     }
                 }
-                RawHtml(html = paymentStatusFormsHtml(payments, redirectPath))
+                PaymentStatusForms(payments, redirectPath)
             }
         }
     }
@@ -831,24 +871,28 @@ private fun PaymentTable(
     selectable: Boolean = false,
     showStatusActions: Boolean = false
 ) {
-    val gridColumns = when {
-        selectable && showStatusActions ->
-            "52px minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr) 170px"
-        selectable ->
-            "52px minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr)"
-        else ->
-            "minmax(130px,1fr) 80px minmax(120px,1fr) 90px 110px 110px 130px minmax(140px,1fr)"
-    }
+    val gridColumns = buildList<GridTrack> {
+        if (selectable) add(gridTrack(52.px))
+        add(gridMinMax(gridTrack(130.px), gridFraction()))
+        add(gridTrack(80.px))
+        add(gridMinMax(gridTrack(120.px), gridFraction()))
+        add(gridTrack(90.px))
+        add(gridTrack(110.px))
+        add(gridTrack(110.px))
+        add(gridTrack(130.px))
+        add(gridMinMax(gridTrack(140.px), gridFraction()))
+        if (showStatusActions) add(gridTrack(170.px))
+    }.toTypedArray()
     // Payment table using CSS Grid
     Column(modifier = Modifier().fillMaxWidth()) {
         // Header row
         Row(
             modifier = Modifier()
                 .fillMaxWidth()
-                .style("display", "grid")
-                .style("grid-template-columns", gridColumns)
+                .display(Display.Grid)
+                .gridTemplateColumns(*gridColumns)
                 .backgroundColor(BuildingTheme.Colors.BG_HOVER)
-                .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                .border(BorderSide.Bottom, 1, BorderStyle.Solid, BuildingTheme.Colors.BORDER)
         ) {
             if (selectable) GridHeaderCell(BuildingStrings.SELECT)
             GridHeaderCell(BuildingStrings.BUILDING_NAME)
@@ -866,9 +910,9 @@ private fun PaymentTable(
             Row(
                 modifier = Modifier()
                     .fillMaxWidth()
-                    .style("display", "grid")
-                    .style("grid-template-columns", gridColumns)
-                    .style("border-bottom", "1px solid ${BuildingTheme.Colors.BORDER}")
+                    .display(Display.Grid)
+                    .gridTemplateColumns(*gridColumns)
+                    .border(BorderSide.Bottom, 1, BorderStyle.Solid, BuildingTheme.Colors.BORDER)
             ) {
                 if (selectable) GridCell { BulkCheckbox(detail.payment.id) }
                 GridCell { Text(detail.building?.name ?: "-") }
@@ -878,7 +922,7 @@ private fun PaymentTable(
                 GridCell { Text(BuildingStrings.formatCurrency(detail.payment.amount)) }
                 GridCell { Text(detail.payment.dueDate) }
                 GridCell {
-                    Column(modifier = Modifier().style("gap", BuildingTheme.Spacing.xs)) {
+                    Column(modifier = Modifier().gap(BuildingTheme.Spacing.xs)) {
                         StatusBadge(detail.payment.status)
                         if (isUnpaidPastDue(detail.payment)) {
                             PastDueWarningBadge()
@@ -888,7 +932,7 @@ private fun PaymentTable(
                 GridCell { Text(detail.payment.notes) }
                 if (showStatusActions) {
                     GridCell {
-                        RawHtml(html = paymentStatusButtonsHtml(detail.payment))
+                        PaymentStatusButtons(detail.payment)
                     }
                 }
             }
@@ -927,7 +971,7 @@ fun BulkErrorPage(username: String, title: String, message: String, returnHref: 
                         .color(BuildingTheme.Colors.TEXT_PRIMARY)
                         .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                         .borderRadius(BuildingTheme.BorderRadius.md)
-                        .style("text-decoration", "none")
+                        .textDecoration(TextDecoration.None)
                 ) {
                     Text(BuildingStrings.BACK)
                 }
@@ -960,7 +1004,7 @@ fun BulkResultPage(
                         .color(BuildingTheme.Colors.TEXT_WHITE)
                         .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                         .borderRadius(BuildingTheme.BorderRadius.md)
-                        .style("text-decoration", "none")
+                        .textDecoration(TextDecoration.None)
                 ) {
                     Text(BuildingStrings.BACK)
                 }
@@ -984,9 +1028,9 @@ fun BulkBuildingsReviewPage(
                 errorMessage?.let { Alert(it, AlertType.ERROR) }
                 if (action == "delete") {
                     CascadeSummary(cascadePlan)
-                    RawHtml(html = bulkDeleteFormHtml("/buildings/bulk/apply", buildings.map { it.id }, "/buildings"))
+                    BulkDeleteForm("/buildings/bulk/apply", buildings.map { it.id }, "/buildings")
                 } else {
-                    RawHtml(html = buildingsEditFormHtml(buildings))
+                    BuildingsEditForm(buildings)
                 }
             }
         }
@@ -1010,10 +1054,14 @@ fun BulkApartmentsReviewPage(
                 when (action) {
                     "delete" -> {
                         CascadeSummary(cascadePlan)
-                        RawHtml(html = bulkDeleteFormHtml("/buildings/${building.id}/units/bulk/apply", apartments.map { it.apartment.id }, "/buildings/${building.id}"))
+                        BulkDeleteForm(
+                            action = "/buildings/${building.id}/units/bulk/apply",
+                            ids = apartments.map { it.apartment.id },
+                            returnHref = "/buildings/${building.id}"
+                        )
                     }
-                    "dates" -> RawHtml(html = apartmentDateFormHtml(building.id, apartments))
-                    else -> RawHtml(html = apartmentsEditFormHtml(building.id, apartments))
+                    "dates" -> ApartmentDateForm(building.id, apartments)
+                    else -> ApartmentsEditForm(building.id, apartments)
                 }
             }
         }
@@ -1036,10 +1084,10 @@ fun BulkPaymentsReviewPage(
                 when (action) {
                     "delete" -> {
                         CascadeSummary(cascadePlan)
-                        RawHtml(html = bulkDeleteFormHtml("/payments/bulk/apply", payments.map { it.payment.id }, "/payments"))
+                        BulkDeleteForm("/payments/bulk/apply", payments.map { it.payment.id }, "/payments")
                     }
-                    "dates" -> RawHtml(html = paymentDateFormHtml(payments))
-                    else -> RawHtml(html = paymentsEditFormHtml(payments))
+                    "dates" -> PaymentDateForm(payments)
+                    else -> PaymentsEditForm(payments)
                 }
             }
         }
@@ -1131,21 +1179,67 @@ fun ImportPage(
                         .margin("0", "0", BuildingTheme.Spacing.md, "0")
                 )
                 
-                Form(
-                    action = "/clear-data",
-                    method = FormMethod.Post,
+                Link(
+                    href = "/clear-data/confirm",
                     modifier = Modifier()
-                        .attribute("onsubmit", "return confirm('${BuildingStrings.CLEAR_DATA_CONFIRM_DIALOG}');")
+                        .display(Display.InlineBlock)
+                        .backgroundColor(BuildingTheme.Colors.DANGER)
+                        .color(BuildingTheme.Colors.TEXT_WHITE)
+                        .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                        .borderRadius(BuildingTheme.BorderRadius.md)
+                        .fontWeight("500")
+                        .textDecoration(TextDecoration.None)
                 ) {
-                    FormButton(
-                        text = BuildingStrings.CLEAR_DATA,
+                    Text(BuildingStrings.CLEAR_DATA)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ClearDataConfirmationPage(username: String) {
+    BuildingPageLayout(
+        title = BuildingStrings.CLEAR_DATA,
+        username = username,
+        currentPath = "/import"
+    ) {
+        Column(modifier = Modifier().fillMaxWidth().maxWidth("720px")) {
+            PageHeader(title = BuildingStrings.CLEAR_DATA)
+            Card(modifier = Modifier().fillMaxWidth()) {
+                Alert(BuildingStrings.CLEAR_DATA_CONFIRM_DIALOG, AlertType.WARNING)
+                Row(
+                    modifier = Modifier()
+                        .gap(BuildingTheme.Spacing.sm)
+                        .flexWrap(FlexWrap.Wrap)
+                        .alignItems(AlignItems.Center)
+                ) {
+                    Form(action = "/clear-data", method = FormMethod.Post) {
+                        FormButton(
+                            text = BuildingStrings.CLEAR_DATA,
+                            variant = FormButtonVariant.Danger,
+                            fullWidth = false,
+                            modifier = Modifier()
+                                .backgroundColor(BuildingTheme.Colors.DANGER)
+                                .color(BuildingTheme.Colors.TEXT_WHITE)
+                                .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
+                                .borderRadius(BuildingTheme.BorderRadius.md)
+                                .fontWeight("600")
+                        )
+                    }
+                    Link(
+                        href = "/import",
                         modifier = Modifier()
-                            .backgroundColor(BuildingTheme.Colors.DANGER)
-                            .color(BuildingTheme.Colors.TEXT_WHITE)
+                            .display(Display.InlineBlock)
+                            .backgroundColor(BuildingTheme.Colors.BG_HOVER)
+                            .color(BuildingTheme.Colors.TEXT_PRIMARY)
                             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                             .borderRadius(BuildingTheme.BorderRadius.md)
-                            .fontWeight("500")
-                    )
+                            .fontWeight("600")
+                            .textDecoration(TextDecoration.None)
+                    ) {
+                        Text(BuildingStrings.CANCEL)
+                    }
                 }
             }
         }
@@ -1170,7 +1264,7 @@ fun EditBuildingPage(
             Row(
                 modifier = Modifier()
                     .margin("0", "0", BuildingTheme.Spacing.md, "0")
-                    .style("gap", BuildingTheme.Spacing.sm)
+                    .gap(BuildingTheme.Spacing.sm)
             ) {
                 Link(
                     href = "/buildings",
@@ -1212,7 +1306,7 @@ fun EditBuildingPage(
                     
                     Row(
                         modifier = Modifier()
-                            .style("gap", BuildingTheme.Spacing.md)
+                            .gap(BuildingTheme.Spacing.md)
                             .margin(BuildingTheme.Spacing.md, "0", "0", "0")
                     ) {
                         FormButton(
@@ -1231,7 +1325,7 @@ fun EditBuildingPage(
                                 .color(BuildingTheme.Colors.TEXT_PRIMARY)
                                 .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                                 .borderRadius(BuildingTheme.BorderRadius.md)
-                                .style("text-decoration", "none")
+                                .textDecoration(TextDecoration.None)
                         ) {
                             Text(BuildingStrings.CANCEL)
                         }
@@ -1260,7 +1354,7 @@ fun DeleteBuildingPage(
             Row(
                 modifier = Modifier()
                     .margin("0", "0", BuildingTheme.Spacing.md, "0")
-                    .style("gap", BuildingTheme.Spacing.sm)
+                    .gap(BuildingTheme.Spacing.sm)
             ) {
                 Link(
                     href = "/buildings",
@@ -1321,7 +1415,7 @@ fun DeleteBuildingPage(
                 // Action buttons
                 Row(
                     modifier = Modifier()
-                        .style("gap", BuildingTheme.Spacing.md)
+                        .gap(BuildingTheme.Spacing.md)
                 ) {
                     Form(
                         action = "/buildings/${building.id}/delete",
@@ -1345,7 +1439,7 @@ fun DeleteBuildingPage(
                             .color(BuildingTheme.Colors.TEXT_PRIMARY)
                             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                             .borderRadius(BuildingTheme.BorderRadius.md)
-                            .style("text-decoration", "none")
+                            .textDecoration(TextDecoration.None)
                     ) {
                         Text(BuildingStrings.CANCEL)
                     }
@@ -1376,7 +1470,7 @@ fun EditApartmentPage(
             Row(
                 modifier = Modifier()
                     .margin("0", "0", BuildingTheme.Spacing.md, "0")
-                    .style("gap", BuildingTheme.Spacing.sm)
+                    .gap(BuildingTheme.Spacing.sm)
             ) {
                 Link(
                     href = "/buildings",
@@ -1419,9 +1513,9 @@ fun EditApartmentPage(
                     Row(
                         modifier = Modifier()
                             .fillMaxWidth()
-                            .style("display", "grid")
-                            .style("grid-template-columns", "1fr 1fr")
-                            .style("gap", BuildingTheme.Spacing.md)
+                            .display(Display.Grid)
+                            .gridTemplateColumns(gridFraction(), gridFraction())
+                            .gap(BuildingTheme.Spacing.md)
                             .margin("0", "0", BuildingTheme.Spacing.lg, "0")
                     ) {
                         Column {
@@ -1477,9 +1571,9 @@ fun EditApartmentPage(
                     Row(
                         modifier = Modifier()
                             .fillMaxWidth()
-                            .style("display", "grid")
-                            .style("grid-template-columns", "1fr 1fr")
-                            .style("gap", BuildingTheme.Spacing.md)
+                            .display(Display.Grid)
+                            .gridTemplateColumns(gridFraction(), gridFraction())
+                            .gap(BuildingTheme.Spacing.md)
                     ) {
                         Column {
                             FormGroup(label = BuildingStrings.TENANT_NAME) {
@@ -1534,9 +1628,9 @@ fun EditApartmentPage(
                     Row(
                         modifier = Modifier()
                             .fillMaxWidth()
-                            .style("display", "grid")
-                            .style("grid-template-columns", "1fr 1fr")
-                            .style("gap", BuildingTheme.Spacing.md)
+                            .display(Display.Grid)
+                            .gridTemplateColumns(gridFraction(), gridFraction())
+                            .gap(BuildingTheme.Spacing.md)
                     ) {
                         Column {
                             FormGroup(label = BuildingStrings.START_DATE) {
@@ -1571,7 +1665,7 @@ fun EditApartmentPage(
 
                     Row(
                         modifier = Modifier()
-                            .style("gap", BuildingTheme.Spacing.md)
+                            .gap(BuildingTheme.Spacing.md)
                             .margin(BuildingTheme.Spacing.lg, "0", "0", "0")
                     ) {
                         FormButton(
@@ -1590,7 +1684,7 @@ fun EditApartmentPage(
                                 .color(BuildingTheme.Colors.TEXT_PRIMARY)
                                 .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                                 .borderRadius(BuildingTheme.BorderRadius.md)
-                                .style("text-decoration", "none")
+                                .textDecoration(TextDecoration.None)
                         ) {
                             Text(BuildingStrings.CANCEL)
                         }
@@ -1605,145 +1699,259 @@ fun EditApartmentPage(
 
 @Composable
 private fun BulkActionBar(actions: List<Pair<String, String>>) {
-    RawHtml(
-        html = buildString {
-            append("""<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 16px 0">""")
-            append("""<span style="font-weight:600;color:${BuildingTheme.Colors.TEXT_SECONDARY};">${html(BuildingStrings.BULK_ACTIONS)}</span>""")
-            actions.forEach { (value, label) ->
-                val color = if (value == "delete") BuildingTheme.Colors.DANGER else BuildingTheme.Colors.PRIMARY
-                append(
-                    """<button type="submit" name="bulkAction" value="${attr(value)}" style="border:0;border-radius:8px;padding:8px 14px;background:$color;color:white;font-weight:600;cursor:pointer">${html(label)}</button>"""
-                )
-            }
-            append("</div>")
+    Row(
+        modifier = Modifier()
+            .gap(BuildingTheme.Spacing.sm)
+            .alignItems(AlignItems.Center)
+            .flexWrap(FlexWrap.Wrap)
+            .margin("0", "0", BuildingTheme.Spacing.md, "0")
+    ) {
+        Text(
+            text = BuildingStrings.BULK_ACTIONS,
+            modifier = Modifier()
+                .fontWeight(600)
+                .color(BuildingTheme.Colors.TEXT_SECONDARY)
+        )
+        actions.forEach { (value, label) ->
+            val isDelete = value == "delete"
+            FormButton(
+                text = label,
+                variant = if (isDelete) FormButtonVariant.Danger else FormButtonVariant.Primary,
+                fullWidth = false,
+                name = "bulkAction",
+                value = value,
+                modifier = Modifier()
+                    .borderStyle(BorderStyle.None)
+                    .borderRadius(BuildingTheme.BorderRadius.md)
+                    .padding(BuildingTheme.Spacing.sm, 14.px)
+                    .backgroundColor(if (isDelete) BuildingTheme.Colors.DANGER else BuildingTheme.Colors.PRIMARY)
+                    .color(BuildingTheme.Colors.TEXT_WHITE)
+                    .fontWeight(600)
+                    .cursor(Cursor.Pointer)
+            )
         }
-    )
+    }
 }
 
 @Composable
 private fun BulkCheckbox(id: String) {
-    RawHtml(
-        html = """<input type="checkbox" name="select_${attr(id)}" value="1" style="width:18px;height:18px;cursor:pointer" aria-label="${attr(BuildingStrings.SELECT)}">"""
+    FormCheckbox(
+        name = "select_$id",
+        label = "",
+        value = "1",
+        modifier = Modifier().margin(0.px),
+        checkboxModifier = Modifier()
+            .width(18.px)
+            .height(18.px)
+            .margin(0.px)
+            .cursor(Cursor.Pointer)
+            .ariaAttribute("label", BuildingStrings.SELECT)
     )
 }
 
-private fun bulkDeleteFormHtml(action: String, ids: List<String>, returnHref: String): String = buildString {
-    append("""<form method="post" action="${attr(action)}">""")
-    append("""<input type="hidden" name="bulkAction" value="delete">""")
-    append(hiddenRecordInputs(ids))
-    append("""<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">""")
-    append("""<button type="submit" style="border:0;border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.DANGER};color:white;font-weight:700;cursor:pointer">${html(BuildingStrings.BULK_DELETE)}</button>""")
-    append("""<a href="${attr(returnHref)}" style="border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.BG_HOVER};color:${BuildingTheme.Colors.TEXT_PRIMARY};text-decoration:none;font-weight:600">${html(BuildingStrings.CANCEL)}</a>""")
-    append("</div></form>")
-}
-
-private fun buildingsEditFormHtml(buildings: List<Building>): String = buildString {
-    append("""<form method="post" action="/buildings/bulk/apply"><input type="hidden" name="bulkAction" value="edit">""")
-    append(hiddenRecordInputs(buildings.map { it.id }))
-    append("""<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">""")
-    buildings.forEach { building ->
-        append(recordCard("عمارة: ${building.name}") {
-            append(input("name_${building.id}", BuildingStrings.BUILDING_NAME, building.name))
-            append(input("address_${building.id}", BuildingStrings.BUILDING_ADDRESS, building.address))
-        })
+@Composable
+private fun BulkDeleteForm(action: String, ids: List<String>, returnHref: String) {
+    Form(
+        action = action,
+        method = FormMethod.Post,
+        hiddenFields = bulkHiddenFields("delete", ids)
+    ) {
+        ApplyCancelButtons(returnHref = returnHref, destructive = true)
     }
-    append("</div>")
-    append(applyCancelButtons("/buildings"))
-    append("</form>")
 }
 
-private fun apartmentsEditFormHtml(buildingId: String, apartments: List<ApartmentWithDetails>): String = buildString {
-    append("""<form method="post" action="/buildings/${attr(buildingId)}/units/bulk/apply"><input type="hidden" name="bulkAction" value="edit">""")
-    append(hiddenRecordInputs(apartments.map { it.apartment.id }))
-    append("""<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">""")
-    apartments.forEach { detail ->
-        val id = detail.apartment.id
-        append(recordCard("شقة: ${detail.apartment.unitNumber}") {
-            append(input("unitNumber_$id", BuildingStrings.UNIT_NUMBER, detail.apartment.unitNumber))
-            append(input("floor_$id", BuildingStrings.FLOOR, detail.apartment.floor?.toString().orEmpty(), "number"))
-            append(input("apartmentNotes_$id", BuildingStrings.APARTMENT_NOTES, detail.apartment.notes))
-            detail.tenant?.let { tenant ->
-                append(input("tenantName_$id", BuildingStrings.TENANT_NAME, tenant.name))
-                append(input("tenantPhone_$id", BuildingStrings.TENANT_PHONE, tenant.phone))
-                append(input("tenantEmail_$id", "البريد الإلكتروني", tenant.email))
-                append(input("tenantNationalId_$id", "رقم الهوية", tenant.nationalId))
-                append(input("tenantNotes_$id", BuildingStrings.NOTES, tenant.notes))
+@Composable
+private fun BuildingsEditForm(buildings: List<Building>) {
+    Form(
+        action = "/buildings/bulk/apply",
+        method = FormMethod.Post,
+        hiddenFields = bulkHiddenFields("edit", buildings.map { it.id })
+    ) {
+        Column(
+            modifier = Modifier()
+                .display(Display.Grid)
+                .gridTemplateColumns(gridFraction(), gridFraction())
+                .gap(14.px)
+        ) {
+            buildings.forEach { building ->
+                RecordCard("عمارة: ${building.name}") {
+                    BulkTextField("name_${building.id}", BuildingStrings.BUILDING_NAME, building.name)
+                    BulkTextField("address_${building.id}", BuildingStrings.BUILDING_ADDRESS, building.address)
+                }
             }
-            detail.currentLease?.let { lease ->
-                append(input("annualRent_$id", BuildingStrings.ANNUAL_RENT, lease.annualRent.toString(), "number", "0.01"))
-                append(input("startDate_$id", BuildingStrings.START_DATE, lease.startDate, "date"))
-                append(input("endDate_$id", BuildingStrings.END_DATE, lease.endDate, "date"))
-                append(input("leaseNotes_$id", BuildingStrings.NOTES, lease.notes))
+        }
+        ApplyCancelButtons("/buildings")
+    }
+}
+
+@Composable
+private fun ApartmentsEditForm(buildingId: String, apartments: List<ApartmentWithDetails>) {
+    Form(
+        action = "/buildings/$buildingId/units/bulk/apply",
+        method = FormMethod.Post,
+        hiddenFields = bulkHiddenFields("edit", apartments.map { it.apartment.id })
+    ) {
+        Column(modifier = responsiveRecordGridModifier()) {
+            apartments.forEach { detail ->
+                val id = detail.apartment.id
+                RecordCard("شقة: ${detail.apartment.unitNumber}") {
+                    BulkTextField("unitNumber_$id", BuildingStrings.UNIT_NUMBER, detail.apartment.unitNumber)
+                    BulkTextField(
+                        name = "floor_$id",
+                        label = BuildingStrings.FLOOR,
+                        value = detail.apartment.floor?.toString().orEmpty(),
+                        type = FormTextFieldType.Number
+                    )
+                    BulkTextField("apartmentNotes_$id", BuildingStrings.APARTMENT_NOTES, detail.apartment.notes)
+                    detail.tenant?.let { tenant ->
+                        BulkTextField("tenantName_$id", BuildingStrings.TENANT_NAME, tenant.name)
+                        BulkTextField("tenantPhone_$id", BuildingStrings.TENANT_PHONE, tenant.phone)
+                        BulkTextField("tenantEmail_$id", "البريد الإلكتروني", tenant.email)
+                        BulkTextField("tenantNationalId_$id", "رقم الهوية", tenant.nationalId)
+                        BulkTextField("tenantNotes_$id", BuildingStrings.NOTES, tenant.notes)
+                    }
+                    detail.currentLease?.let { lease ->
+                        BulkTextField(
+                            name = "annualRent_$id",
+                            label = BuildingStrings.ANNUAL_RENT,
+                            value = lease.annualRent.toString(),
+                            type = FormTextFieldType.Number,
+                            step = 0.01
+                        )
+                        BulkTextField("startDate_$id", BuildingStrings.START_DATE, lease.startDate, FormTextFieldType.Date)
+                        BulkTextField("endDate_$id", BuildingStrings.END_DATE, lease.endDate, FormTextFieldType.Date)
+                        BulkTextField("leaseNotes_$id", BuildingStrings.NOTES, lease.notes)
+                    }
+                }
             }
-        })
+        }
+        ApplyCancelButtons("/buildings/$buildingId")
     }
-    append("</div>")
-    append(applyCancelButtons("/buildings/$buildingId"))
-    append("</form>")
 }
 
-private fun paymentsEditFormHtml(payments: List<PaymentWithDetails>): String = buildString {
-    append("""<form method="post" action="/payments/bulk/apply"><input type="hidden" name="bulkAction" value="edit">""")
-    append(hiddenRecordInputs(payments.map { it.payment.id }))
-    append("""<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">""")
-    payments.forEach { detail ->
-        val payment = detail.payment
-        val title = "${detail.building?.name ?: "-"} / ${detail.apartment?.unitNumber ?: "-"} / ${BuildingStrings.formatPaymentNumber(payment.paymentNumber)}"
-        append(recordCard(title) {
-            append(input("paymentNumber_${payment.id}", BuildingStrings.PAYMENT_NUMBER, payment.paymentNumber.toString(), "number"))
-            append(input("amount_${payment.id}", BuildingStrings.PAYMENT_AMOUNT, payment.amount.toString(), "number", "0.01"))
-            append(input("periodStart_${payment.id}", "${BuildingStrings.PERIOD} - ${BuildingStrings.FROM}", payment.periodStart, "date"))
-            append(input("periodEnd_${payment.id}", "${BuildingStrings.PERIOD} - ${BuildingStrings.TO}", payment.periodEnd, "date"))
-            append(input("dueDate_${payment.id}", BuildingStrings.DUE_DATE, payment.dueDate, "date"))
-            append(input("paidDate_${payment.id}", BuildingStrings.PAID_DATE, payment.paidDate.orEmpty(), "date"))
-            append(statusSelect("status_${payment.id}", payment.status))
-            append(input("notes_${payment.id}", BuildingStrings.NOTES, payment.notes))
-        })
+@Composable
+private fun PaymentsEditForm(payments: List<PaymentWithDetails>) {
+    Form(
+        action = "/payments/bulk/apply",
+        method = FormMethod.Post,
+        hiddenFields = bulkHiddenFields("edit", payments.map { it.payment.id })
+    ) {
+        Column(modifier = responsiveRecordGridModifier()) {
+            payments.forEach { detail ->
+                val payment = detail.payment
+                val title = "${detail.building?.name ?: "-"} / ${detail.apartment?.unitNumber ?: "-"} / ${BuildingStrings.formatPaymentNumber(payment.paymentNumber)}"
+                RecordCard(title) {
+                    BulkTextField(
+                        "paymentNumber_${payment.id}",
+                        BuildingStrings.PAYMENT_NUMBER,
+                        payment.paymentNumber.toString(),
+                        FormTextFieldType.Number
+                    )
+                    BulkTextField(
+                        name = "amount_${payment.id}",
+                        label = BuildingStrings.PAYMENT_AMOUNT,
+                        value = payment.amount.toString(),
+                        type = FormTextFieldType.Number,
+                        step = 0.01
+                    )
+                    BulkTextField(
+                        "periodStart_${payment.id}",
+                        "${BuildingStrings.PERIOD} - ${BuildingStrings.FROM}",
+                        payment.periodStart,
+                        FormTextFieldType.Date
+                    )
+                    BulkTextField(
+                        "periodEnd_${payment.id}",
+                        "${BuildingStrings.PERIOD} - ${BuildingStrings.TO}",
+                        payment.periodEnd,
+                        FormTextFieldType.Date
+                    )
+                    BulkTextField("dueDate_${payment.id}", BuildingStrings.DUE_DATE, payment.dueDate, FormTextFieldType.Date)
+                    BulkTextField("paidDate_${payment.id}", BuildingStrings.PAID_DATE, payment.paidDate.orEmpty(), FormTextFieldType.Date)
+                    StatusSelect("status_${payment.id}", payment.status)
+                    BulkTextField("notes_${payment.id}", BuildingStrings.NOTES, payment.notes)
+                }
+            }
+        }
+        ApplyCancelButtons("/payments")
     }
-    append("</div>")
-    append(applyCancelButtons("/payments"))
-    append("</form>")
 }
 
-private fun paymentDateFormHtml(payments: List<PaymentWithDetails>): String = buildString {
-    append("""<form method="post" action="/payments/bulk/apply"><input type="hidden" name="bulkAction" value="dates">""")
-    append(hiddenRecordInputs(payments.map { it.payment.id }))
-    append(dateToolHtml(
-        fields = listOf(
-            "periodStart" to "${BuildingStrings.PERIOD} - ${BuildingStrings.FROM}",
-            "periodEnd" to "${BuildingStrings.PERIOD} - ${BuildingStrings.TO}",
-            "dueDate" to BuildingStrings.DUE_DATE,
-            "paidDate" to BuildingStrings.PAID_DATE
-        ),
-        returnHref = "/payments"
-    ))
-    append("</form>")
+@Composable
+private fun PaymentDateForm(payments: List<PaymentWithDetails>) {
+    Form(
+        action = "/payments/bulk/apply",
+        method = FormMethod.Post,
+        hiddenFields = bulkHiddenFields("dates", payments.map { it.payment.id })
+    ) {
+        DateTool(
+            fields = listOf(
+                "periodStart" to "${BuildingStrings.PERIOD} - ${BuildingStrings.FROM}",
+                "periodEnd" to "${BuildingStrings.PERIOD} - ${BuildingStrings.TO}",
+                "dueDate" to BuildingStrings.DUE_DATE,
+                "paidDate" to BuildingStrings.PAID_DATE
+            ),
+            returnHref = "/payments"
+        )
+    }
 }
 
-private fun paymentStatusFormsHtml(payments: List<PaymentWithDetails>, redirectPath: String): String = buildString {
+@Composable
+private fun PaymentStatusForms(payments: List<PaymentWithDetails>, redirectPath: String) {
     val statuses = listOf(PaymentStatus.PAID, PaymentStatus.OVERDUE, PaymentStatus.PENDING)
     payments.forEach { detail ->
         statuses.forEach { status ->
-            append("""<form id="${attr(paymentStatusFormId(detail.payment, status))}" method="post" action="/payments/${attr(detail.payment.id)}/status" style="display:none">""")
-            append("""<input type="hidden" name="status" value="${attr(status.name)}">""")
-            append("""<input type="hidden" name="redirect" value="${attr(redirectPath)}">""")
-            append("</form>")
+            Form(
+                action = "/payments/${detail.payment.id}/status",
+                method = FormMethod.Post,
+                hiddenFields = listOf(
+                    FormHiddenField("status", status.name),
+                    FormHiddenField("redirect", redirectPath)
+                ),
+                modifier = Modifier()
+                    .id(paymentStatusFormId(detail.payment, status))
+                    .display(Display.None)
+            ) {}
         }
     }
 }
 
-private fun paymentStatusButtonsHtml(payment: Payment): String = buildString {
+@Composable
+private fun PaymentStatusButtons(payment: Payment) {
     val statuses = listOf(PaymentStatus.PAID, PaymentStatus.OVERDUE, PaymentStatus.PENDING)
-    append("""<div style="display:flex;gap:6px;flex-wrap:wrap">""")
-    statuses.forEach { status ->
-        val isCurrent = status == payment.status
-        val background = statusActionBackground(status)
-        val color = statusActionColor(status)
-        append(
-            """<button type="submit" form="${attr(paymentStatusFormId(payment, status))}" style="border:0;border-radius:8px;padding:7px 9px;background:$background;color:$color;font-size:12px;font-weight:700;cursor:pointer;${if (isCurrent) "opacity:.72;box-shadow:inset 0 0 0 2px rgba(0,0,0,.08);" else ""}" title="${attr(BuildingStrings.UPDATE_STATUS)}">${html(BuildingStrings.formatStatus(status))}</button>"""
-        )
+    Row(modifier = Modifier().gap(6.px).flexWrap(FlexWrap.Wrap)) {
+        statuses.forEach { status ->
+            val isCurrent = status == payment.status
+            var buttonModifier = Modifier()
+                .borderStyle(BorderStyle.None)
+                .borderRadius(BuildingTheme.BorderRadius.md)
+                .padding(7.px, 9.px)
+                .backgroundColor(statusActionBackground(status))
+                .color(statusActionColor(status))
+                .fontSize(BuildingTheme.FontSize.xs)
+                .fontWeight(700)
+                .cursor(Cursor.Pointer)
+            if (isCurrent) {
+                buttonModifier = buttonModifier
+                    .opacity(0.72f)
+                    .boxShadow(
+                        horizontalOffset = 0,
+                        verticalOffset = 0,
+                        blurRadius = 0.px,
+                        spreadRadius = 2.px,
+                        color = Color.rgba(0, 0, 0, 0.08f),
+                        inset = true
+                    )
+            }
+            FormButton(
+                text = BuildingStrings.formatStatus(status),
+                fullWidth = false,
+                ariaLabel = "${BuildingStrings.UPDATE_STATUS}: ${BuildingStrings.formatStatus(status)}",
+                formId = paymentStatusFormId(payment, status),
+                modifier = buttonModifier
+            )
+        }
     }
-    append("</div>")
 }
 
 private fun paymentStatusFormId(payment: Payment, status: PaymentStatus): String =
@@ -1761,66 +1969,193 @@ private fun statusActionColor(status: PaymentStatus): String = when (status) {
     PaymentStatus.OVERDUE -> BuildingTheme.Colors.TEXT_WHITE
 }
 
-private fun apartmentDateFormHtml(buildingId: String, apartments: List<ApartmentWithDetails>): String = buildString {
-    append("""<form method="post" action="/buildings/${attr(buildingId)}/units/bulk/apply"><input type="hidden" name="bulkAction" value="dates">""")
-    append(hiddenRecordInputs(apartments.map { it.apartment.id }))
-    append(dateToolHtml(
-        fields = listOf(
-            "startDate" to BuildingStrings.START_DATE,
-            "endDate" to BuildingStrings.END_DATE
-        ),
-        returnHref = "/buildings/$buildingId"
-    ))
-    append("</form>")
-}
-
-private fun dateToolHtml(fields: List<Pair<String, String>>, returnHref: String): String = buildString {
-    append("""<div style="display:grid;gap:16px;max-width:760px">""")
-    append("""<div><strong>${html(BuildingStrings.DATE_FIELDS)}</strong><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">""")
-    fields.forEach { (value, label) ->
-        append("""<label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" name="field_${attr(value)}" value="1"> ${html(label)}</label>""")
+@Composable
+private fun ApartmentDateForm(buildingId: String, apartments: List<ApartmentWithDetails>) {
+    Form(
+        action = "/buildings/$buildingId/units/bulk/apply",
+        method = FormMethod.Post,
+        hiddenFields = bulkHiddenFields("dates", apartments.map { it.apartment.id })
+    ) {
+        DateTool(
+            fields = listOf(
+                "startDate" to BuildingStrings.START_DATE,
+                "endDate" to BuildingStrings.END_DATE
+            ),
+            returnHref = "/buildings/$buildingId"
+        )
     }
-    append("</div></div>")
-    append("""<div><strong>${html(BuildingStrings.DATE_MODE)}</strong><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">""")
-    append("""<label><input type="radio" name="dateMode" value="set" checked> ${html(BuildingStrings.SET_DATE)}</label>""")
-    append("""<label><input type="radio" name="dateMode" value="shift"> ${html(BuildingStrings.SHIFT_DATE)}</label>""")
-    append("</div></div>")
-    append(input("setDate", BuildingStrings.SET_DATE, "", "date"))
-    append("""<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">""")
-    append(input("shiftAmount", BuildingStrings.SHIFT_AMOUNT, "0", "number"))
-    append("""<label style="display:grid;gap:6px;color:${BuildingTheme.Colors.TEXT_SECONDARY};font-size:14px">${html(BuildingStrings.SHIFT_UNIT)}<select name="shiftUnit" style="padding:10px;border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:8px;background:${BuildingTheme.Colors.BG_PRIMARY};color:${BuildingTheme.Colors.TEXT_PRIMARY}"><option value="days">${html(BuildingStrings.DAYS_UNIT)}</option><option value="months">${html(BuildingStrings.MONTHS_UNIT)}</option></select></label>""")
-    append("</div></div>")
-    append(applyCancelButtons(returnHref))
 }
 
-private fun hiddenRecordInputs(ids: List<String>): String =
-    ids.distinct().mapIndexed { index, id -> """<input type="hidden" name="record_$index" value="${attr(id)}">""" }.joinToString("")
-
-private fun recordCard(title: String, body: StringBuilder.() -> Unit): String {
-    val content = buildString(body)
-    return """<section style="border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:12px;padding:14px;background:${BuildingTheme.Colors.BG_PRIMARY}"><h3 style="margin:0 0 12px 0;color:${BuildingTheme.Colors.TEXT_PRIMARY};font-size:16px">${html(title)}</h3><div style="display:grid;gap:10px">$content</div></section>"""
+@Composable
+private fun DateTool(fields: List<Pair<String, String>>, returnHref: String) {
+    Column(modifier = Modifier().gap(BuildingTheme.Spacing.md).maxWidth(760.px)) {
+        Column(modifier = Modifier().gap(BuildingTheme.Spacing.sm)) {
+            Text(BuildingStrings.DATE_FIELDS, modifier = Modifier().fontWeight(700))
+            Row(
+                modifier = Modifier()
+                    .gap(12.px)
+                    .flexWrap(FlexWrap.Wrap)
+                    .alignItems(AlignItems.Center)
+            ) {
+                fields.forEach { (value, label) ->
+                    FormCheckbox(
+                        name = "field_$value",
+                        label = label,
+                        value = "1",
+                        modifier = Modifier().margin(0.px)
+                    )
+                }
+            }
+        }
+        FormRadioGroup(
+            name = "dateMode",
+            label = BuildingStrings.DATE_MODE,
+            options = listOf(
+                FormRadioOption("set", BuildingStrings.SET_DATE),
+                FormRadioOption("shift", BuildingStrings.SHIFT_DATE)
+            ),
+            selectedValue = "set",
+            modifier = Modifier().margin(0.px),
+            optionModifier = Modifier().margin(0.px)
+        )
+        BulkTextField("setDate", BuildingStrings.SET_DATE, "", FormTextFieldType.Date)
+        Column(
+            modifier = Modifier()
+                .display(Display.Grid)
+                .gridTemplateColumns(gridFraction(), gridFraction())
+                .gap(12.px)
+        ) {
+            BulkTextField("shiftAmount", BuildingStrings.SHIFT_AMOUNT, "0", FormTextFieldType.Number)
+            FormSelect(
+                name = "shiftUnit",
+                label = BuildingStrings.SHIFT_UNIT,
+                options = listOf(
+                    FormSelectOption("days", BuildingStrings.DAYS_UNIT),
+                    FormSelectOption("months", BuildingStrings.MONTHS_UNIT)
+                ),
+                selectedValue = "days",
+                modifier = Modifier().margin(0.px),
+                fieldModifier = bulkInputModifier(BuildingTheme.Colors.BG_PRIMARY)
+            )
+        }
+    }
+    ApplyCancelButtons(returnHref)
 }
 
-private fun input(name: String, label: String, value: String, type: String = "text", step: String? = null): String {
-    val stepAttr = step?.let { """ step="${attr(it)}"""" }.orEmpty()
-    return """<label style="display:grid;gap:6px;color:${BuildingTheme.Colors.TEXT_SECONDARY};font-size:14px">${html(label)}<input type="${attr(type)}" name="${attr(name)}" value="${attr(value)}"$stepAttr style="padding:10px;border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:8px;background:${BuildingTheme.Colors.BG_CARD};color:${BuildingTheme.Colors.TEXT_PRIMARY}"></label>"""
+private fun bulkHiddenFields(action: String, ids: List<String>): List<FormHiddenField> =
+    listOf(FormHiddenField("bulkAction", action)) + ids.distinct().mapIndexed { index, id ->
+        FormHiddenField("record_$index", id)
+    }
+
+private fun responsiveRecordGridModifier(): Modifier = Modifier()
+    .display(Display.Grid)
+    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(320.px), gridFraction())))
+    .gap(14.px)
+
+@Composable
+private fun RecordCard(title: String, content: @Composable () -> Unit) {
+    Section(
+        modifier = Modifier()
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(BuildingTheme.Colors.BORDER)
+            .borderRadius(12.px)
+            .padding(14.px)
+            .backgroundColor(BuildingTheme.Colors.BG_PRIMARY)
+    ) {
+        H3(
+            modifier = Modifier()
+                .margin(0.px, 0.px, 12.px, 0.px)
+                .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                .fontSize(16.px)
+        ) {
+            Text(title)
+        }
+        Column(modifier = Modifier().gap(10.px)) {
+            content()
+        }
+    }
 }
 
-private fun statusSelect(name: String, current: PaymentStatus): String {
-    return """<label style="display:grid;gap:6px;color:${BuildingTheme.Colors.TEXT_SECONDARY};font-size:14px">${html(BuildingStrings.PAYMENT_STATUS)}<select name="${attr(name)}" style="padding:10px;border:1px solid ${BuildingTheme.Colors.BORDER};border-radius:8px;background:${BuildingTheme.Colors.BG_CARD};color:${BuildingTheme.Colors.TEXT_PRIMARY}">${PaymentStatus.entries.joinToString("") { status -> "<option value=\"${attr(status.name)}\"${if (status == current) " selected" else ""}>${html(BuildingStrings.formatStatus(status))}</option>" }}</select></label>"""
+@Composable
+private fun BulkTextField(
+    name: String,
+    label: String,
+    value: String,
+    type: FormTextFieldType = FormTextFieldType.Text,
+    step: Number? = null
+) {
+    FormTextField(
+        name = name,
+        label = label,
+        defaultValue = value,
+        type = type,
+        step = step,
+        modifier = Modifier().margin(0.px),
+        fieldModifier = bulkInputModifier(BuildingTheme.Colors.BG_CARD)
+    )
 }
 
-private fun applyCancelButtons(returnHref: String): String =
-    """<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button type="submit" style="border:0;border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.PRIMARY};color:white;font-weight:700;cursor:pointer">${html(BuildingStrings.BULK_APPLY)}</button><a href="${attr(returnHref)}" style="border-radius:8px;padding:10px 18px;background:${BuildingTheme.Colors.BG_HOVER};color:${BuildingTheme.Colors.TEXT_PRIMARY};text-decoration:none;font-weight:600">${html(BuildingStrings.CANCEL)}</a></div>"""
+@Composable
+private fun StatusSelect(name: String, current: PaymentStatus) {
+    FormSelect(
+        name = name,
+        label = BuildingStrings.PAYMENT_STATUS,
+        options = PaymentStatus.entries.map { status ->
+            FormSelectOption(status.name, BuildingStrings.formatStatus(status))
+        },
+        selectedValue = current.name,
+        modifier = Modifier().margin(0.px),
+        fieldModifier = bulkInputModifier(BuildingTheme.Colors.BG_CARD)
+    )
+}
 
-private fun html(value: String): String = value
-    .replace("&", "&amp;")
-    .replace("<", "&lt;")
-    .replace(">", "&gt;")
+private fun bulkInputModifier(backgroundColor: String): Modifier = Modifier()
+    .padding(10.px)
+    .borderWidth(1)
+    .borderStyle(BorderStyle.Solid)
+    .borderColor(BuildingTheme.Colors.BORDER)
+    .borderRadius(BuildingTheme.BorderRadius.md)
+    .backgroundColor(backgroundColor)
+    .color(BuildingTheme.Colors.TEXT_PRIMARY)
 
-private fun attr(value: String): String = html(value)
-    .replace("\"", "&quot;")
-    .replace("'", "&#39;")
+@Composable
+private fun ApplyCancelButtons(returnHref: String, destructive: Boolean = false) {
+    Row(
+        modifier = Modifier()
+            .gap(10.px)
+            .flexWrap(FlexWrap.Wrap)
+            .alignItems(AlignItems.Center)
+            .marginTop(BuildingTheme.Spacing.md)
+    ) {
+        FormButton(
+            text = if (destructive) BuildingStrings.BULK_DELETE else BuildingStrings.BULK_APPLY,
+            variant = if (destructive) FormButtonVariant.Danger else FormButtonVariant.Primary,
+            fullWidth = false,
+            modifier = Modifier()
+                .borderStyle(BorderStyle.None)
+                .borderRadius(BuildingTheme.BorderRadius.md)
+                .padding(10.px, 18.px)
+                .backgroundColor(if (destructive) BuildingTheme.Colors.DANGER else BuildingTheme.Colors.PRIMARY)
+                .color(BuildingTheme.Colors.TEXT_WHITE)
+                .fontWeight(700)
+                .cursor(Cursor.Pointer)
+        )
+        Link(
+            href = returnHref,
+            modifier = Modifier()
+                .display(Display.InlineBlock)
+                .borderRadius(BuildingTheme.BorderRadius.md)
+                .padding(10.px, 18.px)
+                .backgroundColor(BuildingTheme.Colors.BG_HOVER)
+                .color(BuildingTheme.Colors.TEXT_PRIMARY)
+                .textDecoration(TextDecoration.None)
+                .fontWeight(600)
+        ) {
+            Text(BuildingStrings.CANCEL)
+        }
+    }
+}
 
 @Composable
 private fun GridHeaderCell(text: String) {
@@ -1830,7 +2165,7 @@ private fun GridHeaderCell(text: String) {
             .fontWeight("600")
             .fontSize(BuildingTheme.FontSize.sm)
             .color(BuildingTheme.Colors.TEXT_SECONDARY)
-            .style("text-align", "right")
+            .textAlign(TextAlign.Right)
     ) {
         Text(text)
     }
@@ -1841,7 +2176,7 @@ private fun GridCell(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier()
             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
-            .style("text-align", "right")
+            .textAlign(TextAlign.Right)
     ) {
         content()
     }
@@ -1911,20 +2246,20 @@ private fun NotificationBanner(upcomingPayments: List<PaymentWithDetails>) {
                     .borderRadius(BuildingTheme.BorderRadius.md)
                     .padding(BuildingTheme.Spacing.md)
                     .margin("0", "0", BuildingTheme.Spacing.sm, "0")
-                    .style("border-right", "4px solid ${BuildingTheme.Colors.INFO}")
+                    .border(BorderSide.Right, 4, BorderStyle.Solid, BuildingTheme.Colors.INFO)
             ) {
                 Row(
                     modifier = Modifier()
                         .fillMaxWidth()
-                        .style("align-items", "center")
-                        .style("gap", BuildingTheme.Spacing.md)
+                        .alignItems(AlignItems.Center)
+                        .gap(BuildingTheme.Spacing.md)
                 ) {
                     // Bell icon
                     Text(
                         text = "🔔",
                         modifier = Modifier().fontSize(BuildingTheme.FontSize.xl)
                     )
-                    Column(modifier = Modifier().style("flex", "1")) {
+                    Column(modifier = Modifier().flex(grow = 1, shrink = 1, basis = "0%")) {
                         Text(
                             text = "${BuildingStrings.NOTIFICATIONS}: ${upcomingInMonth.size} ${BuildingStrings.PAYMENT_DUE_SOON}",
                             modifier = Modifier()
@@ -1963,13 +2298,13 @@ private fun NotificationCard(
             .borderRadius(BuildingTheme.BorderRadius.md)
             .padding(BuildingTheme.Spacing.md)
             .margin("0", "0", BuildingTheme.Spacing.sm, "0")
-            .style("border-right", "4px solid $borderColor")
+            .border(BorderSide.Right, 4, BorderStyle.Solid, borderColor)
     ) {
         Row(
             modifier = Modifier()
                 .fillMaxWidth()
-                .style("align-items", "center")
-                .style("gap", BuildingTheme.Spacing.md)
+                .alignItems(AlignItems.Center)
+                .gap(BuildingTheme.Spacing.md)
         ) {
             // Icon
             Text(
@@ -1978,7 +2313,7 @@ private fun NotificationCard(
             )
             
             // Content
-            Column(modifier = Modifier().style("flex", "1")) {
+            Column(modifier = Modifier().flex(grow = 1, shrink = 1, basis = "0%")) {
                 Text(
                     text = "${payment.building?.name ?: ""} - ${payment.apartment?.unitNumber ?: ""}",
                     modifier = Modifier()
@@ -1988,8 +2323,8 @@ private fun NotificationCard(
                 )
                 Row(
                     modifier = Modifier()
-                        .style("gap", BuildingTheme.Spacing.md)
-                        .style("flex-wrap", "wrap")
+                        .gap(BuildingTheme.Spacing.md)
+                        .flexWrap(FlexWrap.Wrap)
                 ) {
                     Text(
                         text = "${BuildingStrings.PAYMENT_AMOUNT}: ${BuildingStrings.formatCurrency(payment.payment.amount)}",
@@ -2031,19 +2366,19 @@ private fun OverdueAlertBanner(overdueCount: Int) {
             .borderRadius(BuildingTheme.BorderRadius.md)
             .padding(BuildingTheme.Spacing.md)
             .margin("0", "0", BuildingTheme.Spacing.lg, "0")
-            .style("border-right", "4px solid ${BuildingTheme.Colors.DANGER}")
+            .border(BorderSide.Right, 4, BorderStyle.Solid, BuildingTheme.Colors.DANGER)
     ) {
         Row(
             modifier = Modifier()
                 .fillMaxWidth()
-                .style("align-items", "center")
-                .style("gap", BuildingTheme.Spacing.md)
+                .alignItems(AlignItems.Center)
+                .gap(BuildingTheme.Spacing.md)
         ) {
             Text(
                 text = "🚨",
                 modifier = Modifier().fontSize(BuildingTheme.FontSize.xl)
             )
-            Column(modifier = Modifier().style("flex", "1")) {
+            Column(modifier = Modifier().flex(grow = 1, shrink = 1, basis = "0%")) {
                 Text(
                     text = "تنبيه: $overdueCount دفعات متأخرة",
                     modifier = Modifier()
@@ -2067,7 +2402,7 @@ private fun OverdueAlertBanner(overdueCount: Int) {
                     .borderRadius(BuildingTheme.BorderRadius.md)
                     .fontSize(BuildingTheme.FontSize.xs)
                     .fontWeight("600")
-                    .style("text-decoration", "none")
+                    .textDecoration(TextDecoration.None)
             ) {
                 Text("عرض")
             }

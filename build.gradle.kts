@@ -26,10 +26,8 @@ dependencies {
     // Caching
     implementation(libs.caffeine)
 
-    // Markdown & HTML
+    // Markdown parsing (rendered exclusively through typed Summon components)
     implementation(libs.bundles.commonmark)
-    implementation(libs.owasp.html.sanitizer)
-    implementation(libs.jsoup)
 
     // Summon SSR framework
     implementation(libs.summon)
@@ -58,6 +56,7 @@ dependencies {
     // Testing
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.jsoup)
 }
 
 tasks {

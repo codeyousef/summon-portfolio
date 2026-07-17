@@ -7,15 +7,16 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.BoxSizing
 import codes.yousef.summon.modifier.Modifier
 import codes.yousef.summon.modifier.Overflow
 import codes.yousef.summon.modifier.backgroundColor
 import codes.yousef.summon.modifier.borderRadius
+import codes.yousef.summon.modifier.boxSizing
 import codes.yousef.summon.modifier.color
 import codes.yousef.summon.modifier.height
 import codes.yousef.summon.modifier.minHeight
 import codes.yousef.summon.modifier.overflow
-import codes.yousef.summon.modifier.style
 import codes.yousef.summon.modifier.width
 
 @Composable
@@ -30,7 +31,7 @@ internal fun FifthWallPage(
         AppHeader(
             locale = PortfolioLocale.EN,
             modifier = Modifier()
-                .style("box-sizing", "border-box")
+                .boxSizing(BoxSizing.BorderBox)
                 .color(FifthWallTheme.TEXT_PRIMARY),
             activeDestination = GlobalNavigationDestination.PROJECTS,
             compact = true,

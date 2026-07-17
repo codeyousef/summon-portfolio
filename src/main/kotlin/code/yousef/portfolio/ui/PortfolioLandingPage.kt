@@ -487,7 +487,7 @@ private fun EngineeringCard(
                 modifier = Modifier()
                     .width(48.px)
                     .height(48.px)
-                    .style("object-fit", "contain")
+                    .objectFit(ObjectFit.Contain)
             )
             Column(
                 modifier = Modifier()

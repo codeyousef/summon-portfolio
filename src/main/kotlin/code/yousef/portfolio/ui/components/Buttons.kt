@@ -1,6 +1,8 @@
 package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioAccentGradient
+import code.yousef.portfolio.theme.portfolioGlassGradient
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.input.Button
 import codes.yousef.summon.components.input.ButtonVariant
@@ -20,7 +22,7 @@ fun PrimaryButton(text: String, href: String, modifier: Modifier = Modifier()) {
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
             .height(52.px)
-            .background(PortfolioTheme.Gradients.ACCENT)
+            .portfolioAccentGradient()
             .multipleShadows(
                 shadowConfig(0, 10, 30, 0, Color.hex("#b0123561")),
                 shadowConfig(0, 1, 0, 0, Color.hex("#ffffff77"), true)
@@ -53,7 +55,7 @@ fun GhostButton(text: String, href: String, modifier: Modifier = Modifier()) {
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
-            .background(PortfolioTheme.Gradients.GLASS)
+            .portfolioGlassGradient()
             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
             .padding("0", PortfolioTheme.Spacing.lg)
             .height(52.px)
@@ -84,7 +86,7 @@ fun GhostActionButton(text: String, onClick: () -> Unit) {
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
-            .background(PortfolioTheme.Gradients.GLASS)
+            .portfolioGlassGradient()
             .color(PortfolioTheme.Colors.TEXT_PRIMARY)
             .padding("0", PortfolioTheme.Spacing.lg)
             .height(52.px)

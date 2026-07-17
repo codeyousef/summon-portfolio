@@ -61,7 +61,7 @@ private fun AetherHero(docsUrl: String, apiReferenceUrl: String) {
                     modifier = Modifier()
                         .width(cssClamp(48.px, 10.vw, 96.px))
                         .height(cssClamp(48.px, 10.vw, 96.px))
-                        .style("object-fit", "contain")
+                        .objectFit(ObjectFit.Contain)
                 )
                 Text(
                     text = "Aether",

@@ -4,8 +4,12 @@ import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StylePseudoClass
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 
@@ -33,34 +37,26 @@ fun StickyNote(
     title: String? = null,
     noteId: String = ""
 ) {
-    GlobalStyle(
-        css = """
-        .sticky-note {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            transform-origin: center center;
-            cursor: grab;
-            user-select: none;
-        }
-        .sticky-note:hover {
-            transform: rotate(0deg) scale(1.05) !important;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-            z-index: 100;
-        }
-
-        /* Tape effect at top */
-        .sticky-note::before {
-            content: "";
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            height: 16px;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 2px;
-        }
-    """
-    )
+    val stickyNote = StyleSelector.className("sticky-note")
+    TypedStyleSheet {
+        rule(
+            stickyNote,
+            Modifier()
+                .transition("transform 0.2s ease, box-shadow 0.2s ease")
+                .cursor(Cursor.Grab)
+        )
+        rule(
+            stickyNote.pseudoClass(StylePseudoClass.Hover),
+            Modifier()
+                .transform(
+                    TransformFunction.Rotate to "0deg",
+                    TransformFunction.Scale to "1.05"
+                )
+                .boxShadow("0 8px 20px rgba(0, 0, 0, 0.4)")
+                .zIndex(100),
+            StyleRulePriority.Important
+        )
+    }
 
     Box(
         modifier = Modifier()
@@ -72,9 +68,19 @@ fun StickyNote(
             .padding(16.px)
             .paddingTop(24.px)
             .boxShadow("4px 4px 0 rgba(0, 0, 0, 0.3)")
-            .transform("rotate(${rotation}deg)")
+            .transform(TransformFunction.Rotate to "${rotation}deg")
             .className("sticky-note")
             .let { if (noteId.isNotEmpty()) it.dataAttribute("note-id", noteId) else it }
+            .before {
+                position(Position.Absolute)
+                    .top((-8).px)
+                    .left(50.percent)
+                    .transform(TransformFunction.TranslateX to "-50%")
+                    .width(40.px)
+                    .height(16.px)
+                    .backgroundColor("rgba(255, 255, 255, 0.5)")
+                    .borderRadius(2.px)
+            }
     ) {
         Column(
             modifier = Modifier()
@@ -91,7 +97,7 @@ fun StickyNote(
                         .color(color.text)
                         .textTransform(TextTransform.Uppercase)
                         .letterSpacing(0.05.rem)
-                        .style("border-bottom", "1px dashed rgba(0,0,0,0.2)")
+                        .border(BorderSide.Bottom, 1, BorderStyle.Dashed, "rgba(0,0,0,0.2)")
                         .paddingBottom(6.px)
                 )
             }

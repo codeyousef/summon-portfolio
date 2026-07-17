@@ -1,6 +1,7 @@
 package code.yousef.portfolio.ui.components
 
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioGlassGradient
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.input.Button
@@ -40,7 +41,7 @@ fun CodeBlock(lines: List<String>, showCopyButton: Boolean = false) {
                         .borderWidth(1)
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
-                        .backgroundColor(PortfolioTheme.Gradients.GLASS)
+                        .portfolioGlassGradient()
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                         .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
                         .borderRadius(PortfolioTheme.Radii.pill),
