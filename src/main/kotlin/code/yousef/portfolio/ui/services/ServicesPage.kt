@@ -4,6 +4,9 @@ import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.ContextNavigationIds
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
+import code.yousef.portfolio.ui.components.workWithMeNavigationContext
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.ContactFooterSection
@@ -29,7 +32,11 @@ fun ServicesPage(
     val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.WORK,
+            context = workWithMeNavigationContext(locale, ContextNavigationIds.CONSULTING),
+        )
         SectionWrap {
             Text(
                 text = "Services",

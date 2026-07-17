@@ -29,7 +29,12 @@ fun SeenLandingPage(playgroundUrl: String, docsUrl: String, packagesUrl: String?
     val apiReferenceUrl = "$docsUrl/api-reference"
     PageScaffold(locale = PortfolioLocale.EN) {
         LandingNavbar(
-            branding = LandingBranding.seen(docsUrl, apiReferenceUrl, packagesUrl)
+            branding = LandingBranding.seen(
+                docsUrl = docsUrl,
+                apiReferenceUrl = apiReferenceUrl,
+                packagesUrl = packagesUrl,
+                playgroundUrl = playgroundUrl,
+            )
         )
         SeenHero(playgroundUrl, packagesUrl)
         SeenFeatureGrid()

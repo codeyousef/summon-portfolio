@@ -206,7 +206,12 @@ class RegistryResources private constructor(
             val registryRoutes = if (config.serverMode == RegistryServerMode.PUBLIC_API) {
                 val service = RegistryService(config, repository, storage, ArchiveValidator(), tuf, clock)
                 val auth = OpaqueDevWriterAuthenticator(config.writerToken, config.writerPrincipal, config.ownerAllowlist)
-                RegistryRoutes(service, auth, clock)
+                RegistryRoutes(
+                    service = service,
+                    auth = auth,
+                    clock = clock,
+                    catalogNavigationLinks = CatalogNavigationLinks.fromRegistryOrigin(config.registryOrigin),
+                )
             } else null
             val enforcementCredentials = when (config.serverMode) {
                 RegistryServerMode.PUBLIC_API -> listOf(

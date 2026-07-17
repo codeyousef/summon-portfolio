@@ -5,13 +5,15 @@ import code.yousef.portfolio.ssr.SummonPage
 import code.yousef.portfolio.ui.seen.SeenPlaygroundPage
 import codes.yousef.summon.seo.HeadScope
 
-class SeenPlaygroundRenderer {
+class SeenPlaygroundRenderer(
+    private val packagesEnabled: Boolean = false,
+) {
 
     fun playgroundPage(): SummonPage {
         return SummonPage(
             head = playgroundHeadBlock(),
             content = {
-                SeenPlaygroundPage()
+                SeenPlaygroundPage(packagesUrl = if (packagesEnabled) "/packages" else null)
             }
         )
     }

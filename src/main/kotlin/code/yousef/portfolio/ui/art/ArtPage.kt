@@ -6,6 +6,7 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.ContactFooterSection
@@ -42,9 +43,7 @@ fun ArtPage(
     val selectedArtwork = rememberMutableStateOf<Artwork?>(null)
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
-
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        AppHeader(locale = locale, activeDestination = GlobalNavigationDestination.PROJECTS)
 
         // Hero section
         SectionWrap {

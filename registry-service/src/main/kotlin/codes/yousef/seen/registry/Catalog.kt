@@ -1,6 +1,7 @@
 package codes.yousef.seen.registry
 
 import codes.yousef.summon.annotation.Composable
+import codes.yousef.summon.action.UiAction
 import codes.yousef.summon.components.display.Label
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.Form
@@ -10,10 +11,15 @@ import codes.yousef.summon.components.html.Footer
 import codes.yousef.summon.components.html.H1
 import codes.yousef.summon.components.html.H2
 import codes.yousef.summon.components.html.H3
+import codes.yousef.summon.components.html.Details
 import codes.yousef.summon.components.html.Header
 import codes.yousef.summon.components.html.Main
 import codes.yousef.summon.components.html.Nav
 import codes.yousef.summon.components.html.Section
+import codes.yousef.summon.components.html.Summary
+import codes.yousef.summon.components.input.Button
+import codes.yousef.summon.components.input.ButtonVariant
+import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.Link
@@ -50,6 +56,8 @@ import codes.yousef.summon.modifier.maxWidth
 import codes.yousef.summon.modifier.minHeight
 import codes.yousef.summon.modifier.minWidth
 import codes.yousef.summon.modifier.padding
+import codes.yousef.summon.modifier.position
+import codes.yousef.summon.modifier.Position
 import codes.yousef.summon.modifier.style
 import codes.yousef.summon.modifier.textDecoration
 import codes.yousef.summon.modifier.width
@@ -57,37 +65,119 @@ import codes.yousef.summon.runtime.LocalPlatformRenderer
 import codes.yousef.summon.runtime.PlatformRenderer
 import codes.yousef.summon.runtime.clearPlatformRenderer
 import codes.yousef.summon.runtime.setPlatformRenderer
+import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
 internal const val CATALOG_QUERY_MAX_LENGTH = 128
 
+data class CatalogNavigationLinks(
+    val portfolio: String,
+    val projects: String,
+    val photography: String,
+    val blog: String,
+    val work: String,
+    val summon: String,
+    val materia: String,
+    val sigil: String,
+    val aether: String,
+    val seen: String,
+    val seenPackages: String,
+    val seenPlayground: String,
+    val seenDocs: String,
+    val seenApiReference: String,
+) {
+    companion object {
+        fun development(): CatalogNavigationLinks =
+            fromRegistryOrigin("https://seen.dev.yousef.codes/packages")
+
+        fun fromRegistryOrigin(rawOrigin: String): CatalogNavigationLinks {
+            val uri = runCatching { URI.create(rawOrigin.trim().trimEnd('/')) }
+                .getOrElse { throw IllegalArgumentException("Registry origin must be a valid URL", it) }
+            require(uri.scheme == "https" && uri.host != null && uri.rawUserInfo == null) {
+                "Registry origin must be an absolute HTTPS URL without user info"
+            }
+            require(uri.rawQuery == null && uri.rawFragment == null && uri.path.trimEnd('/') == "/packages") {
+                "Registry origin must end at /packages without a query or fragment"
+            }
+
+            val host = uri.host.lowercase(Locale.ROOT)
+            val development = when (host) {
+                "seen.dev.yousef.codes" -> true
+                "seen.yousef.codes" -> false
+                else -> throw IllegalArgumentException(
+                    "Registry navigation supports seen.dev.yousef.codes and seen.yousef.codes origins",
+                )
+            }
+            val seenBase = URI(uri.scheme, null, uri.host, uri.port, null, null, null).toASCIIString()
+            val portfolioBase = if (development) "https://dev.yousef.codes" else "https://www.yousef.codes"
+            fun productBase(product: String): String = if (development) {
+                "https://$product.dev.yousef.codes"
+            } else {
+                "https://$product.yousef.codes"
+            }
+
+            return CatalogNavigationLinks(
+                portfolio = portfolioBase,
+                projects = "$portfolioBase/projects",
+                photography = "$portfolioBase/photography",
+                blog = "$portfolioBase/blog",
+                work = "$portfolioBase/services",
+                summon = productBase("summon"),
+                materia = productBase("materia"),
+                sigil = productBase("sigil"),
+                aether = productBase("aether"),
+                seen = seenBase,
+                seenPackages = "$seenBase/packages",
+                seenPlayground = "$seenBase/playground",
+                seenDocs = "$seenBase/docs",
+                seenApiReference = "$seenBase/docs/api-reference",
+            )
+        }
+    }
+}
+
 object CatalogRenderer {
     private val lock = Any()
 
-    fun render(packages: List<PackageRecord>, query: String = ""): String = synchronized(lock) {
+    fun render(
+        packages: List<PackageRecord>,
+        query: String = "",
+        navigationLinks: CatalogNavigationLinks = CatalogNavigationLinks.development(),
+    ): String = synchronized(lock) {
         renderLocked(
             title = "Packages · Seen",
             description = "Browse public source packages for the Seen programming language.",
-        ) { Catalog(packages, normalizeCatalogQuery(query)) }
+        ) { Catalog(packages, normalizeCatalogQuery(query), navigationLinks) }
     }
 
-    fun renderPackage(pkg: PackageRecord, releases: List<ReleaseRecord>): String = synchronized(lock) {
+    fun renderPackage(
+        pkg: PackageRecord,
+        releases: List<ReleaseRecord>,
+        navigationLinks: CatalogNavigationLinks = CatalogNavigationLinks.development(),
+    ): String = synchronized(lock) {
         renderLocked(
             title = "${pkg.identity} · Seen packages",
             description = pkg.description ?: "Public releases of ${pkg.identity} for Seen.",
-        ) { PackageDetail(pkg, releases) }
+        ) { PackageDetail(pkg, releases, navigationLinks) }
     }
 
-    fun renderRelease(pkg: PackageRecord, release: ReleaseRecord): String = synchronized(lock) {
+    fun renderRelease(
+        pkg: PackageRecord,
+        release: ReleaseRecord,
+        navigationLinks: CatalogNavigationLinks = CatalogNavigationLinks.development(),
+    ): String = synchronized(lock) {
         renderLocked(
             title = "${pkg.identity} ${release.version} · Seen packages",
             description = "Release ${release.version} of ${pkg.identity} for Seen.",
-        ) { ReleaseDetail(pkg, release) }
+        ) { ReleaseDetail(pkg, release, navigationLinks) }
     }
 
-    fun renderUnavailable(notFound: Boolean): String = synchronized(lock) {
+    fun renderUnavailable(
+        notFound: Boolean,
+        navigationLinks: CatalogNavigationLinks = CatalogNavigationLinks.development(),
+    ): String = synchronized(lock) {
         renderLocked(
             title = if (notFound) "Package not found · Seen" else "Registry unavailable · Seen",
             description = if (notFound) {
@@ -95,7 +185,7 @@ object CatalogRenderer {
             } else {
                 "The Seen package registry is temporarily unavailable."
             },
-        ) { RegistryUnavailable(notFound) }
+        ) { RegistryUnavailable(notFound, navigationLinks) }
     }
 
     private fun renderLocked(
@@ -155,9 +245,13 @@ internal fun filterCatalogPackages(
 }
 
 @Composable
-private fun Catalog(packages: List<PackageRecord>, query: String) {
+private fun Catalog(
+    packages: List<PackageRecord>,
+    query: String,
+    navigationLinks: CatalogNavigationLinks,
+) {
     val visiblePackages = filterCatalogPackages(packages, query)
-    CatalogScaffold {
+    CatalogScaffold(navigationLinks) {
         H1(modifier = pageTitleModifier()) {
             Text("Seen packages")
         }
@@ -324,8 +418,12 @@ private fun PackageCard(pkg: PackageRecord) {
 }
 
 @Composable
-private fun PackageDetail(pkg: PackageRecord, releases: List<ReleaseRecord>) {
-    CatalogScaffold {
+private fun PackageDetail(
+    pkg: PackageRecord,
+    releases: List<ReleaseRecord>,
+    navigationLinks: CatalogNavigationLinks,
+) {
+    CatalogScaffold(navigationLinks) {
         Breadcrumbs(listOf("Packages" to "/packages"), current = pkg.identity)
         H1(modifier = pageTitleModifier().style("overflow-wrap", "anywhere")) {
             Text(pkg.identity)
@@ -390,8 +488,12 @@ private fun ReleaseRow(pkg: PackageRecord, release: ReleaseRecord) {
 }
 
 @Composable
-private fun ReleaseDetail(pkg: PackageRecord, release: ReleaseRecord) {
-    CatalogScaffold {
+private fun ReleaseDetail(
+    pkg: PackageRecord,
+    release: ReleaseRecord,
+    navigationLinks: CatalogNavigationLinks,
+) {
+    CatalogScaffold(navigationLinks) {
         Breadcrumbs(
             ancestors = listOf(
                 "Packages" to "/packages",
@@ -451,8 +553,11 @@ private fun ReleaseDetail(pkg: PackageRecord, release: ReleaseRecord) {
 }
 
 @Composable
-private fun RegistryUnavailable(notFound: Boolean) {
-    CatalogScaffold {
+private fun RegistryUnavailable(
+    notFound: Boolean,
+    navigationLinks: CatalogNavigationLinks,
+) {
+    CatalogScaffold(navigationLinks) {
         Column(
             Modifier()
                 .gap("18px")
@@ -478,14 +583,17 @@ private fun RegistryUnavailable(notFound: Boolean) {
             Row(Modifier().display(Display.Flex).gap("16px").flexWrap(FlexWrap.Wrap)) {
                 if (!notFound) CatalogTextLink("Retry", "")
                 CatalogTextLink("Return to packages", "/packages")
-                CatalogTextLink("Back to Seen", "/")
+                CatalogTextLink("Back to Seen", navigationLinks.seen)
             }
         }
     }
 }
 
 @Composable
-private fun CatalogScaffold(content: @Composable () -> Unit) {
+private fun CatalogScaffold(
+    navigationLinks: CatalogNavigationLinks,
+    content: @Composable () -> Unit,
+) {
     GlobalStyle(CATALOG_CSS)
     Column(
         Modifier()
@@ -493,7 +601,7 @@ private fun CatalogScaffold(content: @Composable () -> Unit) {
             .minHeight("100vh")
             .color(CatalogTheme.TEXT_PRIMARY),
     ) {
-        CatalogHeader()
+        CatalogHeader(navigationLinks)
         Main(
             modifier = Modifier()
                 .className("seen-catalog-main")
@@ -509,52 +617,245 @@ private fun CatalogScaffold(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun CatalogHeader() {
+private fun CatalogHeader(navigationLinks: CatalogNavigationLinks) {
+    val menuId = "seen-primary-navigation-menu"
     Header(
         modifier = Modifier()
-            .className("seen-catalog-header")
+            .className("seen-site-navigation")
             .backgroundColor(CatalogTheme.HEADER)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(CatalogTheme.BORDER),
     ) {
+        Nav(
+            modifier = Modifier()
+                .attribute("aria-label", "Primary")
+                .attribute("data-navigation-layer", "global"),
+        ) {
+            Row(
+                Modifier()
+                    .className("seen-global-nav")
+                    .width("100%")
+                    .maxWidth(1120)
+                    .marginAuto()
+                    .padding(12, 24)
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.Center)
+                    .justifyContent(JustifyContent.SpaceBetween)
+                    .gap("16px"),
+            ) {
+                CatalogGlobalBrand(navigationLinks.portfolio)
+                Box(
+                    modifier = Modifier()
+                        .className("seen-primary-navigation")
+                        .position(Position.Relative)
+                        .flex(grow = 1, shrink = 1, basis = "auto"),
+                ) {
+                    Button(
+                        onClick = {},
+                        label = "Menu",
+                        modifier = Modifier()
+                            .className("seen-primary-navigation-summary")
+                            .attribute("aria-label", "Open primary navigation")
+                            .attribute("aria-controls", menuId)
+                            .attribute("aria-expanded", "false")
+                            .padding(10, 12)
+                            .borderRadius(10)
+                            .color(CatalogTheme.TEXT_PRIMARY)
+                            .fontWeight(800),
+                        variant = ButtonVariant.GHOST,
+                        disabled = false,
+                        action = UiAction.ToggleVisibility(menuId),
+                    )
+                    Box(
+                        Modifier()
+                            .className("seen-primary-navigation-panel")
+                            .id(menuId),
+                    ) {
+                        Row(
+                            Modifier()
+                                .className("seen-primary-navigation-links")
+                                .display(Display.Flex)
+                                .alignItems(AlignItems.Center)
+                                .justifyContent(JustifyContent.Center)
+                                .gap("4px"),
+                        ) {
+                            CatalogGlobalLink("Projects", navigationLinks.projects, "projects")
+                            CatalogGlobalLink("Photography", navigationLinks.photography, "photography")
+                            CatalogGlobalLink("Blog", navigationLinks.blog, "blog")
+                            CatalogEcosystemDisclosure(navigationLinks)
+                        }
+                        CatalogGlobalLink(
+                            label = "Work With Me",
+                            href = navigationLinks.work,
+                            id = "work",
+                            emphasized = true,
+                        )
+                    }
+                }
+            }
+        }
+
+        SeenContextNavigation(navigationLinks)
+    }
+}
+
+private data class CatalogNavigationItem(
+    val id: String,
+    val label: String,
+    val href: String,
+)
+
+private fun catalogEcosystemItems(links: CatalogNavigationLinks): List<CatalogNavigationItem> = listOf(
+    CatalogNavigationItem("summon", "Summon", links.summon),
+    CatalogNavigationItem("materia", "Materia", links.materia),
+    CatalogNavigationItem("sigil", "Sigil", links.sigil),
+    CatalogNavigationItem("aether", "Aether", links.aether),
+    CatalogNavigationItem("seen", "Seen", links.seen),
+)
+
+@Composable
+private fun CatalogGlobalBrand(href: String) {
+    Link(
+        href = href,
+        modifier = Modifier()
+            .className("seen-global-brand")
+            .padding(8, 10)
+            .borderRadius(10)
+            .color(CatalogTheme.TEXT_PRIMARY)
+            .fontSize(14)
+            .fontWeight(900)
+            .textDecoration(TextDecoration.None)
+            .style("letter-spacing", "0.16em")
+            .attribute("data-nav-id", "home"),
+        ariaLabel = "Yousef home",
+    ) {
+        Text("YOUSEF")
+    }
+}
+
+@Composable
+private fun CatalogGlobalLink(
+    label: String,
+    href: String,
+    id: String,
+    active: Boolean = false,
+    emphasized: Boolean = false,
+) {
+    val base = Modifier()
+        .className(
+            when {
+                emphasized -> "seen-global-link seen-global-work"
+                else -> "seen-global-link"
+            },
+        )
+        .padding(9, 11)
+        .borderRadius(10)
+        .color(if (emphasized) "#ffffff" else CatalogTheme.TEXT_SECONDARY)
+        .backgroundColor(if (emphasized) "#ff4668" else "transparent")
+        .fontSize(13)
+        .fontWeight(if (emphasized) 800 else 700)
+        .textDecoration(TextDecoration.None)
+        .attribute("data-nav-id", id)
+        .let { if (active) it.attribute("data-active", "true") else it }
+    Link(href = href, modifier = base) { Text(label) }
+}
+
+@Composable
+private fun CatalogEcosystemDisclosure(links: CatalogNavigationLinks) {
+    Details(
+        modifier = Modifier()
+            .className("seen-ecosystem-navigation")
+            .position(Position.Relative)
+            .attribute("data-nav-id", "ecosystem")
+            .attribute("data-active", "true"),
+    ) {
+        Summary(
+            modifier = Modifier()
+                .className("seen-ecosystem-summary")
+                .padding(9, 11)
+                .borderRadius(10)
+                .color(CatalogTheme.TEXT_PRIMARY)
+                .fontSize(13)
+                .fontWeight(700),
+        ) {
+            Text("Ecosystem ⌄")
+        }
+        Column(
+            Modifier()
+                .className("seen-ecosystem-panel")
+                .gap("4px")
+                .padding(8)
+                .backgroundColor("#071b2e")
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(CatalogTheme.BORDER_STRONG)
+                .borderRadius(16),
+        ) {
+            catalogEcosystemItems(links).forEach { item ->
+                CatalogGlobalLink(
+                    label = item.label,
+                    href = item.href,
+                    id = item.id,
+                    active = item.id == "seen",
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeenContextNavigation(links: CatalogNavigationLinks) {
+    val items = listOf(
+        CatalogNavigationItem("overview", "Overview", links.seen),
+        CatalogNavigationItem("packages", "Packages", links.seenPackages),
+        CatalogNavigationItem("playground", "Playground", links.seenPlayground),
+        CatalogNavigationItem("documentation", "Documentation", links.seenDocs),
+        CatalogNavigationItem("api-reference", "API Reference", links.seenApiReference),
+    )
+    Nav(
+        modifier = Modifier()
+            .className("seen-context-navigation")
+            .attribute("aria-label", "Seen navigation")
+            .attribute("data-navigation-layer", "context"),
+    ) {
         Row(
             Modifier()
-                .className("seen-catalog-header-inner")
+                .className("seen-context-navigation-rail")
                 .width("100%")
                 .maxWidth(1120)
                 .marginAuto()
-                .padding(16, 24)
+                .padding(9, 24)
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
-                .justifyContent(JustifyContent.SpaceBetween)
-                .gap("18px")
-                .flexWrap(FlexWrap.Wrap),
+                .gap("8px")
+                .style("overflow-x", "auto")
+                .style("white-space", "nowrap"),
         ) {
-            Link(
-                href = "/",
+            Row(
                 modifier = Modifier()
-                    .className("seen-brand-link")
+                    .className("seen-context-brand")
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
-                    .gap("10px")
-                    .color(CatalogTheme.TEXT_PRIMARY)
-                    .fontSize(20)
+                    .gap("8px")
+                    .padding(7, 10)
+                    .borderRadius(10)
+                    .color(CatalogTheme.ACCENT)
                     .fontWeight(900)
-                    .textDecoration(TextDecoration.None),
-                ariaLabel = "Seen home",
+                    .textDecoration(TextDecoration.None)
+                    .attribute("data-nav-id", "context-brand"),
             ) {
                 Text("S", Modifier().className("seen-brand-mark").color(CatalogTheme.ACCENT))
                 Text("Seen")
             }
-            Nav(modifier = Modifier().attribute("aria-label", "Seen package navigation")) {
-                Row(Modifier().display(Display.Flex).alignItems(AlignItems.Center).gap("8px").flexWrap(FlexWrap.Wrap)) {
-                    Link(
-                        href = "/packages",
-                        modifier = headerLinkModifier().attribute("aria-current", "page"),
-                    ) { Text("Packages") }
-                    Link(href = "/docs", modifier = headerLinkModifier()) { Text("Docs") }
-                }
+            items.forEach { item ->
+                val active = item.id == "packages"
+                Link(
+                    href = item.href,
+                    modifier = headerLinkModifier()
+                        .attribute("data-nav-id", "context-${item.id}")
+                        .let { if (active) it.attribute("aria-current", "page").attribute("data-active", "true") else it },
+                ) { Text(item.label) }
             }
         }
     }
@@ -765,7 +1066,51 @@ private val CATALOG_CSS = """
             radial-gradient(circle at 12% 0%, rgba(88, 166, 255, 0.16), transparent 32rem),
             linear-gradient(180deg, #001a2c 0%, #001522 100%);
     }
-    .seen-catalog-header { border-width: 0 0 1px !important; backdrop-filter: blur(18px); }
+    .seen-site-navigation {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        border-width: 0 0 1px !important;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+    .seen-primary-navigation { min-width: 0; }
+    .seen-primary-navigation-summary { display: none !important; }
+    .seen-primary-navigation-panel {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+    .seen-global-brand,
+    .seen-global-link,
+    .seen-ecosystem-summary,
+    .seen-primary-navigation-summary,
+    .seen-context-brand,
+    .seen-header-link {
+        transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    }
+    .seen-global-brand:hover,
+    .seen-global-link:hover,
+    .seen-ecosystem-summary:hover,
+    .seen-primary-navigation-summary:hover,
+    .seen-context-brand:hover,
+    .seen-header-link:hover { color: #ffffff !important; background: rgba(255, 255, 255, 0.09) !important; }
+    .seen-global-work:hover { background: #ff5d79 !important; }
+    .seen-ecosystem-navigation > summary { cursor: pointer; list-style: none; }
+    .seen-ecosystem-navigation > summary::-webkit-details-marker { display: none; }
+    .seen-ecosystem-navigation[data-active="true"] > summary { background: rgba(88, 166, 255, 0.14); }
+    .seen-ecosystem-panel {
+        position: absolute;
+        top: calc(100% + 10px);
+        z-index: 100;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+    }
+    .seen-ecosystem-panel { left: 0; min-width: 230px; }
+    .seen-ecosystem-navigation:not([open]) .seen-ecosystem-panel { display: none; }
+    .seen-ecosystem-navigation[open] > summary { color: #ffffff !important; background: rgba(255, 255, 255, 0.1); }
+    .seen-context-navigation { border-top: 1px solid rgba(255, 255, 255, 0.13); }
+    .seen-context-navigation-rail { scrollbar-width: thin; scrollbar-color: rgba(88, 166, 255, 0.4) transparent; }
     .seen-brand-mark {
         display: inline-flex;
         width: 32px;
@@ -778,14 +1123,16 @@ private val CATALOG_CSS = """
         font-family: Georgia, serif;
     }
     .seen-header-link[aria-current="page"] { color: #ffffff !important; background: rgba(88, 166, 255, 0.14); }
+    .seen-global-link[data-active="true"] { color: #ffffff !important; background: rgba(88, 166, 255, 0.14); }
     .seen-package-card, .seen-release-row { transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease; }
     .seen-package-card:hover, .seen-release-row:hover {
         transform: translateY(-2px);
         border-color: rgba(88, 166, 255, 0.56) !important;
         background: rgba(7, 52, 91, 0.9) !important;
     }
-    .seen-brand-link:hover, .seen-header-link:hover, .seen-text-link:hover { color: #8fc4ff !important; }
+    .seen-text-link:hover { color: #8fc4ff !important; }
     .seen-catalog a:focus-visible,
+    .seen-catalog summary:focus-visible,
     .seen-catalog input:focus-visible,
     .seen-catalog button:focus-visible {
         outline: 3px solid #8fc4ff !important;
@@ -794,14 +1141,67 @@ private val CATALOG_CSS = """
     .seen-package-search-input::placeholder { color: #8198b0; opacity: 1; }
     .seen-search-button, .seen-download-link { transition: filter 160ms ease, transform 160ms ease; }
     .seen-search-button:hover, .seen-download-link:hover { filter: brightness(1.09); transform: translateY(-1px); }
+    @media (max-width: 1040px) {
+        .seen-global-nav { padding: 10px 16px !important; }
+        .seen-primary-navigation { flex: 0 0 auto !important; }
+        .seen-primary-navigation-summary {
+            display: block !important;
+            background: transparent !important;
+            border: 0 !important;
+        }
+        .seen-primary-navigation-panel {
+            display: none;
+            position: absolute !important;
+            inset-inline-end: 0;
+            top: calc(100% + 10px);
+            z-index: 100;
+            width: min(88vw, 340px);
+            max-height: calc(100vh - 110px);
+            overflow-y: auto;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 6px !important;
+            padding: 14px;
+            background: #071b2e;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 16px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+        }
+        .seen-primary-navigation-links {
+            width: 100%;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 6px !important;
+        }
+        .seen-primary-navigation-panel .seen-global-link,
+        .seen-primary-navigation-panel .seen-ecosystem-summary,
+        .seen-primary-navigation-panel .seen-ecosystem-panel .seen-global-link {
+            display: flex !important;
+            width: 100%;
+            padding: 11px 12px !important;
+            font-size: 15px !important;
+        }
+        .seen-ecosystem-summary { justify-content: space-between; }
+        .seen-ecosystem-navigation { width: 100%; }
+        .seen-ecosystem-panel {
+            position: static !important;
+            min-width: 0 !important;
+            width: 100%;
+            margin-top: 6px;
+            box-shadow: none !important;
+        }
+    }
     @media (max-width: 640px) {
         .seen-catalog-main { padding: 36px 16px !important; }
-        .seen-catalog-header-inner { padding: 14px 16px !important; }
+        .seen-context-navigation-rail { padding: 8px 16px !important; }
+        .seen-context-brand { position: sticky; left: 0; z-index: 2; background: #071b2e; }
         .seen-catalog-search { padding: 16px !important; }
         .seen-search-button { width: 100% !important; }
         .seen-catalog h1 { font-size: 32px !important; }
     }
     @media (prefers-reduced-motion: reduce) {
+        .seen-global-brand, .seen-global-link, .seen-ecosystem-summary, .seen-primary-navigation-summary,
+        .seen-context-brand, .seen-header-link,
         .seen-package-card, .seen-release-row, .seen-search-button, .seen-download-link { transition: none !important; }
         .seen-package-card:hover, .seen-release-row:hover, .seen-search-button:hover, .seen-download-link:hover { transform: none !important; }
     }

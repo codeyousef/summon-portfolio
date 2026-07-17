@@ -160,13 +160,18 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val seenDocsConfig = DocsConfig.seenFromEnv()
     val seenDocsCache = DocsCache(seenDocsConfig.cacheTtlSeconds)
     val seenDocsService = DocsService(seenDocsConfig, seenDocsCache)
-    val seenDocsRouter = DocsRouter(SeoExtractor(seenDocsConfig))
+    val seenDocsRouter = DocsRouter(
+        seoExtractor = SeoExtractor(seenDocsConfig),
+        seenPackagesEnabled = appConfig.registryUpstreamUrl != null,
+    )
     val seenDocsCatalog = DocsCatalog(seenDocsConfig)
     val seenWebhookHandler = WebhookHandler(seenDocsService, seenDocsCache, seenDocsConfig, seenDocsCatalog)
 
     // Seen
     val seenExecutionService = SeenExecutionService()
-    val seenPlaygroundRenderer = SeenPlaygroundRenderer()
+    val seenPlaygroundRenderer = SeenPlaygroundRenderer(
+        packagesEnabled = appConfig.registryUpstreamUrl != null,
+    )
     val seenLandingRenderer = SeenLandingRenderer(packagesEnabled = appConfig.registryUpstreamUrl != null)
 
     // AI Curriculum

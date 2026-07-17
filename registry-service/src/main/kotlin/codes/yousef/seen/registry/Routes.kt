@@ -32,6 +32,7 @@ class RegistryRoutes(
     private val auth: OpaqueDevWriterAuthenticator,
     private val clock: Clock,
     private val json: kotlinx.serialization.json.Json = RegistryJson,
+    private val catalogNavigationLinks: CatalogNavigationLinks = CatalogNavigationLinks.development(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val random = SecureRandom()
@@ -141,21 +142,21 @@ class RegistryRoutes(
             val pkg = service.getPackage(identity)
             val releases = service.listReleases(identity).items
             exchange.response.setHeader("Cache-Control", "public,max-age=60,must-revalidate")
-            exchange.respondHtml(200, CatalogRenderer.renderPackage(pkg, releases))
+            exchange.respondHtml(200, CatalogRenderer.renderPackage(pkg, releases, catalogNavigationLinks))
         } }
         get("/packages/:owner/:name/:version") { exchange -> safeCatalog(exchange) {
             val identity = identity(exchange)
             val pkg = service.getPackage(identity)
             val release = service.getRelease(identity, exchange.pathParamOrThrow("version"))
             exchange.response.setHeader("Cache-Control", "public,max-age=60,must-revalidate")
-            exchange.respondHtml(200, CatalogRenderer.renderRelease(pkg, release))
+            exchange.respondHtml(200, CatalogRenderer.renderRelease(pkg, release, catalogNavigationLinks))
         } }
     }
 
     private suspend fun respondCatalog(exchange: Exchange) {
         val query = normalizeCatalogQueryParameter(exchange.request.queryParameter("q"))
         exchange.response.setHeader("Cache-Control", "public,max-age=60,must-revalidate")
-        exchange.respondHtml(200, CatalogRenderer.render(service.listPublicPackages().items, query))
+        exchange.respondHtml(200, CatalogRenderer.render(service.listPublicPackages().items, query, catalogNavigationLinks))
     }
 
     internal fun authorizeStreamingArchive(exchange: Exchange): WriterPrincipal = writer(exchange)
@@ -234,14 +235,17 @@ class RegistryRoutes(
             val notFound = error.status == 400 || error.status == 404
             finishResponse(requestId) {
                 exchange.response.setHeader("Cache-Control", "no-store")
-                exchange.respondHtml(if (notFound) 404 else error.status, CatalogRenderer.renderUnavailable(notFound))
+                exchange.respondHtml(
+                    if (notFound) 404 else error.status,
+                    CatalogRenderer.renderUnavailable(notFound, catalogNavigationLinks),
+                )
             }
         } catch (error: Exception) {
             if (transportCompleted(requestId, error)) return
             log.error("Unhandled registry catalog failure requestId={}", requestId, error)
             finishResponse(requestId) {
                 exchange.response.setHeader("Cache-Control", "no-store")
-                exchange.respondHtml(500, CatalogRenderer.renderUnavailable(false))
+                exchange.respondHtml(500, CatalogRenderer.renderUnavailable(false, catalogNavigationLinks))
             }
         }
     }

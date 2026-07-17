@@ -4,20 +4,17 @@ import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ssr.*
 import code.yousef.portfolio.theme.PortfolioTheme
-import code.yousef.portfolio.ui.components.SafeHamburgerMenu
+import code.yousef.portfolio.ui.components.ContextNavigationIds
+import code.yousef.portfolio.ui.components.ContextNavigationItem
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
+import code.yousef.portfolio.ui.components.PageNavigationContext
+import code.yousef.portfolio.ui.components.SiteNavigation
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.navigation.AnchorLink
-import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
-import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 import codes.yousef.summon.seo.HeadScope
@@ -27,7 +24,8 @@ import java.net.URI
 class DocsRouter(
     private val seoExtractor: SeoExtractor,
     private val defaultBranding: DocsBranding = DocsBranding.summon(),
-    private val json: Json = Json { ignoreUnknownKeys = true }
+    private val json: Json = Json { ignoreUnknownKeys = true },
+    private val seenPackagesEnabled: Boolean = false,
 ) {
     fun render(
         requestPath: String,
@@ -44,7 +42,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock(branding, seo.title, seo.description, seo.canonicalUrl),
             content = {
-                DocsPageFrame(branding, basePath) {
+                DocsPageFrame(branding, requestPath, basePath, seenPackagesEnabled) {
                     DocsShell(
                         requestPath = requestPath,
                         html = html,
@@ -66,7 +64,7 @@ class DocsRouter(
         return SummonPage(
             head = headBlock(branding, "Not found", "This page could not be located.", canonical),
             content = {
-                DocsPageFrame(branding, basePath) {
+                DocsPageFrame(branding, requestPath, basePath, seenPackagesEnabled) {
                     DocsNotFoundContent(navJson)
                 }
             }
@@ -155,9 +153,60 @@ private fun DocsNotFoundContent(@Suppress("UNUSED_PARAMETER") navJson: String) {
 @Composable
 private fun DocsPageFrame(
     branding: DocsBranding,
+    requestPath: String,
     basePath: String = "",
+    seenPackagesEnabled: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val docsPath = basePath.ifBlank { "/" }
+    val apiReferencePath = "$basePath/api-reference"
+    val activeItemId = if (
+        requestPath.isWithinNavigationPath("/api-reference") ||
+        requestPath.isWithinNavigationPath(apiReferencePath)
+    ) {
+        ContextNavigationIds.API_REFERENCE
+    } else {
+        ContextNavigationIds.DOCUMENTATION
+    }
+    val navigationContext = PageNavigationContext(
+        name = branding.name,
+        homeHref = branding.homeUrl,
+        accentColor = branding.accentColor,
+        logoPath = branding.logoPath,
+        activeItemId = activeItemId,
+        items = buildList {
+            add(ContextNavigationItem(
+                id = ContextNavigationIds.OVERVIEW,
+                label = "Overview",
+                href = branding.homeUrl,
+            ))
+            if (branding.name == "Seen") {
+                if (seenPackagesEnabled) {
+                    add(ContextNavigationItem(
+                        id = ContextNavigationIds.PACKAGES,
+                        label = "Packages",
+                        href = "${branding.homeUrl.trimEnd('/')}/packages",
+                    ))
+                }
+                add(ContextNavigationItem(
+                    id = ContextNavigationIds.PLAYGROUND,
+                    label = "Playground",
+                    href = "${branding.homeUrl.trimEnd('/')}/playground",
+                ))
+            }
+            add(ContextNavigationItem(
+                id = ContextNavigationIds.DOCUMENTATION,
+                label = "Documentation",
+                href = docsPath,
+            ))
+            add(ContextNavigationItem(
+                id = ContextNavigationIds.API_REFERENCE,
+                label = "API Reference",
+                href = apiReferencePath,
+            ))
+        },
+    )
+
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         Column(
             modifier = Modifier()
@@ -165,7 +214,12 @@ private fun DocsPageFrame(
                 .flexDirection(FlexDirection.Column)
                 .width(100.percent)
         ) {
-            DocsNavbar(branding, basePath)
+            SiteNavigation(
+                locale = PortfolioLocale.EN,
+                activeDestination = GlobalNavigationDestination.ECOSYSTEM,
+                context = navigationContext,
+                showLocale = false,
+            )
             SectionWrap(maxWidthPx = 1500) {
                 content()
             }
@@ -173,200 +227,8 @@ private fun DocsPageFrame(
     }
 }
 
-@Composable
-private fun DocsNavbar(branding: DocsBranding, basePath: String = "") {
-    val docsPath = basePath.ifBlank { "/" }
-    val apiReferencePath = "$basePath/api-reference"
-
-    // CSS for responsive visibility
-    GlobalStyle("""
-        .docs-nav-desktop { display: block !important; }
-        .docs-nav-mobile { display: none !important; }
-        
-        @media (max-width: 960px) {
-            .docs-nav-desktop { display: none !important; }
-            .docs-nav-mobile { display: block !important; }
-        }
-    """)
-
-    Box(modifier = Modifier().width(100.percent)) {
-        // Desktop Version
-        Box(modifier = Modifier().className("docs-nav-desktop").width(100.percent)) {
-            DesktopDocsNavbar(branding, docsPath, apiReferencePath)
-        }
-        
-        // Mobile Version
-        Box(modifier = Modifier().className("docs-nav-mobile").width(100.percent)) {
-            MobileDocsNavbar(branding, docsPath, apiReferencePath)
-        }
-    }
-}
-
-@Composable
-private fun DesktopDocsNavbar(branding: DocsBranding, docsPath: String, apiReferencePath: String) {
-    Row(
-        modifier = Modifier()
-            .display(Display.Flex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.SpaceBetween)
-            .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
-            .backgroundColor(PortfolioTheme.Colors.SURFACE)
-            .borderWidth(1, BorderSide.Bottom)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-    ) {
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.sm)
-        ) {
-            Image(
-                src = branding.logoPath,
-                alt = branding.name,
-                modifier = Modifier()
-                    .width(28.px)
-                    .height(28.px)
-            )
-            AnchorLink(
-                label = branding.name,
-                href = branding.homeUrl,
-                modifier = Modifier()
-                    .fontWeight(700)
-                    .fontSize(1.25.rem)
-                    .color(branding.accentColor)
-                    .textDecoration(TextDecoration.None),
-                navigationMode = LinkNavigationMode.Native,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = emptyMap()
-            )
-        }
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.lg)
-        ) {
-            DocsNavLink(label = "Documentation", href = docsPath, accentColor = branding.accentColor)
-            DocsNavLink(label = "API Reference", href = apiReferencePath, accentColor = branding.accentColor)
-        }
-    }
-}
-
-@Composable
-private fun MobileDocsNavbar(branding: DocsBranding, docsPath: String, apiReferencePath: String) {
-    Row(
-        modifier = Modifier()
-            .display(Display.Flex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.SpaceBetween)
-            .padding(PortfolioTheme.Spacing.md)
-            .backgroundColor(PortfolioTheme.Colors.SURFACE)
-            .borderWidth(1, BorderSide.Bottom)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-    ) {
-        // Hamburger Menu (Left)
-        SafeHamburgerMenu(
-            menuId = "docs-mobile-menu-${branding.name.lowercase()}",
-            modifier = Modifier()
-                .position(Position.Relative)
-                .width(40.px)
-                .height(40.px)
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .justifyContent(JustifyContent.Center)
-                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                .zIndex(100),
-            menuContainerModifier = Modifier()
-                .position(Position.Absolute)
-                .top(100.percent)
-                .left(0.px)
-                .marginTop(8.px)
-                .backgroundColor("#0a1628")
-                .borderRadius(8.px)
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.BORDER)
-                .zIndex(1000)
-                .minWidth(200.px)
-                .width("max-content"),
-            menuContent = {
-                Column(
-                    modifier = Modifier()
-                        .width(100.percent)
-                        .padding(16.px)
-                        .gap(12.px)
-                        .backgroundColor("#0a1628")
-                ) {
-                    DocsNavLink(label = "Documentation", href = docsPath, accentColor = branding.accentColor)
-                    DocsNavLink(label = "API Reference", href = apiReferencePath, accentColor = branding.accentColor)
-                }
-            }
-        )
-
-        // Logo and name (Right/Center)
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.sm)
-        ) {
-            Image(
-                src = branding.logoPath,
-                alt = branding.name,
-                modifier = Modifier()
-                    .width(28.px)
-                    .height(28.px)
-            )
-            AnchorLink(
-                label = branding.name,
-                href = branding.homeUrl,
-                modifier = Modifier()
-                    .fontWeight(700)
-                    .fontSize(1.1.rem)
-                    .color(branding.accentColor)
-                    .textDecoration(TextDecoration.None),
-                navigationMode = LinkNavigationMode.Native,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = emptyMap()
-            )
-        }
-    }
-}
-
-@Composable
-private fun DocsNavLink(label: String, href: String, accentColor: String = PortfolioTheme.Colors.ACCENT_ALT) {
-    AnchorLink(
-        label = label,
-        href = href,
-        modifier = Modifier()
-            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .hover(
-                Modifier()
-                    .color(accentColor)
-            ),
-        navigationMode = LinkNavigationMode.Native,
-        target = null,
-        rel = null,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = emptyMap()
-    )
+private fun String.isWithinNavigationPath(root: String): Boolean {
+    val normalizedPath = "/${trim().substringBefore('?').substringBefore('#').trim('/')}"
+    val normalizedRoot = "/${root.trim().trim('/')}"
+    return normalizedPath == normalizedRoot || normalizedPath.startsWith("$normalizedRoot/")
 }

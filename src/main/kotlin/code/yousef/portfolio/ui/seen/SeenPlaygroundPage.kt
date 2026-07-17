@@ -1,5 +1,10 @@
 package code.yousef.portfolio.ui.seen
 
+import code.yousef.portfolio.ssr.seenDocsBaseUrl
+import code.yousef.portfolio.ui.components.ContextNavigationIds
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
+import code.yousef.portfolio.ui.components.LandingBranding
+import code.yousef.portfolio.ui.components.SiteNavigation
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
@@ -13,7 +18,8 @@ import codes.yousef.summon.extensions.*
 import codes.yousef.summon.modifier.*
 
 @Composable
-fun SeenPlaygroundPage() {
+fun SeenPlaygroundPage(packagesUrl: String? = null) {
+    val docsUrl = seenDocsBaseUrl()
     GlobalStyle(
         css = """
         html, body {
@@ -87,8 +93,32 @@ fun SeenPlaygroundPage() {
             font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
         }
         @media (max-width: 768px) {
+            .seen-playground-toolbar {
+                flex-wrap: wrap !important;
+                padding: 8px 10px !important;
+            }
+            .seen-playground-toolbar-controls {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+            }
+            .seen-playground-workspace {
+                flex-direction: column !important;
+            }
+            .seen-playground-editor {
+                width: 100% !important;
+                min-height: 0 !important;
+                border-right: 0 !important;
+                border-bottom: 1px solid #30363d;
+            }
+            .seen-playground-output {
+                width: 100% !important;
+                min-width: 0 !important;
+                min-height: 150px;
+                flex: 0 0 34%;
+            }
             #editor-container {
-                min-height: 40vh !important;
+                min-height: 0 !important;
             }
         }
         .monaco-editor .suggest-widget {
@@ -106,9 +136,22 @@ fun SeenPlaygroundPage() {
             .flexDirection(FlexDirection.Column)
             .overflow(Overflow.Hidden)
     ) {
+        SiteNavigation(
+            activeDestination = GlobalNavigationDestination.ECOSYSTEM,
+            context = LandingBranding.seen(
+                docsUrl = docsUrl,
+                apiReferenceUrl = "${docsUrl.trimEnd('/')}/api-reference",
+                packagesUrl = packagesUrl,
+                playgroundUrl = "/playground",
+            ).navigationContext(ContextNavigationIds.PLAYGROUND),
+            compact = true,
+            showLocale = false,
+        )
+
         // Header bar
         Row(
             modifier = Modifier()
+                .className("seen-playground-toolbar")
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .justifyContent(JustifyContent.SpaceBetween)
@@ -121,6 +164,7 @@ fun SeenPlaygroundPage() {
             // Left: logo + title
             Row(
                 modifier = Modifier()
+                    .className("seen-playground-toolbar-brand")
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .gap(12.px)
@@ -150,6 +194,7 @@ fun SeenPlaygroundPage() {
             // Center: language + example selectors
             Row(
                 modifier = Modifier()
+                    .className("seen-playground-toolbar-controls")
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .gap(8.px)
@@ -167,6 +212,7 @@ fun SeenPlaygroundPage() {
             // Right: run button + links
             Row(
                 modifier = Modifier()
+                    .className("seen-playground-toolbar-actions")
                     .display(Display.Flex)
                     .alignItems(AlignItems.Center)
                     .gap(8.px)
@@ -208,6 +254,7 @@ fun SeenPlaygroundPage() {
         // Main content: editor + output
         Row(
             modifier = Modifier()
+                .className("seen-playground-workspace")
                 .display(Display.Flex)
                 .flex("1")
                 .overflow(Overflow.Hidden)
@@ -215,6 +262,7 @@ fun SeenPlaygroundPage() {
             // Editor panel
             Box(
                 modifier = Modifier()
+                    .className("seen-playground-editor")
                     .flex("1")
                     .display(Display.Flex)
                     .flexDirection(FlexDirection.Column)
@@ -255,6 +303,7 @@ fun SeenPlaygroundPage() {
             // Output panel
             Box(
                 modifier = Modifier()
+                    .className("seen-playground-output")
                     .width(40.percent)
                     .minWidth(300.px)
                     .display(Display.Flex)
