@@ -29,8 +29,9 @@ output "signer_service_uris" {
 }
 
 output "gateway_environment" {
-  description = "Three independently routable private origins for the existing portfolio gateway."
+  description = "Exact public host and three independently routable private origins for the portfolio gateway."
   value = var.enabled && var.workloads_enabled && !var.edge_cutover_enabled ? {
+    SEEN_REGISTRY_PUBLIC_HOST                   = var.uptime_host
     SEEN_REGISTRY_UPSTREAM_URL                  = google_cloud_run_v2_service.application["api"].uri
     SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL  = google_cloud_run_v2_service.application["release_actions"].uri
     SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL = google_cloud_run_v2_service.application["security_actions"].uri

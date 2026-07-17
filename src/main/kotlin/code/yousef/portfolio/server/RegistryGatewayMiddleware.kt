@@ -23,7 +23,6 @@ import kotlin.time.Duration.Companion.seconds
 
 internal const val REGISTRY_GATEWAY_MAX_REQUEST_BYTES = 26_214_400
 
-private const val REGISTRY_PUBLIC_HOST = "seen.dev.yousef.codes"
 private const val REGISTRY_PUBLIC_PREFIX = "/packages"
 private const val SERVERLESS_AUTHORIZATION = "X-Serverless-Authorization"
 private const val GATEWAY_RETRY_AFTER_SECONDS = 30
@@ -102,9 +101,10 @@ private object AetherRegistryProxyForwarder : RegistryProxyForwarder {
 }
 
 internal class RegistryGatewayMiddleware(
+    publicHost: String,
     upstreamUrl: String,
-    releaseActionsUpstreamUrl: String? = null,
-    securityActionsUpstreamUrl: String? = null,
+    releaseActionsUpstreamUrl: String,
+    securityActionsUpstreamUrl: String,
     private val identityTokenProvider: RegistryIdentityTokenProvider = GoogleAdcRegistryIdentityTokenProvider(),
     private val proxyForwarder: RegistryProxyForwarder = AetherRegistryProxyForwarder
 ) {
@@ -112,9 +112,10 @@ internal class RegistryGatewayMiddleware(
 
     private val log = LoggerFactory.getLogger(RegistryGatewayMiddleware::class.java)
     private val random = SecureRandom()
+    private val publicHost = parsePublicHost(publicHost)
     private val publicUpstream = parseUpstream(upstreamUrl)
-    private val releaseActionsUpstream = releaseActionsUpstreamUrl?.let(::parseUpstream)
-    private val securityActionsUpstream = securityActionsUpstreamUrl?.let(::parseUpstream)
+    private val releaseActionsUpstream = parseUpstream(releaseActionsUpstreamUrl)
+    private val securityActionsUpstream = parseUpstream(securityActionsUpstreamUrl)
 
     val middleware: Middleware = { exchange, next -> handle(exchange, next) }
 
@@ -151,15 +152,15 @@ internal class RegistryGatewayMiddleware(
             ?.substringBefore(':')
             ?.lowercase()
         val path = exchange.request.path
-        return host == REGISTRY_PUBLIC_HOST &&
+        return host == publicHost &&
             (path == REGISTRY_PUBLIC_PREFIX || path.startsWith("$REGISTRY_PUBLIC_PREFIX/"))
     }
 
     private fun selectUpstream(method: HttpMethod, path: String): Upstream = when {
         method == HttpMethod.POST && RELEASE_ACTION_PATH.matches(path) ->
-            releaseActionsUpstream ?: publicUpstream
+            releaseActionsUpstream
         method == HttpMethod.POST && SECURITY_ACTION_PATH.matches(path) ->
-            securityActionsUpstream ?: publicUpstream
+            securityActionsUpstream
         else -> publicUpstream
     }
 
@@ -208,7 +209,18 @@ internal class RegistryGatewayMiddleware(
         )
     }
 
+    private fun parsePublicHost(rawHost: String): String {
+        val normalized = rawHost.trim().lowercase()
+        require(PUBLIC_HOST.matches(normalized)) {
+            "Registry public host must be one exact DNS hostname"
+        }
+        return normalized
+    }
+
     private companion object {
+        val PUBLIC_HOST = Regex(
+            "^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+        )
         val RELEASE_ACTION_PATH = Regex(
             "^/packages/api/v1/packages/[^/]+/[^/]+/releases/[^/]+/actions/(?:yank|unyank)$"
         )

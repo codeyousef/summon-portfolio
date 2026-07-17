@@ -18,6 +18,10 @@ env:
   GCP_PROJECT_ID: portfolio-476219
   GCP_REGION: us-central1
   PHOTOGRAPHY_UPLOAD_BUCKET: portfolio-476219-portfolio-uploads
+  SEEN_REGISTRY_PUBLIC_HOST: seen.dev.yousef.codes
+  SEEN_REGISTRY_UPSTREAM_URL: https://seen-registry-dev-api-v2-ur6lw2377q-uc.a.run.app
+  SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL: https://seen-registry-dev-release-actions-v2-ur6lw2377q-uc.a.run.app
+  SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL: https://seen-registry-dev-security-actions-v2-ur6lw2377q-uc.a.run.app
 
 jobs:
   build-and-verify:
@@ -173,6 +177,22 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
+      - name: Capture resolved served traffic
+        id: before
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_json="$(gcloud run services describe "${{ needs.build-and-verify.outputs.service }}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          served_traffic="$(jq -c \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] | sort_by(.revisionName, .percent)' \
+            <<<"${service_json}")"
+          test "${served_traffic}" != "[]"
+          jq -e 'all(.[]; (.revisionName != null and .revisionName != "" and .percent > 0))' \
+            <<<"${served_traffic}" >/dev/null
+          echo "served_traffic=${served_traffic}" >> "${GITHUB_OUTPUT}"
+
       - name: Deploy immutable image after explicit enablement
         shell: bash
         run: |
@@ -181,20 +201,59 @@ jobs:
             --image "${{ needs.build-and-verify.outputs.image_uri }}" \
             --region "${GCP_REGION}" \
             --service-account "${{ vars.GCP_PORTFOLIO_DEV_RUNTIME_SERVICE_ACCOUNT }}" \
-            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ needs.build-and-verify.outputs.service }}" \
+            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ needs.build-and-verify.outputs.service }},SEEN_REGISTRY_PUBLIC_HOST=${SEEN_REGISTRY_PUBLIC_HOST},SEEN_REGISTRY_UPSTREAM_URL=${SEEN_REGISTRY_UPSTREAM_URL},SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL=${SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL},SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL=${SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL}" \
             --port 8080 \
             --quiet \
             --memory 2Gi \
             --concurrency 4 \
-            --max-instances 3
+            --max-instances 3 \
+            --no-traffic \
+            --tag runtime-canary
 
-      - name: Verify deployed service
+      - name: Verify zero-traffic candidate
         shell: bash
         run: |
           set -euo pipefail
-          url="$(gcloud run services describe "${{ needs.build-and-verify.outputs.service }}" \
+          service_json="$(gcloud run services describe "${{ needs.build-and-verify.outputs.service }}" \
             --region "${GCP_REGION}" \
-            --format='value(status.url)')"
+            --format=json)"
+          candidate="$(jq -c '[.status.traffic[]? | select(.tag == "runtime-canary")]' <<<"${service_json}")"
+          jq -e 'length == 1 and .[0].url != null and .[0].url != "" and .[0].revisionName != null and .[0].revisionName != ""' \
+            <<<"${candidate}" >/dev/null
+          url="$(jq -r '.[0].url' <<<"${candidate}")"
+          revision="$(jq -r '.[0].revisionName' <<<"${candidate}")"
+
+          served_traffic="$(jq -c \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] | sort_by(.revisionName, .percent)' \
+            <<<"${service_json}")"
+          jq -e 'all(.[]; (.revisionName != null and .revisionName != "" and .percent > 0))' \
+            <<<"${served_traffic}" >/dev/null
+          test "${served_traffic}" = '${{ steps.before.outputs.served_traffic }}'
+
+          candidate_percent="$(jq --arg revision "${revision}" \
+            '[.status.traffic[]? | select(.revisionName == $revision) | (.percent // 0)] | add // 0' \
+            <<<"${service_json}")"
+          test "${candidate_percent}" = "0"
+
+          revision_json="$(gcloud run revisions describe "${revision}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          test "$(jq -r '.spec.serviceAccountName' <<<"${revision_json}")" = "${{ vars.GCP_PORTFOLIO_DEV_RUNTIME_SERVICE_ACCOUNT }}"
+          test "$(jq -r '.spec.containers[0].image' <<<"${revision_json}")" = "${{ needs.build-and-verify.outputs.image_uri }}"
+          jq -e --arg value "${SEEN_REGISTRY_PUBLIC_HOST}" \
+            '.spec.containers[0].env | any(.name == "SEEN_REGISTRY_PUBLIC_HOST" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e --arg value "${SEEN_REGISTRY_UPSTREAM_URL}" \
+            '.spec.containers[0].env | any(.name == "SEEN_REGISTRY_UPSTREAM_URL" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e --arg value "${SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL}" \
+            '.spec.containers[0].env | any(.name == "SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e --arg value "${SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL}" \
+            '.spec.containers[0].env | any(.name == "SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e '.status.conditions | any(.type == "Ready" and .status == "True")' \
+            <<<"${revision_json}" >/dev/null
           curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
             --connect-timeout 10 --max-time 30 "${url}/" >/dev/null
-          echo "Deployed ${{ needs.build-and-verify.outputs.image_uri }} to ${url}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Deployed ${{ needs.build-and-verify.outputs.image_uri }} to zero-traffic candidate ${revision} (${url})" >> "${GITHUB_STEP_SUMMARY}"

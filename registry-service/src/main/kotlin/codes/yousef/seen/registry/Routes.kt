@@ -42,8 +42,8 @@ class RegistryRoutes(
             if (service.isReady()) exchange.respondJson(200, mapOf("status" to "ready"))
             else throw RegistryException(503, "temporarily_unavailable", "Registry bootstrap metadata is not ready", true, 30)
         } }
-        get("/") { exchange -> safe(exchange) { exchange.respondHtml(200, CatalogRenderer.render(service.listPublicPackages().items)) } }
-        get("/packages") { exchange -> safe(exchange) { exchange.respondHtml(200, CatalogRenderer.render(service.listPublicPackages().items)) } }
+        get("/") { exchange -> safe(exchange) { respondCatalog(exchange) } }
+        get("/packages") { exchange -> safe(exchange) { respondCatalog(exchange) } }
 
         get("/packages/api/v1/packages") { exchange -> safe(exchange) { exchange.respondJson(200, service.listPublicPackages(), json) } }
         post("/packages/api/v1/packages") { exchange -> safe(exchange) { requestId ->
@@ -150,6 +150,12 @@ class RegistryRoutes(
             exchange.response.setHeader("Cache-Control", "public,max-age=60,must-revalidate")
             exchange.respondHtml(200, CatalogRenderer.renderRelease(pkg, release))
         } }
+    }
+
+    private suspend fun respondCatalog(exchange: Exchange) {
+        val query = normalizeCatalogQuery(exchange.request.queryParameter("q"))
+        exchange.response.setHeader("Cache-Control", "public,max-age=60,must-revalidate")
+        exchange.respondHtml(200, CatalogRenderer.render(service.listPublicPackages().items, query))
     }
 
     internal fun authorizeStreamingArchive(exchange: Exchange): WriterPrincipal = writer(exchange)

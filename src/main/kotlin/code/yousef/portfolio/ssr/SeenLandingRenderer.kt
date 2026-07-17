@@ -3,13 +3,17 @@ package code.yousef.portfolio.ssr
 import code.yousef.portfolio.ui.seen.SeenLandingPage
 import codes.yousef.summon.seo.HeadScope
 
-class SeenLandingRenderer {
+class SeenLandingRenderer(private val packagesEnabled: Boolean = false) {
 
     fun landingPage(): SummonPage = SummonPage(
         head = headBlock(),
         content = {
             val docsUrl = seenDocsBaseUrl()
-            SeenLandingPage(playgroundUrl = "/playground", docsUrl = docsUrl)
+            SeenLandingPage(
+                playgroundUrl = "/playground",
+                docsUrl = docsUrl,
+                packagesUrl = if (packagesEnabled) "/packages" else null,
+            )
         }
     )
 
