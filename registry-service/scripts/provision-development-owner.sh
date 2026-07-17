@@ -338,8 +338,7 @@ if [ "${ENABLE_REVIEW_SCHEDULES}" = true ]; then
     gcloud run jobs add-iam-policy-binding "${review_job}" \
       --region "${REGION}" \
       --member="serviceAccount:${SCHEDULER_EMAIL}" \
-      --role=roles/run.invoker \
-      --condition=None >/dev/null
+      --role=roles/run.invoker >/dev/null
   done
 
   upsert_schedule() {
