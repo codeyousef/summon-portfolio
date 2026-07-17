@@ -210,6 +210,10 @@ class RegistryHttpServer(
             try {
                 pipeline.execute(exchange, fallback)
             } catch (error: Exception) {
+                if (error.isClosedChannelTransportFailure()) {
+                    log.debug("Registry response transport closed after request completion: {}", error.javaClass.simpleName)
+                    return@launch
+                }
                 log.error("Unhandled registry pipeline failure", error)
                 if (!request.response().headWritten()) {
                     routes.rejectStreamingArchive(

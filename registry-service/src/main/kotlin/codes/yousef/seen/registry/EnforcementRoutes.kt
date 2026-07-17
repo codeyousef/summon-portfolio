@@ -238,36 +238,59 @@ class EnforcementRoutes(
         try {
             action(requestId)
         } catch (error: RegistryException) {
-            if (error.status == 401) {
-                exchange.response.setHeader("WWW-Authenticate", "Bearer realm=\"seen-registry\"")
+            finishResponse(requestId) {
+                if (error.status == 401) {
+                    exchange.response.setHeader("WWW-Authenticate", "Bearer realm=\"seen-registry\"")
+                }
+                error.retryAfterSeconds?.let { exchange.response.setHeader("Retry-After", it.toString()) }
+                if (exchange.request.headers["Idempotency-Key"] != null) {
+                    exchange.response.setHeader("Idempotency-Replayed", "false")
+                }
+                exchange.response.setHeader("Cache-Control", "no-store")
+                respondJson(exchange, error.status, ErrorEnvelope(ApiError(
+                    code = error.code,
+                    message = error.publicMessage,
+                    requestId = requestId,
+                    occurredAt = clock.instant().utc(),
+                    retryable = error.retryable,
+                    retryAfterSeconds = error.retryAfterSeconds,
+                    details = JsonObject(emptyMap()),
+                )))
             }
-            error.retryAfterSeconds?.let { exchange.response.setHeader("Retry-After", it.toString()) }
-            if (exchange.request.headers["Idempotency-Key"] != null) {
-                exchange.response.setHeader("Idempotency-Replayed", "false")
-            }
-            exchange.response.setHeader("Cache-Control", "no-store")
-            respondJson(exchange, error.status, ErrorEnvelope(ApiError(
-                code = error.code,
-                message = error.publicMessage,
-                requestId = requestId,
-                occurredAt = clock.instant().utc(),
-                retryable = error.retryable,
-                retryAfterSeconds = error.retryAfterSeconds,
-                details = JsonObject(emptyMap()),
-            )))
         } catch (error: Exception) {
+            if (transportCompleted(requestId, error)) return
             log.error("Unhandled registry enforcement request failure requestId={}", requestId, error)
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.response.setHeader("Retry-After", "30")
-            respondJson(exchange, 500, ErrorEnvelope(ApiError(
-                code = "internal_error",
-                message = "The registry could not complete the request",
-                requestId = requestId,
-                occurredAt = clock.instant().utc(),
-                retryable = true,
-                retryAfterSeconds = 30,
-            )))
+            finishResponse(requestId) {
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.response.setHeader("Retry-After", "30")
+                respondJson(exchange, 500, ErrorEnvelope(ApiError(
+                    code = "internal_error",
+                    message = "The registry could not complete the request",
+                    requestId = requestId,
+                    occurredAt = clock.instant().utc(),
+                    retryable = true,
+                    retryAfterSeconds = 30,
+                )))
+            }
         }
+    }
+
+    private suspend inline fun finishResponse(requestId: String, crossinline response: suspend () -> Unit) {
+        try {
+            response()
+        } catch (error: Exception) {
+            if (!transportCompleted(requestId, error)) throw error
+        }
+    }
+
+    private fun transportCompleted(requestId: String, error: Throwable): Boolean {
+        if (!error.isClosedChannelTransportFailure()) return false
+        log.debug(
+            "Registry enforcement response transport completed requestId={} cause={}",
+            requestId,
+            error.javaClass.simpleName,
+        )
+        return true
     }
 
     private suspend inline fun <reified Result> idempotentMutation(

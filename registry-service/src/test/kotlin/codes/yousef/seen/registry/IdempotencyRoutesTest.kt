@@ -12,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.io.ByteArrayOutputStream
+import java.nio.channels.ClosedChannelException
 import java.time.Duration
 import java.time.Instant
 import java.util.Base64
@@ -25,6 +26,23 @@ import kotlin.test.assertIs
 import kotlin.test.assertFailsWith
 
 class IdempotencyRoutesTest {
+    @Test
+    fun `closed channel after successful body write does not trigger a second response`() = runBlocking {
+        val fixture = routeFixture()
+        val response = DisconnectAfterCommitResponse()
+        val exchange = RegistryTestExchange(
+            RegistryTestRequest(HttpMethod.GET, "/health", Headers(emptyMap()), ByteArray(0)),
+            response,
+        )
+
+        fixture.routes.router.handle(exchange)
+
+        assertEquals(200, response.statusCode)
+        assertEquals(1, response.writeCalls)
+        assertEquals(1, response.endCalls)
+        assertTrue(response.body.isNotEmpty())
+    }
+
     @Test
     fun `takeover lease rejects stale completion ownership`() {
         val repository = InMemoryRegistryRepository()
@@ -356,13 +374,28 @@ private class RegistryTestRequest(
     override suspend fun bodyBytes(): ByteArray = body.copyOf()
 }
 
-private class RegistryTestResponse : Response {
+private open class RegistryTestResponse : Response {
     override var statusCode: Int = 200
     override var statusMessage: String? = null
     override val headers = Headers.HeadersBuilder()
     override val cookies = mutableListOf<Cookie>()
     private val output = ByteArrayOutputStream()
     val body: ByteArray get() = output.toByteArray()
-    override suspend fun write(data: ByteArray) { output.write(data) }
-    override suspend fun end() = Unit
+    var writeCalls: Int = 0
+        private set
+    override suspend fun write(data: ByteArray) {
+        writeCalls++
+        output.write(data)
+    }
+    open override suspend fun end() = Unit
+}
+
+private class DisconnectAfterCommitResponse : RegistryTestResponse() {
+    var endCalls: Int = 0
+        private set
+
+    override suspend fun end() {
+        endCalls++
+        throw ClosedChannelException()
+    }
 }

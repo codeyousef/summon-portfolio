@@ -12,9 +12,20 @@ import org.slf4j.LoggerFactory
 import java.security.SecureRandom
 import java.security.MessageDigest
 import java.nio.ByteBuffer
+import java.nio.channels.ClosedChannelException
 import java.time.Clock
 import java.time.Duration
 import java.util.Base64
+
+internal fun Throwable.isClosedChannelTransportFailure(): Boolean {
+    var current: Throwable? = this
+    repeat(16) {
+        val failure = current ?: return false
+        if (failure is ClosedChannelException) return true
+        current = failure.cause?.takeUnless { it === failure }
+    }
+    return false
+}
 
 class RegistryRoutes(
     private val service: RegistryService,
@@ -175,31 +186,36 @@ class RegistryRoutes(
         try {
             action(requestId)
         } catch (error: RegistryException) {
-            if (error.status == 401) exchange.response.setHeader("WWW-Authenticate", "Bearer realm=\"seen-registry\"")
-            if (error.retryAfterSeconds != null) exchange.response.setHeader("Retry-After", error.retryAfterSeconds.toString())
-            if (exchange.request.headers["Idempotency-Key"] != null) exchange.response.setHeader("Idempotency-Replayed", "false")
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.respondJson(error.status, ErrorEnvelope(ApiError(
-                code = error.code,
-                message = error.publicMessage,
-                requestId = requestId,
-                occurredAt = clock.instant().utc(),
-                retryable = error.retryable,
-                retryAfterSeconds = error.retryAfterSeconds,
-                details = JsonObject(emptyMap()),
-            )), json)
+            finishResponse(requestId) {
+                if (error.status == 401) exchange.response.setHeader("WWW-Authenticate", "Bearer realm=\"seen-registry\"")
+                if (error.retryAfterSeconds != null) exchange.response.setHeader("Retry-After", error.retryAfterSeconds.toString())
+                if (exchange.request.headers["Idempotency-Key"] != null) exchange.response.setHeader("Idempotency-Replayed", "false")
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.respondJson(error.status, ErrorEnvelope(ApiError(
+                    code = error.code,
+                    message = error.publicMessage,
+                    requestId = requestId,
+                    occurredAt = clock.instant().utc(),
+                    retryable = error.retryable,
+                    retryAfterSeconds = error.retryAfterSeconds,
+                    details = JsonObject(emptyMap()),
+                )), json)
+            }
         } catch (error: Exception) {
+            if (transportCompleted(requestId, error)) return
             log.error("Unhandled registry request failure requestId={}", requestId, error)
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.response.setHeader("Retry-After", "30")
-            exchange.respondJson(500, ErrorEnvelope(ApiError(
-                code = "internal_error",
-                message = "The registry could not complete the request",
-                requestId = requestId,
-                occurredAt = clock.instant().utc(),
-                retryable = true,
-                retryAfterSeconds = 30,
-            )), json)
+            finishResponse(requestId) {
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.response.setHeader("Retry-After", "30")
+                exchange.respondJson(500, ErrorEnvelope(ApiError(
+                    code = "internal_error",
+                    message = "The registry could not complete the request",
+                    requestId = requestId,
+                    occurredAt = clock.instant().utc(),
+                    retryable = true,
+                    retryAfterSeconds = 30,
+                )), json)
+            }
         }
     }
 
@@ -210,13 +226,32 @@ class RegistryRoutes(
             action()
         } catch (error: RegistryException) {
             val notFound = error.status == 400 || error.status == 404
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.respondHtml(if (notFound) 404 else error.status, CatalogRenderer.renderUnavailable(notFound))
+            finishResponse(requestId) {
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.respondHtml(if (notFound) 404 else error.status, CatalogRenderer.renderUnavailable(notFound))
+            }
         } catch (error: Exception) {
+            if (transportCompleted(requestId, error)) return
             log.error("Unhandled registry catalog failure requestId={}", requestId, error)
-            exchange.response.setHeader("Cache-Control", "no-store")
-            exchange.respondHtml(500, CatalogRenderer.renderUnavailable(false))
+            finishResponse(requestId) {
+                exchange.response.setHeader("Cache-Control", "no-store")
+                exchange.respondHtml(500, CatalogRenderer.renderUnavailable(false))
+            }
         }
+    }
+
+    private suspend inline fun finishResponse(requestId: String, crossinline response: suspend () -> Unit) {
+        try {
+            response()
+        } catch (error: Exception) {
+            if (!transportCompleted(requestId, error)) throw error
+        }
+    }
+
+    private fun transportCompleted(requestId: String, error: Throwable): Boolean {
+        if (!error.isClosedChannelTransportFailure()) return false
+        log.debug("Registry response transport completed requestId={} cause={}", requestId, error.javaClass.simpleName)
+        return true
     }
 
     private suspend inline fun <reified Request, reified Result> idempotentJson(
