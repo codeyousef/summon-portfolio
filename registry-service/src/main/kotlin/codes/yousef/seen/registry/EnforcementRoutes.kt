@@ -116,6 +116,13 @@ class EnforcementRoutes(
     private val random = SecureRandom()
 
     val router: Router = router {
+        // Liveness belongs to the transport surface, not to public package
+        // routes. Keep it available on the isolated action services so Cloud
+        // Run can distinguish a healthy process from an action-route failure.
+        get("/health") { exchange ->
+            respondJson(exchange, 200, mapOf("status" to "ok"))
+        }
+
         if (EnforcementRouteSurface.REPORTS_AND_APPEALS in surfaces) {
             post("/packages/api/v1/reports") { exchange -> safe(exchange) { requestId ->
                 val actor = actor(exchange)

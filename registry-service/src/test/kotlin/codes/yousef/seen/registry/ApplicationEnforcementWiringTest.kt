@@ -94,6 +94,7 @@ class ApplicationEnforcementWiringTest {
                 serverMode = RegistryServerMode.PUBLIC_API,
             ), clock),
             expectedRoles = emptySet(),
+            expectedRegistryRoutes = true,
             expectedHandled = setOf(HEALTH_PATH, REPORT_PATH),
         )
         assertSurface(
@@ -106,7 +107,8 @@ class ApplicationEnforcementWiringTest {
                 trustAndSafetyPrincipal = "",
             ), clock),
             expectedRoles = setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
-            expectedHandled = setOf(YANK_PATH),
+            expectedRegistryRoutes = false,
+            expectedHandled = setOf(HEALTH_PATH, YANK_PATH),
         )
         assertSurface(
             RegistryResources.create(base.copy(
@@ -123,18 +125,20 @@ class ApplicationEnforcementWiringTest {
                 securityPrincipal = "security-principal",
             ), clock),
             expectedRoles = setOf(TufRole.SECURITY, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
-            expectedHandled = setOf(SECURITY_PATH),
+            expectedRegistryRoutes = false,
+            expectedHandled = setOf(HEALTH_PATH, SECURITY_PATH),
         )
     }
 
     private suspend fun assertSurface(
         resources: RegistryResources,
         expectedRoles: Set<String>,
+        expectedRegistryRoutes: Boolean,
         expectedHandled: Set<String>,
     ) {
         try {
             assertEquals(expectedRoles, resources.activeSigningRoles)
-            assertEquals(HEALTH_PATH in expectedHandled, resources.hasRegistryRoutes)
+            assertEquals(expectedRegistryRoutes, resources.hasRegistryRoutes)
             listOf(HEALTH_PATH, REPORT_PATH, YANK_PATH, SECURITY_PATH).forEach { path ->
                 val exchange = WiringExchange(WiringRequest(
                     method = if (path == HEALTH_PATH) HttpMethod.GET else HttpMethod.POST,
