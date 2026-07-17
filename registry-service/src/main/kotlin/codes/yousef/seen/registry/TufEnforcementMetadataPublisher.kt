@@ -15,11 +15,12 @@ class TufEnforcementMetadataPublisher(
     override fun publishSecurityQuarantine(
         subject: EnforcementReleaseSubject,
         request: SecurityQuarantineRequest,
+        incidentId: String,
     ): SignedMetadataReference {
         // The request is validated and durably represented by EnforcementService;
         // report IDs, rationale, and advisory details never enter public metadata.
         check(request.reason.isNotBlank())
-        return tuf.publishSecurityQuarantine(release(subject))
+        return tuf.publishSecurityQuarantine(release(subject), incidentId)
     }
 
     override fun publishReviewedReinstatement(
@@ -31,7 +32,7 @@ class TufEnforcementMetadataPublisher(
     }
 
     override fun restoreSecurityQuarantine(subject: EnforcementReleaseSubject) {
-        tuf.publishSecurityQuarantine(release(subject))
+        tuf.restoreSecurityQuarantine(release(subject))
     }
 
     private fun release(subject: EnforcementReleaseSubject): StoredRelease {

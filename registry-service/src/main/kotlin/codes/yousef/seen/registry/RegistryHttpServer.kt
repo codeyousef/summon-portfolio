@@ -1,6 +1,7 @@
 package codes.yousef.seen.registry
 
 import codes.yousef.aether.core.Exchange
+import codes.yousef.aether.core.respondJson
 import codes.yousef.aether.core.jvm.VertxServerConfig
 import codes.yousef.aether.core.jvm.createVertxExchangeWithBody
 import codes.yousef.aether.core.pipeline.Pipeline
@@ -35,7 +36,8 @@ import java.io.ByteArrayOutputStream
 class RegistryHttpServer(
     private val config: VertxServerConfig,
     private val pipeline: Pipeline,
-    private val routes: RegistryRoutes,
+    private val routes: RegistryRoutes?,
+    private val streamingUploadsEnabled: Boolean = true,
     private val fallback: suspend (Exchange) -> Unit,
 ) : AutoCloseable {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -43,6 +45,12 @@ class RegistryHttpServer(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var server: HttpServer? = null
     val actualPort: Int get() = requireNotNull(server) { "Registry server is not started" }.actualPort()
+
+    init {
+        require(!streamingUploadsEnabled || routes != null) {
+            "Streaming uploads require the public registry routes"
+        }
+    }
 
     fun start() {
         val options = HttpServerOptions()
@@ -62,11 +70,16 @@ class RegistryHttpServer(
     }
 
     private fun handle(request: HttpServerRequest) {
-        val match = if (request.method().name() == "PUT") ARCHIVE_PATH.matchEntire(request.path().orEmpty()) else null
+        val match = if (streamingUploadsEnabled && request.method().name() == "PUT") {
+            ARCHIVE_PATH.matchEntire(request.path().orEmpty())
+        } else {
+            null
+        }
         if (match != null) streamArchive(request, match.groupValues[1]) else bufferRequest(request)
     }
 
     private fun streamArchive(request: HttpServerRequest, uploadId: String) {
+        val routes = requireNotNull(routes) { "Streaming archive route is unavailable" }
         val exchange = createVertxExchangeWithBody(request, ByteArray(0))
         val principal = try {
             routes.authorizeStreamingArchive(exchange)
@@ -216,9 +229,20 @@ class RegistryHttpServer(
                 }
                 log.error("Unhandled registry pipeline failure", error)
                 if (!request.response().headWritten()) {
-                    routes.rejectStreamingArchive(
+                    routes?.rejectStreamingArchive(
                         exchange,
                         RegistryException(500, "internal_error", "The registry could not complete the request", true, 30),
+                    ) ?: exchange.respondJson(
+                        500,
+                        ErrorEnvelope(ApiError(
+                            code = "internal_error",
+                            message = "The registry could not complete the request",
+                            requestId = "req_0000000000000000",
+                            occurredAt = java.time.Clock.systemUTC().instant().utc(),
+                            retryable = true,
+                            retryAfterSeconds = 30,
+                        )),
+                        RegistryJson,
                     )
                 }
             }
@@ -226,6 +250,7 @@ class RegistryHttpServer(
     }
 
     private fun reject(exchange: Exchange, error: RegistryException) {
+        val routes = requireNotNull(routes) { "Streaming archive route is unavailable" }
         scope.launch {
             runCatching { routes.rejectStreamingArchive(exchange, error) }
                 .onFailure { log.info("Registry response ended before error delivery: {}", it.message) }

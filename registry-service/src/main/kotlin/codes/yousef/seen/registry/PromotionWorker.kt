@@ -50,7 +50,8 @@ class PromotionReviewWorker(
 
             // Metadata must describe the same active projection that is committed
             // below; no mutable release input is read after this point.
-            val draftActive = stateMachine.activate(claimed, attemptId, 1, clock.instant())
+            val activatedAt = clock.instant()
+            val draftActive = stateMachine.activate(claimed, attemptId, 1, activatedAt)
             val public = repository.listReleases().filter {
                 it.record.state.visibility == "public" && it.record.state.availability in setOf("available", "yanked")
             }.filterNot {
@@ -58,7 +59,6 @@ class PromotionReviewWorker(
             } + draftActive
             publicationAttempted = true
             val metadataVersion = metadata.publish(public)
-            val activatedAt = clock.instant()
             val activated = stateMachine.activate(claimed, attemptId, metadataVersion, activatedAt)
             val activationAudit = auditEvent(
                 activated,

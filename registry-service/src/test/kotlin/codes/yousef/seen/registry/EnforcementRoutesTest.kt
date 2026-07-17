@@ -333,9 +333,11 @@ class EnforcementRoutesTest {
         override fun publishSecurityQuarantine(
             subject: EnforcementReleaseSubject,
             request: SecurityQuarantineRequest,
+            incidentId: String,
         ): SignedMetadataReference {
             assertEquals(SUBJECT, subject)
             assertEquals("critical", request.severity)
+            assertTrue(incidentId.startsWith("inc_"))
             quarantineCalls++
             return metadata(quarantineCalls + reinstatementCalls)
         }

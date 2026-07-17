@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import java.time.Duration
 import java.time.Instant
 import kotlin.test.Test
@@ -20,7 +21,7 @@ import kotlin.test.assertTrue
 
 class TufEnforcementMetadataPublisherTest {
     @Test
-    fun `resolver metadata excludes legacy releases and emits reviewed proof digest`() {
+    fun `resolver metadata binds immutable release provenance and exact review evidence`() {
         val fixture = fixture()
         val available = fixture.addReviewed(1, "available")
         val yanked = fixture.addReviewed(2, "yanked")
@@ -34,12 +35,82 @@ class TufEnforcementMetadataPublisherTest {
         assertEquals("available", availability(targets.getValue(targetPath(available.release))))
         assertEquals("yanked", availability(targets.getValue(targetPath(yanked.release))))
         val custom = targets.getValue(targetPath(available.release)).jsonObject["custom"]!!.jsonObject
+        assertEquals("seen", custom["owner"]!!.jsonPrimitive.content)
+        assertEquals("reviewed-1", custom["name"]!!.jsonPrimitive.content)
+        assertEquals(available.release.record.version, custom["version"]!!.jsonPrimitive.content)
+        assertEquals(available.release.record.archive.sha256, custom["archive_sha256"]!!.jsonPrimitive.content)
+        val blob = custom["blob"]!!.jsonObject
+        assertEquals(available.release.record.archive.sha256, blob["sha256"]!!.jsonPrimitive.content)
+        assertEquals(available.release.record.archive.compressedBytes, blob["length"]!!.jsonPrimitive.content.toLong())
+        assertEquals(available.release.ownerPrincipal, custom["publisher_principal"]!!.jsonPrimitive.content)
+        assertEquals("release-promoter", custom["registry_service_identity"]!!.jsonPrimitive.content)
+        val sourceRepository = custom["source_repository"]!!.jsonObject
+        assertEquals(available.proof.repository.forge, sourceRepository["forge"]!!.jsonPrimitive.content)
+        assertEquals(available.proof.repository.repositoryId, sourceRepository["repository_id"]!!.jsonPrimitive.content)
+        assertEquals(available.proof.repository.canonicalUrl, sourceRepository["canonical_url"]!!.jsonPrimitive.content)
+        val sourceCommit = custom["source_commit"]!!.jsonObject
+        assertEquals(available.proof.commit.algorithm, sourceCommit["algorithm"]!!.jsonPrimitive.content)
+        assertEquals(available.proof.commit.value, sourceCommit["value"]!!.jsonPrimitive.content)
+        val review = custom["review"]!!.jsonObject
+        assertEquals("passed", review["result"]!!.jsonPrimitive.content)
+        assertEquals(available.scan.scan.policyVersion, review["policy_version"]!!.jsonPrimitive.content)
+        assertEquals(available.proof.proofId, review["source_proof_id"]!!.jsonPrimitive.content)
+        assertEquals(available.proof.sha256(), review["source_proof_sha256"]!!.jsonPrimitive.content)
+        assertEquals(available.scan.attestationId, review["scan_attestation_id"]!!.jsonPrimitive.content)
+        assertEquals(available.scan.sha256(), review["scan_attestation_sha256"]!!.jsonPrimitive.content)
+        assertEquals(available.scan.scanner.id, review["scanner_id"]!!.jsonPrimitive.content)
+        assertEquals(available.scan.scanner.version, review["scanner_version"]!!.jsonPrimitive.content)
+        assertEquals(available.scan.sequence, review["attestation_sequence"]!!.jsonPrimitive.content.toLong())
+        assertEquals(available.release.record.state.visibility, custom["visibility"]!!.jsonPrimitive.content)
+        assertEquals(available.release.record.timestamps.activatedAt, custom["activated_at"]!!.jsonPrimitive.content)
         assertEquals(available.proof.sha256(), custom["source_proof_sha256"]!!.jsonPrimitive.content)
-        assertEquals(available.proof.sha256(), custom["provenance_sha256"]!!.jsonPrimitive.content)
+        val attestationProjection = buildJsonObject {
+            put("subject", buildJsonObject {
+                listOf("package", "owner", "name", "version", "blob", "visibility").forEach { field ->
+                    put(field, custom.getValue(field))
+                }
+            })
+            listOf(
+                "publisher_principal",
+                "registry_service_identity",
+                "source_repository",
+                "source_commit",
+                "review",
+                "activated_at",
+            ).forEach { field -> put(field, custom.getValue(field)) }
+        }
+        val registryAttestationSha256 = sha256(canonicalJson(attestationProjection))
+        assertEquals(registryAttestationSha256, custom["registry_attestation_sha256"]!!.jsonPrimitive.content)
+        assertEquals(registryAttestationSha256, custom["provenance_sha256"]!!.jsonPrimitive.content)
+        val yankedCustom = targets.getValue(targetPath(yanked.release)).jsonObject["custom"]!!.jsonObject
+        assertEquals("Withdrawn release 2", yankedCustom["yank_reason"]!!.jsonPrimitive.content)
         assertNotEquals(
             sha256(RegistryJson.encodeToString(available.release.source).encodeToByteArray()),
             custom["source_proof_sha256"]!!.jsonPrimitive.content,
         )
+    }
+
+    @Test
+    fun `release with unavailable stored review evidence is omitted from signed targets`() {
+        val fixture = fixture()
+        val reviewed = fixture.addReviewed(7, "available")
+        val repositoryWithoutFinalScan = object : RegistryRepository by fixture.repository {
+            override fun getReviewArtifact(artifactId: String): ReviewArtifact? =
+                if (artifactId == reviewed.scan.attestationId) null else fixture.repository.getReviewArtifact(artifactId)
+        }
+        val publisher = TufPublisher(
+            repositoryWithoutFinalScan,
+            fixture.storage,
+            fixture.online,
+            "development",
+            REPOSITORY_ID,
+            ORIGIN,
+            fixture.clock,
+        )
+
+        publisher.publish(emptyList())
+
+        assertFalse(targetPath(reviewed.release) in currentTargets(fixture.storage, TufRole.RELEASES))
     }
 
     @Test
@@ -59,7 +130,7 @@ class TufEnforcementMetadataPublisherTest {
             first.release.record.version,
             firstRequest,
             security,
-        ) { metadata.publishSecurityQuarantine(first.subject, firstRequest) }
+        ) { incidentId -> metadata.publishSecurityQuarantine(first.subject, firstRequest, incidentId) }
         assertTruthfulReference(fixture.storage, firstAction.signedMetadata)
         var securityTargets = currentTargets(fixture.storage, TufRole.SECURITY)
         assertEquals(setOf(targetPath(first.release)), securityTargets.keys)
@@ -74,7 +145,7 @@ class TufEnforcementMetadataPublisherTest {
             second.release.record.version,
             secondRequest,
             security,
-        ) { metadata.publishSecurityQuarantine(second.subject, secondRequest) }
+        ) { incidentId -> metadata.publishSecurityQuarantine(second.subject, secondRequest, incidentId) }
         assertTruthfulReference(fixture.storage, secondAction.signedMetadata)
         securityTargets = currentTargets(fixture.storage, TufRole.SECURITY)
         assertEquals(setOf(targetPath(first.release), targetPath(second.release)), securityTargets.keys)
@@ -105,7 +176,7 @@ class TufEnforcementMetadataPublisherTest {
             promoter.publishSecurityQuarantine(fixture.repository.getRelease(
                 first.release.record.`package`,
                 first.release.record.version,
-            )!!)
+            )!!, firstAction.incidentId)
         }
         assertEquals("temporarily_unavailable", unauthorized.code)
 
@@ -238,8 +309,14 @@ class TufEnforcementMetadataPublisherTest {
 
     private fun assertExactOverride(base: JsonElement, override: JsonElement) {
         val baseObject = base.jsonObject
+        val overrideCustom = override.jsonObject["custom"]!!.jsonObject
+        val incidentId = overrideCustom["incident_id"]!!.jsonPrimitive.content
+        assertTrue(incidentId.startsWith("inc_"))
         val expectedCustom = baseObject["custom"]!!.jsonObject.toMutableMap().apply {
+            remove("yank_reason")
             put("availability", JsonPrimitive("security-quarantined"))
+            put("incident_id", JsonPrimitive(incidentId))
+            put("security_action", JsonPrimitive("quarantine"))
         }
         val expected = JsonObject(baseObject.toMutableMap().apply {
             put("custom", JsonObject(expectedCustom))
@@ -332,6 +409,24 @@ class TufEnforcementMetadataPublisherTest {
         assertTrue(repository.appendReviewArtifact(value.firstScan.toArtifact()))
         assertTrue(repository.appendReviewArtifact(value.proof.toArtifact()))
         assertTrue(repository.appendReviewArtifact(value.scan.toArtifact()))
+        if (availability == "yanked") {
+            assertTrue(repository.appendReviewArtifact(ReviewArtifact(
+                artifactId = "aud_yank_$seed",
+                kind = RELEASE_AVAILABILITY_ACTION_ARTIFACT,
+                packageIdentity = value.release.record.`package`,
+                version = value.release.record.version,
+                archiveSha256 = value.release.record.archive.sha256,
+                sequence = 100L + seed,
+                createdAt = NOW,
+                payload = buildJsonObject {
+                    put("action", buildJsonObject {
+                        put("action", "yanked")
+                        put("reason", "Withdrawn release $seed")
+                        put("resulting_availability", "yanked")
+                    })
+                },
+            )))
+        }
         return value
     }
 

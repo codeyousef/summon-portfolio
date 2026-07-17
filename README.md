@@ -40,6 +40,8 @@ docker run -d -p 8080:8080 -v portfolio-data:/app/storage portfolio
 
 Cloud Run deployments should use Firestore for content and GCS for photography uploads. The GitHub deploy workflow creates/uses `portfolio-476219-portfolio-uploads` and sets `PHOTOGRAPHY_UPLOAD_BUCKET` plus a per-service `PHOTOGRAPHY_UPLOAD_PREFIX` so uploaded media survives new revisions.
 
+The isolated Seen registry has a public [signing operations runbook](registry-service/docs/signing-operations.md) covering offline custody, ceremonies, renewal, rotation, compromise recovery, IAM policy gates, and development drills.
+
 Environment variables:
 - `PORTFOLIO_CONTENT_PATH` - Path to content.json (default: `/app/storage/content.json`)
 - `ADMIN_CREDENTIALS_PATH` - Path to admin-credentials.json (default: `/app/storage/admin-credentials.json`)

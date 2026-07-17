@@ -172,6 +172,83 @@ class RegistryGatewayMiddlewareTest {
     }
 
     @Test
+    fun `routes only exact release and security mutations to isolated action services`() = runBlocking {
+        val audiences = mutableListOf<String>()
+        val forwarded = mutableListOf<Pair<String, String>>()
+        val gateway = RegistryGatewayMiddleware(
+            upstreamUrl = "https://registry-api.example.run.app",
+            releaseActionsUpstreamUrl = "https://registry-release-actions.example.run.app",
+            securityActionsUpstreamUrl = "https://registry-security-actions.example.run.app",
+            identityTokenProvider = RegistryIdentityTokenProvider { audience ->
+                audiences += audience
+                "identity-for-$audience"
+            },
+            proxyForwarder = RegistryProxyForwarder { exchange, upstreamUrl, _ ->
+                forwarded += exchange.request.path to upstreamUrl
+                exchange.respond(204, "")
+            }
+        )
+
+        val paths = listOf(
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/yank",
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/unyank",
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/security-quarantine",
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/security-reinstate",
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0",
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/yank/extra",
+            "/packages/api/v1/metadata/timestamp.json"
+        )
+        paths.forEach { path ->
+            gateway.handle(TestExchange(TestRequest(
+                method = HttpMethod.POST,
+                path = path,
+                headers = Headers.of("Host" to "seen.dev.yousef.codes")
+            ))) {
+                error("registry paths must not fall through")
+            }
+        }
+
+        gateway.handle(TestExchange(TestRequest(
+            method = HttpMethod.GET,
+            path = paths[0],
+            headers = Headers.of("Host" to "seen.dev.yousef.codes")
+        ))) { error("registry paths must not fall through") }
+
+        assertEquals(
+            listOf(
+                paths[0] to "https://registry-release-actions.example.run.app",
+                paths[1] to "https://registry-release-actions.example.run.app",
+                paths[2] to "https://registry-security-actions.example.run.app",
+                paths[3] to "https://registry-security-actions.example.run.app",
+                paths[4] to "https://registry-api.example.run.app",
+                paths[5] to "https://registry-api.example.run.app",
+                paths[6] to "https://registry-api.example.run.app"
+            ),
+            forwarded.take(paths.size)
+        )
+        assertEquals(paths[0] to "https://registry-api.example.run.app", forwarded.last())
+        assertEquals(forwarded.map { it.second }, audiences)
+    }
+
+    @Test
+    fun `falls back to the existing combined upstream until action services are configured`() = runBlocking {
+        val forwarded = mutableListOf<String>()
+        val gateway = RegistryGatewayMiddleware(
+            upstreamUrl = "https://registry-combined.example.run.app",
+            identityTokenProvider = RegistryIdentityTokenProvider { "identity" },
+            proxyForwarder = RegistryProxyForwarder { _, upstreamUrl, _ -> forwarded += upstreamUrl }
+        )
+
+        gateway.handle(TestExchange(TestRequest(
+            method = HttpMethod.POST,
+            path = "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/yank",
+            headers = Headers.of("Host" to "seen.dev.yousef.codes")
+        ))) { error("registry paths must not fall through") }
+
+        assertEquals(listOf("https://registry-combined.example.run.app"), forwarded)
+    }
+
+    @Test
     fun `returns a generic gateway error without leaking upstream details`() = runBlocking {
         val gateway = RegistryGatewayMiddleware(
             upstreamUrl = "https://registry-dev-abc-uc.a.run.app",

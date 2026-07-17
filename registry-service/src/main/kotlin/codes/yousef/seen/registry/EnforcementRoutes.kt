@@ -91,6 +91,7 @@ interface EnforcementMetadataPublisher {
     fun publishSecurityQuarantine(
         subject: EnforcementReleaseSubject,
         request: SecurityQuarantineRequest,
+        incidentId: String,
     ): SignedMetadataReference
 
     fun publishReviewedReinstatement(
@@ -109,124 +110,141 @@ class EnforcementRoutes(
     private val metadataPublisher: EnforcementMetadataPublisher,
     private val clock: Clock = Clock.systemUTC(),
     private val json: Json = RegistryJson,
+    private val surfaces: Set<EnforcementRouteSurface> = EnforcementRouteSurface.entries.toSet(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val random = SecureRandom()
 
     val router: Router = router {
-        post("/packages/api/v1/reports") { exchange -> safe(exchange) { requestId ->
-            val actor = actor(exchange)
-            idempotentMutation<SecurityReportRecord>(
-                exchange = exchange,
-                requestId = requestId,
-                actor = actor,
-                successStatus = 201,
-                responseHeaders = { record ->
-                    mapOf("Location" to "/packages/api/v1/reports/${record.reportId}")
-                },
-            ) { body -> service.createSecurityReport(decode(body), actor) }
-        } }
-        get("/packages/api/v1/reports/:reportId") { exchange -> safe(exchange) {
-            val record = service.getSecurityReport(exchange.pathParamOrThrow("reportId"), actor(exchange))
-            respondAccessControlled(exchange, record)
-        } }
-
-        post("/packages/api/v1/incidents/:incidentId/appeals") { exchange -> safe(exchange) { requestId ->
-            val actor = actor(exchange)
-            idempotentMutation<EnforcementAppealRecord>(
-                exchange = exchange,
-                requestId = requestId,
-                actor = actor,
-                successStatus = 201,
-                responseHeaders = { record ->
-                    mapOf("Location" to "/packages/api/v1/appeals/${record.appealId}")
-                },
-            ) { body ->
-                service.createEnforcementAppeal(
-                    exchange.pathParamOrThrow("incidentId"),
-                    decode(body),
-                    actor,
-                )
-            }
-        } }
-        get("/packages/api/v1/appeals/:appealId") { exchange -> safe(exchange) {
-            val record = service.getEnforcementAppeal(exchange.pathParamOrThrow("appealId"), actor(exchange))
-            respondAccessControlled(exchange, record)
-        } }
-        post("/packages/api/v1/appeals/:appealId/reviews") { exchange -> safe(exchange) { requestId ->
-            val actor = actor(exchange)
-            idempotentMutation<AppealReviewRecord>(
-                exchange = exchange,
-                requestId = requestId,
-                actor = actor,
-                successStatus = 201,
-                responseHeaders = { record ->
-                    mapOf("Location" to "/packages/api/v1/appeals/${record.appealId}/reviews/${record.reviewId}")
-                },
-            ) { body ->
-                service.reviewEnforcementAppeal(
-                    exchange.pathParamOrThrow("appealId"),
-                    decode(body),
-                    actor,
-                )
-            }
-        } }
-
-        post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/yank") { exchange ->
-            safe(exchange) { requestId ->
-                val actor = actor(exchange)
-                idempotentMutation<ReleaseRecord>(exchange, requestId, actor, 200) { body ->
-                    val request = if (body.isEmpty()) YankReleaseRequest() else decode(body)
-                    service.yankRelease(identity(exchange), version(exchange), request, actor) { release ->
-                        metadataPublisher.publishReleaseAvailability(release)
-                    }
-                }
-            }
+        // Liveness belongs to the transport surface, not to public package
+        // routes. Keep it available on the isolated action services so Cloud
+        // Run can distinguish a healthy process from an action-route failure.
+        get("/health") { exchange ->
+            respondJson(exchange, 200, mapOf("status" to "ok"))
         }
-        post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/unyank") { exchange ->
-            safe(exchange) { requestId ->
+
+        if (EnforcementRouteSurface.REPORTS_AND_APPEALS in surfaces) {
+            post("/packages/api/v1/reports") { exchange -> safe(exchange) { requestId ->
                 val actor = actor(exchange)
-                idempotentMutation<ReleaseRecord>(exchange, requestId, actor, 200) { body ->
-                    if (body.isNotEmpty()) invalidRequest()
-                    service.unyankRelease(identity(exchange), version(exchange), actor) { release ->
-                        metadataPublisher.publishReleaseAvailability(release)
-                    }
-                }
-            }
-        }
-        post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/security-quarantine") { exchange ->
-            safe(exchange) { requestId ->
+                idempotentMutation<SecurityReportRecord>(
+                    exchange = exchange,
+                    requestId = requestId,
+                    actor = actor,
+                    successStatus = 201,
+                    responseHeaders = { record ->
+                        mapOf("Location" to "/packages/api/v1/reports/${record.reportId}")
+                    },
+                ) { body -> service.createSecurityReport(decode(body), actor) }
+            } }
+            get("/packages/api/v1/reports/:reportId") { exchange -> safe(exchange) {
+                val record = service.getSecurityReport(exchange.pathParamOrThrow("reportId"), actor(exchange))
+                respondAccessControlled(exchange, record)
+            } }
+
+            post("/packages/api/v1/incidents/:incidentId/appeals") { exchange -> safe(exchange) { requestId ->
                 val actor = actor(exchange)
-                idempotentMutation<SecurityActionRecord>(exchange, requestId, actor, 200) { body ->
-                    val request = decode<SecurityQuarantineRequest>(body)
-                    val subject = EnforcementReleaseSubject(identity(exchange), version(exchange))
-                    service.securityQuarantineRelease(
-                        subject.packageIdentity,
-                        requireNotNull(subject.version),
-                        request,
+                idempotentMutation<EnforcementAppealRecord>(
+                    exchange = exchange,
+                    requestId = requestId,
+                    actor = actor,
+                    successStatus = 201,
+                    responseHeaders = { record ->
+                        mapOf("Location" to "/packages/api/v1/appeals/${record.appealId}")
+                    },
+                ) { body ->
+                    service.createEnforcementAppeal(
+                        exchange.pathParamOrThrow("incidentId"),
+                        decode(body),
                         actor,
-                    ) { metadataPublisher.publishSecurityQuarantine(subject, request) }
+                    )
+                }
+            } }
+            get("/packages/api/v1/appeals/:appealId") { exchange -> safe(exchange) {
+                val record = service.getEnforcementAppeal(exchange.pathParamOrThrow("appealId"), actor(exchange))
+                respondAccessControlled(exchange, record)
+            } }
+            post("/packages/api/v1/appeals/:appealId/reviews") { exchange -> safe(exchange) { requestId ->
+                val actor = actor(exchange)
+                idempotentMutation<AppealReviewRecord>(
+                    exchange = exchange,
+                    requestId = requestId,
+                    actor = actor,
+                    successStatus = 201,
+                    responseHeaders = { record ->
+                        mapOf("Location" to "/packages/api/v1/appeals/${record.appealId}/reviews/${record.reviewId}")
+                    },
+                ) { body ->
+                    service.reviewEnforcementAppeal(
+                        exchange.pathParamOrThrow("appealId"),
+                        decode(body),
+                        actor,
+                    )
+                }
+            } }
+        }
+
+        if (EnforcementRouteSurface.RELEASE_ACTIONS in surfaces) {
+            post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/yank") { exchange ->
+                safe(exchange) { requestId ->
+                    val actor = actor(exchange)
+                    idempotentMutation<ReleaseRecord>(exchange, requestId, actor, 200) { body ->
+                        val request = if (body.isEmpty()) YankReleaseRequest() else decode(body)
+                        service.yankRelease(identity(exchange), version(exchange), request, actor) { release ->
+                            metadataPublisher.publishReleaseAvailability(release)
+                        }
+                    }
+                }
+            }
+            post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/unyank") { exchange ->
+                safe(exchange) { requestId ->
+                    val actor = actor(exchange)
+                    idempotentMutation<ReleaseRecord>(exchange, requestId, actor, 200) { body ->
+                        if (body.isNotEmpty()) invalidRequest()
+                        service.unyankRelease(identity(exchange), version(exchange), actor) { release ->
+                            metadataPublisher.publishReleaseAvailability(release)
+                        }
+                    }
                 }
             }
         }
-        post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/security-reinstate") { exchange ->
-            safe(exchange) { requestId ->
-                val actor = actor(exchange)
-                idempotentMutation<SecurityActionRecord>(exchange, requestId, actor, 200) { body ->
-                    val request = decode<ReviewedReinstatementRequest>(body)
-                    val subject = EnforcementReleaseSubject(identity(exchange), version(exchange))
-                    service.reviewedReinstateRelease(
-                        packageIdentity = subject.packageIdentity,
-                        version = requireNotNull(subject.version),
-                        request = request,
-                        actor = actor,
-                        publishSignedMetadata = {
-                            metadataPublisher.publishReviewedReinstatement(subject, request)
-                        },
-                        restoreSecurityQuarantine = {
-                            metadataPublisher.restoreSecurityQuarantine(subject)
-                        },
-                    )
+
+        if (EnforcementRouteSurface.SECURITY_ACTIONS in surfaces) {
+            post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/security-quarantine") { exchange ->
+                safe(exchange) { requestId ->
+                    val actor = actor(exchange)
+                    idempotentMutation<SecurityActionRecord>(exchange, requestId, actor, 200) { body ->
+                        val request = decode<SecurityQuarantineRequest>(body)
+                        val subject = EnforcementReleaseSubject(identity(exchange), version(exchange))
+                        service.securityQuarantineRelease(
+                            subject.packageIdentity,
+                            requireNotNull(subject.version),
+                            request,
+                            actor,
+                        ) { incidentId ->
+                            metadataPublisher.publishSecurityQuarantine(subject, request, incidentId)
+                        }
+                    }
+                }
+            }
+            post("/packages/api/v1/packages/:owner/:name/releases/:version/actions/security-reinstate") { exchange ->
+                safe(exchange) { requestId ->
+                    val actor = actor(exchange)
+                    idempotentMutation<SecurityActionRecord>(exchange, requestId, actor, 200) { body ->
+                        val request = decode<ReviewedReinstatementRequest>(body)
+                        val subject = EnforcementReleaseSubject(identity(exchange), version(exchange))
+                        service.reviewedReinstateRelease(
+                            packageIdentity = subject.packageIdentity,
+                            version = requireNotNull(subject.version),
+                            request = request,
+                            actor = actor,
+                            publishSignedMetadata = {
+                                metadataPublisher.publishReviewedReinstatement(subject, request)
+                            },
+                            restoreSecurityQuarantine = {
+                                metadataPublisher.restoreSecurityQuarantine(subject)
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -462,4 +480,10 @@ class EnforcementRoutes(
         }
         return digest.digest().toHex()
     }
+}
+
+enum class EnforcementRouteSurface {
+    REPORTS_AND_APPEALS,
+    RELEASE_ACTIONS,
+    SECURITY_ACTIONS,
 }

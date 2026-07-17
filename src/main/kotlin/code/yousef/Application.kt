@@ -312,7 +312,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val staticHandler = StaticResourceHandler("static", "/static")
     // Root-level handler for hydration scripts (loaded by sigil-summon inline JS at /sigil-hydration.js)
     val rootHydrationHandler = StaticResourceHandler("static", "/")
-    val registryGateway = appConfig.registryUpstreamUrl?.let(::RegistryGatewayMiddleware)
+    val registryGateway = appConfig.registryUpstreamUrl?.let { publicUpstream ->
+        RegistryGatewayMiddleware(
+            upstreamUrl = publicUpstream,
+            releaseActionsUpstreamUrl = appConfig.registryReleaseActionsUpstreamUrl,
+            securityActionsUpstreamUrl = appConfig.registrySecurityActionsUpstreamUrl
+        )
+    }
 
     val pipeline = Pipeline().apply {
         // Custom debug recovery to print stack traces

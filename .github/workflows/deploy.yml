@@ -1,130 +1,150 @@
-name: Deploy to Cloud Run (dev/prod)
+name: Deploy portfolio development to Cloud Run
 
 on:
   push:
-    branches: [ dev, master ]
+    branches: [dev]
 
-# Non-secret constants (edit if you ever rename stuff)
+concurrency:
+  group: portfolio-deploy-development
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
 env:
-  SERVICE_BASE: portfolio                 # => master: portfolio, dev: portfolio-dev
-  CONTAINER_REPO: portfolio-registry      # Artifact Registry repo
-  GCP_PROJECT_ID: portfolio-476219        # <-- your project ID (not name)
-  GCP_REGION: us-central1                 # region
+  SERVICE_BASE: portfolio
+  CONTAINER_REPO: portfolio-registry
+  GCP_PROJECT_ID: portfolio-476219
+  GCP_REGION: us-central1
   PHOTOGRAPHY_UPLOAD_BUCKET: portfolio-476219-portfolio-uploads
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
+    timeout-minutes: 30
+    environment: portfolio-development
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Auth to Google Cloud (service-account JSON)
-        uses: google-github-actions/auth@v2
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Test portfolio before deployment
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
+        run: ./gradlew --no-daemon --max-workers=2 test
+
+      - name: Select scoped deployment identities
+        id: target
+        env:
+          DEV_IMAGE_PUBLISHER: ${{ vars.GCP_PORTFOLIO_DEV_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
+          DEV_DEPLOYER: ${{ vars.GCP_PORTFOLIO_DEV_DEPLOYER_SERVICE_ACCOUNT }}
+          DEV_RUNTIME: ${{ vars.GCP_PORTFOLIO_DEV_RUNTIME_SERVICE_ACCOUNT }}
+          PROVIDER: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${PROVIDER}" || { echo "GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER is not configured" >&2; exit 1; }
+          test -n "${DEV_IMAGE_PUBLISHER}" || { echo "Scoped portfolio dev image publisher is not configured" >&2; exit 1; }
+          test -n "${DEV_DEPLOYER}" || { echo "Scoped portfolio dev deployer is not configured" >&2; exit 1; }
+          test -n "${DEV_RUNTIME}" || { echo "Scoped portfolio dev runtime is not configured" >&2; exit 1; }
+          echo "service=${SERVICE_BASE}-dev" >> "${GITHUB_OUTPUT}"
+          echo "publisher=${DEV_IMAGE_PUBLISHER}" >> "${GITHUB_OUTPUT}"
+          echo "deployer=${DEV_DEPLOYER}" >> "${GITHUB_OUTPUT}"
+          echo "runtime=${DEV_RUNTIME}" >> "${GITHUB_OUTPUT}"
+
+      - name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ steps.target.outputs.publisher }}
 
       - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      # Compute the service name without using expressions in env
-      - name: Compute service name
-        id: svc
-        shell: bash
-        run: |
-          if [ "${GITHUB_REF_NAME}" = "master" ]; then
-            echo "name=${SERVICE_BASE}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=${SERVICE_BASE}-${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          fi
-
-      # Robust Docker auth to Artifact Registry (no configure-docker args)
-      - name: Docker auth for Artifact Registry
-        shell: bash
-        run: |
-          HOST="${GCP_REGION}-docker.pkg.dev"
-          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "https://${HOST}"
-
-      # Download Seen compiler tools from GCS for playground feature
-      # Upload new versions with: gsutil cp -r seen-tools/ gs://seen-compiler-tools/
       - name: Download Seen compiler tools
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p seen-tools
-          gsutil -m cp -r gs://seen-compiler-tools/* seen-tools/ || {
-            echo "Warning: Seen tools not found in GCS. Playground will be disabled."
-            echo "Upload with: gsutil cp -r seen-tools/ gs://seen-compiler-tools/"
-          }
-          if [ ! -f seen-tools/seen ]; then
-            mkdir -p seen-tools/seen_runtime seen-tools/languages
-            printf '%s\n' \
-              '#!/usr/bin/env sh' \
-              'echo "Seen playground unavailable: compiler tools were not downloaded for this build." >&2' \
-              'exit 1' > seen-tools/seen
-          fi
+          gcloud storage cp --recursive "gs://seen-compiler-tools/*" seen-tools/
+          test -f seen-tools/seen || { echo "Seen compiler executable is missing" >&2; exit 1; }
           chmod +x seen-tools/seen
 
-      # Build and push image with Docker
-      - name: Build & Push
-        id: bp
+      - name: Build image locally
         shell: bash
         run: |
           set -euo pipefail
-          IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${{ steps.svc.outputs.name }}:${GITHUB_SHA}"
-          echo "IMAGE=${IMAGE}"
-          docker build -t "${IMAGE}" .
-          docker push "${IMAGE}"
-          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${{ steps.target.outputs.service }}"
+          image_tag="${image_name}:${GITHUB_SHA}"
+          docker build --tag "${image_tag}" .
 
-      - name: Prepare photography upload bucket
+      - name: Refresh GitHub OIDC authentication
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ steps.target.outputs.publisher }}
+
+      - name: Refresh Docker authentication
         shell: bash
         run: |
           set -euo pipefail
-          BUCKET_URI="gs://${PHOTOGRAPHY_UPLOAD_BUCKET}"
-          if ! gcloud storage buckets describe "${BUCKET_URI}" >/dev/null 2>&1; then
-            gcloud storage buckets create "${BUCKET_URI}" \
-              --project "${GCP_PROJECT_ID}" \
-              --location "${GCP_REGION}" \
-              --uniform-bucket-level-access
-          fi
+          gcloud auth print-access-token | \
+            docker login \
+              --username oauth2accesstoken \
+              --password-stdin \
+              "https://${GCP_REGION}-docker.pkg.dev"
 
-          PROJECT_NUMBER="$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')"
-          EXISTING_SERVICE_ACCOUNT="$(gcloud run services describe "${{ steps.svc.outputs.name }}" \
+      - name: Publish immutable image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${{ steps.target.outputs.service }}"
+          image_tag="${image_name}:${GITHUB_SHA}"
+          docker push "${image_tag}"
+          digest="$(gcloud artifacts docker images describe "${image_tag}" --format='value(image_summary.digest)')"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Artifact Registry did not return an immutable digest" >&2; exit 1; }
+          echo "uri=${image_name}@${digest}" >> "${GITHUB_OUTPUT}"
+
+      - name: Authenticate scoped Cloud Run deployer
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ steps.target.outputs.deployer }}
+
+      - name: Deploy immutable image
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run deploy "${{ steps.target.outputs.service }}" \
+            --image "${{ steps.image.outputs.uri }}" \
             --region "${GCP_REGION}" \
-            --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)"
-          RUNTIME_SERVICE_ACCOUNT="${EXISTING_SERVICE_ACCOUNT:-${PROJECT_NUMBER}-compute@developer.gserviceaccount.com}"
-          gcloud storage buckets add-iam-policy-binding "${BUCKET_URI}" \
-            --member "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
-            --role "roles/storage.objectAdmin" \
-            --condition=None >/dev/null
-
-      - name: Deploy to Cloud Run
-        shell: bash
-        run: |
-          set -euo pipefail
-          DEPLOY_LIMITS=()
-          if [ "${GITHUB_REF_NAME}" = "dev" ]; then
-            # Aether buffers request bodies before middleware. Keep the public
-            # development gateway's worst-case buffered body set bounded.
-            DEPLOY_LIMITS=(--memory 2Gi --concurrency 4 --max-instances 3)
-          fi
-          gcloud run deploy "${{ steps.svc.outputs.name }}" \
-            --image "${{ steps.bp.outputs.image }}" \
-            --region "${GCP_REGION}" \
-            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ steps.svc.outputs.name }}" \
-            --allow-unauthenticated \
+            --service-account "${{ steps.target.outputs.runtime }}" \
+            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ steps.target.outputs.service }}" \
             --port 8080 \
-            "${DEPLOY_LIMITS[@]}"
+            --quiet \
+            --memory 2Gi \
+            --concurrency 4 \
+            --max-instances 3
 
-      - name: Show Service URL
+      - name: Verify deployed service
         shell: bash
         run: |
-          gcloud run services describe "${{ steps.svc.outputs.name }}" \
+          set -euo pipefail
+          url="$(gcloud run services describe "${{ steps.target.outputs.service }}" \
             --region "${GCP_REGION}" \
-            --format='value(status.url)'
+            --format='value(status.url)')"
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 10 --max-time 30 "${url}/" >/dev/null
+          echo "Deployed ${{ steps.image.outputs.uri }} to ${url}" >> "${GITHUB_STEP_SUMMARY}"

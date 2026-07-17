@@ -11,7 +11,9 @@ data class AppConfig(
     val photographyUploadPrefix: String = "photography",
     val photographyUploadDir: Path = Path.of("storage/uploads/photography"),
     val photographyMaxUploadBytes: Long = 15_728_640,
-    val registryUpstreamUrl: String? = null
+    val registryUpstreamUrl: String? = null,
+    val registryReleaseActionsUpstreamUrl: String? = null,
+    val registrySecurityActionsUpstreamUrl: String? = null
 )
 
 fun loadAppConfig(): AppConfig {
@@ -31,6 +33,18 @@ fun loadAppConfig(): AppConfig {
     val registryUpstreamUrl = env["SEEN_REGISTRY_UPSTREAM_URL"]
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
+    val registryReleaseActionsUpstreamUrl = env["SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL"]
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+    val registrySecurityActionsUpstreamUrl = env["SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL"]
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+    require(
+        registryUpstreamUrl != null ||
+            (registryReleaseActionsUpstreamUrl == null && registrySecurityActionsUpstreamUrl == null)
+    ) {
+        "Registry action upstreams require SEEN_REGISTRY_UPSTREAM_URL"
+    }
     
     return AppConfig(
         projectId = projectId,
@@ -41,6 +55,8 @@ fun loadAppConfig(): AppConfig {
         photographyUploadPrefix = uploadPrefix,
         photographyUploadDir = uploadDir,
         photographyMaxUploadBytes = maxUploadBytes,
-        registryUpstreamUrl = registryUpstreamUrl
+        registryUpstreamUrl = registryUpstreamUrl,
+        registryReleaseActionsUpstreamUrl = registryReleaseActionsUpstreamUrl,
+        registrySecurityActionsUpstreamUrl = registrySecurityActionsUpstreamUrl
     )
 }
