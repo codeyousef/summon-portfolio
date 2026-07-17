@@ -20,10 +20,13 @@ env:
   PHOTOGRAPHY_UPLOAD_BUCKET: portfolio-476219-portfolio-uploads
 
 jobs:
-  build-and-deploy:
+  build-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: portfolio-development
+    outputs:
+      image_uri: ${{ steps.image.outputs.uri }}
+      service: ${{ steps.target.outputs.service }}
     steps:
       - name: Check out source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -37,12 +40,12 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Test portfolio before deployment
+      - name: Test portfolio before publication
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
         run: ./gradlew --no-daemon --max-workers=2 test
 
-      - name: Select scoped deployment identities
+      - name: Select scoped development identities
         id: target
         env:
           DEV_IMAGE_PUBLISHER: ${{ vars.GCP_PORTFOLIO_DEV_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
@@ -61,7 +64,7 @@ jobs:
           echo "deployer=${DEV_DEPLOYER}" >> "${GITHUB_OUTPUT}"
           echo "runtime=${DEV_RUNTIME}" >> "${GITHUB_OUTPUT}"
 
-      - name: Authenticate with GitHub OIDC
+      - name: Authenticate image publisher with GitHub OIDC
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
@@ -89,13 +92,13 @@ jobs:
           image_tag="${image_name}:${GITHUB_SHA}"
           docker build --tag "${image_tag}" .
 
-      - name: Refresh GitHub OIDC authentication
+      - name: Refresh image-publisher authentication
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ steps.target.outputs.publisher }}
 
-      - name: Refresh Docker authentication
+      - name: Authenticate Docker to Artifact Registry
         shell: bash
         run: |
           set -euo pipefail
@@ -123,15 +126,62 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ steps.target.outputs.deployer }}
 
-      - name: Deploy immutable image
+      - name: Verify deployer identity without changing traffic
         shell: bash
         run: |
           set -euo pipefail
-          gcloud run deploy "${{ steps.target.outputs.service }}" \
-            --image "${{ steps.image.outputs.uri }}" \
+          runtime="$(gcloud run services describe "${{ steps.target.outputs.service }}" \
             --region "${GCP_REGION}" \
-            --service-account "${{ steps.target.outputs.runtime }}" \
-            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ steps.target.outputs.service }}" \
+            --format='value(spec.template.spec.serviceAccountName)')"
+          test "${runtime}" = "${{ steps.target.outputs.runtime }}" || {
+            echo "portfolio-dev is not using the reviewed runtime identity" >&2
+            exit 1
+          }
+          echo "Verified scoped publisher and deployer identities; no traffic changed." >> "${GITHUB_STEP_SUMMARY}"
+
+  deploy:
+    needs: build-and-verify
+    if: ${{ vars.PORTFOLIO_DEV_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: portfolio-development
+    steps:
+      - name: Validate explicit deployment inputs
+        env:
+          DEPLOYER: ${{ vars.GCP_PORTFOLIO_DEV_DEPLOYER_SERVICE_ACCOUNT }}
+          PROVIDER: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
+          RUNTIME: ${{ vars.GCP_PORTFOLIO_DEV_RUNTIME_SERVICE_ACCOUNT }}
+          IMAGE_URI: ${{ needs.build-and-verify.outputs.image_uri }}
+          SERVICE: ${{ needs.build-and-verify.outputs.service }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${PROVIDER}"
+          test -n "${DEPLOYER}"
+          test -n "${RUNTIME}"
+          [[ "${IMAGE_URI}" =~ @sha256:[0-9a-f]{64}$ ]]
+          test "${SERVICE}" = "${SERVICE_BASE}-dev"
+
+      - name: Authenticate scoped Cloud Run deployer
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PORTFOLIO_DEV_DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy immutable image after explicit enablement
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run deploy "${{ needs.build-and-verify.outputs.service }}" \
+            --image "${{ needs.build-and-verify.outputs.image_uri }}" \
+            --region "${GCP_REGION}" \
+            --service-account "${{ vars.GCP_PORTFOLIO_DEV_RUNTIME_SERVICE_ACCOUNT }}" \
+            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${{ needs.build-and-verify.outputs.service }}" \
             --port 8080 \
             --quiet \
             --memory 2Gi \
@@ -142,9 +192,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          url="$(gcloud run services describe "${{ steps.target.outputs.service }}" \
+          url="$(gcloud run services describe "${{ needs.build-and-verify.outputs.service }}" \
             --region "${GCP_REGION}" \
             --format='value(status.url)')"
           curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
             --connect-timeout 10 --max-time 30 "${url}/" >/dev/null
-          echo "Deployed ${{ steps.image.outputs.uri }} to ${url}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Deployed ${{ needs.build-and-verify.outputs.image_uri }} to ${url}" >> "${GITHUB_STEP_SUMMARY}"
