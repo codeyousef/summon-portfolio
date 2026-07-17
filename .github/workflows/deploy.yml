@@ -186,10 +186,10 @@ jobs:
             --region "${GCP_REGION}" \
             --format=json)"
           served_traffic="$(jq -c \
-            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] \
-              | sort_by(.revisionName) \
-              | group_by(.revisionName) \
-              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)}) \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+              | sort_by(.revisionName)
+              | group_by(.revisionName)
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
               | sort_by(.revisionName)' \
             <<<"${service_json}")"
           jq -e '
@@ -242,10 +242,10 @@ jobs:
           [[ "${revision}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]
 
           served_traffic="$(jq -c \
-            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] \
-              | sort_by(.revisionName) \
-              | group_by(.revisionName) \
-              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)}) \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+              | sort_by(.revisionName)
+              | group_by(.revisionName)
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
               | sort_by(.revisionName)' \
             <<<"${service_json}")"
           jq -e '
@@ -343,10 +343,10 @@ jobs:
             fi
             if (( rollback_status == 0 )); then
               restored_traffic="$(jq -c \
-                '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] \
-                  | sort_by(.revisionName) \
-                  | group_by(.revisionName) \
-                  | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)}) \
+                '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+                  | sort_by(.revisionName)
+                  | group_by(.revisionName)
+                  | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
                   | sort_by(.revisionName)' \
                 <<<"${restored_json}")"
               rollback_status=$?
