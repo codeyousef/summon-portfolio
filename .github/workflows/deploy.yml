@@ -186,10 +186,23 @@ jobs:
             --region "${GCP_REGION}" \
             --format=json)"
           served_traffic="$(jq -c \
-            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] | sort_by(.revisionName, .percent)' \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] \
+              | sort_by(.revisionName) \
+              | group_by(.revisionName) \
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)}) \
+              | sort_by(.revisionName)' \
             <<<"${service_json}")"
-          test "${served_traffic}" != "[]"
-          jq -e 'all(.[]; (.revisionName != null and .revisionName != "" and .percent > 0))' \
+          jq -e '
+            length > 0 and
+            (map(.percent) | add) == 100 and
+            (map(.revisionName) | unique | length) == length and
+            all(.[];
+              (.revisionName | type == "string") and
+              (.revisionName | test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) and
+              (.percent | type == "number") and
+              .percent > 0
+            )
+          ' \
             <<<"${served_traffic}" >/dev/null
           echo "served_traffic=${served_traffic}" >> "${GITHUB_OUTPUT}"
 
@@ -211,6 +224,9 @@ jobs:
             --tag runtime-canary
 
       - name: Verify zero-traffic candidate
+        id: candidate
+        env:
+          PREVIOUS_TRAFFIC: ${{ steps.before.outputs.served_traffic }}
         shell: bash
         run: |
           set -euo pipefail
@@ -222,13 +238,28 @@ jobs:
             <<<"${candidate}" >/dev/null
           url="$(jq -r '.[0].url' <<<"${candidate}")"
           revision="$(jq -r '.[0].revisionName' <<<"${candidate}")"
+          [[ "${url}" == https://* ]]
+          [[ "${revision}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]
 
           served_traffic="$(jq -c \
-            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] | sort_by(.revisionName, .percent)' \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] \
+              | sort_by(.revisionName) \
+              | group_by(.revisionName) \
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)}) \
+              | sort_by(.revisionName)' \
             <<<"${service_json}")"
-          jq -e 'all(.[]; (.revisionName != null and .revisionName != "" and .percent > 0))' \
+          jq -e '
+            length > 0 and
+            (map(.percent) | add) == 100 and
+            all(.[];
+              (.revisionName | type == "string") and
+              (.revisionName | test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) and
+              (.percent | type == "number") and
+              .percent > 0
+            )
+          ' \
             <<<"${served_traffic}" >/dev/null
-          test "${served_traffic}" = '${{ steps.before.outputs.served_traffic }}'
+          test "${served_traffic}" = "${PREVIOUS_TRAFFIC}"
 
           candidate_percent="$(jq --arg revision "${revision}" \
             '[.status.traffic[]? | select(.revisionName == $revision) | (.percent // 0)] | add // 0' \
@@ -255,5 +286,126 @@ jobs:
           jq -e '.status.conditions | any(.type == "Ready" and .status == "True")' \
             <<<"${revision_json}" >/dev/null
           curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
-            --connect-timeout 10 --max-time 30 "${url}/" >/dev/null
+            --retry-max-time 180 --connect-timeout 10 --max-time 30 "${url}/" >/dev/null
+          echo "revision=${revision}" >> "${GITHUB_OUTPUT}"
+          echo "url=${url}" >> "${GITHUB_OUTPUT}"
           echo "Deployed ${{ needs.build-and-verify.outputs.image_uri }} to zero-traffic candidate ${revision} (${url})" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Promote verified candidate and smoke custom domains
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          PREVIOUS_TRAFFIC: ${{ steps.before.outputs.served_traffic }}
+          SERVICE: ${{ needs.build-and-verify.outputs.service }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${CANDIDATE_REVISION}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]
+          test "${SERVICE}" = "${SERVICE_BASE}-dev"
+          jq -e '
+            length > 0 and
+            (map(.percent) | add) == 100 and
+            (map(.revisionName) | unique | length) == length and
+            all(.[];
+              (.revisionName | type == "string") and
+              (.revisionName | test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) and
+              (.percent | type == "number") and
+              .percent > 0
+            )
+          ' <<<"${PREVIOUS_TRAFFIC}" >/dev/null
+          restore_spec="$(jq -r 'map("\(.revisionName)=\(.percent)") | join(",")' <<<"${PREVIOUS_TRAFFIC}")"
+          test -n "${restore_spec}"
+
+          promotion_verified=false
+          rollback_on_exit() {
+            status=$?
+            trap - EXIT
+            if [[ "${promotion_verified}" == "true" ]]; then
+              exit "${status}"
+            fi
+
+            if (( status == 0 )); then
+              status=1
+            fi
+            echo "Promotion verification failed; restoring the previously served traffic." >&2
+
+            set +e
+            gcloud run services update-traffic "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --to-revisions "${restore_spec}" \
+              --quiet
+            rollback_status=$?
+            restored_traffic=""
+            if (( rollback_status == 0 )); then
+              restored_json="$(gcloud run services describe "${SERVICE}" \
+                --region "${GCP_REGION}" \
+                --format=json)"
+              rollback_status=$?
+            fi
+            if (( rollback_status == 0 )); then
+              restored_traffic="$(jq -c \
+                '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}] \
+                  | sort_by(.revisionName) \
+                  | group_by(.revisionName) \
+                  | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)}) \
+                  | sort_by(.revisionName)' \
+                <<<"${restored_json}")"
+              rollback_status=$?
+            fi
+            set -e
+
+            if (( rollback_status == 0 )) && [[ "${restored_traffic}" == "${PREVIOUS_TRAFFIC}" ]]; then
+              echo "Restored the pre-deployment traffic allocation after failed smoke tests." >> "${GITHUB_STEP_SUMMARY}"
+            else
+              echo "::error::Automatic traffic rollback did not restore the captured allocation."
+              echo "Automatic traffic rollback failed; manual recovery is required." >> "${GITHUB_STEP_SUMMARY}"
+            fi
+            exit "${status}"
+          }
+          trap rollback_on_exit EXIT
+
+          gcloud run services update-traffic "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --to-revisions "${CANDIDATE_REVISION}=100" \
+            --quiet
+
+          service_json="$(gcloud run services describe "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          jq -e --arg revision "${CANDIDATE_REVISION}" '
+            [.status.traffic[]? | select((.percent // 0) > 0)] as $served |
+            ($served | map(.percent) | add) == 100 and
+            ($served | all(.revisionName == $revision))
+          ' <<<"${service_json}" >/dev/null
+
+          smoke_urls=(
+            "https://dev.yousef.codes/"
+            "https://dev.yousef.codes/projects"
+            "https://dev.yousef.codes/services"
+            "https://dev.yousef.codes/full-time"
+            "https://dev.yousef.codes/photography"
+            "https://dev.yousef.codes/scratchpad"
+            "https://dev.yousef.codes/fifth-wall"
+            "https://dev.yousef.codes/blog"
+            "https://dev.yousef.codes/docs"
+            "https://dev.yousef.codes/ar"
+            "https://dev.yousef.codes/admin/login"
+            "https://summon.dev.yousef.codes/"
+            "https://materia.dev.yousef.codes/"
+            "https://sigil.dev.yousef.codes/"
+            "https://aether.dev.yousef.codes/"
+            "https://seen.dev.yousef.codes/"
+            "https://seen.dev.yousef.codes/playground"
+            "https://seen.dev.yousef.codes/packages"
+            "https://seen.dev.yousef.codes/packages?q=seen"
+            "https://seen.dev.yousef.codes/packages/api/v1/packages"
+          )
+          for smoke_url in "${smoke_urls[@]}"; do
+            curl --fail --location --max-redirs 5 --silent --show-error \
+              --retry 12 --retry-all-errors --retry-delay 5 \
+              --retry-max-time 180 --connect-timeout 10 --max-time 30 "${smoke_url}" >/dev/null
+            echo "Verified ${smoke_url}" >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+          promotion_verified=true
+          trap - EXIT
+          echo "Promoted verified revision ${CANDIDATE_REVISION} to 100% of ${SERVICE} traffic." >> "${GITHUB_STEP_SUMMARY}"
