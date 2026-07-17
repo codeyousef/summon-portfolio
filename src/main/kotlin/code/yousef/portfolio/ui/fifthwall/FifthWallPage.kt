@@ -2,6 +2,7 @@ package code.yousef.portfolio.ui.fifthwall
 
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.extensions.percent
@@ -31,8 +32,8 @@ internal fun FifthWallPage(
             modifier = Modifier()
                 .style("box-sizing", "border-box")
                 .color(FifthWallTheme.TEXT_PRIMARY),
-            forceNativeLinks = true,
-            forcePortfolioAnchors = true
+            activeDestination = GlobalNavigationDestination.PROJECTS,
+            compact = true,
         )
         Box(
             modifier = Modifier()

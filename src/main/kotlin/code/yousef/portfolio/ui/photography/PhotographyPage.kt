@@ -6,6 +6,7 @@ import code.yousef.portfolio.content.model.PhotographySourceKind
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.sections.ContactFooterSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
@@ -38,9 +39,10 @@ fun PhotographyPage(
 
     PageScaffold(locale = locale, enableAuroraEffects = false) {
         PhotographyStyles()
-        AppHeader(locale = locale)
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
-
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.PHOTOGRAPHY,
+        )
         if (hero == null) {
             EmptyPhotographyPage()
         } else {

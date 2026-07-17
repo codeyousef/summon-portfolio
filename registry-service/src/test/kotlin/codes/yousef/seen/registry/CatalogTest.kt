@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 
 class CatalogTest {
     private val pkg = PackageRecord(
@@ -29,8 +30,8 @@ class CatalogTest {
         assertContains(catalog, "/packages/seen/demo")
         assertContains(catalog, "<main")
         assertContains(catalog, "<h1")
-        assertContains(catalog, "href=\"/\"")
-        assertContains(catalog, "href=\"/docs\"")
+        assertContains(catalog, "href=\"https://dev.yousef.codes\"")
+        assertContains(catalog, "href=\"https://seen.dev.yousef.codes/docs\"")
         assertContains(catalog, "aria-current=\"page\"")
         assertContains(catalog, "complete registry review")
         assertFalse(catalog.contains("safe", ignoreCase = true))
@@ -44,6 +45,67 @@ class CatalogTest {
     }
 
     @Test
+    fun `renders global and Seen context navigation with accessible mobile disclosure`() {
+        val catalog = CatalogRenderer.render(listOf(pkg))
+
+        assertContains(catalog, "aria-label=\"Primary\"")
+        assertContains(catalog, "data-navigation-layer=\"global\"")
+        assertContains(catalog, "aria-label=\"Seen navigation\"")
+        assertContains(catalog, "data-navigation-layer=\"context\"")
+        assertContains(catalog, "<details")
+        assertContains(catalog, "<summary")
+        assertContains(catalog, "seen-primary-navigation")
+        assertContains(catalog, "aria-expanded=\"false\"")
+        assertContains(catalog, "aria-controls=\"seen-primary-navigation-menu\"")
+        assertContains(catalog, "data-action=")
+        assertContains(catalog, ".seen-catalog summary:focus-visible")
+        assertContains(catalog, "@media (max-width: 1040px)")
+
+        listOf(
+            "https://dev.yousef.codes/projects",
+            "https://dev.yousef.codes/photography",
+            "https://dev.yousef.codes/blog",
+            "https://dev.yousef.codes/services",
+            "https://summon.dev.yousef.codes",
+            "https://materia.dev.yousef.codes",
+            "https://sigil.dev.yousef.codes",
+            "https://aether.dev.yousef.codes",
+            "https://seen.dev.yousef.codes",
+            "https://seen.dev.yousef.codes/packages",
+            "https://seen.dev.yousef.codes/playground",
+            "https://seen.dev.yousef.codes/docs",
+            "https://seen.dev.yousef.codes/docs/api-reference",
+        ).forEach { href -> assertContains(catalog, "href=\"$href\"") }
+
+        val packagesLink = assertNotNull(
+            Regex("<a[^>]*data-nav-id=\"context-packages\"[^>]*>").find(catalog),
+        )
+        assertContains(packagesLink.value, "aria-current=\"page\"")
+        assertEquals(1, Regex("<a[^>]*aria-current=\"page\"[^>]*>").findAll(catalog).count())
+        assertEquals(1, Regex("<a[^>]*data-nav-id=\"home\"[^>]*>").findAll(catalog).count())
+    }
+
+    @Test
+    fun `derives development and production navigation from registry origin`() {
+        val development = CatalogNavigationLinks.fromRegistryOrigin(
+            "https://seen.dev.yousef.codes/packages/",
+        )
+        val production = CatalogNavigationLinks.fromRegistryOrigin(
+            "https://seen.yousef.codes/packages",
+        )
+
+        assertEquals("https://dev.yousef.codes", development.portfolio)
+        assertEquals("https://summon.dev.yousef.codes", development.summon)
+        assertEquals("https://seen.dev.yousef.codes/packages", development.seenPackages)
+        assertEquals("https://seen.dev.yousef.codes/docs/api-reference", development.seenApiReference)
+
+        assertEquals("https://www.yousef.codes", production.portfolio)
+        assertEquals("https://summon.yousef.codes", production.summon)
+        assertEquals("https://seen.yousef.codes/packages", production.seenPackages)
+        assertEquals("https://seen.yousef.codes/docs/api-reference", production.seenApiReference)
+    }
+
+    @Test
     fun `renders concealed and security states with generic public language`() {
         val securityPage = CatalogRenderer.renderRelease(pkg, release("security-quarantined"))
         val missingPage = CatalogRenderer.renderUnavailable(true)
@@ -52,6 +114,7 @@ class CatalogTest {
         assertContains(securityPage, "Unavailable during security review")
         assertContains(missingPage, "not public")
         assertContains(failedPage, "Try again shortly")
+        assertContains(failedPage, "href=\"https://seen.dev.yousef.codes\"")
         assertFalse(failedPage.contains("exception", ignoreCase = true))
     }
 

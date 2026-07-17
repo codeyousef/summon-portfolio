@@ -1,22 +1,10 @@
 package code.yousef.portfolio.ui.components
 
+import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.display.Image
-import codes.yousef.summon.components.layout.Box
-import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.navigation.AnchorLink
-import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.components.styles.GlobalStyle
-import codes.yousef.summon.extensions.percent
-import codes.yousef.summon.extensions.px
-import codes.yousef.summon.extensions.rem
-import codes.yousef.summon.modifier.*
 
-/**
- * Configuration for landing page navbar branding.
- */
+/** Product identity and local destinations rendered beneath the global row. */
 data class LandingBranding(
     val name: String,
     val logoPath: String,
@@ -26,6 +14,22 @@ data class LandingBranding(
     val accentColor: String,
     val leadingNavigationItems: List<LandingNavItem> = emptyList(),
 ) {
+    fun navigationContext(
+        activeItemId: String = ContextNavigationIds.OVERVIEW,
+    ): PageNavigationContext = PageNavigationContext(
+        name = name,
+        logoPath = logoPath,
+        homeHref = homeUrl,
+        accentColor = accentColor,
+        activeItemId = activeItemId,
+        items = buildList {
+            add(LandingNavItem(ContextNavigationIds.OVERVIEW, "Overview", homeUrl).toContextItem())
+            addAll(leadingNavigationItems.map(LandingNavItem::toContextItem))
+            add(LandingNavItem(ContextNavigationIds.DOCUMENTATION, "Documentation", docsUrl).toContextItem())
+            add(LandingNavItem(ContextNavigationIds.API_REFERENCE, "API Reference", apiReferenceUrl).toContextItem())
+        },
+    )
+
     companion object {
         fun summon(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
             name = "Summon",
@@ -33,7 +37,7 @@ data class LandingBranding(
             homeUrl = "/",
             docsUrl = docsUrl,
             apiReferenceUrl = apiReferenceUrl,
-            accentColor = PortfolioTheme.Colors.ACCENT_ALT
+            accentColor = PortfolioTheme.Colors.ACCENT_ALT,
         )
 
         fun materia(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
@@ -42,7 +46,7 @@ data class LandingBranding(
             homeUrl = "/",
             docsUrl = docsUrl,
             apiReferenceUrl = apiReferenceUrl,
-            accentColor = PortfolioTheme.Colors.LINK
+            accentColor = PortfolioTheme.Colors.LINK,
         )
 
         fun sigil(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
@@ -51,17 +55,25 @@ data class LandingBranding(
             homeUrl = "/",
             docsUrl = docsUrl,
             apiReferenceUrl = apiReferenceUrl,
-            accentColor = "#06b6d4" // Teal/cyan accent for Sigil
+            accentColor = "#06b6d4",
         )
 
-        fun seen(docsUrl: String, apiReferenceUrl: String, packagesUrl: String? = null) = LandingBranding(
+        fun seen(
+            docsUrl: String,
+            apiReferenceUrl: String,
+            packagesUrl: String? = null,
+            playgroundUrl: String? = null,
+        ) = LandingBranding(
             name = "Seen",
             logoPath = "/static/seen-logo.png",
             homeUrl = "/",
             docsUrl = docsUrl,
             apiReferenceUrl = apiReferenceUrl,
             accentColor = "#58a6ff",
-            leadingNavigationItems = packagesUrl?.let { listOf(LandingNavItem("Packages", it)) }.orEmpty(),
+            leadingNavigationItems = buildList {
+                packagesUrl?.let { add(LandingNavItem(ContextNavigationIds.PACKAGES, "Packages", it)) }
+                playgroundUrl?.let { add(LandingNavItem(ContextNavigationIds.PLAYGROUND, "Playground", it)) }
+            },
         )
 
         fun aether(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
@@ -70,219 +82,30 @@ data class LandingBranding(
             homeUrl = "/",
             docsUrl = docsUrl,
             apiReferenceUrl = apiReferenceUrl,
-            accentColor = "#7c3aed" // Violet/purple accent for Aether
+            accentColor = "#7c3aed",
         )
     }
 }
 
-data class LandingNavItem(val label: String, val href: String)
+data class LandingNavItem(
+    val id: String,
+    val label: String,
+    val href: String,
+)
 
-private fun LandingBranding.navigationItems(): List<LandingNavItem> =
-    leadingNavigationItems + listOf(
-        LandingNavItem("Documentation", docsUrl),
-        LandingNavItem("API Reference", apiReferenceUrl),
-    )
+private fun LandingNavItem.toContextItem(): ContextNavigationItem =
+    ContextNavigationItem(id = id, label = label, href = href)
 
-/**
- * Navbar component for landing pages with library name, docs and API reference links.
- */
+/** Shared global navigation plus the product-specific context rail. */
 @Composable
-fun LandingNavbar(branding: LandingBranding) {
-    // CSS for responsive visibility
-    GlobalStyle("""
-        .landing-nav-desktop { display: block !important; }
-        .landing-nav-mobile { display: none !important; }
-        
-        @media (max-width: 960px) {
-            .landing-nav-desktop { display: none !important; }
-            .landing-nav-mobile { display: block !important; }
-        }
-    """)
-
-    Box(modifier = Modifier().width(100.percent)) {
-        // Desktop Version
-        Box(modifier = Modifier().className("landing-nav-desktop").width(100.percent)) {
-            DesktopLandingNavbar(branding)
-        }
-        
-        // Mobile Version
-        Box(modifier = Modifier().className("landing-nav-mobile").width(100.percent)) {
-            MobileLandingNavbar(branding)
-        }
-    }
-}
-
-@Composable
-private fun DesktopLandingNavbar(branding: LandingBranding) {
-    Row(
-        modifier = Modifier()
-            .display(Display.Flex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.SpaceBetween)
-            .padding(PortfolioTheme.Spacing.md, PortfolioTheme.Spacing.lg)
-            .backgroundColor(PortfolioTheme.Colors.SURFACE)
-            .borderWidth(1, BorderSide.Bottom)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-    ) {
-        // Logo and name
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.sm)
-        ) {
-            Image(
-                src = branding.logoPath,
-                alt = branding.name,
-                modifier = Modifier()
-                    .width(32.px)
-                    .height(32.px)
-            )
-            AnchorLink(
-                label = branding.name,
-                href = branding.homeUrl,
-                modifier = Modifier()
-                    .fontWeight(700)
-                    .fontSize(1.25.rem)
-                    .color(branding.accentColor)
-                    .textDecoration(TextDecoration.None),
-                navigationMode = LinkNavigationMode.Native,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = emptyMap()
-            )
-        }
-
-        // Navigation links
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.lg)
-        ) {
-            branding.navigationItems().forEach { item ->
-                LandingNavLink(label = item.label, href = item.href, accentColor = branding.accentColor)
-            }
-        }
-    }
-}
-
-@Composable
-private fun MobileLandingNavbar(branding: LandingBranding) {
-    Row(
-        modifier = Modifier()
-            .display(Display.Flex)
-            .alignItems(AlignItems.Center)
-            .justifyContent(JustifyContent.SpaceBetween)
-            .padding(PortfolioTheme.Spacing.md)
-            .backgroundColor(PortfolioTheme.Colors.SURFACE)
-            .borderWidth(1, BorderSide.Bottom)
-            .borderStyle(BorderStyle.Solid)
-            .borderColor(PortfolioTheme.Colors.BORDER)
-    ) {
-        // Hamburger Menu (Left)
-        SafeHamburgerMenu(
-            menuId = "landing-mobile-menu-${branding.name.lowercase()}",
-            modifier = Modifier()
-                .position(Position.Relative)
-                .width(40.px)
-                .height(40.px)
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .justifyContent(JustifyContent.Center)
-                .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                .zIndex(100),
-            menuContainerModifier = Modifier()
-                .position(Position.Absolute)
-                .top(100.percent)
-                .left(0.px)
-                .marginTop(8.px)
-                .backgroundColor("#0a1628")
-                .borderRadius(8.px)
-                .borderWidth(1)
-                .borderStyle(BorderStyle.Solid)
-                .borderColor(PortfolioTheme.Colors.BORDER)
-                .zIndex(1000)
-                .minWidth(200.px)
-                .width("max-content"),
-            menuContent = {
-                Column(
-                    modifier = Modifier()
-                        .width(100.percent)
-                        .padding(16.px)
-                        .gap(12.px)
-                        .backgroundColor("#0a1628")
-                ) {
-                    branding.navigationItems().forEach { item ->
-                        LandingNavLink(label = item.label, href = item.href, accentColor = branding.accentColor)
-                    }
-                }
-            }
-        )
-
-        // Logo and name (Right/Center)
-        Row(
-            modifier = Modifier()
-                .display(Display.Flex)
-                .alignItems(AlignItems.Center)
-                .gap(PortfolioTheme.Spacing.sm)
-        ) {
-            Image(
-                src = branding.logoPath,
-                alt = branding.name,
-                modifier = Modifier()
-                    .width(28.px)
-                    .height(28.px)
-            )
-            AnchorLink(
-                label = branding.name,
-                href = branding.homeUrl,
-                modifier = Modifier()
-                    .fontWeight(700)
-                    .fontSize(1.1.rem)
-                    .color(branding.accentColor)
-                    .textDecoration(TextDecoration.None),
-                navigationMode = LinkNavigationMode.Native,
-                target = null,
-                rel = null,
-                title = null,
-                id = null,
-                ariaLabel = null,
-                ariaDescribedBy = null,
-                dataHref = null,
-                dataAttributes = emptyMap()
-            )
-        }
-    }
-}
-
-@Composable
-private fun LandingNavLink(label: String, href: String, accentColor: String) {
-    AnchorLink(
-        label = label,
-        href = href,
-        modifier = Modifier()
-            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-            .textDecoration(TextDecoration.None)
-            .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .hover(
-                Modifier()
-                    .color(accentColor)
-            ),
-        navigationMode = LinkNavigationMode.Native,
-        target = null,
-        rel = null,
-        title = null,
-        id = null,
-        ariaLabel = null,
-        ariaDescribedBy = null,
-        dataHref = null,
-        dataAttributes = emptyMap()
+fun LandingNavbar(
+    branding: LandingBranding,
+    activeItemId: String = ContextNavigationIds.OVERVIEW,
+) {
+    SiteNavigation(
+        locale = PortfolioLocale.EN,
+        activeDestination = GlobalNavigationDestination.ECOSYSTEM,
+        context = branding.navigationContext(activeItemId),
+        showLocale = false,
     )
 }

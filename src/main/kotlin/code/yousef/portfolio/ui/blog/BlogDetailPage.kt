@@ -6,6 +6,7 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.BlogStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.sections.ContactFooterSection
@@ -28,8 +29,10 @@ fun BlogDetailPage(
 ) {
     val formatter = detailDateFormatter(locale)
     PageScaffold(locale = locale, enableAuroraEffects = false) {
-        AppHeader(locale = locale)
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.BLOG,
+        )
         ContentSection(surface = false) {
             Column(
                 modifier = Modifier()
@@ -108,8 +111,10 @@ fun BlogDetailPage(
 @Composable
 fun BlogNotFoundPage(locale: PortfolioLocale) {
     PageScaffold(locale = locale, enableAuroraEffects = false) {
-        AppHeader(locale = locale)
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.BLOG,
+        )
         ContentSection(surface = false) {
             Column(
                 modifier = Modifier()
