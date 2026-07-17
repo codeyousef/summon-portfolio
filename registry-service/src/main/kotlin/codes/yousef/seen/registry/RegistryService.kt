@@ -274,12 +274,12 @@ class RegistryService(
 
     fun metadata(filename: String): ByteArray {
         if (!Regex("^(?:[1-9][0-9]*\\.)?(?:root|targets|releases|security|snapshot)\\.json$|^timestamp\\.json$").matches(filename)) notFound()
-        tuf.ensureFreshTransaction()
-        return storage.getMetadata(filename) ?: notFound()
+        tuf.verifyFreshTransaction()
+        return tuf.publicMetadata(filename) ?: notFound()
     }
 
     fun isReady(): Boolean = runCatching {
-        tuf.ensureFreshTransaction()
+        tuf.verifyFreshTransaction()
         storage.getMetadata("1.root.json") != null && storage.getMetadata("1.targets.json") != null && storage.getMetadata("timestamp.json") != null
     }.getOrDefault(false)
 

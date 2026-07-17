@@ -313,7 +313,7 @@ class EnforcementService(
         version: String,
         request: SecurityQuarantineRequest,
         actor: EnforcementPrincipal,
-        publishSignedMetadata: () -> SignedMetadataReference,
+        publishSignedMetadata: (incidentId: String) -> SignedMetadataReference,
     ): SecurityActionRecord {
         requireIndependentRole(actor, EnforcementRoles.SECURITY)
         validateQuarantineRequest(request)
@@ -326,6 +326,7 @@ class EnforcementService(
         )
         validateReportBindings(request.reportIds, current.subject())
         val now = clock.instant().utc()
+        val incidentId = newId("inc_")
         transition(
             current,
             current.withAvailability(
@@ -334,10 +335,10 @@ class EnforcementService(
                 securityQuarantinedAt = now,
             ),
         )
-        val signedMetadata = publishSignedMetadata()
+        val signedMetadata = publishSignedMetadata(incidentId)
         validateSignedMetadata(signedMetadata)
         val action = SecurityActionRecord(
-            incidentId = newId("inc_"),
+            incidentId = incidentId,
             action = "security-quarantined",
             subject = current.subject(),
             effectiveAt = now,

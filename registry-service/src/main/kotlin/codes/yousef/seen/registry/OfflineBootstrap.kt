@@ -57,6 +57,54 @@ data class OfflineTargetsRenewalConfig(
     }
 }
 
+data class OfflineTargetsRotationConfig(
+    val environment: String,
+    val repositoryId: String,
+    val targetsSigningKeysPkcs8Base64: List<String>,
+    val replacementOnlineKeys: TufOnlineKeys,
+) {
+    companion object {
+        fun fromEnvironment(env: Map<String, String> = System.getenv()): OfflineTargetsRotationConfig {
+            fun csv(name: String) = env[name].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
+            fun public(role: String) = requireNotNull(env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]) {
+                "Missing replacement online public key for $role"
+            }.hexToBytes()
+            return OfflineTargetsRotationConfig(
+                environment = env["REGISTRY_ENVIRONMENT"] ?: "development",
+                repositoryId = env["REGISTRY_REPOSITORY_ID"] ?: "seen-dev-registry-v1",
+                targetsSigningKeysPkcs8Base64 = csv("REGISTRY_OFFLINE_TARGETS_SIGNING_KEYS_PKCS8_BASE64"),
+                replacementOnlineKeys = TufOnlineKeys(
+                    public(TufRole.RELEASES),
+                    public(TufRole.SECURITY),
+                    public(TufRole.SNAPSHOT),
+                    public(TufRole.TIMESTAMP),
+                ),
+            ).also { require(it.environment == "development") { "Offline targets rotation is development-only" } }
+        }
+    }
+}
+
+data class OfflineRootRotationConfig(
+    val environment: String,
+    val repositoryId: String,
+    val currentRootSigningKeysPkcs8Base64: List<String>,
+    val nextRootPublicKeys: List<ByteArray>,
+    val nextRootSigningKeysPkcs8Base64: List<String>,
+) {
+    companion object {
+        fun fromEnvironment(env: Map<String, String> = System.getenv()): OfflineRootRotationConfig {
+            fun csv(name: String) = env[name].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
+            return OfflineRootRotationConfig(
+                environment = env["REGISTRY_ENVIRONMENT"] ?: "development",
+                repositoryId = env["REGISTRY_REPOSITORY_ID"] ?: "seen-dev-registry-v1",
+                currentRootSigningKeysPkcs8Base64 = csv("REGISTRY_OFFLINE_ROOT_SIGNING_KEYS_PKCS8_BASE64"),
+                nextRootPublicKeys = csv("REGISTRY_OFFLINE_NEXT_ROOT_PUBLIC_KEYS_HEX").map(String::hexToBytes),
+                nextRootSigningKeysPkcs8Base64 = csv("REGISTRY_OFFLINE_NEXT_ROOT_SIGNING_KEYS_PKCS8_BASE64"),
+            ).also { require(it.environment == "development") { "Offline root rotation is development-only" } }
+        }
+    }
+}
+
 fun prepareOfflineBootstrap(outputDirectory: Path, config: OfflineBootstrapConfig, clock: Clock = Clock.systemUTC()): TufBootstrapResult {
     val rootSigners = config.rootSigningKeysPkcs8Base64.map(LocalEd25519Signer::fromPkcs8Base64)
     val targetSigners = config.targetsSigningKeysPkcs8Base64.map(LocalEd25519Signer::fromPkcs8Base64)
@@ -89,18 +137,66 @@ fun prepareOfflineTargetsRenewal(
     try {
         val result = TufTargetsRenewalPolicy(config.onlineKeys, config.environment, config.repositoryId, clock)
             .prepare(trustedRoot, currentTargets, signers)
-        val storage = DirectoryMetadataStorage(outputDirectory)
-        val filename = "${result.version}.targets.json"
-        val existing = storage.getMetadata(filename)
-        require(existing == null || existing.contentEquals(result.targets)) { "Existing $filename differs; refusing offline overwrite" }
-        if (existing == null && !storage.putMetadataIfAbsent(filename, result.targets)) {
-            require(storage.getMetadata(filename)?.contentEquals(result.targets) == true) {
-                "Concurrent $filename creation differs; refusing offline overwrite"
-            }
-        }
+        persistOfflineEnvelope(outputDirectory, "${result.version}.targets.json", result.targets)
         return result
     } finally {
         signers.forEach(TufSigner::close)
+    }
+}
+
+fun prepareOfflineTargetsRotation(
+    outputDirectory: Path,
+    trustedRoot: ByteArray,
+    currentTargets: ByteArray,
+    config: OfflineTargetsRotationConfig,
+    clock: Clock = Clock.systemUTC(),
+): TufTargetsRenewalResult {
+    val signers = config.targetsSigningKeysPkcs8Base64.map(LocalEd25519Signer::fromPkcs8Base64)
+    try {
+        val result = TufTargetsRenewalPolicy(
+            config.replacementOnlineKeys,
+            config.environment,
+            config.repositoryId,
+            clock,
+        ).prepareRotation(trustedRoot, currentTargets, signers)
+        persistOfflineEnvelope(outputDirectory, "${result.version}.targets.json", result.targets)
+        return result
+    } finally {
+        signers.forEach(TufSigner::close)
+    }
+}
+
+fun prepareOfflineRootRotation(
+    outputDirectory: Path,
+    currentRoot: ByteArray,
+    config: OfflineRootRotationConfig,
+    clock: Clock = Clock.systemUTC(),
+): TufRootRotationResult {
+    val currentSigners = config.currentRootSigningKeysPkcs8Base64.map(LocalEd25519Signer::fromPkcs8Base64)
+    val nextSigners = config.nextRootSigningKeysPkcs8Base64.map(LocalEd25519Signer::fromPkcs8Base64)
+    try {
+        val result = TufRootRotationPolicy(config.environment, config.repositoryId, clock).prepare(
+            currentRoot,
+            currentSigners,
+            config.nextRootPublicKeys,
+            nextSigners,
+        )
+        persistOfflineEnvelope(outputDirectory, "${result.version}.root.json", result.root)
+        return result
+    } finally {
+        currentSigners.forEach(TufSigner::close)
+        nextSigners.forEach(TufSigner::close)
+    }
+}
+
+private fun persistOfflineEnvelope(outputDirectory: Path, filename: String, bytes: ByteArray) {
+    val storage = DirectoryMetadataStorage(outputDirectory)
+    val existing = storage.getMetadata(filename)
+    require(existing == null || existing.contentEquals(bytes)) { "Existing $filename differs; refusing offline overwrite" }
+    if (existing == null && !storage.putMetadataIfAbsent(filename, bytes)) {
+        require(storage.getMetadata(filename)?.contentEquals(bytes) == true) {
+            "Concurrent $filename creation differs; refusing offline overwrite"
+        }
     }
 }
 
@@ -126,12 +222,9 @@ private class DirectoryMetadataStorage(private val directory: Path) : RegistryOb
     } catch (_: FileAlreadyExistsException) {
         false
     }
-    override fun replaceMetadataIfUnchanged(filename: String, expected: ByteArray?, bytes: ByteArray): Boolean = synchronized(this) {
-        val current = getMetadata(filename)
-        val unchanged = if (expected == null) current == null else current?.contentEquals(expected) == true
-        if (!unchanged) return@synchronized false
-        putMetadata(filename, bytes)
-        true
+    override fun replaceMetadataIfUnchanged(filename: String, expected: ByteArray?, bytes: ByteArray): Boolean {
+        require(expected == null) { "Offline metadata storage does not replace mutable pointers" }
+        return putMetadataIfAbsent(filename, bytes)
     }
     override fun getMetadata(filename: String): ByteArray? = resolve(filename).takeIf(Files::isRegularFile)?.let(Files::readAllBytes)
     private fun resolve(filename: String): Path {

@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -29,6 +30,10 @@ import java.util.UUID
 
 interface TufSigner : AutoCloseable {
     val publicKey: ByteArray
+    /** True only when signing also conditionally publishes timestamp.json. */
+    val commitsTimestampPointer: Boolean get() = false
+    /** Bounded readback window for an ambiguous remote timestamp response. */
+    val timestampCommitRecoveryTimeout: Duration get() = Duration.ZERO
     fun sign(canonicalSignedBytes: ByteArray): ByteArray
     override fun close() = Unit
 }
@@ -118,6 +123,7 @@ data class TufTargetsRenewalResult(
     val version: Long,
     val targets: ByteArray,
     val targetsKeyIds: List<String>,
+    val changedDelegatedRoles: Set<String> = emptySet(),
 )
 
 data class TufTargetsRenewalImportResult(
@@ -125,8 +131,18 @@ data class TufTargetsRenewalImportResult(
     val onlineTransactionVersion: Long,
 )
 
+data class TufRootRotationResult(
+    val version: Long,
+    val root: ByteArray,
+    val previousRootKeyIds: List<String>,
+    val nextRootKeyIds: List<String>,
+)
+
+data class TufRootRotationImportResult(val rootVersion: Long)
+
 private data class TargetsRootTrust(
     val keys: Map<String, ByteArray>,
+    val rootKeyIds: List<String>,
     val targetsKeyIds: List<String>,
     val snapshotKeyId: String,
     val timestampKeyId: String,
@@ -175,10 +191,76 @@ internal class TufTargetsRenewalPolicy(
         return TufTargetsRenewalResult(candidate.version, candidateBytes, root.targetsKeyIds)
     }
 
+    fun prepareRotation(rootBytes: ByteArray, currentTargetsBytes: ByteArray, signers: List<TufSigner>): TufTargetsRenewalResult {
+        val root = validateRoot(rootBytes)
+        val current = validateTargets(
+            root,
+            currentTargetsBytes,
+            requireFresh = false,
+            allowExpired = true,
+            requireConfiguredDelegations = false,
+        )
+        val signerIds = signers.map { tufKeyId(it.publicKey) }
+        require(signerIds.size == 2 && signerIds.toSet() == root.targetsKeyIds.toSet()) {
+            "Targets rotation requires both offline targets signers from the trusted root"
+        }
+        requireConfiguredOnlineKeysAreDistinctFromOffline(root)
+        val nextVersion = Math.addExact(current.version, 1L)
+        val rotatedSigned = current.signed.toMutableMap().apply {
+            put("version", JsonPrimitive(nextVersion))
+            put("expires", JsonPrimitive(clock.instant().plus(TARGETS_LIFETIME).utc()))
+            put("delegations", configuredDelegations())
+        }.let(::JsonObject)
+        val rotated = envelope(rotatedSigned, signers)
+        return validateRotation(rootBytes, currentTargetsBytes, rotated)
+    }
+
+    fun validateRotation(
+        rootBytes: ByteArray,
+        currentTargetsBytes: ByteArray,
+        candidateBytes: ByteArray,
+    ): TufTargetsRenewalResult {
+        val root = validateRoot(rootBytes)
+        val current = validateTargets(
+            root,
+            currentTargetsBytes,
+            requireFresh = false,
+            allowExpired = true,
+            requireConfiguredDelegations = false,
+        )
+        requireConfiguredOnlineKeysAreDistinctFromOffline(root)
+        val candidate = validateTargets(root, candidateBytes, requireFresh = true)
+        require(candidate.version == Math.addExact(current.version, 1L)) {
+            "Targets rotation version must be exactly ${current.version + 1}"
+        }
+        require(candidate.signed.withoutRotationFields() == current.signed.withoutRotationFields()) {
+            "Targets rotation may change only version, expires, and delegations"
+        }
+        val currentRoleKeys = delegationRoleKeyIds(current.signed["delegations"]!!.jsonObject)
+        val candidateRoleKeys = delegationRoleKeyIds(candidate.signed["delegations"]!!.jsonObject)
+        val changedRoles = currentRoleKeys.keys.filter { currentRoleKeys[it] != candidateRoleKeys[it] }
+        require(changedRoles.isNotEmpty()) {
+            "Targets rotation must replace at least one delegated online key"
+        }
+        val formerDelegatedKeyIds = currentRoleKeys.values.toSet()
+        changedRoles.forEach { role ->
+            require(candidateRoleKeys.getValue(role) !in formerDelegatedKeyIds) {
+                "Targets rotation cannot reuse a formerly delegated key for $role"
+            }
+        }
+        return TufTargetsRenewalResult(
+            candidate.version,
+            candidateBytes,
+            root.targetsKeyIds,
+            changedRoles.toSet(),
+        )
+    }
+
     fun resolveCurrent(
         storage: RegistryObjectStorage,
         requireOnlineTransaction: Boolean,
         allowExpiredTargets: Boolean = false,
+        requireConfiguredDelegations: Boolean = true,
     ): TrustedTopLevelTargets {
         val rootBytes = storage.getMetadata("root.json") ?: storage.getMetadata("1.root.json")
             ?: error("Offline TUF bootstrap is missing root.json")
@@ -188,7 +270,13 @@ internal class TufTargetsRenewalPolicy(
             require(!requireOnlineTransaction) { "Online TUF transaction is missing timestamp.json" }
             val targetsBytes = storage.getMetadata("1.targets.json")
                 ?: error("Offline TUF bootstrap is missing 1.targets.json")
-            val targets = validateTargets(root, targetsBytes, requireFresh = false, allowExpired = allowExpiredTargets)
+            val targets = validateTargets(
+                root,
+                targetsBytes,
+                requireFresh = false,
+                allowExpired = allowExpiredTargets,
+                requireConfiguredDelegations = requireConfiguredDelegations,
+            )
             return TrustedTopLevelTargets(rootBytes, targetsBytes, targets.version)
         }
 
@@ -204,7 +292,13 @@ internal class TufTargetsRenewalPolicy(
             "Snapshot metadata references unexpected roles"
         }
         val (targetsVersion, targetsBytes) = referenced(storage, snapshotMeta.getValue("targets.json").jsonObject, "targets")
-        val targets = validateTargets(root, targetsBytes, requireFresh = false, allowExpired = allowExpiredTargets)
+        val targets = validateTargets(
+            root,
+            targetsBytes,
+            requireFresh = false,
+            allowExpired = allowExpiredTargets,
+            requireConfiguredDelegations = requireConfiguredDelegations,
+        )
         require(targets.version == targetsVersion) { "Snapshot references the wrong targets version" }
         return TrustedTopLevelTargets(rootBytes, targetsBytes, targets.version)
     }
@@ -232,7 +326,7 @@ internal class TufTargetsRenewalPolicy(
         require(snapshotRole.single() == tufKeyId(online.snapshot)) { "Root snapshot key does not match the configured online key" }
         require(timestampRole.single() == tufKeyId(online.timestamp)) { "Root timestamp key does not match the configured online key" }
         verifyThreshold(envelope, keys, rootRole.toSet(), 2)
-        return TargetsRootTrust(keys, targetsRole, snapshotRole.single(), timestampRole.single())
+        return TargetsRootTrust(keys, rootRole, targetsRole, snapshotRole.single(), timestampRole.single())
     }
 
     private fun validateTargets(
@@ -240,6 +334,7 @@ internal class TufTargetsRenewalPolicy(
         bytes: ByteArray,
         requireFresh: Boolean,
         allowExpired: Boolean = false,
+        requireConfiguredDelegations: Boolean = true,
     ): ValidatedTargets {
         val envelope = parseCanonicalEnvelope(bytes)
         val signed = envelope["signed"]!!.jsonObject
@@ -258,13 +353,16 @@ internal class TufTargetsRenewalPolicy(
         require(signed["targets"]?.jsonObject?.isEmpty() == true) { "Offline top-level targets must not contain package targets" }
         requireExactTargetsSignatures(envelope, root.targetsKeyIds)
         verifyThreshold(envelope, root.keys, root.targetsKeyIds.toSet(), 2)
-        validateDelegations(signed["delegations"]!!.jsonObject)
+        if (requireConfiguredDelegations) {
+            validateDelegations(signed["delegations"]!!.jsonObject)
+        } else {
+            validateDelegationShape(signed["delegations"]!!.jsonObject)
+        }
         return ValidatedTargets(version, signed)
     }
 
     private fun validateDelegations(delegations: JsonObject) {
-        require(delegations.keys == setOf("keys", "roles")) { "Targets delegations fields are invalid" }
-        val delegatedKeys = parseKeys(delegations["keys"]!!.jsonObject)
+        val delegatedKeys = validateDelegationShape(delegations)
         val expected = mapOf(
             tufKeyId(online.releases) to online.releases,
             tufKeyId(online.security) to online.security,
@@ -273,18 +371,62 @@ internal class TufTargetsRenewalPolicy(
             "Delegated keys do not match configured releases/security online keys"
         }
         val roles = delegations["roles"]!!.jsonArray.map(JsonElement::jsonObject)
+            .associateBy { it["name"]!!.jsonPrimitive.content }
+        mapOf(TufRole.SECURITY to online.security, TufRole.RELEASES to online.releases).forEach { (name, key) ->
+            require(roles.getValue(name)["keyids"]!!.jsonArray.map { it.jsonPrimitive.content } == listOf(tufKeyId(key))) {
+                "$name delegation key is invalid"
+            }
+        }
+    }
+
+    private fun validateDelegationShape(delegations: JsonObject): Map<String, ByteArray> {
+        require(delegations.keys == setOf("keys", "roles")) { "Targets delegations fields are invalid" }
+        val delegatedKeys = parseKeys(delegations["keys"]!!.jsonObject)
+        require(delegatedKeys.size == 2) { "Targets must contain exactly two delegated keys" }
+        val roles = delegations["roles"]!!.jsonArray.map(JsonElement::jsonObject)
         require(roles.map { it["name"]!!.jsonPrimitive.content } == listOf(TufRole.SECURITY, TufRole.RELEASES)) {
             "Targets delegation order must be security then releases"
         }
         val byName = roles.associateBy { it["name"]!!.jsonPrimitive.content }
         require(byName.keys == setOf(TufRole.SECURITY, TufRole.RELEASES)) { "Targets contains unexpected delegated roles" }
-        mapOf(TufRole.SECURITY to online.security, TufRole.RELEASES to online.releases).forEach { (name, key) ->
+        val referencedIds = mutableSetOf<String>()
+        listOf(TufRole.SECURITY, TufRole.RELEASES).forEach { name ->
             val role = byName.getValue(name)
             require(role.keys == setOf("name", "keyids", "threshold", "terminating", "paths")) { "$name delegation fields are invalid" }
-            require(role["keyids"]!!.jsonArray.map { it.jsonPrimitive.content } == listOf(tufKeyId(key))) { "$name delegation key is invalid" }
+            val keyIds = role["keyids"]!!.jsonArray.map { it.jsonPrimitive.content }
+            require(keyIds.size == 1 && keyIds.single() in delegatedKeys) { "$name delegation key is invalid" }
+            referencedIds += keyIds.single()
             require(role["threshold"]!!.jsonPrimitive.content == "1") { "$name delegation threshold is invalid" }
             require(role["terminating"]!!.jsonPrimitive.content == "false") { "$name delegation termination policy is invalid" }
             require(role["paths"]!!.jsonArray.map { it.jsonPrimitive.content } == listOf("packages/*/*/*/*/*")) { "$name delegation path is invalid" }
+        }
+        require(referencedIds == delegatedKeys.keys) { "Targets delegated roles must reference distinct configured keys" }
+        return delegatedKeys
+    }
+
+    private fun configuredDelegations(): JsonObject = buildJsonObject {
+        put("keys", JsonObject(mapOf(
+            tufKeyId(online.releases) to tufKeyObject(online.releases),
+            tufKeyId(online.security) to tufKeyObject(online.security),
+        )))
+        put("roles", buildJsonArray {
+            add(delegatedRole(TufRole.SECURITY, tufKeyId(online.security)))
+            add(delegatedRole(TufRole.RELEASES, tufKeyId(online.releases)))
+        })
+    }
+
+    private fun delegationRoleKeyIds(delegations: JsonObject): Map<String, String> =
+        delegations["roles"]!!.jsonArray
+            .map(JsonElement::jsonObject)
+            .associate { role ->
+                role["name"]!!.jsonPrimitive.content to
+                    role["keyids"]!!.jsonArray.single().jsonPrimitive.content
+            }
+
+    private fun requireConfiguredOnlineKeysAreDistinctFromOffline(root: TargetsRootTrust) {
+        val delegated = setOf(tufKeyId(online.releases), tufKeyId(online.security))
+        require(delegated.intersect(root.keys.keys).isEmpty()) {
+            "Replacement delegated keys must be distinct from every root-bound role key"
         }
     }
 
@@ -336,6 +478,9 @@ internal class TufTargetsRenewalPolicy(
     }
 
     private fun JsonObject.withoutRenewedFields(): JsonObject = JsonObject(filterKeys { it != "version" && it != "expires" })
+    private fun JsonObject.withoutRotationFields(): JsonObject = JsonObject(
+        filterKeys { it != "version" && it != "expires" && it != "delegations" },
+    )
 
     private data class ValidatedTargets(val version: Long, val signed: JsonObject)
     private data class ValidatedEnvelope(val version: Long, val signed: JsonObject)
@@ -344,6 +489,214 @@ internal class TufTargetsRenewalPolicy(
         val TARGETS_LIFETIME: Duration = Duration.ofDays(30)
         val ROOT_FIELDS = setOf("_type", "spec_version", "version", "expires", "environment", "repository_id", "consistent_snapshot", "keys", "roles")
         val TARGETS_FIELDS = setOf("_type", "spec_version", "version", "expires", "environment", "repository_id", "targets", "delegations")
+    }
+}
+
+/** Sequential root recovery verified against both the currently trusted and replacement thresholds. */
+internal class TufRootRotationPolicy(
+    private val environment: String,
+    private val repositoryId: String,
+    private val clock: Clock,
+) {
+    fun prepare(
+        currentRootBytes: ByteArray,
+        currentRootSigners: List<TufSigner>,
+        nextRootPublicKeys: List<ByteArray>,
+        nextRootSigners: List<TufSigner>,
+    ): TufRootRotationResult {
+        val current = validateRoot(currentRootBytes, requireFresh = false)
+        requireThresholdSigners(
+            currentRootSigners,
+            current.rootKeyIds.toSet(),
+            "Root rotation requires at least two current root signers",
+        )
+        require(nextRootPublicKeys.size == 3 && nextRootPublicKeys.all { it.size == 32 }) {
+            "Root rotation requires exactly three replacement raw Ed25519 public keys"
+        }
+        val nextRootKeyIds = nextRootPublicKeys.map(::tufKeyId)
+        require(nextRootKeyIds.toSet().size == 3) { "Replacement root keys must be distinct" }
+        require(nextRootKeyIds.toSet().intersect(current.keys.keys).isEmpty()) {
+            "Replacement root keys must be fresh and distinct from every currently trusted role key"
+        }
+        requireThresholdSigners(
+            nextRootSigners,
+            nextRootKeyIds.toSet(),
+            "Root rotation requires at least two replacement root signers",
+        )
+
+        val currentRootIds = current.rootKeyIds.toSet()
+        val rotatedKeys = current.signed["keys"]!!.jsonObject.toMutableMap().apply {
+            currentRootIds.forEach { remove(it) }
+            nextRootPublicKeys.forEach { key -> put(tufKeyId(key), tufKeyObject(key)) }
+        }
+        val rotatedRoles = current.signed["roles"]!!.jsonObject.toMutableMap().apply {
+            put("root", role(nextRootKeyIds, 2))
+        }
+        val nextVersion = Math.addExact(current.version, 1L)
+        val rotatedSigned = current.signed.toMutableMap().apply {
+            put("version", JsonPrimitive(nextVersion))
+            put("expires", JsonPrimitive(clock.instant().plus(ROOT_LIFETIME).utc()))
+            put("keys", JsonObject(rotatedKeys))
+            put("roles", JsonObject(rotatedRoles))
+        }.let(::JsonObject)
+        val rotated = envelope(
+            rotatedSigned,
+            (currentRootSigners + nextRootSigners).distinctBy { tufKeyId(it.publicKey) },
+        )
+        return validateRotation(currentRootBytes, rotated)
+    }
+
+    fun validateRotation(currentRootBytes: ByteArray, candidateBytes: ByteArray): TufRootRotationResult {
+        return validateRotation(currentRootBytes, candidateBytes, requireCandidateFresh = true)
+    }
+
+    fun validateChain(rootVersions: List<ByteArray>): Long {
+        require(rootVersions.isNotEmpty()) { "Root chain is empty" }
+        val first = validateRoot(rootVersions.first(), requireFresh = rootVersions.size == 1)
+        require(first.version == 1L) { "Root chain must begin at version one" }
+        rootVersions.zipWithNext().forEachIndexed { index, (current, candidate) ->
+            validateRotation(
+                current,
+                candidate,
+                requireCandidateFresh = index == rootVersions.size - 2,
+            )
+        }
+        return rootVersions.size.toLong()
+    }
+
+    private fun validateRotation(
+        currentRootBytes: ByteArray,
+        candidateBytes: ByteArray,
+        requireCandidateFresh: Boolean,
+    ): TufRootRotationResult {
+        val current = validateRoot(currentRootBytes, requireFresh = false)
+        val candidate = validateRoot(candidateBytes, requireFresh = requireCandidateFresh)
+        require(candidate.version == Math.addExact(current.version, 1L)) {
+            "Root rotation version must be exactly ${current.version + 1}"
+        }
+        require(candidate.rootKeyIds.toSet().intersect(current.keys.keys).isEmpty()) {
+            "Replacement root keys must be fresh and distinct from every currently trusted role key"
+        }
+        require(candidate.targetsKeyIds == current.targetsKeyIds) {
+            "Root rotation must preserve the targets role byte-logically"
+        }
+        require(candidate.snapshotKeyIds == current.snapshotKeyIds) {
+            "Root rotation must preserve the snapshot role byte-logically"
+        }
+        require(candidate.timestampKeyIds == current.timestampKeyIds) {
+            "Root rotation must preserve the timestamp role byte-logically"
+        }
+        val currentNonRootKeyIds = current.keys.keys - current.rootKeyIds.toSet()
+        val candidateNonRootKeyIds = candidate.keys.keys - candidate.rootKeyIds.toSet()
+        require(candidateNonRootKeyIds == currentNonRootKeyIds) {
+            "Root rotation must preserve every non-root role key"
+        }
+        currentNonRootKeyIds.forEach { keyId ->
+            require(candidate.signed["keys"]!!.jsonObject[keyId] == current.signed["keys"]!!.jsonObject[keyId]) {
+                "Root rotation must preserve every non-root key object byte-logically"
+            }
+        }
+        listOf("targets", "snapshot", "timestamp").forEach { roleName ->
+            require(candidate.signed["roles"]!!.jsonObject[roleName] == current.signed["roles"]!!.jsonObject[roleName]) {
+                "Root rotation must preserve the $roleName role byte-logically"
+            }
+        }
+        require(normalizeRotation(candidate, current) == current.signed) {
+            "Root rotation may change only version, expires, and root role keys"
+        }
+        requireDualThresholdSignatures(current, candidate, candidateBytes)
+        return TufRootRotationResult(
+            version = candidate.version,
+            root = candidateBytes,
+            previousRootKeyIds = current.rootKeyIds,
+            nextRootKeyIds = candidate.rootKeyIds,
+        )
+    }
+
+    private fun validateRoot(bytes: ByteArray, requireFresh: Boolean): ValidatedRoot {
+        val envelope = parseCanonicalEnvelope(bytes)
+        val signed = envelope["signed"]!!.jsonObject
+        require(signed.keys == ROOT_FIELDS) { "Root metadata fields are invalid" }
+        require(signed["_type"]?.jsonPrimitive?.content == "root") { "Metadata role type is invalid" }
+        require(signed["spec_version"]?.jsonPrimitive?.content == "1.0") { "TUF spec version is invalid" }
+        require(signed["environment"]?.jsonPrimitive?.content == environment) { "Metadata environment is invalid" }
+        require(signed["repository_id"]?.jsonPrimitive?.content == repositoryId) { "Metadata repository is invalid" }
+        require(signed["consistent_snapshot"]?.jsonPrimitive?.content == "true") { "Root must enable consistent snapshots" }
+        val version = signed["version"]!!.jsonPrimitive.content.toLong()
+        require(version >= 1L) { "Root metadata version is invalid" }
+        val remaining = Duration.between(clock.instant(), Instant.parse(signed["expires"]!!.jsonPrimitive.content))
+        if (requireFresh) {
+            require(!remaining.isNegative && !remaining.isZero && remaining <= ROOT_LIFETIME) {
+                "Root rotation expiry must be in the future and no more than 365 days away"
+            }
+        }
+        val keys = parseKeys(signed["keys"]!!.jsonObject)
+        val roles = signed["roles"]!!.jsonObject
+        require(roles.keys == setOf("root", "targets", "snapshot", "timestamp")) { "Root contains unexpected roles" }
+        val rootRole = parseRole(roles, "root", 3, 2)
+        val targetsRole = parseRole(roles, "targets", 2, 2)
+        val snapshotRole = parseRole(roles, "snapshot", 1, 1)
+        val timestampRole = parseRole(roles, "timestamp", 1, 1)
+        val allRoleIds = rootRole + targetsRole + snapshotRole + timestampRole
+        require(allRoleIds.toSet().size == allRoleIds.size) { "Every root-bound role key must be distinct" }
+        require(keys.keys == allRoleIds.toSet()) { "Root contains unexpected or missing role keys" }
+        verifyThreshold(envelope, keys, rootRole.toSet(), 2)
+        return ValidatedRoot(version, signed, keys, rootRole, targetsRole, snapshotRole, timestampRole)
+    }
+
+    private fun requireThresholdSigners(signers: List<TufSigner>, allowed: Set<String>, message: String) {
+        val ids = signers.map { tufKeyId(it.publicKey) }
+        require(ids.toSet().size >= 2 && ids.size == ids.toSet().size && ids.all(allowed::contains)) { message }
+    }
+
+    private fun normalizeRotation(candidate: ValidatedRoot, current: ValidatedRoot): JsonObject {
+        val keys = candidate.signed["keys"]!!.jsonObject.toMutableMap().apply {
+            candidate.rootKeyIds.forEach { remove(it) }
+            current.rootKeyIds.forEach { keyId -> put(keyId, current.signed["keys"]!!.jsonObject.getValue(keyId)) }
+        }
+        val roles = candidate.signed["roles"]!!.jsonObject.toMutableMap().apply {
+            put("root", current.signed["roles"]!!.jsonObject.getValue("root"))
+        }
+        return JsonObject(candidate.signed.toMutableMap().apply {
+            put("version", current.signed.getValue("version"))
+            put("expires", current.signed.getValue("expires"))
+            put("keys", JsonObject(keys))
+            put("roles", JsonObject(roles))
+        })
+    }
+
+    private fun requireDualThresholdSignatures(
+        current: ValidatedRoot,
+        candidate: ValidatedRoot,
+        candidateBytes: ByteArray,
+    ) {
+        val envelope = parseCanonicalEnvelope(candidateBytes)
+        val signatures = envelope["signatures"]!!.jsonArray.map { signature ->
+            val value = signature.jsonObject
+            require(value.keys == setOf("keyid", "sig")) { "Root signature fields are invalid" }
+            value["keyid"]!!.jsonPrimitive.content
+        }
+        val allowed = current.rootKeyIds.toSet() + candidate.rootKeyIds.toSet()
+        require(signatures.size == signatures.toSet().size && signatures.all(allowed::contains)) {
+            "Root rotation signatures must come only from distinct current or replacement root keys"
+        }
+        verifyThreshold(envelope, current.keys, current.rootKeyIds.toSet(), 2)
+        verifyThreshold(envelope, candidate.keys, candidate.rootKeyIds.toSet(), 2)
+    }
+
+    private data class ValidatedRoot(
+        val version: Long,
+        val signed: JsonObject,
+        val keys: Map<String, ByteArray>,
+        val rootKeyIds: List<String>,
+        val targetsKeyIds: List<String>,
+        val snapshotKeyIds: List<String>,
+        val timestampKeyIds: List<String>,
+    )
+
+    private companion object {
+        val ROOT_LIFETIME: Duration = Duration.ofDays(365)
+        val ROOT_FIELDS = setOf("_type", "spec_version", "version", "expires", "environment", "repository_id", "consistent_snapshot", "keys", "roles")
     }
 }
 
@@ -377,19 +730,6 @@ class TufBootstrapper(
     fun bootstrap(): TufBootstrapResult {
         val rootIds = rootPublicKeys.map(::tufKeyId)
         val targetIds = targetsPublicKeys.map(::tufKeyId)
-        val existingRoot = storage.getMetadata("1.root.json")
-        val existingTargets = storage.getMetadata("1.targets.json")
-        if (existingRoot != null || existingTargets != null) {
-            require(existingRoot != null && existingTargets != null) { "Partial TUF bootstrap state exists; refusing to overwrite" }
-            require(metadataKeyIds(existingRoot).containsAll(rootIds + targetIds + listOf(tufKeyId(online.snapshot), tufKeyId(online.timestamp)))) {
-                "Existing root keys differ from the requested ceremony"
-            }
-            require(metadataKeyIds(existingTargets).containsAll(targetIds + listOf(tufKeyId(online.releases), tufKeyId(online.security)))) {
-                "Existing targets keys differ from the requested ceremony"
-            }
-            return TufBootstrapResult(existingRoot, existingTargets, rootIds, targetIds)
-        }
-
         val rootKeys = (rootPublicKeys + targetsPublicKeys + listOf(online.snapshot, online.timestamp))
             .associate { tufKeyId(it) to tufKeyObject(it) }
         val rootSigned = common("root", 1, Duration.ofDays(365)).toMutableMap().apply {
@@ -418,9 +758,7 @@ class TufBootstrapper(
             })
         }.let(::JsonObject)
         val targets = envelope(targetsSigned, targetsSigners.distinctBy { tufKeyId(it.publicKey) })
-        storage.putMetadata("1.root.json", root)
-        storage.putMetadata("root.json", root)
-        storage.putMetadata("1.targets.json", targets)
+        persistInitialBootstrap(storage, root, targets)
         return TufBootstrapResult(root, targets, rootIds, targetIds)
     }
 
@@ -480,9 +818,7 @@ class TufBootstrapImporter(
             require(role["paths"]!!.jsonArray.map { it.jsonPrimitive.content } == listOf("packages/*/*/*/*/*")) { "$name delegation path is invalid" }
         }
 
-        persistExact("1.root.json", rootBytes)
-        persistExact("root.json", rootBytes)
-        persistExact("1.targets.json", targetsBytes)
+        persistInitialBootstrap(storage, rootBytes, targetsBytes)
         return TufBootstrapResult(rootBytes, targetsBytes, rootRole, targetsRole)
     }
 
@@ -495,11 +831,30 @@ class TufBootstrapImporter(
         val remaining = Duration.between(clock.instant(), Instant.parse(signed["expires"]!!.jsonPrimitive.content))
         require(!remaining.isNegative && !remaining.isZero && remaining <= maximumLifetime) { "$type expiry exceeds development policy" }
     }
+}
 
-    private fun persistExact(name: String, bytes: ByteArray) {
-        val existing = storage.getMetadata(name)
-        require(existing == null || existing.contentEquals(bytes)) { "Existing $name differs; refusing bootstrap overwrite" }
-        if (existing == null) storage.putMetadata(name, bytes)
+/**
+ * Persists immutable bootstrap envelopes first, then writes the root.json
+ * publication pointer. Every write is conditional so retries can complete a
+ * byte-identical partial ceremony without overwriting concurrent metadata.
+ */
+private fun persistInitialBootstrap(storage: RegistryObjectStorage, root: ByteArray, targets: ByteArray) {
+    persistBootstrapImmutable(storage, "1.root.json", root)
+    persistBootstrapImmutable(storage, "1.targets.json", targets)
+    persistBootstrapPointer(storage, root)
+}
+
+private fun persistBootstrapImmutable(storage: RegistryObjectStorage, name: String, bytes: ByteArray) {
+    if (storage.putMetadataIfAbsent(name, bytes)) return
+    require(storage.getMetadata(name)?.contentEquals(bytes) == true) {
+        "Existing $name differs; refusing bootstrap overwrite"
+    }
+}
+
+private fun persistBootstrapPointer(storage: RegistryObjectStorage, root: ByteArray) {
+    if (storage.replaceMetadataIfUnchanged("root.json", expected = null, bytes = root)) return
+    require(storage.getMetadata("root.json")?.contentEquals(root) == true) {
+        "Existing root.json differs; refusing bootstrap overwrite"
     }
 }
 
@@ -514,12 +869,83 @@ class TufPublisher(
 ) {
     private val publicationHolder = "publisher-${UUID.randomUUID()}"
     private val targetsRenewalPolicy = TufTargetsRenewalPolicy(online.publicKeys(), environment, repositoryId, clock)
+    private val rootRotationPolicy = TufRootRotationPolicy(environment, repositoryId, clock)
 
-    fun requireBootstrap(): ByteArray = storage.getMetadata("1.root.json")
-        ?: error("Offline TUF bootstrap is missing 1.root.json")
+    fun requireBootstrap(): ByteArray = storage.getMetadata("root.json")
+        ?: error("Offline TUF bootstrap is missing the published root.json pointer")
+
+    /**
+     * Reads metadata through the public publication boundary. A sequential root
+     * written before a failed pointer CAS remains staged and undiscoverable until
+     * the exact candidate is retried and root.json advances.
+     */
+    fun publicMetadata(filename: String): ByteArray? {
+        val requestedRootVersion = VERSIONED_ROOT_FILENAME.matchEntire(filename)
+            ?.groupValues
+            ?.get(1)
+            ?.toLong()
+        if (requestedRootVersion != null) {
+            val currentRootVersion = signedVersion(requireBootstrap())
+            if (requestedRootVersion > currentRootVersion) return null
+        }
+        return storage.getMetadata(filename)
+    }
+
+    fun verifyStoredRootChain(): Long {
+        val current = requireBootstrap()
+        val currentVersion = signedVersion(current)
+        require(currentVersion in 1..MAX_ROOT_CHAIN_LENGTH) { "Current root version is outside the supported chain bound" }
+        val chain = (1L..currentVersion).map { version ->
+            storage.getMetadata("$version.root.json")
+                ?: error("Trusted root chain is missing $version.root.json")
+        }
+        require(chain.last().contentEquals(current)) { "root.json does not match its immutable current version" }
+        return rootRotationPolicy.validateChain(chain)
+    }
 
     @Synchronized
     fun ensureInitialTransaction(): Long = ensureFreshTransaction()
+
+    /** Verifies the complete published chain without exercising any signing authority. */
+    @Synchronized
+    fun verifyFreshTransaction(): Long {
+        requireBootstrap()
+        val current = readOnlineState()
+            ?: unavailableMetadata("Signed registry metadata is unavailable")
+        if (!current.minimumExpiry.isAfter(clock.instant())) {
+            unavailableMetadata("Signed registry metadata is expired")
+        }
+        return current.version
+    }
+
+    /** Always advances releases + snapshot + timestamp while retaining committed security byte-for-byte. */
+    @Synchronized
+    fun forceRefreshReleases(): Long = forceRefreshRole(TufRole.RELEASES)
+
+    /** Always advances security + snapshot + timestamp while retaining committed releases byte-for-byte. */
+    @Synchronized
+    fun forceRefreshSecurity(): Long = forceRefreshRole(TufRole.SECURITY)
+
+    private fun forceRefreshRole(role: String): Long {
+        require(role in setOf(TufRole.RELEASES, TufRole.SECURITY))
+        val changingSigner = online.asMap().getValue(role)
+        val retainedRole = if (role == TufRole.RELEASES) TufRole.SECURITY else TufRole.RELEASES
+        require(changingSigner !is PublicKeyOnlyTufSigner) { "$role refresh requires its signing authority" }
+        require(online.asMap().getValue(retainedRole) is PublicKeyOnlyTufSigner) {
+            "$role refresh must not hold the $retainedRole signing authority"
+        }
+        requireBootstrap()
+        val now = clock.instant()
+        val expectedTimestamp = storage.getMetadata("timestamp.json")
+        if (!repository.tryAcquireMetadataPublication(publicationHolder, now, now.plus(PUBLICATION_LEASE))) {
+            throw RegistryException(503, "temporarily_unavailable", "Signed $role metadata is being refreshed", true, 5)
+        }
+        return try {
+            publishUnlocked(currentPublicReleases(), expectedTimestamp = expectedTimestamp)
+        } finally {
+            repository.releaseMetadataPublication(publicationHolder)
+        }
+    }
 
     /**
      * Keeps every online role fresh without changing package lifecycle state. The
@@ -575,15 +1001,24 @@ class TufPublisher(
      * Publishes a higher-priority security target for the exact immutable
      * release target. The releases role remains byte-for-byte bound to the
      * pre-quarantine available/yanked projection beneath this override.
-     */
+    */
     @Synchronized
-    fun publishSecurityQuarantine(release: StoredRelease): SignedMetadataReference =
-        publishSecurityChange(release, quarantine = true)
+    fun publishSecurityQuarantine(release: StoredRelease, incidentId: String): SignedMetadataReference =
+        publishSecurityChange(release, quarantine = true, incidentId = incidentId)
+
+    /** Reasserts an existing durable incident after a failed reinstatement commit. */
+    @Synchronized
+    fun restoreSecurityQuarantine(release: StoredRelease): SignedMetadataReference =
+        publishSecurityChange(
+            release,
+            quarantine = true,
+            incidentId = durableSecurityIncidentId(release),
+        )
 
     /** Removes only this release's security override, preserving every other incident. */
     @Synchronized
     fun publishReviewedSecurityReinstatement(release: StoredRelease): SignedMetadataReference =
-        publishSecurityChange(release, quarantine = false)
+        publishSecurityChange(release, quarantine = false, incidentId = null)
 
     /**
      * Imports one sequential offline targets envelope and immediately rotates the
@@ -624,11 +1059,95 @@ class TufPublisher(
         }
     }
 
+    /**
+     * Replaces compromised releases/security delegation keys and commits a complete
+     * transaction signed by the replacement online authorities before returning.
+     */
+    @Synchronized
+    fun importTargetsRotation(candidate: ByteArray, affectedRole: String): TufTargetsRenewalImportResult {
+        require(affectedRole in setOf(TufRole.RELEASES, TufRole.SECURITY)) {
+            "Targets rotation affected role must be releases or security"
+        }
+        require(online.asMap().getValue(affectedRole) !is PublicKeyOnlyTufSigner) {
+            "Targets rotation requires signing authority for the affected role"
+        }
+        requireBootstrap()
+        val now = clock.instant()
+        val expectedTimestamp = storage.getMetadata("timestamp.json")
+        if (!repository.tryAcquireMetadataPublication(publicationHolder, now, now.plus(PUBLICATION_LEASE))) {
+            throw RegistryException(503, "temporarily_unavailable", "Signed registry metadata is being published", true, 5)
+        }
+        return try {
+            val current = targetsRenewalPolicy.resolveCurrent(
+                storage,
+                requireOnlineTransaction = true,
+                allowExpiredTargets = true,
+                requireConfiguredDelegations = false,
+            )
+            val rotated = targetsRenewalPolicy.validateRotation(current.root, current.targets, candidate)
+            require(rotated.changedDelegatedRoles == setOf(affectedRole)) {
+                "Targets rotation must replace exactly the declared affected role"
+            }
+            persistImmutableMetadata("${rotated.version}.targets.json", candidate, "targets")
+            TufTargetsRenewalImportResult(
+                targetsVersion = rotated.version,
+                onlineTransactionVersion = publishUnlocked(
+                    currentPublicReleases(),
+                    candidate,
+                    expectedTimestamp,
+                    recoverCompromisedDelegations = affectedRole == TufRole.RELEASES,
+                ),
+            )
+        } finally {
+            repository.releaseMetadataPublication(publicationHolder)
+        }
+    }
+
+    /** Advances the mutable root pointer only after persisting its immutable sequential version. */
+    @Synchronized
+    fun importRootRotation(candidate: ByteArray): TufRootRotationImportResult {
+        val now = clock.instant()
+        if (!repository.tryAcquireMetadataPublication(publicationHolder, now, now.plus(PUBLICATION_LEASE))) {
+            throw RegistryException(503, "temporarily_unavailable", "Signed registry metadata is being published", true, 5)
+        }
+        return try {
+            val current = requireBootstrap()
+            val rotated = rootRotationPolicy.validateRotation(current, candidate)
+            persistImmutableMetadata("${rotated.version}.root.json", candidate, "root")
+            if (!storage.replaceMetadataIfUnchanged("root.json", current, candidate)) {
+                throw RegistryException(
+                    503,
+                    "temporarily_unavailable",
+                    "Trusted root changed during rotation",
+                    retryable = true,
+                    retryAfterSeconds = 5,
+                )
+            }
+            TufRootRotationImportResult(rotated.version)
+        } finally {
+            repository.releaseMetadataPublication(publicationHolder)
+        }
+    }
+
+    private fun persistImmutableMetadata(filename: String, bytes: ByteArray, role: String) {
+        val existing = storage.getMetadata(filename)
+        if (existing == null) {
+            if (!storage.putMetadataIfAbsent(filename, bytes)) {
+                require(storage.getMetadata(filename)?.contentEquals(bytes) == true) {
+                    "Existing $filename differs; refusing $role overwrite"
+                }
+            }
+        } else {
+            require(existing.contentEquals(bytes)) { "Existing $filename differs; refusing $role overwrite" }
+        }
+    }
+
     private fun publishUnlocked(
         publicReleases: List<StoredRelease>,
         targetsOverride: ByteArray? = null,
         expectedTimestamp: ByteArray?,
         securityTargetsOverride: JsonObject? = null,
+        recoverCompromisedDelegations: Boolean = false,
     ): Long {
         requireBootstrap()
         val currentTargets = if (targetsOverride == null) {
@@ -639,11 +1158,18 @@ class TufPublisher(
         val targets = currentTargets.targets
         val targetsVersion = currentTargets.version
         val version = repository.nextMetadataVersion()
-        val releaseTargets = releaseTargets(publicReleases)
-        val releasesSigned = commonMetadata("targets", version, Duration.ofDays(7), environment, repositoryId, clock).toMutableMap().apply {
-            put("targets", releaseTargets)
-        }.let(::JsonObject)
-        val releases = envelope(releasesSigned, listOf(online.releases))
+        val (releasesVersion, releases, releaseTargets) = if (online.releases is PublicKeyOnlyTufSigner) {
+            require(!recoverCompromisedDelegations) {
+                "A public-key-only releases authority cannot recover its own compromised delegation"
+            }
+            retainedReleasesMetadata()
+        } else {
+            val targetsForRelease = releaseTargets(publicReleases, recoverCompromisedDelegations)
+            val releasesSigned = commonMetadata("targets", version, Duration.ofDays(7), environment, repositoryId, clock).toMutableMap().apply {
+                put("targets", targetsForRelease)
+            }.let(::JsonObject)
+            Triple(version, envelope(releasesSigned, listOf(online.releases)), targetsForRelease)
+        }
         val (securityVersion, security) = if (online.security is PublicKeyOnlyTufSigner) {
             require(securityTargetsOverride == null) { "A public-key-only authority cannot change security metadata" }
             retainedSecurityMetadata(releaseTargets)
@@ -653,23 +1179,51 @@ class TufPublisher(
             }.let(::JsonObject)
             version to envelope(securitySigned, listOf(online.security))
         }
+        // Stage every changed delegated envelope before asking the snapshot
+        // authority to bind it. Versioned metadata is immutable and harmless
+        // until the timestamp authority commits the public pointer.
+        if (releasesVersion == version) {
+            persistImmutableMetadata("$version.releases.json", releases, TufRole.RELEASES)
+        }
+        if (securityVersion == version) {
+            persistImmutableMetadata("$version.security.json", security, TufRole.SECURITY)
+        }
+
         val snapshotSigned = commonMetadata("snapshot", version, Duration.ofDays(1), environment, repositoryId, clock).toMutableMap().apply {
             put("meta", buildJsonObject {
                 put("targets.json", fileMeta(targetsVersion, targets))
-                put("releases.json", fileMeta(version, releases))
+                put("releases.json", fileMeta(releasesVersion, releases))
                 put("security.json", fileMeta(securityVersion, security))
             })
         }.let(::JsonObject)
         val snapshot = envelope(snapshotSigned, listOf(online.snapshot))
+        persistImmutableMetadata("$version.snapshot.json", snapshot, TufRole.SNAPSHOT)
+
         val timestampSigned = commonMetadata("timestamp", version, Duration.ofHours(6), environment, repositoryId, clock).toMutableMap().apply {
             put("meta", buildJsonObject { put("snapshot.json", fileMeta(version, snapshot)) })
         }.let(::JsonObject)
-        val timestamp = envelope(timestampSigned, listOf(online.timestamp))
+        val timestamp = try {
+            envelope(timestampSigned, listOf(online.timestamp))
+        } catch (failure: Exception) {
+            if (!online.timestamp.commitsTimestampPointer) throw failure
+            recoverCommittedTimestamp(
+                timestampSigned,
+                online.timestamp.publicKey,
+                online.timestamp.timestampCommitRecoveryTimeout,
+            ) ?: throw failure
+        }
 
-        storage.putMetadata("$version.releases.json", releases)
-        if (securityVersion == version) storage.putMetadata("$version.security.json", security)
-        storage.putMetadata("$version.snapshot.json", snapshot)
-        if (!storage.replaceMetadataIfUnchanged("timestamp.json", expectedTimestamp, timestamp)) {
+        val committedTimestamp = if (online.timestamp.commitsTimestampPointer) {
+            // The remote timestamp authority returns a signature only after its
+            // own generation-CAS. Coordinators intentionally have no mutable
+            // metadata write path in this mode.
+            storage.getMetadata("timestamp.json")?.takeIf(timestamp::contentEquals)
+        } else if (storage.replaceMetadataIfUnchanged("timestamp.json", expectedTimestamp, timestamp)) {
+            timestamp
+        } else {
+            null
+        }
+        if (committedTimestamp == null) {
             throw RegistryException(
                 503,
                 "temporarily_unavailable",
@@ -678,12 +1232,60 @@ class TufPublisher(
                 retryAfterSeconds = 5,
             )
         }
+        val committed = readOnlineState(validateRepositoryState = false)
+        check(committed != null && committed.version == version && committed.minimumExpiry.isAfter(clock.instant())) {
+            "Committed TUF transaction failed complete-chain verification"
+        }
         return version
+    }
+
+    /**
+     * A timestamp signer may commit successfully and lose the HTTP response.
+     * Recovery accepts only the exact candidate signed object with one valid
+     * signature from the already pinned timestamp key.
+     */
+    private fun recoverCommittedTimestamp(
+        candidateSigned: JsonObject,
+        publicKey: ByteArray,
+        timeout: Duration,
+    ): ByteArray? {
+        require(!timeout.isNegative && timeout <= PUBLICATION_LEASE)
+        val deadlineNanos = System.nanoTime() + timeout.toNanos()
+        while (true) {
+            exactCommittedTimestamp(candidateSigned, publicKey)?.let { return it }
+            val remainingNanos = deadlineNanos - System.nanoTime()
+            if (remainingNanos <= 0L) return null
+            try {
+                val sleepMillis = minOf(
+                    TIMESTAMP_RECOVERY_POLL.toMillis(),
+                    Duration.ofNanos(remainingNanos).toMillis().coerceAtLeast(1L),
+                )
+                Thread.sleep(sleepMillis)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return null
+            }
+        }
+    }
+
+    private fun exactCommittedTimestamp(candidateSigned: JsonObject, publicKey: ByteArray): ByteArray? {
+        val committed = runCatching { storage.getMetadata("timestamp.json") }.getOrNull() ?: return null
+        val envelope = runCatching { parseCanonicalEnvelope(committed) }.getOrNull() ?: return null
+        if (envelope["signed"] != candidateSigned) return null
+        val keyId = tufKeyId(publicKey)
+        val signatures = (envelope["signatures"] as? JsonArray)?.map { element ->
+            (element as? JsonObject)?.takeIf { it.keys == setOf("keyid", "sig") }
+                ?: return null
+        } ?: return null
+        if (signatures.size != 1 || signatures.single()["keyid"]?.jsonPrimitive?.content != keyId) return null
+        if (runCatching { verifyThreshold(envelope, mapOf(keyId to publicKey), setOf(keyId), 1) }.isFailure) return null
+        return committed
     }
 
     private fun publishSecurityChange(
         release: StoredRelease,
         quarantine: Boolean,
+        incidentId: String?,
     ): SignedMetadataReference {
         requireBootstrap()
         if (online.security is PublicKeyOnlyTufSigner) {
@@ -703,19 +1305,22 @@ class TufPublisher(
         }
         return try {
             val path = targetPath(release)
+            val quarantineIncidentId = incidentId?.also(::requireIncidentId)
+            if (quarantine) requireNotNull(quarantineIncidentId) {
+                "Security quarantine requires an incident ID"
+            }
             val releasesTargets = currentDelegatedTargets(TufRole.RELEASES)
                 ?: unavailableMetadata("Signed releases metadata is unavailable")
-            val securityTargets = securityTargetsForState(releasesTargets).toMutableMap()
+            val incidentOverrides = if (quarantine) mapOf(path to requireNotNull(quarantineIncidentId)) else emptyMap()
+            val securityTargets = securityTargetsForState(releasesTargets, incidentOverrides).toMutableMap()
             if (quarantine) {
                 val releasesTarget = releasesTargets[path]
                     ?: unavailableMetadata("The release is absent from signed releases metadata")
                 validateExactTarget(release, releasesTarget, setOf("available", "yanked"))
-                securityTargets[path]?.let { validateExactTarget(release, it, setOf("security-quarantined")) }
-                securityTargets[path] = securityOverride(releasesTarget)
+                securityTargets[path] = securityOverride(releasesTarget, requireNotNull(quarantineIncidentId))
             } else {
-                val existing = securityTargets.remove(path)
+                securityTargets.remove(path)
                     ?: unavailableMetadata("The signed security override is unavailable")
-                validateExactTarget(release, existing, setOf("security-quarantined"))
             }
             val version = publishUnlocked(
                 publicReleases = currentPublicReleases(),
@@ -732,20 +1337,49 @@ class TufPublisher(
         resolverEligible(it, setOf("available", "yanked"))
     }
 
-    private fun retainedSecurityMetadata(releaseTargets: JsonObject): Pair<Long, ByteArray> {
+    private fun retainedReleasesMetadata(): Triple<Long, ByteArray, JsonObject> {
         val timestamp = storage.getMetadata("timestamp.json")
-            ?: throw RegistryException(503, "temporarily_unavailable", "Signed security metadata is unavailable", true, 30)
-        val timestampSigned = signedObject(timestamp, "timestamp")
+            ?: throw RegistryException(503, "temporarily_unavailable", "Signed releases metadata is unavailable", true, 30)
+        val timestampSigned = signedObject(timestamp, "timestamp", signingRole = TufRole.TIMESTAMP)
         val (_, snapshot) = referencedMetadata(
             timestampSigned["meta"]!!.jsonObject["snapshot.json"]!!.jsonObject,
             "snapshot",
         )
-        val snapshotSigned = signedObject(snapshot, "snapshot")
+        val snapshotSigned = signedObject(snapshot, "snapshot", signingRole = TufRole.SNAPSHOT)
+        val (releasesVersion, releases) = referencedMetadata(
+            snapshotSigned["meta"]!!.jsonObject["releases.json"]!!.jsonObject,
+            TufRole.RELEASES,
+        )
+        val releasesSigned = signedObject(releases, "targets", releasesVersion, TufRole.RELEASES)
+        val releaseTargets = releasesSigned["targets"]!!.jsonObject
+        validateCurrentReleaseTargets(releaseTargets)
+        val expires = Instant.parse(releasesSigned["expires"]!!.jsonPrimitive.content)
+        if (!expires.isAfter(clock.instant().plus(RELEASES_RETAIN_WINDOW))) {
+            throw RegistryException(
+                503,
+                "temporarily_unavailable",
+                "Releases authority must refresh signed metadata before security publication",
+                retryable = true,
+                retryAfterSeconds = 300,
+            )
+        }
+        return Triple(releasesVersion, releases, releaseTargets)
+    }
+
+    private fun retainedSecurityMetadata(releaseTargets: JsonObject): Pair<Long, ByteArray> {
+        val timestamp = storage.getMetadata("timestamp.json")
+            ?: throw RegistryException(503, "temporarily_unavailable", "Signed security metadata is unavailable", true, 30)
+        val timestampSigned = signedObject(timestamp, "timestamp", signingRole = TufRole.TIMESTAMP)
+        val (_, snapshot) = referencedMetadata(
+            timestampSigned["meta"]!!.jsonObject["snapshot.json"]!!.jsonObject,
+            "snapshot",
+        )
+        val snapshotSigned = signedObject(snapshot, "snapshot", signingRole = TufRole.SNAPSHOT)
         val (securityVersion, security) = referencedMetadata(
             snapshotSigned["meta"]!!.jsonObject["security.json"]!!.jsonObject,
             "security",
         )
-        val securitySigned = signedObject(security, "targets", securityVersion)
+        val securitySigned = signedObject(security, "targets", securityVersion, TufRole.SECURITY)
         validateCurrentSecurityTargets(
             securitySigned["targets"]!!.jsonObject,
             releaseTargets,
@@ -806,16 +1440,23 @@ class TufPublisher(
             resolverEligible(candidate, setOf("available"))
     }
 
-    private fun releaseTargets(publicReleases: List<StoredRelease>): JsonObject {
+    private fun releaseTargets(
+        publicReleases: List<StoredRelease>,
+        recoverCompromisedDelegations: Boolean = false,
+    ): JsonObject {
         val targets = linkedMapOf<String, JsonElement>()
-        val current = currentDelegatedTargets(TufRole.RELEASES)
+        val current = if (recoverCompromisedDelegations) null else currentDelegatedTargets(TufRole.RELEASES)
         repository.listReleases()
             .filter { resolverEligible(it, setOf("security-quarantined")) }
             .sortedWith(compareBy<StoredRelease> { it.record.`package` }.thenBy { it.record.version })
             .forEach { quarantined ->
                 val path = targetPath(quarantined)
-                val retained = current?.get(path)
-                    ?: unavailableMetadata("A quarantined release is absent from signed releases metadata")
+                val retained = if (recoverCompromisedDelegations) {
+                    targetValue(quarantined, durablePriorAvailability(quarantined))
+                } else {
+                    current?.get(path)
+                        ?: unavailableMetadata("A quarantined release is absent from signed releases metadata")
+                }
                 validateExactTarget(quarantined, retained, setOf("available", "yanked"))
                 targets[path] = retained
             }
@@ -829,19 +1470,33 @@ class TufPublisher(
         return JsonObject(targets)
     }
 
+    private fun durablePriorAvailability(release: StoredRelease): String {
+        val value = repository.listReviewArtifacts(
+            packageIdentity = release.record.`package`,
+            version = release.record.version,
+            kind = SECURITY_INCIDENT_ARTIFACT,
+        ).maxByOrNull(ReviewArtifact::sequence)
+            ?.payload
+            ?.get("prior_availability")
+            ?.jsonPrimitive
+            ?.content
+        return value?.takeIf { it in setOf("available", "yanked") }
+            ?: unavailableMetadata("Durable pre-quarantine availability is unavailable")
+    }
+
     private fun currentDelegatedTargets(role: String): JsonObject? {
         val timestamp = storage.getMetadata("timestamp.json") ?: return null
-        val timestampSigned = signedObject(timestamp, "timestamp")
+        val timestampSigned = signedObject(timestamp, "timestamp", signingRole = TufRole.TIMESTAMP)
         val (_, snapshot) = referencedMetadata(
             timestampSigned["meta"]!!.jsonObject["snapshot.json"]!!.jsonObject,
             "snapshot",
         )
-        val snapshotSigned = signedObject(snapshot, "snapshot")
+        val snapshotSigned = signedObject(snapshot, "snapshot", signingRole = TufRole.SNAPSHOT)
         val (roleVersion, roleBytes) = referencedMetadata(
             snapshotSigned["meta"]!!.jsonObject["$role.json"]!!.jsonObject,
             role,
         )
-        return signedObject(roleBytes, "targets", roleVersion)["targets"]?.jsonObject
+        return signedObject(roleBytes, "targets", roleVersion, role)["targets"]?.jsonObject
             ?: unavailableMetadata("Signed $role metadata has no targets")
     }
 
@@ -854,10 +1509,10 @@ class TufPublisher(
             hasExactReviewedEvidence(stored)
     }
 
-    private fun hasExactReviewedEvidence(stored: StoredRelease): Boolean = runCatching {
+    private fun exactReviewedEvidence(stored: StoredRelease): ReviewedTargetEvidence? = runCatching {
         val release = stored.record
         val review = stored.review
-        val pkg = repository.getPackage(release.`package`) ?: return@runCatching false
+        val pkg = repository.getPackage(release.`package`) ?: return@runCatching null
         if (
             review.validatedArchiveSha256 != release.archive.sha256 ||
             release.sourceProofId != review.secondSourceProofId ||
@@ -866,36 +1521,36 @@ class TufPublisher(
             release.verification.source != "passed" ||
             release.verification.firstScan != "passed" ||
             release.verification.secondScan != "passed"
-        ) return@runCatching false
+        ) return@runCatching null
 
         val firstProof = exactSourceProof(
             stored,
             pkg,
-            review.firstSourceProofId ?: return@runCatching false,
-            review.firstSourceProofSha256 ?: return@runCatching false,
-        ) ?: return@runCatching false
+            review.firstSourceProofId ?: return@runCatching null,
+            review.firstSourceProofSha256 ?: return@runCatching null,
+        ) ?: return@runCatching null
         val firstScan = exactScan(
             stored,
             ReviewPhase.FIRST,
-            review.firstScanAttestationId ?: return@runCatching false,
-            review.firstScanAttestationSha256 ?: return@runCatching false,
+            review.firstScanAttestationId ?: return@runCatching null,
+            review.firstScanAttestationSha256 ?: return@runCatching null,
             firstProof,
-        ) ?: return@runCatching false
+        ) ?: return@runCatching null
         val secondProof = exactSourceProof(
             stored,
             pkg,
-            review.secondSourceProofId ?: return@runCatching false,
-            review.secondSourceProofSha256 ?: return@runCatching false,
-        ) ?: return@runCatching false
+            review.secondSourceProofId ?: return@runCatching null,
+            review.secondSourceProofSha256 ?: return@runCatching null,
+        ) ?: return@runCatching null
         val secondScan = exactScan(
             stored,
             ReviewPhase.SECOND,
-            review.secondScanAttestationId ?: return@runCatching false,
-            review.secondScanAttestationSha256 ?: return@runCatching false,
+            review.secondScanAttestationId ?: return@runCatching null,
+            review.secondScanAttestationSha256 ?: return@runCatching null,
             secondProof,
-        ) ?: return@runCatching false
+        ) ?: return@runCatching null
 
-        firstProof.previousProofId == null &&
+        val chainIsExact = firstProof.previousProofId == null &&
             secondProof.proofId != firstProof.proofId &&
             secondProof.previousProofId == firstProof.proofId &&
             firstScan.previousAttestationId == null &&
@@ -904,7 +1559,16 @@ class TufPublisher(
             firstScan.sequence < secondProof.sequence &&
             secondProof.sequence < secondScan.sequence &&
             release.verification.attestationSequence == secondScan.sequence
-    }.getOrDefault(false)
+        if (!chainIsExact) return@runCatching null
+        ReviewedTargetEvidence(
+            sourceProof = secondProof,
+            sourceProofSha256 = requireNotNull(review.secondSourceProofSha256),
+            scanAttestation = secondScan,
+            scanAttestationSha256 = requireNotNull(review.secondScanAttestationSha256),
+        )
+    }.getOrNull()
+
+    private fun hasExactReviewedEvidence(stored: StoredRelease): Boolean = exactReviewedEvidence(stored) != null
 
     private fun exactSourceProof(
         release: StoredRelease,
@@ -975,19 +1639,66 @@ class TufPublisher(
         }
     }
 
-    private fun securityOverride(releasesTarget: JsonElement): JsonElement {
+    private fun securityOverride(releasesTarget: JsonElement, incidentId: String): JsonElement {
+        requireIncidentId(incidentId)
         val target = releasesTarget.jsonObject
         val custom = target["custom"]!!.jsonObject.toMutableMap().apply {
+            remove("yank_reason")
             put("availability", JsonPrimitive("security-quarantined"))
+            put("incident_id", JsonPrimitive(incidentId))
+            put("security_action", JsonPrimitive("quarantine"))
         }
         return JsonObject(target.toMutableMap().apply { put("custom", JsonObject(custom)) })
+    }
+
+    private fun requireIncidentId(incidentId: String) {
+        require(SECURITY_INCIDENT_ID.matches(incidentId)) { "Security incident ID is invalid" }
+    }
+
+    private fun durableSecurityIncidentId(release: StoredRelease): String {
+        val incidentId = repository.listReviewArtifacts(
+            packageIdentity = release.record.`package`,
+            version = release.record.version,
+            kind = SECURITY_INCIDENT_ARTIFACT,
+        ).asSequence()
+            .filter { it.archiveSha256 == release.record.archive.sha256 }
+            .sortedByDescending(ReviewArtifact::sequence)
+            .mapNotNull { artifact ->
+                runCatching {
+                    val action = artifact.payload["action"]!!.jsonObject
+                    action["incident_id"]!!.jsonPrimitive.content.takeIf {
+                        action["action"]!!.jsonPrimitive.content == "security-quarantined"
+                    }
+                }.getOrNull()
+            }
+            .firstOrNull()
+            ?.takeIf(SECURITY_INCIDENT_ID::matches)
+        return incidentId ?: unavailableMetadata("Durable security incident identity is unavailable")
+    }
+
+    private fun durableYankReason(release: StoredRelease): String {
+        val action = repository.listReviewArtifacts(
+            packageIdentity = release.record.`package`,
+            version = release.record.version,
+            kind = RELEASE_AVAILABILITY_ACTION_ARTIFACT,
+        ).asSequence()
+            .filter { it.archiveSha256 == release.record.archive.sha256 }
+            .sortedByDescending(ReviewArtifact::sequence)
+            .mapNotNull { artifact -> runCatching { artifact.payload["action"]!!.jsonObject }.getOrNull() }
+            .firstOrNull {
+                it["action"]?.jsonPrimitive?.content == "yanked" &&
+                    it["resulting_availability"]?.jsonPrimitive?.content == "yanked"
+            }
+            ?: unavailableMetadata("Durable yank action is unavailable")
+        return action["reason"]?.jsonPrimitive?.contentOrNull?.trim()?.takeIf(String::isNotEmpty)
+            ?: DEFAULT_YANK_REASON
     }
 
     private fun signedSecurityReference(version: Long): SignedMetadataReference {
         val filename = "$version.security.json"
         val bytes = storage.getMetadata(filename)
             ?: unavailableMetadata("Published security metadata is unavailable")
-        val signed = signedObject(bytes, "targets", version)
+        val signed = signedObject(bytes, "targets", version, TufRole.SECURITY)
         return SignedMetadataReference(
             environment = environment,
             role = TufRole.SECURITY,
@@ -1008,18 +1719,18 @@ class TufPublisher(
         retryAfterSeconds = 30,
     )
 
-    private fun readOnlineState(): OnlineState? {
+    private fun readOnlineState(validateRepositoryState: Boolean = true): OnlineState? {
         val timestamp = storage.getMetadata("timestamp.json") ?: return null
         // Validate the complete trust path, including offline root and current
         // top-level targets expiry, before treating online freshness as ready.
         targetsRenewalPolicy.resolveCurrent(storage, requireOnlineTransaction = true)
-        val timestampSigned = signedObject(timestamp, "timestamp")
+        val timestampSigned = signedObject(timestamp, "timestamp", signingRole = TufRole.TIMESTAMP)
         val version = timestampSigned["version"]!!.jsonPrimitive.content.toLong()
         val (snapshotVersion, snapshot) = referencedMetadata(
             timestampSigned["meta"]!!.jsonObject["snapshot.json"]!!.jsonObject,
             "snapshot",
         )
-        val snapshotSigned = signedObject(snapshot, "snapshot", snapshotVersion)
+        val snapshotSigned = signedObject(snapshot, "snapshot", snapshotVersion, TufRole.SNAPSHOT)
         val meta = snapshotSigned["meta"]!!.jsonObject
         val (targetsVersion, targets) = referencedMetadata(meta["targets.json"]!!.jsonObject, "targets")
         signedObject(targets, "targets", targetsVersion)
@@ -1027,17 +1738,21 @@ class TufPublisher(
             meta["${TufRole.RELEASES}.json"]!!.jsonObject,
             TufRole.RELEASES,
         )
-        val releasesSigned = signedObject(releasesBytes, "targets", releasesVersion)
-        validateCurrentReleaseTargets(releasesSigned["targets"]!!.jsonObject)
+        val releasesSigned = signedObject(releasesBytes, "targets", releasesVersion, TufRole.RELEASES)
+        if (validateRepositoryState) {
+            validateCurrentReleaseTargets(releasesSigned["targets"]!!.jsonObject)
+        }
         val (securityVersion, securityBytes) = referencedMetadata(
             meta["${TufRole.SECURITY}.json"]!!.jsonObject,
             TufRole.SECURITY,
         )
-        val securitySigned = signedObject(securityBytes, "targets", securityVersion)
-        validateCurrentSecurityTargets(
-            securitySigned["targets"]!!.jsonObject,
-            releasesSigned["targets"]!!.jsonObject,
-        )
+        val securitySigned = signedObject(securityBytes, "targets", securityVersion, TufRole.SECURITY)
+        if (validateRepositoryState) {
+            validateCurrentSecurityTargets(
+                securitySigned["targets"]!!.jsonObject,
+                releasesSigned["targets"]!!.jsonObject,
+            )
+        }
         val roleExpiries = listOf(expiry(releasesSigned), expiry(securitySigned))
         return OnlineState(
             version = version,
@@ -1045,13 +1760,30 @@ class TufPublisher(
         )
     }
 
-    private fun signedObject(bytes: ByteArray, expectedType: String, expectedVersion: Long? = null): JsonObject {
-        val signed = RegistryJson.parseToJsonElement(bytes.decodeToString()).jsonObject["signed"]!!.jsonObject
+    private fun signedObject(
+        bytes: ByteArray,
+        expectedType: String,
+        expectedVersion: Long? = null,
+        signingRole: String? = null,
+    ): JsonObject {
+        val envelope = parseCanonicalEnvelope(bytes)
+        val signed = envelope["signed"]!!.jsonObject
         require(signed["_type"]?.jsonPrimitive?.content == expectedType) { "Online metadata role type is invalid" }
         require(signed["environment"]?.jsonPrimitive?.content == environment) { "Online metadata environment is invalid" }
         require(signed["repository_id"]?.jsonPrimitive?.content == repositoryId) { "Online metadata repository is invalid" }
         if (expectedVersion != null) require(signed["version"]?.jsonPrimitive?.content?.toLong() == expectedVersion) {
             "Online metadata version is invalid"
+        }
+        if (signingRole != null) {
+            val signer = online.asMap().getValue(signingRole)
+            val keyId = tufKeyId(signer.publicKey)
+            val signatures = envelope["signatures"]!!.jsonArray.map { signature ->
+                val value = signature.jsonObject
+                require(value.keys == setOf("keyid", "sig")) { "Online metadata signature fields are invalid" }
+                value["keyid"]!!.jsonPrimitive.content
+            }
+            require(signatures == listOf(keyId)) { "$signingRole metadata must have exactly its configured online signature" }
+            verifyThreshold(envelope, mapOf(keyId to signer.publicKey), setOf(keyId), 1)
         }
         return signed
     }
@@ -1089,7 +1821,10 @@ class TufPublisher(
      * target is fail-open; a stale extra target keeps an approved release denied.
      * Both are rejected by reads and replaced by the next online transaction.
      */
-    private fun securityTargetsForState(releaseTargets: JsonObject): JsonObject {
+    private fun securityTargetsForState(
+        releaseTargets: JsonObject,
+        incidentIdOverrides: Map<String, String> = emptyMap(),
+    ): JsonObject {
         val targets = linkedMapOf<String, JsonElement>()
         repository.listReleases()
             .filter { resolverEligible(it, setOf("security-quarantined")) }
@@ -1099,7 +1834,8 @@ class TufPublisher(
                 val releasesTarget = releaseTargets[path]
                     ?: unavailableMetadata("A quarantined release is absent from signed releases metadata")
                 validateExactTarget(release, releasesTarget, setOf("available", "yanked"))
-                targets[path] = securityOverride(releasesTarget)
+                val incidentId = incidentIdOverrides[path] ?: durableSecurityIncidentId(release)
+                targets[path] = securityOverride(releasesTarget, incidentId)
             }
         return JsonObject(targets)
     }
@@ -1128,10 +1864,57 @@ class TufPublisher(
 
     private fun targetValue(stored: StoredRelease, availability: String): JsonElement {
         val release = stored.record
-        val (_, name) = IdentityRules.requireIdentity(release.`package`)
+        val (owner, name) = IdentityRules.requireIdentity(release.`package`)
         val filename = "$name-${release.version}.seenpkg.tgz"
-        val sourceProofSha256 = stored.review.secondSourceProofSha256
-            ?: unavailableMetadata("Reviewed second source proof is unavailable")
+        val evidence = exactReviewedEvidence(stored)
+            ?: unavailableMetadata("Reviewed release evidence is unavailable")
+        val activatedAt = release.timestamps.activatedAt
+            ?.also { runCatching { Instant.parse(it) }.getOrElse { unavailableMetadata("Release activation time is invalid") } }
+            ?: unavailableMetadata("Release activation time is unavailable")
+        val publisherPrincipal = stored.ownerPrincipal.takeIf(String::isNotBlank)
+            ?: unavailableMetadata("Release publisher identity is unavailable")
+        val sourceProof = evidence.sourceProof
+        val scan = evidence.scanAttestation
+        val blob = buildJsonObject {
+            put("sha256", release.archive.sha256)
+            put("length", release.archive.compressedBytes)
+        }
+        val sourceRepository = buildJsonObject {
+            put("forge", sourceProof.repository.forge)
+            put("repository_id", sourceProof.repository.repositoryId)
+            put("canonical_url", sourceProof.repository.canonicalUrl)
+        }
+        val sourceCommit = buildJsonObject {
+            put("algorithm", sourceProof.commit.algorithm)
+            put("value", sourceProof.commit.value)
+        }
+        val review = buildJsonObject {
+            put("result", scan.result.status)
+            put("policy_version", scan.scan.policyVersion)
+            put("source_proof_id", sourceProof.proofId)
+            put("source_proof_sha256", evidence.sourceProofSha256)
+            put("scan_attestation_id", scan.attestationId)
+            put("scan_attestation_sha256", evidence.scanAttestationSha256)
+            put("scanner_id", scan.scanner.id)
+            put("scanner_version", scan.scanner.version)
+            put("attestation_sequence", scan.sequence)
+        }
+        val registryAttestationSha256 = sha256(canonicalJson(buildJsonObject {
+            put("subject", buildJsonObject {
+                put("package", release.`package`)
+                put("owner", owner)
+                put("name", name)
+                put("version", release.version)
+                put("blob", blob)
+                put("visibility", release.state.visibility)
+            })
+            put("publisher_principal", publisherPrincipal)
+            put("registry_service_identity", RELEASE_PROMOTER_IDENTITY)
+            put("source_repository", sourceRepository)
+            put("source_commit", sourceCommit)
+            put("review", review)
+            put("activated_at", activatedAt)
+        }))
         return buildJsonObject {
             put("length", release.archive.compressedBytes)
             put("hashes", buildJsonObject { put("sha256", release.archive.sha256) })
@@ -1139,15 +1922,26 @@ class TufPublisher(
                 put("environment", environment)
                 put("registry_origin", registryOrigin)
                 put("package", release.`package`)
+                put("owner", owner)
+                put("name", name)
                 put("version", release.version)
                 put("archive_sha256", release.archive.sha256)
                 put("archive_filename", filename)
-                put("visibility", "public")
+                put("blob", blob)
+                put("publisher_principal", publisherPrincipal)
+                put("registry_service_identity", RELEASE_PROMOTER_IDENTITY)
+                put("source_repository", sourceRepository)
+                put("source_commit", sourceCommit)
+                put("review", review)
+                put("visibility", release.state.visibility)
                 put("lifecycle", release.state.lifecycle)
                 put("retention", release.state.retention)
                 put("availability", availability)
-                put("source_proof_sha256", sourceProofSha256)
-                put("provenance_sha256", sourceProofSha256)
+                if (availability == "yanked") put("yank_reason", durableYankReason(stored))
+                put("activated_at", activatedAt)
+                put("source_proof_sha256", evidence.sourceProofSha256)
+                put("registry_attestation_sha256", registryAttestationSha256)
+                put("provenance_sha256", registryAttestationSha256)
                 put("dependencies", RegistryJson.encodeToJsonElement(ListSerializer, stored.dependencies))
                 put("capabilities", buildJsonArray { release.capabilities.forEach { add(JsonPrimitive(it)) } })
             })
@@ -1157,9 +1951,23 @@ class TufPublisher(
     private companion object {
         val REFRESH_WINDOW: Duration = Duration.ofHours(2)
         val PUBLICATION_LEASE: Duration = Duration.ofMinutes(2)
+        val TIMESTAMP_RECOVERY_POLL: Duration = Duration.ofMillis(100)
+        val RELEASES_RETAIN_WINDOW: Duration = Duration.ofMinutes(5)
         val SECURITY_RETAIN_WINDOW: Duration = Duration.ofMinutes(5)
+        const val RELEASE_PROMOTER_IDENTITY = "release-promoter"
+        const val DEFAULT_YANK_REASON = "Release yanked by publisher"
+        val SECURITY_INCIDENT_ID = Regex("^inc_[A-Za-z0-9_-]{8,96}$")
+        val VERSIONED_ROOT_FILENAME = Regex("^([1-9][0-9]*)\\.root\\.json$")
+        const val MAX_ROOT_CHAIN_LENGTH = 1024L
         val ListSerializer = kotlinx.serialization.builtins.ListSerializer(SignedDependency.serializer())
     }
+
+    private data class ReviewedTargetEvidence(
+        val sourceProof: SourceProofRecord,
+        val sourceProofSha256: String,
+        val scanAttestation: ScanAttestationRecord,
+        val scanAttestationSha256: String,
+    )
 }
 
 private fun commonMetadata(type: String, version: Long, lifetime: Duration, environment: String, repositoryId: String, clock: Clock): Map<String, JsonElement> = linkedMapOf(
@@ -1216,14 +2024,7 @@ fun tufKeyId(publicKey: ByteArray): String = sha256(canonicalJson(tufKeyObject(p
 private fun signedVersion(metadata: ByteArray): Long = RegistryJson.parseToJsonElement(metadata.decodeToString())
     .jsonObject["signed"]!!.jsonObject["version"]!!.jsonPrimitive.content.toLong()
 
-private fun metadataKeyIds(metadata: ByteArray): Set<String> {
-    val signed = RegistryJson.parseToJsonElement(metadata.decodeToString()).jsonObject["signed"]!!.jsonObject
-    val direct = signed["keys"]?.jsonObject?.keys.orEmpty()
-    val delegated = signed["delegations"]?.jsonObject?.get("keys")?.jsonObject?.keys.orEmpty()
-    return direct + delegated
-}
-
-private fun parseCanonicalEnvelope(bytes: ByteArray): JsonObject {
+internal fun parseCanonicalEnvelope(bytes: ByteArray): JsonObject {
     val envelope = RegistryJson.parseToJsonElement(bytes.decodeToString()).jsonObject
     require(envelope.keys == setOf("signatures", "signed")) { "TUF envelope fields are invalid" }
     require(canonicalJson(envelope).contentEquals(bytes)) { "TUF envelope is not canonical JSON" }
@@ -1231,7 +2032,7 @@ private fun parseCanonicalEnvelope(bytes: ByteArray): JsonObject {
     return envelope
 }
 
-private fun parseKeys(keys: JsonObject): Map<String, ByteArray> = keys.mapValues { (keyId, element) ->
+internal fun parseKeys(keys: JsonObject): Map<String, ByteArray> = keys.mapValues { (keyId, element) ->
     val key = element.jsonObject
     require(key["keytype"]?.jsonPrimitive?.content == "ed25519" && key["scheme"]?.jsonPrimitive?.content == "ed25519") { "TUF key type is invalid" }
     val publicKey = key["keyval"]!!.jsonObject["public"]!!.jsonPrimitive.content.hexToBytes()
@@ -1248,7 +2049,7 @@ private fun parseRole(roles: JsonObject, name: String, expectedKeys: Int, expect
     return ids
 }
 
-private fun verifyThreshold(envelope: JsonObject, keys: Map<String, ByteArray>, allowedKeyIds: Set<String>, threshold: Int) {
+internal fun verifyThreshold(envelope: JsonObject, keys: Map<String, ByteArray>, allowedKeyIds: Set<String>, threshold: Int) {
     val canonicalSigned = canonicalJson(envelope["signed"]!!)
     val valid = envelope["signatures"]!!.jsonArray.map { it.jsonObject }.mapNotNull { signature ->
         val keyId = signature["keyid"]?.jsonPrimitive?.content ?: return@mapNotNull null

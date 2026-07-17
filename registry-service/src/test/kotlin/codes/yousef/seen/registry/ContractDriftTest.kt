@@ -29,9 +29,11 @@ class ContractDriftTest {
                 "fixtures/scan-attestation-v1.json",
                 "fixtures/source-proof-failure-cases.json",
                 "fixtures/source-proof-v1.json",
+                "fixtures/tuf-metadata-examples.json",
                 "schemas/registry-api-workflows-v1.schema.json",
                 "schemas/scan-attestation-v1.schema.json",
                 "schemas/source-proof.schema.json",
+                "schemas/tuf-metadata-envelope-v1.schema.json",
             ),
             hashes.keys,
         )

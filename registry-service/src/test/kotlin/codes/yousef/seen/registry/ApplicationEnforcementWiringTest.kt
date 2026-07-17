@@ -15,21 +15,24 @@ import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
 import org.bouncycastle.crypto.util.PrivateKeyInfoFactory
 import java.io.ByteArrayOutputStream
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ApplicationEnforcementWiringTest {
     @Test
     fun `resource pipeline serves registry and enforcement routes with configured actors`() = runBlocking {
         val writerToken = "w".repeat(32)
-        val securityToken = "s".repeat(32)
+        val reviewerToken = "r".repeat(32)
         val config = testConfig().copy(
             writerToken = writerToken,
-            securityToken = securityToken,
-            securityPrincipal = "security-principal",
+            trustAndSafetyToken = reviewerToken,
+            trustAndSafetyPrincipal = "reviewer-principal",
             localOnlineSigningKeysPkcs8Base64 = TufRole.ONLINE.mapIndexed { index, role ->
                 role to signingKey(index + 40)
             }.toMap(),
@@ -39,6 +42,8 @@ class ApplicationEnforcementWiringTest {
             Clock.fixed(Instant.parse("2026-07-17T00:00:00Z"), ZoneOffset.UTC),
         )
         try {
+            assertEquals(emptySet(), resources.activeSigningRoles)
+            assertTrue(resources.hasRegistryRoutes)
             val health = WiringExchange(WiringRequest(HttpMethod.GET, "/health", Headers.Empty, ByteArray(0)))
             resources.routePipeline().execute(health) { error("health route fell through") }
             assertEquals(200, health.testResponse.statusCode)
@@ -61,13 +66,91 @@ class ApplicationEnforcementWiringTest {
                 reportExchange.testResponse.body.decodeToString(),
             )
 
-            val securityRead = exchange(
+            val reviewerRead = exchange(
                 HttpMethod.GET,
                 "/packages/api/v1/reports/${report.reportId}",
-                securityToken,
+                reviewerToken,
             )
-            resources.routePipeline().execute(securityRead) { error("security report route fell through") }
-            assertEquals(200, securityRead.testResponse.statusCode)
+            resources.routePipeline().execute(reviewerRead) { error("reviewer report route fell through") }
+            assertEquals(200, reviewerRead.testResponse.statusCode)
+        } finally {
+            resources.close()
+        }
+    }
+
+    @Test
+    fun `server modes expose only their route surface and activate only their signing roles`() = runBlocking {
+        val signingKeys = TufRole.ONLINE.mapIndexed { index, role ->
+            role to signingKey(index + 80)
+        }.toMap()
+        val base = testConfig().copy(
+            writerToken = "w".repeat(32),
+            localOnlineSigningKeysPkcs8Base64 = signingKeys,
+        )
+        val clock = Clock.fixed(Instant.parse("2026-07-17T00:00:00Z"), ZoneOffset.UTC)
+
+        assertSurface(
+            RegistryResources.create(base.copy(
+                serverMode = RegistryServerMode.PUBLIC_API,
+            ), clock),
+            expectedRoles = emptySet(),
+            expectedHandled = setOf(HEALTH_PATH, REPORT_PATH),
+        )
+        assertSurface(
+            RegistryResources.create(base.copy(
+                serverMode = RegistryServerMode.RELEASE_ACTIONS,
+                ownerAllowlist = emptySet(),
+                writersEnabled = false,
+                publicDelay = Duration.ZERO,
+                trustAndSafetyToken = null,
+                trustAndSafetyPrincipal = "",
+            ), clock),
+            expectedRoles = setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
+            expectedHandled = setOf(YANK_PATH),
+        )
+        assertSurface(
+            RegistryResources.create(base.copy(
+                serverMode = RegistryServerMode.SECURITY_ACTIONS,
+                writerMode = "",
+                writerToken = "",
+                writerPrincipal = "",
+                ownerAllowlist = emptySet(),
+                writersEnabled = false,
+                publicDelay = Duration.ZERO,
+                trustAndSafetyToken = null,
+                trustAndSafetyPrincipal = "",
+                securityToken = "s".repeat(32),
+                securityPrincipal = "security-principal",
+            ), clock),
+            expectedRoles = setOf(TufRole.SECURITY, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
+            expectedHandled = setOf(SECURITY_PATH),
+        )
+    }
+
+    private suspend fun assertSurface(
+        resources: RegistryResources,
+        expectedRoles: Set<String>,
+        expectedHandled: Set<String>,
+    ) {
+        try {
+            assertEquals(expectedRoles, resources.activeSigningRoles)
+            assertEquals(HEALTH_PATH in expectedHandled, resources.hasRegistryRoutes)
+            listOf(HEALTH_PATH, REPORT_PATH, YANK_PATH, SECURITY_PATH).forEach { path ->
+                val exchange = WiringExchange(WiringRequest(
+                    method = if (path == HEALTH_PATH) HttpMethod.GET else HttpMethod.POST,
+                    path = path,
+                    headers = Headers.Empty,
+                    body = ByteArray(0),
+                ))
+                var fellThrough = false
+                resources.routePipeline().execute(exchange) { fellThrough = true }
+                if (path in expectedHandled) {
+                    assertFalse(fellThrough, "$path must be handled")
+                    assertTrue(exchange.testResponse.statusCode in setOf(200, 401), "$path returned an unexpected status")
+                } else {
+                    assertTrue(fellThrough, "$path must not be exposed")
+                }
+            }
         } finally {
             resources.close()
         }
@@ -91,6 +174,14 @@ class ApplicationEnforcementWiringTest {
     private fun signingKey(seed: Int): String {
         val key = Ed25519PrivateKeyParameters(ByteArray(32) { (it + seed).toByte() })
         return Base64.getEncoder().encodeToString(PrivateKeyInfoFactory.createPrivateKeyInfo(key).encoded)
+    }
+
+    private companion object {
+        const val HEALTH_PATH = "/health"
+        const val REPORT_PATH = "/packages/api/v1/reports"
+        const val YANK_PATH = "/packages/api/v1/packages/seen/demo/releases/1.2.3/actions/yank"
+        const val SECURITY_PATH =
+            "/packages/api/v1/packages/seen/demo/releases/1.2.3/actions/security-quarantine"
     }
 }
 

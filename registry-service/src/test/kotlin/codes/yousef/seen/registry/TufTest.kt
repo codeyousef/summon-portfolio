@@ -75,25 +75,149 @@ class TufTest {
     }
 
     @Test
+    fun `offline import uses conditional writes only`() {
+        val fixtureStorage = InMemoryRegistryObjectStorage()
+        val clock = Clock.fixed(Instant.parse("2026-07-16T00:00:00Z"), ZoneOffset.UTC)
+        val online = testOnlineSigners()
+        val rootKeys = (1..3).map(::testSigner)
+        val targetKeys = (4..5).map(::testSigner)
+        val fixture = TufBootstrapper(
+            fixtureStorage, rootKeys.map(TufSigner::publicKey), rootKeys,
+            targetKeys.map(TufSigner::publicKey), targetKeys, online.publicKeys(),
+            "development", "seen-dev-registry-v1", clock,
+        ).bootstrap()
+        val backing = InMemoryRegistryObjectStorage()
+        val conditionalStorage = object : RegistryObjectStorage by backing {
+            override fun putMetadata(filename: String, bytes: ByteArray): Nothing =
+                error("Bootstrap must not use an unconditional metadata write for $filename")
+        }
+
+        TufBootstrapImporter(
+            conditionalStorage, online.publicKeys(), "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        ).import(fixture.root, fixture.targets)
+
+        assertContentEquals(fixture.root, backing.getMetadata("1.root.json"))
+        assertContentEquals(fixture.targets, backing.getMetadata("1.targets.json"))
+        assertContentEquals(fixture.root, backing.getMetadata("root.json"))
+    }
+
+    @Test
+    fun `byte-identical partial bootstrap resumes and finishes online metadata`() {
+        val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+        val online = testOnlineSigners()
+        val rootKeys = (1..3).map(::testSigner)
+        val targetKeys = (4..5).map(::testSigner)
+        val fixture = TufBootstrapper(
+            InMemoryRegistryObjectStorage(), rootKeys.map(TufSigner::publicKey), rootKeys,
+            targetKeys.map(TufSigner::publicKey), targetKeys, online.publicKeys(),
+            "development", "seen-dev-registry-v1", clock,
+        ).bootstrap()
+        val storage = InMemoryRegistryObjectStorage().apply {
+            putMetadata("1.root.json", fixture.root)
+            putMetadata("root.json", fixture.root)
+        }
+
+        val resumed = TufBootstrapImporter(
+            storage, online.publicKeys(), "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        ).import(fixture.root, fixture.targets)
+        assertContentEquals(fixture.targets, storage.getMetadata("1.targets.json"))
+        assertContentEquals(fixture.root, resumed.root)
+
+        val publisher = TufPublisher(
+            InMemoryRegistryRepository(), storage, online, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        )
+        assertEquals(1, publisher.ensureInitialTransaction())
+        assertTrue(storage.getMetadata("timestamp.json") != null)
+    }
+
+    @Test
+    fun `conflicting partial bootstrap fails without exposing root pointer`() {
+        val fixtureStorage = InMemoryRegistryObjectStorage()
+        val clock = Clock.fixed(Instant.parse("2026-07-16T00:00:00Z"), ZoneOffset.UTC)
+        val online = testOnlineSigners()
+        val rootKeys = (1..3).map(::testSigner)
+        val targetKeys = (4..5).map(::testSigner)
+        val fixture = TufBootstrapper(
+            fixtureStorage, rootKeys.map(TufSigner::publicKey), rootKeys,
+            targetKeys.map(TufSigner::publicKey), targetKeys, online.publicKeys(),
+            "development", "seen-dev-registry-v1", clock,
+        ).bootstrap()
+        val storage = InMemoryRegistryObjectStorage().apply {
+            putMetadata("1.targets.json", "conflicting-targets".encodeToByteArray())
+        }
+
+        val failure = assertFailsWith<IllegalArgumentException> {
+            TufBootstrapImporter(
+                storage, online.publicKeys(), "development", "seen-dev-registry-v1",
+                "https://seen.dev.yousef.codes/packages", clock,
+            ).import(fixture.root, fixture.targets)
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Existing 1.targets.json differs"))
+        assertNull(storage.getMetadata("root.json"))
+
+        val pointerConflict = "conflicting-root-pointer".encodeToByteArray()
+        val pointerStorage = InMemoryRegistryObjectStorage().apply {
+            putMetadata("root.json", pointerConflict)
+        }
+        val pointerFailure = assertFailsWith<IllegalArgumentException> {
+            TufBootstrapImporter(
+                pointerStorage, online.publicKeys(), "development", "seen-dev-registry-v1",
+                "https://seen.dev.yousef.codes/packages", clock,
+            ).import(fixture.root, fixture.targets)
+        }
+        assertTrue(pointerFailure.message.orEmpty().contains("Existing root.json differs"))
+        assertContentEquals(pointerConflict, pointerStorage.getMetadata("root.json"))
+    }
+
+    @Test
+    fun `immutable bootstrap root alone is not a published trust pointer`() {
+        val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+        val online = testOnlineSigners()
+        val rootKeys = (1..3).map(::testSigner)
+        val targetKeys = (4..5).map(::testSigner)
+        val fixture = TufBootstrapper(
+            InMemoryRegistryObjectStorage(), rootKeys.map(TufSigner::publicKey), rootKeys,
+            targetKeys.map(TufSigner::publicKey), targetKeys, online.publicKeys(),
+            "development", "seen-dev-registry-v1", clock,
+        ).bootstrap()
+        val storage = InMemoryRegistryObjectStorage().apply {
+            putMetadata("1.root.json", fixture.root)
+        }
+        val publisher = TufPublisher(
+            InMemoryRegistryRepository(), storage, online, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        )
+
+        assertFailsWith<IllegalStateException> { publisher.requireBootstrap() }
+    }
+
+    @Test
     fun `offline preparation writes canonical envelopes using public-only online material`() {
         val directory = Files.createTempDirectory("seen-offline-bootstrap-test")
         val online = testOnlineSigners().publicKeys()
-        val result = prepareOfflineBootstrap(
-            directory,
-            OfflineBootstrapConfig(
-                environment = "development",
-                repositoryId = "seen-dev-registry-v1",
-                rootPublicKeys = (1..3).map(::testSigner).map(TufSigner::publicKey),
-                rootSigningKeysPkcs8Base64 = listOf(testPkcs8(1), testPkcs8(2)),
-                targetsPublicKeys = (4..5).map(::testSigner).map(TufSigner::publicKey),
-                targetsSigningKeysPkcs8Base64 = listOf(testPkcs8(4), testPkcs8(5)),
-                onlineKeys = online,
-            ),
-            Clock.fixed(Instant.parse("2026-07-16T00:00:00Z"), ZoneOffset.UTC),
+        val config = OfflineBootstrapConfig(
+            environment = "development",
+            repositoryId = "seen-dev-registry-v1",
+            rootPublicKeys = (1..3).map(::testSigner).map(TufSigner::publicKey),
+            rootSigningKeysPkcs8Base64 = listOf(testPkcs8(1), testPkcs8(2)),
+            targetsPublicKeys = (4..5).map(::testSigner).map(TufSigner::publicKey),
+            targetsSigningKeysPkcs8Base64 = listOf(testPkcs8(4), testPkcs8(5)),
+            onlineKeys = online,
         )
+        val clock = Clock.fixed(Instant.parse("2026-07-16T00:00:00Z"), ZoneOffset.UTC)
+        val result = prepareOfflineBootstrap(directory, config, clock)
         assertContentEquals(result.root, Files.readAllBytes(directory.resolve("1.root.json")))
         assertContentEquals(result.targets, Files.readAllBytes(directory.resolve("1.targets.json")))
         assertContentEquals(result.root, Files.readAllBytes(directory.resolve("root.json")))
+
+        Files.delete(directory.resolve("1.targets.json"))
+        val resumed = prepareOfflineBootstrap(directory, config, clock)
+        assertContentEquals(result.root, resumed.root)
+        assertContentEquals(result.targets, Files.readAllBytes(directory.resolve("1.targets.json")))
     }
 
     @Test
@@ -125,6 +249,182 @@ class TufTest {
             assertReferenced(meta, version, bytes)
             assertEquals(emptySet(), signed(bytes)["targets"]!!.jsonObject.keys)
         }
+    }
+
+    @Test
+    fun `timestamp signer failure leaves only immutable staged metadata`() {
+        val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+        val repository = InMemoryRegistryRepository()
+        val backing = InMemoryRegistryObjectStorage()
+        val timestampKey = testSigner(40)
+        val online = TufOnlineSigners(
+            testSigner(10),
+            testSigner(20),
+            testSigner(30),
+            object : TufSigner {
+                override val publicKey: ByteArray = timestampKey.publicKey
+                override fun sign(canonicalSignedBytes: ByteArray): ByteArray =
+                    error("timestamp signer is unavailable")
+            },
+        )
+        bootstrap(backing, online, clock)
+        val writes = mutableListOf<String>()
+        val storage = object : RegistryObjectStorage by backing {
+            override fun putMetadata(filename: String, bytes: ByteArray) {
+                writes += "put:$filename"
+                backing.putMetadata(filename, bytes)
+            }
+
+            override fun putMetadataIfAbsent(filename: String, bytes: ByteArray): Boolean {
+                writes += "create:$filename"
+                return backing.putMetadataIfAbsent(filename, bytes)
+            }
+
+            override fun replaceMetadataIfUnchanged(
+                filename: String,
+                expected: ByteArray?,
+                bytes: ByteArray,
+            ): Boolean {
+                writes += "replace:$filename"
+                return backing.replaceMetadataIfUnchanged(filename, expected, bytes)
+            }
+        }
+        val publisher = TufPublisher(
+            repository, storage, online, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        )
+
+        val failure = assertFailsWith<IllegalStateException> { publisher.publish(emptyList()) }
+
+        assertEquals("timestamp signer is unavailable", failure.message)
+        assertEquals(
+            listOf(
+                "create:1.releases.json",
+                "create:1.security.json",
+                "create:1.snapshot.json",
+            ),
+            writes,
+        )
+        assertTrue(backing.getMetadata("1.releases.json") != null)
+        assertTrue(backing.getMetadata("1.security.json") != null)
+        assertTrue(backing.getMetadata("1.snapshot.json") != null)
+        assertNull(backing.getMetadata("timestamp.json"))
+    }
+
+    @Test
+    fun `byte-identical staged online transaction can be retried and committed`() {
+        val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+        val repositoryState = InMemoryRegistryRepository()
+        val repository = object : RegistryRepository by repositoryState {
+            override fun nextMetadataVersion(): Long = 1L
+        }
+        val backing = InMemoryRegistryObjectStorage()
+        val online = testOnlineSigners()
+        bootstrap(backing, online, clock)
+        var rejectFirstTimestamp = true
+        var committed = false
+        val postCommitReads = mutableSetOf<String>()
+        val storage = object : RegistryObjectStorage by backing {
+            override fun replaceMetadataIfUnchanged(
+                filename: String,
+                expected: ByteArray?,
+                bytes: ByteArray,
+            ): Boolean {
+                if (filename == "timestamp.json" && rejectFirstTimestamp) {
+                    rejectFirstTimestamp = false
+                    return false
+                }
+                return backing.replaceMetadataIfUnchanged(filename, expected, bytes).also { replaced ->
+                    if (filename == "timestamp.json" && replaced) committed = true
+                }
+            }
+
+            override fun getMetadata(filename: String): ByteArray? {
+                if (committed) postCommitReads += filename
+                return backing.getMetadata(filename)
+            }
+        }
+        val publisher = TufPublisher(
+            repository, storage, online, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        )
+
+        val first = assertFailsWith<RegistryException> { publisher.publish(emptyList()) }
+        assertEquals("temporarily_unavailable", first.code)
+        assertNull(backing.getMetadata("timestamp.json"))
+        val stagedReleases = backing.getMetadata("1.releases.json")!!
+        val stagedSecurity = backing.getMetadata("1.security.json")!!
+        val stagedSnapshot = backing.getMetadata("1.snapshot.json")!!
+
+        assertEquals(1L, publisher.publish(emptyList()))
+        assertContentEquals(stagedReleases, backing.getMetadata("1.releases.json"))
+        assertContentEquals(stagedSecurity, backing.getMetadata("1.security.json"))
+        assertContentEquals(stagedSnapshot, backing.getMetadata("1.snapshot.json"))
+        assertEquals(1L, signed(backing.getMetadata("timestamp.json")!!)["version"]!!.jsonPrimitive.content.toLong())
+        assertTrue(postCommitReads.containsAll(setOf(
+            "root.json",
+            "timestamp.json",
+            "1.targets.json",
+            "1.releases.json",
+            "1.security.json",
+            "1.snapshot.json",
+        )))
+    }
+
+    @Test
+    fun `conflicting immutable online metadata is rejected before timestamp commit`() {
+        val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+        val repositoryState = InMemoryRegistryRepository()
+        val repository = object : RegistryRepository by repositoryState {
+            override fun nextMetadataVersion(): Long = 1L
+        }
+        val storage = InMemoryRegistryObjectStorage()
+        val online = testOnlineSigners()
+        bootstrap(storage, online, clock)
+        val collision = "conflicting releases metadata".encodeToByteArray()
+        storage.putMetadata("1.releases.json", collision)
+        val publisher = TufPublisher(
+            repository, storage, online, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        )
+
+        val failure = assertFailsWith<IllegalArgumentException> { publisher.publish(emptyList()) }
+
+        assertTrue(failure.message.orEmpty().contains("Existing 1.releases.json differs"))
+        assertContentEquals(collision, storage.getMetadata("1.releases.json"))
+        assertNull(storage.getMetadata("1.security.json"))
+        assertNull(storage.getMetadata("1.snapshot.json"))
+        assertNull(storage.getMetadata("timestamp.json"))
+    }
+
+    @Test
+    fun `public key only runtime verifies a fresh chain without signing`() {
+        val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+        val repository = InMemoryRegistryRepository()
+        val storage = InMemoryRegistryObjectStorage()
+        val authority = testOnlineSigners()
+        bootstrap(storage, authority, clock)
+        TufPublisher(
+            repository, storage, authority, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        ).ensureInitialTransaction()
+        val verificationOnly = authority.publicKeys().let { keys ->
+            TufOnlineSigners(
+                PublicKeyOnlyTufSigner(keys.releases),
+                PublicKeyOnlyTufSigner(keys.security),
+                PublicKeyOnlyTufSigner(keys.snapshot),
+                PublicKeyOnlyTufSigner(keys.timestamp),
+            )
+        }
+        val verifier = TufPublisher(
+            repository, storage, verificationOnly, "development", "seen-dev-registry-v1",
+            "https://seen.dev.yousef.codes/packages", clock,
+        )
+
+        assertEquals(1, verifier.verifyFreshTransaction())
+        clock.advance(Duration.ofHours(6).plusSeconds(1))
+        val failure = assertFailsWith<RegistryException> { verifier.verifyFreshTransaction() }
+        assertEquals("temporarily_unavailable", failure.code)
     }
 
     @Test

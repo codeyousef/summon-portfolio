@@ -72,14 +72,10 @@ internal fun testConfig() = RegistryConfig(
     writersEnabled = true,
     publicDelay = Duration.ofHours(72),
     localOnlineSigningKeysPkcs8Base64 = TufRole.ONLINE.associateWith { "configured-for-direct-test-signer-$it" },
-    kmsOnlineKeyVersions = emptyMap(),
     kmsOnlinePublicKeysHex = emptyMap(),
-    offlineRootPublicKeysHex = emptyList(),
-    offlineRootSigningKeysPkcs8Base64 = emptyList(),
-    offlineTargetsPublicKeysHex = emptyList(),
-    offlineTargetsSigningKeysPkcs8Base64 = emptyList(),
-    bootstrapRootEnvelopeBase64 = null,
-    bootstrapTargetsEnvelopeBase64 = null,
+    remoteOnlineSignerTargets = emptyMap(),
+    trustAndSafetyToken = "r".repeat(32),
+    trustAndSafetyPrincipal = "reviewer",
 )
 
 internal class MutableClock(private var value: Instant) : Clock() {

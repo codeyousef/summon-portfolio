@@ -1,6 +1,7 @@
 package code.yousef.portfolio.server
 
 import codes.yousef.aether.core.Exchange
+import codes.yousef.aether.core.HttpMethod
 import codes.yousef.aether.core.pipeline.Middleware
 import codes.yousef.aether.core.proxy.CircuitBreakerConfig
 import codes.yousef.aether.core.proxy.ProxyCircuitOpenException
@@ -102,6 +103,8 @@ private object AetherRegistryProxyForwarder : RegistryProxyForwarder {
 
 internal class RegistryGatewayMiddleware(
     upstreamUrl: String,
+    releaseActionsUpstreamUrl: String? = null,
+    securityActionsUpstreamUrl: String? = null,
     private val identityTokenProvider: RegistryIdentityTokenProvider = GoogleAdcRegistryIdentityTokenProvider(),
     private val proxyForwarder: RegistryProxyForwarder = AetherRegistryProxyForwarder
 ) {
@@ -109,7 +112,9 @@ internal class RegistryGatewayMiddleware(
 
     private val log = LoggerFactory.getLogger(RegistryGatewayMiddleware::class.java)
     private val random = SecureRandom()
-    private val upstream = parseUpstream(upstreamUrl)
+    private val publicUpstream = parseUpstream(upstreamUrl)
+    private val releaseActionsUpstream = releaseActionsUpstreamUrl?.let(::parseUpstream)
+    private val securityActionsUpstream = securityActionsUpstreamUrl?.let(::parseUpstream)
 
     val middleware: Middleware = { exchange, next -> handle(exchange, next) }
 
@@ -120,6 +125,7 @@ internal class RegistryGatewayMiddleware(
         }
 
         try {
+            val upstream = selectUpstream(exchange.request.method, exchange.request.path)
             val identityToken = upstream.audience?.let(identityTokenProvider::tokenForAudience)
             proxyForwarder.forward(exchange, upstream.url, identityToken)
         } catch (error: CancellationException) {
@@ -147,6 +153,14 @@ internal class RegistryGatewayMiddleware(
         val path = exchange.request.path
         return host == REGISTRY_PUBLIC_HOST &&
             (path == REGISTRY_PUBLIC_PREFIX || path.startsWith("$REGISTRY_PUBLIC_PREFIX/"))
+    }
+
+    private fun selectUpstream(method: HttpMethod, path: String): Upstream = when {
+        method == HttpMethod.POST && RELEASE_ACTION_PATH.matches(path) ->
+            releaseActionsUpstream ?: publicUpstream
+        method == HttpMethod.POST && SECURITY_ACTION_PATH.matches(path) ->
+            securityActionsUpstream ?: publicUpstream
+        else -> publicUpstream
     }
 
     private suspend fun respondGatewayError(exchange: Exchange, status: Int) {
@@ -191,6 +205,15 @@ internal class RegistryGatewayMiddleware(
         return Upstream(
             url = origin,
             audience = if (scheme == "https") origin else null
+        )
+    }
+
+    private companion object {
+        val RELEASE_ACTION_PATH = Regex(
+            "^/packages/api/v1/packages/[^/]+/[^/]+/releases/[^/]+/actions/(?:yank|unyank)$"
+        )
+        val SECURITY_ACTION_PATH = Regex(
+            "^/packages/api/v1/packages/[^/]+/[^/]+/releases/[^/]+/actions/(?:security-quarantine|security-reinstate)$"
         )
     }
 }

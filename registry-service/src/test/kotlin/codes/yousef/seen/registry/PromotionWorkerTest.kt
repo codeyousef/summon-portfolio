@@ -75,6 +75,27 @@ class PromotionWorkerTest {
     }
 
     @Test
+    fun `one activation instant binds metadata durable release and audit`() {
+        var tick = 0L
+        val advancingClock = object : Clock() {
+            override fun getZone() = ZoneOffset.UTC
+            override fun withZone(zone: java.time.ZoneId): Clock = this
+            override fun instant(): Instant = now.plusSeconds(tick++)
+        }
+        val fixture = fixture(workerClock = advancingClock)
+
+        assertEquals(ReviewWorkerOutcome.APPLIED, fixture.worker.runOnce())
+
+        val active = fixture.repository.getRelease("seen/demo", "1.2.3")!!
+        val activationAudit = fixture.repository
+            .listReviewArtifacts("seen/demo", "1.2.3", AUDIT_EVENT_ARTIFACT)
+            .map { RegistryJson.decodeFromJsonElement<AuditEventRecord>(it.payload) }
+            .single { it.action == "promotion" && it.outcome == "activated" }
+        assertEquals(listOf(active.record.timestamps.activatedAt), fixture.publishedActivationTimes)
+        assertEquals(active.record.timestamps.activatedAt, activationAudit.occurredAt)
+    }
+
+    @Test
     fun `source proof for a different immutable repository is rejected`() {
         val fixture = fixture(secondProofRepositoryId = "999")
 
@@ -126,6 +147,7 @@ class PromotionWorkerTest {
         firstScanPrevious: String? = null,
         secondProofSequence: Long = 3,
         releaseAttestationSequence: Long = 4,
+        workerClock: Clock = clock,
     ): Fixture {
         val repository = InMemoryRegistryRepository()
         val storage = InMemoryRegistryObjectStorage()
@@ -237,6 +259,7 @@ class PromotionWorkerTest {
             }
         } else storage
         val publishedSelections = mutableListOf<Int>()
+        val publishedActivationTimes = mutableListOf<String?>()
         val worker = PromotionReviewWorker(
             repository,
             workerStorage,
@@ -246,10 +269,13 @@ class PromotionWorkerTest {
                 publishedSelections += releases.count {
                     it.record.`package` == "seen/demo" && it.record.state.availability == "available"
                 }
+                releases.firstOrNull {
+                    it.record.`package` == "seen/demo" && it.record.state.availability == "available"
+                }?.let { publishedActivationTimes += it.record.timestamps.activatedAt }
                 6L + publications
             },
             ReviewStateMachine(Duration.ofHours(72)),
-            clock,
+            workerClock,
             idGenerator,
         )
         return Fixture(
@@ -259,6 +285,7 @@ class PromotionWorkerTest {
             { publications },
             { activationAuditPresentAtDelete },
             { publishedSelections.toList() },
+            { publishedActivationTimes.toList() },
             archive,
         )
     }
@@ -330,13 +357,16 @@ class PromotionWorkerTest {
         publications: () -> Int,
         activationAuditPresentAtDelete: () -> Boolean,
         publishedSelections: () -> List<Int>,
+        publishedActivationTimes: () -> List<String?>,
         val archiveSha256: String,
     ) {
         val publications: Int get() = publicationsCount()
         val activationAuditPresentAtDelete: Boolean get() = activationAuditPresentAtDeleteValue()
         val publishedSelections: List<Int> get() = publishedSelectionsValue()
+        val publishedActivationTimes: List<String?> get() = publishedActivationTimesValue()
         private val publicationsCount = publications
         private val activationAuditPresentAtDeleteValue = activationAuditPresentAtDelete
         private val publishedSelectionsValue = publishedSelections
+        private val publishedActivationTimesValue = publishedActivationTimes
     }
 }

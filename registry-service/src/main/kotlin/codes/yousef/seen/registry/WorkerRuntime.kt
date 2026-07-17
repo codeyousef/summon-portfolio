@@ -1,6 +1,5 @@
 package codes.yousef.seen.registry
 
-import com.google.cloud.kms.v1.KeyManagementServiceClient
 import java.time.Clock
 import java.time.Duration
 
@@ -29,8 +28,8 @@ data class RegistryWorkerConfig(
     val githubAppId: String?,
     val githubAppPrivateKeyPem: String?,
     val gitlabToken: String?,
-    val kmsKeyVersions: Map<String, String>,
     val kmsPublicKeysHex: Map<String, String>,
+    val remoteSignerTargets: Map<String, RemoteTufSignerTarget>,
 ) {
     init {
         require(environment == "development") { "Review workers are development-only" }
@@ -49,17 +48,20 @@ data class RegistryWorkerConfig(
             require(!publicBucket.isNullOrBlank() && !metadataBucket.isNullOrBlank()) {
                 "Promotion requires public and metadata buckets"
             }
-            require(setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP).all {
-                it in kmsKeyVersions && it in kmsPublicKeysHex
-            }) { "Promotion requires releases, snapshot, and timestamp KMS signers" }
-            require(TufRole.SECURITY in kmsPublicKeysHex && TufRole.SECURITY !in kmsKeyVersions) {
-                "Promotion requires the security public key and must not receive security signing authority"
+            require(kmsPublicKeysHex.keys == TufRole.ONLINE.toSet()) {
+                "Promotion requires all and only the four online TUF public keys"
             }
+            require(remoteSignerTargets.keys == PROMOTION_SIGNING_ROLES) {
+                "Promotion requires exactly the releases, snapshot, and timestamp remote signers"
+            }
+        } else {
+            require(remoteSignerTargets.isEmpty()) { "Source and scanner workers must not receive signer URLs" }
         }
     }
 
     companion object {
         fun fromEnvironment(mode: RegistryWorkerMode, env: Map<String, String> = System.getenv()): RegistryWorkerConfig {
+            rejectCoordinatorKeyVersions(env)
             fun required(name: String): String = env[name]?.takeIf(String::isNotBlank)
                 ?: error("$name is required for ${mode.argument}")
             fun token(name: String): String? = env[name]?.trim()?.takeIf(String::isNotEmpty)?.also {
@@ -80,19 +82,25 @@ data class RegistryWorkerConfig(
                 githubAppId = token("REGISTRY_GITHUB_APP_ID"),
                 githubAppPrivateKeyPem = env["REGISTRY_GITHUB_APP_PRIVATE_KEY_PEM"]?.takeIf(String::isNotBlank),
                 gitlabToken = token("REGISTRY_GITLAB_FORGE_TOKEN"),
-                kmsKeyVersions = TufRole.ONLINE.mapNotNull { role ->
-                    env["REGISTRY_KMS_${role.uppercase()}_KEY_VERSION"]?.takeIf(String::isNotBlank)?.let { role to it }
-                }.toMap(),
                 kmsPublicKeysHex = TufRole.ONLINE.mapNotNull { role ->
                     env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]?.takeIf(String::isNotBlank)?.let { role to it }
                 }.toMap(),
+                remoteSignerTargets = env.remoteSignerTargets(),
             )
         }
+
+        val PROMOTION_SIGNING_ROLES: Set<String> =
+            setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP)
     }
 }
 
 object RegistryWorkerRuntime {
-    fun run(config: RegistryWorkerConfig, clock: Clock = Clock.systemUTC()): ReviewWorkerOutcome {
+    fun run(
+        config: RegistryWorkerConfig,
+        clock: Clock = Clock.systemUTC(),
+        remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
+            { target -> GoogleCloudRunTufIdTokenProvider(target) },
+    ): ReviewWorkerOutcome {
         val repository = FirestoreRegistryRepository.create(config.projectId, config.firestoreDatabase)
         val storage = GcsRegistryObjectStorage.create(
             projectId = config.projectId,
@@ -113,7 +121,15 @@ object RegistryWorkerRuntime {
                     stateMachine,
                     clock,
                 ).runOnce()
-                RegistryWorkerMode.PROMOTE -> runPromoter(config, repository, storage, inspector, stateMachine, clock)
+                RegistryWorkerMode.PROMOTE -> runPromoter(
+                    config,
+                    repository,
+                    storage,
+                    inspector,
+                    stateMachine,
+                    clock,
+                    remoteTokenProviderFactory,
+                )
             }
             println("review_worker=${config.mode.argument} outcome=${outcome.name.lowercase()}")
             if (outcome == ReviewWorkerOutcome.RETRYABLE_FAILURE) {
@@ -161,17 +177,14 @@ object RegistryWorkerRuntime {
         inspector: ReviewArchiveInspector,
         stateMachine: ReviewStateMachine,
         clock: Clock,
+        remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider,
     ): ReviewWorkerOutcome {
-        fun kms(role: String): KmsEd25519Signer = KmsEd25519Signer(
-            KeyManagementServiceClient.create(),
-            requireNotNull(config.kmsKeyVersions[role]),
-            requireNotNull(config.kmsPublicKeysHex[role]).hexToBytes(),
-        )
-        val signers = TufOnlineSigners(
-            releases = kms(TufRole.RELEASES),
-            security = PublicKeyOnlyTufSigner(requireNotNull(config.kmsPublicKeysHex[TufRole.SECURITY]).hexToBytes()),
-            snapshot = kms(TufRole.SNAPSHOT),
-            timestamp = kms(TufRole.TIMESTAMP),
+        val signers = createRemoteTufOnlineSigners(
+            activeRoles = RegistryWorkerConfig.PROMOTION_SIGNING_ROLES,
+            operation = TufSigningOperation.RELEASE,
+            publicKeysHex = config.kmsPublicKeysHex,
+            targets = config.remoteSignerTargets,
+            tokenProviderFactory = remoteTokenProviderFactory,
         )
         return signers.use {
             val tuf = TufPublisher(
