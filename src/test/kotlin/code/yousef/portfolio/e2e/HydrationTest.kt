@@ -68,6 +68,12 @@ class HydrationTest {
         val body = response.body()
         // Verify Summon hydration script is present
         assertTrue(body.contains("summon-hydration.js"), "Should contain summon-hydration.js script tag")
+        assertEquals(
+            1,
+            Regex("<title(?:\\s[^>]*)?>", RegexOption.IGNORE_CASE).findAll(body).count(),
+            "SSR documents should contain exactly one title",
+        )
+        assertFalse(body.contains("<title>Summon App</title>"), "The route title should replace Summon's fallback")
     }
 
     @Test

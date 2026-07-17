@@ -19,6 +19,15 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 
 private val summonSsrRenderMutex = Mutex()
+private val HTML_TITLE_OPTIONS = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+private val SUMMON_DEFAULT_TITLE = Regex(
+    "<title(?:\\s[^>]*)?>\\s*Summon App\\s*</title>",
+    HTML_TITLE_OPTIONS,
+)
+private val HTML_TITLE_ELEMENT = Regex(
+    "<title(?:\\s[^>]*)?>.*?</title>",
+    HTML_TITLE_OPTIONS,
+)
 
 /**
  * Workaround for Aether 0.2.0.0 bug - sets Content-Length to avoid Vert.x chunked encoding error.
@@ -144,6 +153,24 @@ class HostRouter(private val hostMap: Map<String, Middleware>) {
     }
 }
 
+internal fun PlatformRenderer.renderSummonDocument(page: SummonPage): String {
+    // Head elements must be registered before rendering because Summon reads them
+    // synchronously while it creates the hydrated document.
+    renderHeadElements(page.head)
+
+    val html = renderComposableRootWithHydration(page.locale.code, page.locale.direction) {
+        page.content()
+    }
+    val headHtml = html.substringBefore("</head>", html)
+    val hasCustomTitle = HTML_TITLE_ELEMENT.findAll(headHtml).count() > 1
+
+    return if (hasCustomTitle) {
+        SUMMON_DEFAULT_TITLE.replaceFirst(html, "")
+    } else {
+        html
+    }
+}
+
 suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
     // Resolve environment links from the Host header for proper URL generation
     val host = request.headers["Host"]
@@ -164,18 +191,9 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
                     // Set environment links context for URL resolution during rendering
                     EnvironmentLinksRegistry.withLinks(links) {
                         try {
-                            // IMPORTANT: Render head elements BEFORE renderComposableRootWithHydration
-                            // The head section is created inside the render function and reads headElements synchronously,
-                            // so they must be added before the render function is called
-                            renderer.renderHeadElements(page.head)
-
                             // Use renderComposableRootWithHydration to include the bootloader script
                             // which handles data-action toggles for HamburgerMenu, Dropdown, etc.
-                            val lang = page.locale.code
-                            val dir = page.locale.direction
-                            renderer.renderComposableRootWithHydration(lang, dir) {
-                                page.content()
-                            }
+                            renderer.renderSummonDocument(page)
                         } catch (e: Exception) {
                             System.err.println("ERROR in renderComposableRootWithHydration: ${e.message}")
                             e.printStackTrace()
