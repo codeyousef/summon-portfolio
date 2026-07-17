@@ -73,6 +73,13 @@ class CatalogTest {
         assertContains(emptyRegistry, "No public packages yet")
         assertContains(emptyRegistry, "role=\"search\"")
         assertContains(emptyRegistry, "0 packages")
+        assertEquals(
+            listOf("Packages · Seen"),
+            Regex("<title>(.*?)</title>", RegexOption.DOT_MATCHES_ALL)
+                .findAll(emptyRegistry)
+                .map { it.groupValues[1] }
+                .toList(),
+        )
     }
 
     @Test
