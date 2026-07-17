@@ -23,7 +23,8 @@ data class LandingBranding(
     val homeUrl: String,
     val docsUrl: String,
     val apiReferenceUrl: String,
-    val accentColor: String
+    val accentColor: String,
+    val leadingNavigationItems: List<LandingNavItem> = emptyList(),
 ) {
     companion object {
         fun summon(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
@@ -53,13 +54,14 @@ data class LandingBranding(
             accentColor = "#06b6d4" // Teal/cyan accent for Sigil
         )
 
-        fun seen(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
+        fun seen(docsUrl: String, apiReferenceUrl: String, packagesUrl: String? = null) = LandingBranding(
             name = "Seen",
             logoPath = "/static/seen-logo.png",
             homeUrl = "/",
             docsUrl = docsUrl,
             apiReferenceUrl = apiReferenceUrl,
-            accentColor = "#58a6ff"
+            accentColor = "#58a6ff",
+            leadingNavigationItems = packagesUrl?.let { listOf(LandingNavItem("Packages", it)) }.orEmpty(),
         )
 
         fun aether(docsUrl: String, apiReferenceUrl: String) = LandingBranding(
@@ -72,6 +74,14 @@ data class LandingBranding(
         )
     }
 }
+
+data class LandingNavItem(val label: String, val href: String)
+
+private fun LandingBranding.navigationItems(): List<LandingNavItem> =
+    leadingNavigationItems + listOf(
+        LandingNavItem("Documentation", docsUrl),
+        LandingNavItem("API Reference", apiReferenceUrl),
+    )
 
 /**
  * Navbar component for landing pages with library name, docs and API reference links.
@@ -156,8 +166,9 @@ private fun DesktopLandingNavbar(branding: LandingBranding) {
                 .alignItems(AlignItems.Center)
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
-            LandingNavLink(label = "Documentation", href = branding.docsUrl, accentColor = branding.accentColor)
-            LandingNavLink(label = "API Reference", href = branding.apiReferenceUrl, accentColor = branding.accentColor)
+            branding.navigationItems().forEach { item ->
+                LandingNavLink(label = item.label, href = item.href, accentColor = branding.accentColor)
+            }
         }
     }
 }
@@ -208,8 +219,9 @@ private fun MobileLandingNavbar(branding: LandingBranding) {
                         .gap(12.px)
                         .backgroundColor("#0a1628")
                 ) {
-                    LandingNavLink(label = "Documentation", href = branding.docsUrl, accentColor = branding.accentColor)
-                    LandingNavLink(label = "API Reference", href = branding.apiReferenceUrl, accentColor = branding.accentColor)
+                    branding.navigationItems().forEach { item ->
+                        LandingNavLink(label = item.label, href = item.href, accentColor = branding.accentColor)
+                    }
                 }
             }
         )

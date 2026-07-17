@@ -2,6 +2,7 @@ package codes.yousef.seen.registry
 
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class CatalogTest {
@@ -26,6 +27,11 @@ class CatalogTest {
         val releasePage = CatalogRenderer.renderRelease(pkg, release)
 
         assertContains(catalog, "/packages/seen/demo")
+        assertContains(catalog, "<main")
+        assertContains(catalog, "<h1")
+        assertContains(catalog, "href=\"/\"")
+        assertContains(catalog, "href=\"/docs\"")
+        assertContains(catalog, "aria-current=\"page\"")
         assertContains(catalog, "complete registry review")
         assertFalse(catalog.contains("safe", ignoreCase = true))
         assertFalse(catalog.contains("verified source packages", ignoreCase = true))
@@ -47,6 +53,53 @@ class CatalogTest {
         assertContains(missingPage, "not public")
         assertContains(failedPage, "Try again shortly")
         assertFalse(failedPage.contains("exception", ignoreCase = true))
+    }
+
+    @Test
+    fun `renders accessible server side search and distinct empty states`() {
+        val searchPage = CatalogRenderer.render(listOf(pkg), "  DEMO  ")
+        val noMatches = CatalogRenderer.render(listOf(pkg), "missing")
+        val emptyRegistry = CatalogRenderer.render(emptyList())
+
+        assertContains(searchPage, "role=\"search\"")
+        assertContains(searchPage, "type=\"search\"")
+        assertContains(searchPage, "name=\"q\"")
+        assertContains(searchPage, "maxlength=\"128\"")
+        assertContains(searchPage, "latest version")
+        assertContains(searchPage, "value=\"DEMO\"")
+        assertContains(searchPage, "1 package found")
+        assertContains(noMatches, "No packages match")
+        assertContains(noMatches, "Clear search")
+        assertContains(emptyRegistry, "No public packages yet")
+        assertContains(emptyRegistry, "role=\"search\"")
+        assertContains(emptyRegistry, "0 packages")
+    }
+
+    @Test
+    fun `filters public catalog deterministically across identity description license and version`() {
+        val other = pkg.copy(
+            identity = "alpha/math",
+            description = "Linear algebra primitives",
+            licenseSpdx = "Apache-2.0",
+            latestActiveVersion = "2.0.0",
+        )
+        val packages = listOf(pkg, other)
+
+        assertEquals(listOf("alpha/math", "seen/demo"), filterCatalogPackages(packages, "").map { it.identity })
+        assertEquals(listOf("seen/demo"), filterCatalogPackages(packages, "SEEN source-only").map { it.identity })
+        assertEquals(listOf("alpha/math"), filterCatalogPackages(packages, "apache 2.0.0").map { it.identity })
+        assertEquals(emptyList(), filterCatalogPackages(packages, "not-present"))
+        assertEquals("x".repeat(CATALOG_QUERY_MAX_LENGTH), normalizeCatalogQuery("  ${"x".repeat(200)}  "))
+    }
+
+    @Test
+    fun `escapes hostile search text in content and input value`() {
+        val hostile = "<script>alert(1)</script>\" autofocus"
+        val page = CatalogRenderer.render(listOf(pkg), hostile)
+
+        assertFalse(page.contains("<script>alert(1)</script>"))
+        assertFalse(page.contains("value=\"$hostile\""))
+        assertContains(page, "&lt;script&gt;alert(1)&lt;/script&gt;")
     }
 
     private fun release(availability: String) = ReleaseRecord(

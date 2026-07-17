@@ -167,7 +167,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     // Seen
     val seenExecutionService = SeenExecutionService()
     val seenPlaygroundRenderer = SeenPlaygroundRenderer()
-    val seenLandingRenderer = SeenLandingRenderer()
+    val seenLandingRenderer = SeenLandingRenderer(packagesEnabled = appConfig.registryUpstreamUrl != null)
 
     // AI Curriculum
     val aiProgressStore: AiProgressStore = if (firestore != null)
@@ -314,9 +314,10 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val rootHydrationHandler = StaticResourceHandler("static", "/")
     val registryGateway = appConfig.registryUpstreamUrl?.let { publicUpstream ->
         RegistryGatewayMiddleware(
+            publicHost = requireNotNull(appConfig.registryPublicHost),
             upstreamUrl = publicUpstream,
-            releaseActionsUpstreamUrl = appConfig.registryReleaseActionsUpstreamUrl,
-            securityActionsUpstreamUrl = appConfig.registrySecurityActionsUpstreamUrl
+            releaseActionsUpstreamUrl = requireNotNull(appConfig.registryReleaseActionsUpstreamUrl),
+            securityActionsUpstreamUrl = requireNotNull(appConfig.registrySecurityActionsUpstreamUrl)
         )
     }
 

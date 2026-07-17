@@ -92,7 +92,13 @@ class RegistryGatewayMiddlewareTest {
                     body = requestBody
                 )
             )
-            val gateway = RegistryGatewayMiddleware("http://127.0.0.1:${upstream.address.port}")
+            val upstreamUrl = "http://127.0.0.1:${upstream.address.port}"
+            val gateway = RegistryGatewayMiddleware(
+                publicHost = DEV_REGISTRY_PUBLIC_HOST,
+                upstreamUrl = upstreamUrl,
+                releaseActionsUpstreamUrl = upstreamUrl,
+                securityActionsUpstreamUrl = upstreamUrl,
+            )
 
             var calledNext = false
             gateway.handle(exchange) { calledNext = true }
@@ -123,7 +129,10 @@ class RegistryGatewayMiddlewareTest {
         val audiences = mutableListOf<String>()
         val forwarded = mutableListOf<Triple<String, String, String?>>()
         val gateway = RegistryGatewayMiddleware(
+            publicHost = DEV_REGISTRY_PUBLIC_HOST,
             upstreamUrl = "https://registry-dev-abc-uc.a.run.app/",
+            releaseActionsUpstreamUrl = "https://registry-release-actions.example.run.app",
+            securityActionsUpstreamUrl = "https://registry-security-actions.example.run.app",
             identityTokenProvider = RegistryIdentityTokenProvider { audience ->
                 audiences += audience
                 "cloud-run-id-token"
@@ -176,6 +185,7 @@ class RegistryGatewayMiddlewareTest {
         val audiences = mutableListOf<String>()
         val forwarded = mutableListOf<Pair<String, String>>()
         val gateway = RegistryGatewayMiddleware(
+            publicHost = DEV_REGISTRY_PUBLIC_HOST,
             upstreamUrl = "https://registry-api.example.run.app",
             releaseActionsUpstreamUrl = "https://registry-release-actions.example.run.app",
             securityActionsUpstreamUrl = "https://registry-security-actions.example.run.app",
@@ -231,27 +241,42 @@ class RegistryGatewayMiddlewareTest {
     }
 
     @Test
-    fun `falls back to the existing combined upstream until action services are configured`() = runBlocking {
+    fun `production hostname is accepted only by a separately configured gateway`() = runBlocking {
         val forwarded = mutableListOf<String>()
         val gateway = RegistryGatewayMiddleware(
-            upstreamUrl = "https://registry-combined.example.run.app",
+            publicHost = "seen.yousef.codes",
+            upstreamUrl = "https://registry-prod-api.example.run.app",
+            releaseActionsUpstreamUrl = "https://registry-prod-release-actions.example.run.app",
+            securityActionsUpstreamUrl = "https://registry-prod-security-actions.example.run.app",
             identityTokenProvider = RegistryIdentityTokenProvider { "identity" },
             proxyForwarder = RegistryProxyForwarder { _, upstreamUrl, _ -> forwarded += upstreamUrl }
         )
 
-        gateway.handle(TestExchange(TestRequest(
-            method = HttpMethod.POST,
-            path = "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/yank",
-            headers = Headers.of("Host" to "seen.dev.yousef.codes")
-        ))) { error("registry paths must not fall through") }
+        var fallThrough = 0
+        gateway.handle(
+            TestExchange(TestRequest(
+                path = "/packages",
+                headers = Headers.of("Host" to DEV_REGISTRY_PUBLIC_HOST),
+            ))
+        ) { fallThrough++ }
+        gateway.handle(
+            TestExchange(TestRequest(
+                path = "/packages",
+                headers = Headers.of("Host" to "seen.yousef.codes"),
+            ))
+        ) { error("the exact production host must be proxied") }
 
-        assertEquals(listOf("https://registry-combined.example.run.app"), forwarded)
+        assertEquals(1, fallThrough)
+        assertEquals(listOf("https://registry-prod-api.example.run.app"), forwarded)
     }
 
     @Test
     fun `returns a generic gateway error without leaking upstream details`() = runBlocking {
         val gateway = RegistryGatewayMiddleware(
+            publicHost = DEV_REGISTRY_PUBLIC_HOST,
             upstreamUrl = "https://registry-dev-abc-uc.a.run.app",
+            releaseActionsUpstreamUrl = "https://registry-release-actions.example.run.app",
+            securityActionsUpstreamUrl = "https://registry-security-actions.example.run.app",
             identityTokenProvider = RegistryIdentityTokenProvider { "identity-token" },
             proxyForwarder = RegistryProxyForwarder { _, _, _ ->
                 error("internal-service-name and secret-token")
@@ -283,11 +308,33 @@ class RegistryGatewayMiddlewareTest {
     @Test
     fun `rejects insecure non-loopback upstream`() {
         val error = assertFailsWith<IllegalArgumentException> {
-            RegistryGatewayMiddleware("http://registry.internal.example")
+            RegistryGatewayMiddleware(
+                publicHost = DEV_REGISTRY_PUBLIC_HOST,
+                upstreamUrl = "http://registry.internal.example",
+                releaseActionsUpstreamUrl = "https://registry-release-actions.example.run.app",
+                securityActionsUpstreamUrl = "https://registry-security-actions.example.run.app",
+            )
         }
         assertTrue(error.message.orEmpty().contains("loopback"))
     }
+
+    @Test
+    fun `rejects wildcard URL and port shaped public hosts`() {
+        listOf("*.yousef.codes", "https://seen.dev.yousef.codes", "seen.dev.yousef.codes:443").forEach { host ->
+            val error = assertFailsWith<IllegalArgumentException> {
+                RegistryGatewayMiddleware(
+                    publicHost = host,
+                    upstreamUrl = "https://registry-api.example.run.app",
+                    releaseActionsUpstreamUrl = "https://registry-release-actions.example.run.app",
+                    securityActionsUpstreamUrl = "https://registry-security-actions.example.run.app",
+                )
+            }
+            assertTrue(error.message.orEmpty().contains("exact DNS hostname"))
+        }
+    }
 }
+
+private const val DEV_REGISTRY_PUBLIC_HOST = "seen.dev.yousef.codes"
 
 private class TestExchange(
     override val request: Request,

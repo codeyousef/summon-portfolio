@@ -25,13 +25,13 @@ private const val SEEN_ACCENT = "#58a6ff"
 private const val SEEN_GITHUB_URL = "https://github.com/YousefCodeworx/seen"
 
 @Composable
-fun SeenLandingPage(playgroundUrl: String, docsUrl: String) {
+fun SeenLandingPage(playgroundUrl: String, docsUrl: String, packagesUrl: String? = null) {
     val apiReferenceUrl = "$docsUrl/api-reference"
     PageScaffold(locale = PortfolioLocale.EN) {
         LandingNavbar(
-            branding = LandingBranding.seen(docsUrl, apiReferenceUrl)
+            branding = LandingBranding.seen(docsUrl, apiReferenceUrl, packagesUrl)
         )
-        SeenHero(playgroundUrl)
+        SeenHero(playgroundUrl, packagesUrl)
         SeenFeatureGrid()
         SeenCodeExample()
         SeenCtaFooter(playgroundUrl)
@@ -40,7 +40,7 @@ fun SeenLandingPage(playgroundUrl: String, docsUrl: String) {
 }
 
 @Composable
-private fun SeenHero(playgroundUrl: String) {
+private fun SeenHero(playgroundUrl: String, packagesUrl: String?) {
     SectionWrap {
         Column(
             modifier = Modifier()
@@ -105,6 +105,31 @@ private fun SeenHero(playgroundUrl: String) {
                     ariaDescribedBy = null,
                     dataHref = null
                 )
+                if (packagesUrl != null) {
+                    ButtonLink(
+                        label = "Browse Packages",
+                        href = packagesUrl,
+                        modifier = Modifier()
+                            .borderWidth(1)
+                            .borderStyle(BorderStyle.Solid)
+                            .borderColor(SEEN_ACCENT)
+                            .backgroundColor("transparent")
+                            .color(SEEN_ACCENT)
+                            .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.lg)
+                            .borderRadius(PortfolioTheme.Radii.md)
+                            .fontWeight(700)
+                            .whiteSpace(WhiteSpace.NoWrap),
+                        navigationMode = LinkNavigationMode.Native,
+                        dataAttributes = mapOf("seen-cta" to "packages"),
+                        target = null,
+                        rel = null,
+                        title = null,
+                        id = null,
+                        ariaLabel = null,
+                        ariaDescribedBy = null,
+                        dataHref = null,
+                    )
+                }
                 ButtonLink(
                     label = "View on GitHub",
                     href = SEEN_GITHUB_URL,
