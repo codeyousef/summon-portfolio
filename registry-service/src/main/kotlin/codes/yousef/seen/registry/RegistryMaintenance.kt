@@ -248,7 +248,6 @@ private fun rejectMaintenanceEnvironment(
     env: Map<String, String>,
 ) {
     val exactAlwaysForbidden = setOf(
-        "PORT",
         "REGISTRY_SERVER_MODE",
         "REGISTRY_QUARANTINE_BUCKET",
         "REGISTRY_PUBLIC_BUCKET",
