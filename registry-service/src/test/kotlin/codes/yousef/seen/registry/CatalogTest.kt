@@ -93,6 +93,16 @@ class CatalogTest {
     }
 
     @Test
+    fun `decodes form query components before normalizing search`() {
+        assertEquals("linear algebra", normalizeCatalogQueryParameter("linear+algebra"))
+        assertEquals(
+            "\"><script>alert(1)</script>",
+            normalizeCatalogQueryParameter("%22%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E"),
+        )
+        assertEquals("invalid%escape", normalizeCatalogQueryParameter("invalid%escape"))
+    }
+
+    @Test
     fun `escapes hostile search text in content and input value`() {
         val hostile = "<script>alert(1)</script>\" autofocus"
         val page = CatalogRenderer.render(listOf(pkg), hostile)
