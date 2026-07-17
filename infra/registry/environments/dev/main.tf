@@ -98,6 +98,7 @@ module "registry" {
   schedules_enabled                 = var.schedules_enabled
   schedules_paused                  = var.schedules_paused
   network_cidr                      = "10.42.0.0/24"
+  signer_jwks_all_apis_enabled      = true
   edge_provisioned                  = var.edge_provisioned
   edge_cutover_enabled              = var.edge_cutover_enabled
   portfolio_fallback_service        = "portfolio-dev"

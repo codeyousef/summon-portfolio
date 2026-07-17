@@ -349,7 +349,15 @@ class TufSignerHttpServer private constructor(
                 capacity.release()
                 when {
                     result.succeeded() -> signature(response, requireNotNull(result.result()))
-                    result.cause() is TufSigningRequestException -> reject(response, 422)
+                    result.cause() is TufSigningRequestException -> {
+                        log.warn(
+                            "TUF role signer request rejected role={} operation={} reason={}",
+                            config.role,
+                            operation.wireValue,
+                            result.cause().sanitizedSignerRejectionReason(),
+                        )
+                        reject(response, 422)
+                    }
                     else -> {
                         log.warn("TUF role signer request failed role={}", config.role, result.cause())
                         reject(response, 503, "Retry-After" to "1")
@@ -399,6 +407,11 @@ class TufSignerHttpServer private constructor(
 
 private fun HttpServerRequest.singleHeader(name: String): String? =
     headers().getAll(name).takeIf { it.size == 1 }?.single()
+
+private fun Throwable.sanitizedSignerRejectionReason(): String {
+    val reason = message ?: return "unspecified"
+    return reason.takeIf { it.length <= 256 && it.none(Char::isISOControl) } ?: "invalid"
+}
 
 private fun HttpServerRequest.cloudRunIamBearerToken(): String? {
     // The coordinator uses Authorization so this process can independently

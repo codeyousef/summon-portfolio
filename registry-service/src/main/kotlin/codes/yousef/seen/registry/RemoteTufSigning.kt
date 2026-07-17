@@ -104,7 +104,7 @@ class RemoteTufSigner(
     publicKey: ByteArray,
     private val tokenProvider: RemoteTufTokenProvider,
     private val transport: RemoteTufHttpTransport = JdkRemoteTufHttpTransport(),
-    private val requestTimeout: Duration = Duration.ofSeconds(25),
+    private val requestTimeout: Duration = Duration.ofSeconds(30),
     private val maximumRequestBytes: Int = DEFAULT_MAXIMUM_REQUEST_BYTES,
     private val maximumResponseBytes: Int = DEFAULT_MAXIMUM_RESPONSE_BYTES,
 ) : TufSigner {

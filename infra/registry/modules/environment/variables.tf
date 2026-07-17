@@ -403,6 +403,12 @@ variable "private_service_ingress" {
   }
 }
 
+variable "signer_jwks_all_apis_enabled" {
+  description = "Development-only canary exception allowing signer-tagged workloads to reach the all-APIs private VIP for Google OIDC JWKS verification."
+  type        = bool
+  default     = false
+}
+
 variable "edge_provisioned" {
   description = "Creates the no-DNS-change HTTPS edge while leaving candidate origin access unchanged."
   type        = bool

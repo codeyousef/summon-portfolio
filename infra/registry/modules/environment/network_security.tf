@@ -38,6 +38,37 @@ resource "google_dns_record_set" "restricted_googleapis_wildcard" {
   rrdatas      = ["restricted.googleapis.com."]
 }
 
+# Google-signed OIDC tokens are verified against the public JWKS endpoint at
+# www.googleapis.com/oauth2/v3/certs. That request does not complete through
+# the restricted VIP in this stack, so development may explicitly resolve its
+# exact hostname through the all-APIs Private Google Access VIP. The firewall
+# is signer-tag and VIP scoped, not hostname/path scoped: a compromised signer
+# could address another Google API on that VIP. The resource conditions make
+# this dev-canary exception structurally unavailable outside development.
+resource "google_dns_record_set" "private_googleapis_a" {
+  count = var.enabled && var.environment == "dev" && var.signer_jwks_all_apis_enabled ? 1 : 0
+
+  project      = var.project_id
+  managed_zone = google_dns_managed_zone.restricted_googleapis[0].name
+  name         = "private.googleapis.com."
+  type         = "A"
+  ttl          = 300
+  rrdatas      = ["199.36.153.8", "199.36.153.9", "199.36.153.10", "199.36.153.11"]
+}
+
+resource "google_dns_record_set" "oidc_certificates_private" {
+  count = var.enabled && var.environment == "dev" && var.signer_jwks_all_apis_enabled ? 1 : 0
+
+  project      = var.project_id
+  managed_zone = google_dns_managed_zone.restricted_googleapis[0].name
+  name         = "www.googleapis.com."
+  type         = "CNAME"
+  ttl          = 300
+  rrdatas      = [google_dns_record_set.private_googleapis_a[0].name]
+
+  depends_on = [google_compute_firewall.oidc_certificates_private_egress]
+}
+
 resource "google_compute_firewall" "restricted_googleapis_egress" {
   count = var.enabled ? 1 : 0
 
@@ -48,6 +79,27 @@ resource "google_compute_firewall" "restricted_googleapis_egress" {
   priority           = 900
   destination_ranges = ["199.36.153.4/30"]
   target_tags        = ["${var.name_prefix}-restricted-egress"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
+  }
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+resource "google_compute_firewall" "oidc_certificates_private_egress" {
+  count = var.enabled && var.environment == "dev" && var.signer_jwks_all_apis_enabled ? 1 : 0
+
+  project            = var.project_id
+  name               = "${var.name_prefix}-allow-oidc-certificates"
+  network            = google_compute_network.registry[0].name
+  direction          = "EGRESS"
+  priority           = 900
+  destination_ranges = ["199.36.153.8/30"]
+  target_tags        = ["${var.name_prefix}-signer"]
 
   allow {
     protocol = "tcp"
