@@ -2,11 +2,12 @@ package codes.yousef.seen.registry
 
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.action.UiAction
-import codes.yousef.summon.components.display.Label
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.Form
 import codes.yousef.summon.components.forms.FormButton
 import codes.yousef.summon.components.forms.FormMethod
+import codes.yousef.summon.components.forms.FormTextField
+import codes.yousef.summon.components.forms.FormTextFieldType
 import codes.yousef.summon.components.html.Footer
 import codes.yousef.summon.components.html.H1
 import codes.yousef.summon.components.html.H2
@@ -23,45 +24,8 @@ import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.Link
-import codes.yousef.summon.components.styles.GlobalStyle
-import codes.yousef.summon.modifier.AlignItems
-import codes.yousef.summon.modifier.BorderStyle
-import codes.yousef.summon.modifier.Display
-import codes.yousef.summon.modifier.FlexWrap
-import codes.yousef.summon.modifier.JustifyContent
-import codes.yousef.summon.modifier.Modifier
-import codes.yousef.summon.modifier.TextDecoration
-import codes.yousef.summon.modifier.alignItems
-import codes.yousef.summon.modifier.attribute
-import codes.yousef.summon.modifier.backgroundColor
-import codes.yousef.summon.modifier.borderColor
-import codes.yousef.summon.modifier.borderRadius
-import codes.yousef.summon.modifier.borderStyle
-import codes.yousef.summon.modifier.borderWidth
-import codes.yousef.summon.modifier.className
-import codes.yousef.summon.modifier.color
-import codes.yousef.summon.modifier.display
-import codes.yousef.summon.modifier.flex
-import codes.yousef.summon.modifier.flexDirection
-import codes.yousef.summon.modifier.flexWrap
-import codes.yousef.summon.modifier.fontFamily
-import codes.yousef.summon.modifier.fontSize
-import codes.yousef.summon.modifier.fontWeight
-import codes.yousef.summon.modifier.gap
-import codes.yousef.summon.modifier.id
-import codes.yousef.summon.modifier.justifyContent
-import codes.yousef.summon.modifier.lineHeight
-import codes.yousef.summon.modifier.marginAuto
-import codes.yousef.summon.modifier.maxWidth
-import codes.yousef.summon.modifier.minHeight
-import codes.yousef.summon.modifier.minWidth
-import codes.yousef.summon.modifier.padding
-import codes.yousef.summon.modifier.position
-import codes.yousef.summon.modifier.Position
-import codes.yousef.summon.modifier.style
-import codes.yousef.summon.modifier.textDecoration
-import codes.yousef.summon.modifier.width
-import codes.yousef.summon.runtime.LocalPlatformRenderer
+import codes.yousef.summon.components.styles.*
+import codes.yousef.summon.modifier.*
 import codes.yousef.summon.runtime.PlatformRenderer
 import codes.yousef.summon.runtime.clearPlatformRenderer
 import codes.yousef.summon.runtime.setPlatformRenderer
@@ -196,17 +160,12 @@ object CatalogRenderer {
         val renderer = PlatformRenderer()
         setPlatformRenderer(renderer)
         try {
-            val html = renderer.renderComposableRootWithHydration("en", "ltr") { content() }
-            return html
-                .replace("<title>Summon App</title>", "<title>${headText(title)}</title>")
-                .replace(
-                    "<meta name=\"description\" content=\"Summon Framework Application\">",
-                    "<meta name=\"description\" content=\"${headText(description)}\">",
-                )
-                .replace(
-                    "<meta property=\"og:title\" content=\"Summon App\">",
-                    "<meta property=\"og:title\" content=\"${headText(title)}\">",
-                )
+            renderer.renderHeadElements {
+                title(title)
+                meta(name = "description", content = description)
+                meta(property = "og:title", content = title)
+            }
+            return renderer.renderComposableRootWithHydration("en", "ltr") { content() }
         } finally {
             clearPlatformRenderer()
         }
@@ -306,39 +265,33 @@ private fun CatalogSearch(query: String) {
             .attribute("role", "search")
             .attribute("aria-label", "Search packages"),
     ) {
-        Column(
-            Modifier()
+        FormTextField(
+            name = "q",
+            label = "Search packages",
+            defaultValue = query,
+            placeholder = "Search by name, description, license, or latest version",
+            type = FormTextFieldType.Search,
+            autoComplete = "off",
+            maxLength = CATALOG_QUERY_MAX_LENGTH,
+            id = "seen-package-search",
+            modifier = Modifier()
                 .flex(grow = 1, shrink = 1, basis = "320px")
                 .minWidth(0)
-                .gap("8px"),
-        ) {
-            Label(
-                text = "Search packages",
-                modifier = Modifier().fontSize(14).fontWeight(700).color(CatalogTheme.TEXT_PRIMARY),
-                forElement = "seen-package-search",
-            )
-            LocalPlatformRenderer.current.renderNativeInput(
-                type = "search",
-                modifier = Modifier()
-                    .id("seen-package-search")
-                    .className("seen-package-search-input")
-                    .attribute("name", "q")
-                    .attribute("maxlength", CATALOG_QUERY_MAX_LENGTH.toString())
-                    .attribute("autocomplete", "off")
-                    .attribute("placeholder", "Search by name, description, license, or latest version")
-                    .attribute("aria-label", "Search packages")
-                    .width("100%")
-                    .padding(12)
-                    .backgroundColor(CatalogTheme.INPUT)
-                    .color(CatalogTheme.TEXT_PRIMARY)
-                    .borderWidth(1)
-                    .borderStyle(BorderStyle.Solid)
-                    .borderColor(CatalogTheme.BORDER_STRONG)
-                    .borderRadius(12)
-                    .fontSize(16),
-                value = query,
-            )
-        }
+                .gap("8px")
+                .margin(0),
+            fieldModifier = Modifier()
+                .className("seen-package-search-input")
+                .attribute("aria-label", "Search packages")
+                .width("100%")
+                .padding(12)
+                .backgroundColor(CatalogTheme.INPUT)
+                .color(CatalogTheme.TEXT_PRIMARY)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(CatalogTheme.BORDER_STRONG)
+                .borderRadius(12)
+                .fontSize(16),
+        )
         FormButton(
             text = "Search",
             modifier = Modifier()
@@ -388,7 +341,7 @@ private fun PackageCard(pkg: PackageRecord) {
             .borderRadius(18)
             .color(CatalogTheme.TEXT_PRIMARY)
             .textDecoration(TextDecoration.None)
-            .style("overflow-wrap", "anywhere"),
+            .overflowWrap(OverflowWrap.Anywhere),
         ariaLabel = "View ${pkg.identity}, latest version ${pkg.latestActiveVersion}",
     ) {
         Column(Modifier().gap("14px")) {
@@ -400,7 +353,7 @@ private fun PackageCard(pkg: PackageRecord) {
                     .gap("12px")
                     .flexWrap(FlexWrap.Wrap),
             ) {
-                H2(modifier = Modifier().style("margin", "0").fontSize(22).fontWeight(800)) {
+                H2(modifier = Modifier().margin(0).fontSize(22).fontWeight(800)) {
                     Text(pkg.identity)
                 }
                 PackageChip("v${pkg.latestActiveVersion}", CatalogTheme.ACCENT_SOFT, CatalogTheme.ACCENT)
@@ -425,7 +378,7 @@ private fun PackageDetail(
 ) {
     CatalogScaffold(navigationLinks) {
         Breadcrumbs(listOf("Packages" to "/packages"), current = pkg.identity)
-        H1(modifier = pageTitleModifier().style("overflow-wrap", "anywhere")) {
+        H1(modifier = pageTitleModifier().overflowWrap(OverflowWrap.Anywhere)) {
             Text(pkg.identity)
         }
         pkg.description?.let {
@@ -477,7 +430,7 @@ private fun ReleaseRow(pkg: PackageRecord, release: ReleaseRecord) {
                 .flexWrap(FlexWrap.Wrap),
         ) {
             Column(Modifier().gap("5px")) {
-                H3(modifier = Modifier().style("margin", "0").fontSize(20).fontWeight(800)) {
+                H3(modifier = Modifier().margin(0).fontSize(20).fontWeight(800)) {
                     Text(release.version)
                 }
                 Text("Published ${release.timestamps.activatedAt ?: release.timestamps.updatedAt}", Modifier().fontSize(13).color(CatalogTheme.TEXT_MUTED))
@@ -501,7 +454,7 @@ private fun ReleaseDetail(
             ),
             current = release.version,
         )
-        H1(modifier = pageTitleModifier().style("overflow-wrap", "anywhere")) {
+        H1(modifier = pageTitleModifier().overflowWrap(OverflowWrap.Anywhere)) {
             Text("${pkg.identity} ${release.version}")
         }
         ReleaseStatusBadge(release)
@@ -594,7 +547,7 @@ private fun CatalogScaffold(
     navigationLinks: CatalogNavigationLinks,
     content: @Composable () -> Unit,
 ) {
-    GlobalStyle(CATALOG_CSS)
+    CatalogStyles()
     Column(
         Modifier()
             .className("seen-catalog")
@@ -726,7 +679,7 @@ private fun CatalogGlobalBrand(href: String) {
             .fontSize(14)
             .fontWeight(900)
             .textDecoration(TextDecoration.None)
-            .style("letter-spacing", "0.16em")
+            .letterSpacing("0.16em")
             .attribute("data-nav-id", "home"),
         ariaLabel = "Yousef home",
     ) {
@@ -829,8 +782,8 @@ private fun SeenContextNavigation(links: CatalogNavigationLinks) {
                 .display(Display.Flex)
                 .alignItems(AlignItems.Center)
                 .gap("8px")
-                .style("overflow-x", "auto")
-                .style("white-space", "nowrap"),
+                .overflowX(Overflow.Auto)
+                .whiteSpace(WhiteSpace.NoWrap),
         ) {
             Row(
                 modifier = Modifier()
@@ -869,7 +822,7 @@ private fun CatalogFooter() {
             .maxWidth(1040)
             .marginAuto()
             .padding(24)
-            .style("margin-top", "auto"),
+            .marginTop("auto"),
     ) {
         Row(
             Modifier()
@@ -896,7 +849,7 @@ private fun Breadcrumbs(ancestors: List<Pair<String, String>>, current: String) 
                 .gap("8px")
                 .flexWrap(FlexWrap.Wrap)
                 .fontSize(14)
-                .style("overflow-wrap", "anywhere"),
+                .overflowWrap(OverflowWrap.Anywhere),
         ) {
             ancestors.forEach { (label, href) ->
                 CatalogTextLink(label, href)
@@ -924,7 +877,7 @@ private fun CatalogStatePanel(
             .borderRadius(18)
             .gap("10px"),
     ) {
-        H2(modifier = Modifier().style("margin", "0").fontSize(22).fontWeight(800)) { Text(title) }
+        H2(modifier = Modifier().margin(0).fontSize(22).fontWeight(800)) { Text(title) }
         Text(message, Modifier().color(CatalogTheme.TEXT_SECONDARY).lineHeight(1.6))
         action?.invoke()
     }
@@ -952,7 +905,7 @@ private fun PackageChip(label: String, background: String, foreground: String) {
             .borderRadius(999)
             .fontSize(12)
             .fontWeight(800)
-            .style("width", "fit-content"),
+            .width("fit-content"),
     )
 }
 
@@ -965,7 +918,7 @@ private fun MetadataItem(label: String, value: String, monospace: Boolean = fals
             Modifier()
                 .color(CatalogTheme.TEXT_SECONDARY)
                 .let { if (monospace) it.fontFamily(CatalogTheme.MONO) else it }
-                .style("overflow-wrap", "anywhere"),
+                .overflowWrap(OverflowWrap.Anywhere),
         )
     }
 }
@@ -983,14 +936,14 @@ private fun CatalogTextLink(label: String, href: String) {
 }
 
 private fun pageTitleModifier(): Modifier = Modifier()
-    .style("margin", "0")
+    .margin(0)
     .fontSize(40)
     .lineHeight(1.15)
     .fontWeight(900)
     .color(CatalogTheme.TEXT_PRIMARY)
 
 private fun sectionTitleModifier(): Modifier = Modifier()
-    .style("margin", "0")
+    .margin(0)
     .fontSize(24)
     .fontWeight(850)
     .color(CatalogTheme.TEXT_PRIMARY)
@@ -1021,13 +974,6 @@ private fun formatBytes(bytes: Long): String = when {
     else -> "$bytes bytes"
 }
 
-private fun headText(value: String): String = value
-    .replace("&", "&amp;")
-    .replace("<", "&lt;")
-    .replace(">", "&gt;")
-    .replace("\"", "&quot;")
-    .replace("'", "&#39;")
-
 private object CatalogTheme {
     const val BACKGROUND = "#001a2c"
     const val HEADER = "rgba(0, 26, 44, 0.92)"
@@ -1050,159 +996,341 @@ private object CatalogTheme {
     const val MONO = "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace"
 }
 
-private val CATALOG_CSS = """
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: #001a2c; }
-    body {
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background:
-            radial-gradient(circle at 12% 0%, rgba(88, 166, 255, 0.16), transparent 32rem),
-            linear-gradient(180deg, #001a2c 0%, #001522 100%);
-    }
-    #summon-root { min-height: 100vh; }
-    .seen-catalog {
-        background:
-            radial-gradient(circle at 12% 0%, rgba(88, 166, 255, 0.16), transparent 32rem),
-            linear-gradient(180deg, #001a2c 0%, #001522 100%);
-    }
-    .seen-site-navigation {
-        position: sticky;
-        top: 0;
-        z-index: 50;
-        border-width: 0 0 1px !important;
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-    }
-    .seen-primary-navigation { min-width: 0; }
-    .seen-primary-navigation-summary { display: none !important; }
-    .seen-primary-navigation-panel {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-    }
-    .seen-global-brand,
-    .seen-global-link,
-    .seen-ecosystem-summary,
-    .seen-primary-navigation-summary,
-    .seen-context-brand,
-    .seen-header-link {
-        transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
-    }
-    .seen-global-brand:hover,
-    .seen-global-link:hover,
-    .seen-ecosystem-summary:hover,
-    .seen-primary-navigation-summary:hover,
-    .seen-context-brand:hover,
-    .seen-header-link:hover { color: #ffffff !important; background: rgba(255, 255, 255, 0.09) !important; }
-    .seen-global-work:hover { background: #ff5d79 !important; }
-    .seen-ecosystem-navigation > summary { cursor: pointer; list-style: none; }
-    .seen-ecosystem-navigation > summary::-webkit-details-marker { display: none; }
-    .seen-ecosystem-navigation[data-active="true"] > summary { background: rgba(88, 166, 255, 0.14); }
-    .seen-ecosystem-panel {
-        position: absolute;
-        top: calc(100% + 10px);
-        z-index: 100;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
-    }
-    .seen-ecosystem-panel { left: 0; min-width: 230px; }
-    .seen-ecosystem-navigation:not([open]) .seen-ecosystem-panel { display: none; }
-    .seen-ecosystem-navigation[open] > summary { color: #ffffff !important; background: rgba(255, 255, 255, 0.1); }
-    .seen-context-navigation { border-top: 1px solid rgba(255, 255, 255, 0.13); }
-    .seen-context-navigation-rail { scrollbar-width: thin; scrollbar-color: rgba(88, 166, 255, 0.4) transparent; }
-    .seen-brand-mark {
-        display: inline-flex;
-        width: 32px;
-        height: 32px;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid rgba(88, 166, 255, 0.45);
-        border-radius: 10px;
-        background: rgba(88, 166, 255, 0.12);
-        font-family: Georgia, serif;
-    }
-    .seen-header-link[aria-current="page"] { color: #ffffff !important; background: rgba(88, 166, 255, 0.14); }
-    .seen-global-link[data-active="true"] { color: #ffffff !important; background: rgba(88, 166, 255, 0.14); }
-    .seen-package-card, .seen-release-row { transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease; }
-    .seen-package-card:hover, .seen-release-row:hover {
-        transform: translateY(-2px);
-        border-color: rgba(88, 166, 255, 0.56) !important;
-        background: rgba(7, 52, 91, 0.9) !important;
-    }
-    .seen-text-link:hover { color: #8fc4ff !important; }
-    .seen-catalog a:focus-visible,
-    .seen-catalog summary:focus-visible,
-    .seen-catalog input:focus-visible,
-    .seen-catalog button:focus-visible {
-        outline: 3px solid #8fc4ff !important;
-        outline-offset: 3px;
-    }
-    .seen-package-search-input::placeholder { color: #8198b0; opacity: 1; }
-    .seen-search-button, .seen-download-link { transition: filter 160ms ease, transform 160ms ease; }
-    .seen-search-button:hover, .seen-download-link:hover { filter: brightness(1.09); transform: translateY(-1px); }
-    @media (max-width: 1040px) {
-        .seen-global-nav { padding: 10px 16px !important; }
-        .seen-primary-navigation { flex: 0 0 auto !important; }
-        .seen-primary-navigation-summary {
-            display: block !important;
-            background: transparent !important;
-            border: 0 !important;
+@Composable
+private fun CatalogStyles() {
+    val summary = StyleSelector.element(StyleElement.Summary)
+    val globalBrand = StyleSelector.className("seen-global-brand")
+    val globalLink = StyleSelector.className("seen-global-link")
+    val ecosystemSummary = StyleSelector.className("seen-ecosystem-summary")
+    val primarySummary = StyleSelector.className("seen-primary-navigation-summary")
+    val contextBrand = StyleSelector.className("seen-context-brand")
+    val headerLink = StyleSelector.className("seen-header-link")
+    val packageCard = StyleSelector.className("seen-package-card")
+    val releaseRow = StyleSelector.className("seen-release-row")
+    val searchButton = StyleSelector.className("seen-search-button")
+    val downloadLink = StyleSelector.className("seen-download-link")
+    val interactiveNavigationItems = listOf(
+        globalBrand,
+        globalLink,
+        ecosystemSummary,
+        primarySummary,
+        contextBrand,
+        headerLink,
+    )
+    val interactiveNavigation = StyleSelector.all(interactiveNavigationItems)
+    val interactiveCardItems = listOf(packageCard, releaseRow)
+    val interactiveCards = StyleSelector.all(interactiveCardItems)
+    val primaryPanel = StyleSelector.className("seen-primary-navigation-panel")
+    val ecosystemPanel = StyleSelector.className("seen-ecosystem-panel")
+
+    TypedStyleSheet {
+        rule(StyleSelector.Root, Modifier().colorScheme(ColorScheme.OnlyDark))
+        rule(StyleSelector.Universal, Modifier().boxSizing(BoxSizing.BorderBox))
+        rule(
+            StyleSelector.element(StyleElement.Html).or(StyleSelector.element(StyleElement.Body)),
+            Modifier()
+                .margin(0)
+                .minHeight("100%")
+                .backgroundColor(CatalogTheme.BACKGROUND),
+        )
+        rule(
+            StyleSelector.element(StyleElement.Body),
+            catalogBackgroundModifier().fontFamily(
+                "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            ),
+        )
+        rule(StyleSelector.id("summon-root"), Modifier().minHeight("100vh"))
+        rule(StyleSelector.className("seen-catalog"), catalogBackgroundModifier())
+        rule(
+            StyleSelector.className("seen-site-navigation"),
+            Modifier()
+                .position(Position.Sticky)
+                .top("0")
+                .zIndex(50)
+                .borderBottomWidth(1)
+                .backdropFilter { blur(18) },
+            StyleRulePriority.Important,
+        )
+        rule(StyleSelector.className("seen-primary-navigation"), Modifier().minWidth(0))
+        rule(primarySummary, Modifier().display(Display.None), StyleRulePriority.Important)
+        rule(
+            primaryPanel,
+            Modifier()
+                .display(Display.Flex)
+                .alignItems(AlignItems.Center)
+                .justifyContent(JustifyContent.SpaceBetween)
+                .gap("16px"),
+        )
+        rule(
+            interactiveNavigation,
+            Modifier().transition("color 160ms ease, background-color 160ms ease, border-color 160ms ease"),
+        )
+        rule(
+            StyleSelector.all(interactiveNavigationItems.map { it.pseudoClass(StylePseudoClass.Hover) }),
+            Modifier().color(CatalogTheme.TEXT_PRIMARY).backgroundColor(CatalogTheme.SURFACE_STRONG),
+            StyleRulePriority.Important,
+        )
+        rule(
+            StyleSelector.className("seen-global-work").pseudoClass(StylePseudoClass.Hover),
+            Modifier().backgroundColor("#ff5d79"),
+            StyleRulePriority.Important,
+        )
+        rule(
+            StyleSelector.className("seen-ecosystem-navigation").child(summary),
+            Modifier().cursor(Cursor.Pointer).listStyle(ListStyleType.None),
+        )
+        rule(
+            StyleSelector.className("seen-ecosystem-navigation")
+                .child(summary)
+                .pseudoElement(StylePseudoElement.WebkitDetailsMarker),
+            Modifier().display(Display.None),
+        )
+        rule(
+            StyleSelector.className("seen-ecosystem-navigation")
+                .attribute(StyleAttribute.data("active"), "true")
+                .child(summary),
+            Modifier().backgroundColor(CatalogTheme.ACCENT_SOFT),
+        )
+        rule(
+            ecosystemPanel,
+            Modifier()
+                .position(Position.Absolute)
+                .top("calc(100% + 10px)")
+                .left("0")
+                .zIndex(100)
+                .minWidth(230)
+                .boxShadow("0 24px 70px rgba(0, 0, 0, 0.5)"),
+        )
+        rule(
+            StyleSelector.className("seen-ecosystem-navigation")
+                .not(StyleSelector.Universal.attribute(StyleAttribute.Open))
+                .descendant(ecosystemPanel),
+            Modifier().display(Display.None),
+        )
+        rule(
+            StyleSelector.className("seen-ecosystem-navigation")
+                .attribute(StyleAttribute.Open)
+                .child(summary),
+            Modifier().color(CatalogTheme.TEXT_PRIMARY).backgroundColor("rgba(255, 255, 255, 0.1)"),
+            StyleRulePriority.Important,
+        )
+        rule(
+            StyleSelector.className("seen-context-navigation"),
+            Modifier()
+                .borderTopWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(CatalogTheme.BORDER),
+        )
+        rule(
+            StyleSelector.className("seen-context-navigation-rail"),
+            Modifier()
+                .scrollbarWidth(ScrollbarWidth.Thin)
+                .scrollbarColor("rgba(88, 166, 255, 0.4)", "transparent"),
+        )
+        rule(
+            StyleSelector.className("seen-brand-mark"),
+            Modifier()
+                .display(Display.InlineFlex)
+                .size(32)
+                .alignItems(AlignItems.Center)
+                .justifyContent(JustifyContent.Center)
+                .borderWidth(1)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor("rgba(88, 166, 255, 0.45)")
+                .borderRadius(10)
+                .backgroundColor("rgba(88, 166, 255, 0.12)")
+                .fontFamily("Georgia, serif"),
+        )
+        rule(
+            headerLink.attribute(StyleAttribute.AriaCurrent, "page")
+                .or(globalLink.attribute(StyleAttribute.data("active"), "true")),
+            Modifier().color(CatalogTheme.TEXT_PRIMARY).backgroundColor(CatalogTheme.ACCENT_SOFT),
+            StyleRulePriority.Important,
+        )
+        rule(
+            interactiveCards,
+            Modifier().transition("transform 160ms ease, border-color 160ms ease, background-color 160ms ease"),
+        )
+        rule(
+            StyleSelector.all(interactiveCardItems.map { it.pseudoClass(StylePseudoClass.Hover) }),
+            Modifier()
+                .transform(TransformFunction.TranslateY to "-2px")
+                .borderColor("rgba(88, 166, 255, 0.56)")
+                .backgroundColor("rgba(7, 52, 91, 0.9)"),
+            StyleRulePriority.Important,
+        )
+        rule(
+            StyleSelector.className("seen-text-link").pseudoClass(StylePseudoClass.Hover),
+            Modifier().color("#8fc4ff"),
+            StyleRulePriority.Important,
+        )
+
+        val catalog = StyleSelector.className("seen-catalog")
+        val focusable = StyleSelector.all(listOf(
+            catalog.descendant(StyleSelector.element(StyleElement.Anchor)),
+            catalog.descendant(summary),
+            catalog.descendant(StyleSelector.element(StyleElement.Input)),
+            catalog.descendant(StyleSelector.element(StyleElement.Button)),
+        ).map { it.pseudoClass(StylePseudoClass.FocusVisible) })
+        rule(
+            focusable,
+            Modifier().outline(3, OutlineStyle.Solid, "#8fc4ff").outlineOffset(3),
+            StyleRulePriority.Important,
+        )
+        rule(
+            StyleSelector.className("seen-package-search-input")
+                .pseudoElement(StylePseudoElement.Placeholder),
+            Modifier().color("#8198b0").opacity(1f),
+        )
+        rule(
+            searchButton.or(downloadLink),
+            Modifier().transition("filter 160ms ease, transform 160ms ease"),
+        )
+        rule(
+            StyleSelector.all(
+                listOf(searchButton, downloadLink).map { it.pseudoClass(StylePseudoClass.Hover) },
+            ),
+            Modifier()
+                .filter { brightness(1.09) }
+                .transform(TransformFunction.TranslateY to "-1px"),
+        )
+
+        media(MediaQuery.MaxWidth(1040)) {
+            rule(
+                StyleSelector.className("seen-global-nav"),
+                Modifier().padding(10, 16),
+                StyleRulePriority.Important,
+            )
+            rule(
+                StyleSelector.className("seen-primary-navigation"),
+                Modifier().flex(grow = 0, shrink = 0, basis = "auto"),
+                StyleRulePriority.Important,
+            )
+            rule(
+                primarySummary,
+                Modifier()
+                    .display(Display.Block)
+                    .backgroundColor("transparent")
+                    .borderWidth(0),
+                StyleRulePriority.Important,
+            )
+            rule(
+                primaryPanel,
+                Modifier()
+                    .display(Display.None)
+                    .position(Position.Absolute)
+                    .insetInlineEnd(0)
+                    .top("calc(100% + 10px)")
+                    .zIndex(100)
+                    .width("min(88vw, 340px)")
+                    .maxHeight("calc(100vh - 110px)")
+                    .overflowY(Overflow.Auto)
+                    .flexDirection(FlexDirection.Column)
+                    .alignItems(AlignItems.Stretch)
+                    .gap("6px")
+                    .padding(14)
+                    .backgroundColor("#071b2e")
+                    .borderWidth(1)
+                    .borderStyle(BorderStyle.Solid)
+                    .borderColor(CatalogTheme.BORDER_STRONG)
+                    .borderRadius(16)
+                    .boxShadow("0 24px 70px rgba(0, 0, 0, 0.5)"),
+                StyleRulePriority.Important,
+            )
+            rule(
+                StyleSelector.className("seen-primary-navigation-links"),
+                Modifier()
+                    .width("100%")
+                    .flexDirection(FlexDirection.Column)
+                    .alignItems(AlignItems.Stretch)
+                    .gap("6px"),
+                StyleRulePriority.Important,
+            )
+            val panelLinks = StyleSelector.all(
+                primaryPanel.descendant(globalLink),
+                primaryPanel.descendant(ecosystemSummary),
+                primaryPanel.descendant(ecosystemPanel).descendant(globalLink),
+            )
+            rule(
+                panelLinks,
+                Modifier().display(Display.Flex).width("100%").padding(11, 12).fontSize(15),
+                StyleRulePriority.Important,
+            )
+            rule(ecosystemSummary, Modifier().justifyContent(JustifyContent.SpaceBetween))
+            rule(StyleSelector.className("seen-ecosystem-navigation"), Modifier().width("100%"))
+            rule(
+                ecosystemPanel,
+                Modifier()
+                    .position(Position.Static)
+                    .minWidth(0)
+                    .width("100%")
+                    .marginTop(6)
+                    .boxShadow("none"),
+                StyleRulePriority.Important,
+            )
         }
-        .seen-primary-navigation-panel {
-            display: none;
-            position: absolute !important;
-            inset-inline-end: 0;
-            top: calc(100% + 10px);
-            z-index: 100;
-            width: min(88vw, 340px);
-            max-height: calc(100vh - 110px);
-            overflow-y: auto;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 6px !important;
-            padding: 14px;
-            background: #071b2e;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 16px;
-            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+        media(MediaQuery.MaxWidth(640)) {
+            rule(
+                StyleSelector.className("seen-catalog-main"),
+                Modifier().padding(36, 16),
+                StyleRulePriority.Important,
+            )
+            rule(
+                StyleSelector.className("seen-context-navigation-rail"),
+                Modifier().padding(8, 16),
+                StyleRulePriority.Important,
+            )
+            rule(
+                contextBrand,
+                Modifier()
+                    .position(Position.Sticky)
+                    .left("0")
+                    .zIndex(2)
+                    .backgroundColor("#071b2e"),
+            )
+            rule(
+                StyleSelector.className("seen-catalog-search"),
+                Modifier().padding(16),
+                StyleRulePriority.Important,
+            )
+            rule(searchButton, Modifier().width("100%"), StyleRulePriority.Important)
+            rule(
+                catalog.descendant(StyleSelector.element(StyleElement.Heading1)),
+                Modifier().fontSize(32),
+                StyleRulePriority.Important,
+            )
         }
-        .seen-primary-navigation-links {
-            width: 100%;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 6px !important;
-        }
-        .seen-primary-navigation-panel .seen-global-link,
-        .seen-primary-navigation-panel .seen-ecosystem-summary,
-        .seen-primary-navigation-panel .seen-ecosystem-panel .seen-global-link {
-            display: flex !important;
-            width: 100%;
-            padding: 11px 12px !important;
-            font-size: 15px !important;
-        }
-        .seen-ecosystem-summary { justify-content: space-between; }
-        .seen-ecosystem-navigation { width: 100%; }
-        .seen-ecosystem-panel {
-            position: static !important;
-            min-width: 0 !important;
-            width: 100%;
-            margin-top: 6px;
-            box-shadow: none !important;
+        media(MediaQuery.PrefersReducedMotion) {
+            rule(
+                StyleSelector.all(
+                    interactiveNavigationItems + interactiveCardItems + listOf(searchButton, downloadLink),
+                ),
+                Modifier().transition("none"),
+                StyleRulePriority.Important,
+            )
+            rule(
+                StyleSelector.all(
+                    (interactiveCardItems + listOf(searchButton, downloadLink))
+                        .map { it.pseudoClass(StylePseudoClass.Hover) },
+                ),
+                Modifier().transform("none"),
+                StyleRulePriority.Important,
+            )
         }
     }
-    @media (max-width: 640px) {
-        .seen-catalog-main { padding: 36px 16px !important; }
-        .seen-context-navigation-rail { padding: 8px 16px !important; }
-        .seen-context-brand { position: sticky; left: 0; z-index: 2; background: #071b2e; }
-        .seen-catalog-search { padding: 16px !important; }
-        .seen-search-button { width: 100% !important; }
-        .seen-catalog h1 { font-size: 32px !important; }
+}
+
+private fun catalogBackgroundModifier(): Modifier = Modifier()
+    .backgroundColor(CatalogTheme.BACKGROUND)
+    .backgroundLayers {
+        radialGradient {
+            position(12, 0)
+            colorStop("rgba(88, 166, 255, 0.16)")
+            colorStop("transparent", "32rem")
+        }
+        linearGradient {
+            angle(180)
+            colorStop(CatalogTheme.BACKGROUND, "0%")
+            colorStop("#001522", "100%")
+        }
     }
-    @media (prefers-reduced-motion: reduce) {
-        .seen-global-brand, .seen-global-link, .seen-ecosystem-summary, .seen-primary-navigation-summary,
-        .seen-context-brand, .seen-header-link,
-        .seen-package-card, .seen-release-row, .seen-search-button, .seen-download-link { transition: none !important; }
-        .seen-package-card:hover, .seen-release-row:hover, .seen-search-button:hover, .seen-download-link:hover { transform: none !important; }
-    }
-""".trimIndent()

@@ -12,15 +12,24 @@ import code.yousef.portfolio.ui.sections.ContactFooterSection
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
+import codes.yousef.summon.components.display.ImageDecoding
+import codes.yousef.summon.components.display.ImageSource
 import codes.yousef.summon.components.display.Paragraph
+import codes.yousef.summon.components.display.Picture
 import codes.yousef.summon.components.display.Text
-import codes.yousef.summon.components.foundation.RawHtml
+import codes.yousef.summon.components.html.Iframe
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
+import codes.yousef.summon.components.media.Video
+import codes.yousef.summon.components.media.VideoSource
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StyleElement
+import codes.yousef.summon.components.styles.StylePseudoClass
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -32,9 +41,12 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun PhotographyPage(
     photos: List<PhotographyPhoto>,
+    selectedFilter: String? = null,
     locale: PortfolioLocale = PortfolioLocale.EN
 ) {
     val media = photos.sortedWith(compareBy<PhotographyPhoto> { it.order }.thenByDescending { it.uploadedAt })
+    val activeFilter = selectedFilter.normalizedMediaFilter(media)
+    val filteredMedia = media.filter { it.matchesMediaFilter(activeFilter) }
     val hero = media.firstOrNull { it.featured } ?: media.firstOrNull()
 
     PageScaffold(locale = locale, enableAuroraEffects = false) {
@@ -47,9 +59,8 @@ fun PhotographyPage(
             EmptyPhotographyPage()
         } else {
             PhotographyHero(hero = hero, media = media)
-            MediaFilters(media = media)
-            MediaGallery(media = media)
-            FilterScript()
+            MediaFilters(media = media, activeFilter = activeFilter)
+            MediaGallery(media = filteredMedia)
         }
 
         ContactFooterSection(locale = locale, modifier = Modifier().id("contact"))
@@ -59,82 +70,99 @@ fun PhotographyPage(
 
 @Composable
 private fun PhotographyStyles() {
-    GlobalStyle(
-        css = """
-        .photography-shell {
-            width: 100%;
-            max-width: 1240px;
-            margin: 0 auto;
+    val shell = StyleSelector.className("photography-shell")
+    val hero = StyleSelector.className("photography-hero")
+    val frame = StyleSelector.className("photography-frame")
+    val cardFrame = StyleSelector.className("photography-card-frame")
+    val filter = StyleSelector.className("photography-filter")
+    val picture = StyleSelector.className("photography-picture")
+    val media = StyleSelector.className("photography-media")
+        .or(
+            StyleSelector.className("photography-video"),
+            StyleSelector.className("photography-iframe")
+        )
+
+    TypedStyleSheet {
+        rule(shell, Modifier().width(100.percent).maxWidth(1240.px).margin("0 auto"))
+        rule(
+            hero,
+            Modifier()
+                .display(Display.Grid)
+                .gridTemplateColumns("minmax(0, 0.92fr) minmax(420px, 1.08fr)")
+                .gap(32.px)
+                .alignItems(AlignItems.FlexEnd)
+                .minHeight("calc(100vh - 168px)")
+        )
+        rule(frame, Modifier().aspectRatio(16.0 / 10.0))
+        rule(
+            StyleSelector.className("photography-title"),
+            Modifier().fontSize(4.2.rem),
+            StyleRulePriority.Important
+        )
+        rule(
+            StyleSelector.className("photography-empty-title"),
+            Modifier().fontSize(3.2.rem),
+            StyleRulePriority.Important
+        )
+        rule(cardFrame, Modifier().aspectRatio(4.0 / 3.0))
+        rule(
+            media,
+            Modifier()
+                .width(100.percent)
+                .height(100.percent)
+                .display(Display.Block)
+                .objectFit(ObjectFit.Cover)
+                .borderWidth(0)
+        )
+        rule(picture, Modifier().width(100.percent).height(100.percent).display(Display.Block))
+        rule(
+            picture.descendant(StyleSelector.element(StyleElement.Image)),
+            Modifier()
+                .width(100.percent)
+                .height(100.percent)
+                .display(Display.Block)
+                .objectFit(ObjectFit.Cover)
+                .borderWidth(0)
+        )
+        rule(
+            filter,
+            Modifier().transition(
+                "background ${PortfolioTheme.Motion.DEFAULT}, border-color ${PortfolioTheme.Motion.DEFAULT}, color ${PortfolioTheme.Motion.DEFAULT}"
+            )
+        )
+        rule(
+            filter.withClass("is-active"),
+            Modifier().backgroundColor("#ffffff").borderColor("#ffffff").color("#060607")
+        )
+        rule(
+            StyleSelector.className("photography-card"),
+            Modifier().transition("transform ${PortfolioTheme.Motion.DEFAULT}, border-color ${PortfolioTheme.Motion.DEFAULT}")
+        )
+        rule(
+            StyleSelector.className("photography-card").pseudoClass(StylePseudoClass.Hover),
+            Modifier()
+                .transform(TransformFunction.TranslateY to "-3px")
+                .borderColor("rgba(255,255,255,0.34)")
+        )
+        media(MediaQuery.MaxWidth(980)) {
+            rule(hero, Modifier().gridTemplateColumns(gridFraction()).minHeight("auto"))
         }
-        .photography-hero {
-            display: grid;
-            grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
-            gap: 32px;
-            align-items: end;
-            min-height: calc(100vh - 168px);
+        media(MediaQuery.MaxWidth(720)) {
+            rule(shell, Modifier().maxWidth(100.percent))
+            rule(
+                StyleSelector.className("photography-title"),
+                Modifier().fontSize(2.7.rem),
+                StyleRulePriority.Important
+            )
+            rule(
+                StyleSelector.className("photography-empty-title"),
+                Modifier().fontSize(2.55.rem),
+                StyleRulePriority.Important
+            )
+            rule(hero, Modifier().gap(22.px))
+            rule(frame.or(cardFrame), Modifier().aspectRatio(1.0))
         }
-        .photography-frame {
-            aspect-ratio: 16 / 10;
-        }
-        .photography-title {
-            font-size: 4.2rem !important;
-        }
-        .photography-empty-title {
-            font-size: 3.2rem !important;
-        }
-        .photography-card-frame {
-            aspect-ratio: 4 / 3;
-        }
-        .photography-media,
-        .photography-video,
-        .photography-iframe {
-            width: 100%;
-            height: 100%;
-            display: block;
-            object-fit: cover;
-            border: 0;
-        }
-        .photography-filter {
-            transition: background ${PortfolioTheme.Motion.DEFAULT}, border-color ${PortfolioTheme.Motion.DEFAULT}, color ${PortfolioTheme.Motion.DEFAULT};
-        }
-        .photography-filter.is-active {
-            background: #ffffff;
-            border-color: #ffffff;
-            color: #060607;
-        }
-        .photography-card {
-            transition: transform ${PortfolioTheme.Motion.DEFAULT}, border-color ${PortfolioTheme.Motion.DEFAULT};
-        }
-        .photography-card:hover {
-            transform: translateY(-3px);
-            border-color: rgba(255,255,255,0.34);
-        }
-        @media (max-width: 980px) {
-            .photography-hero {
-                grid-template-columns: 1fr;
-                min-height: auto;
-            }
-        }
-        @media (max-width: 720px) {
-            .photography-shell {
-                max-width: 100%;
-            }
-            .photography-title {
-                font-size: 2.7rem !important;
-            }
-            .photography-empty-title {
-                font-size: 2.55rem !important;
-            }
-            .photography-hero {
-                gap: 22px;
-            }
-            .photography-frame,
-            .photography-card-frame {
-                aspect-ratio: 1 / 1;
-            }
-        }
-        """
-    )
+    }
 }
 
 @Composable
@@ -227,7 +255,7 @@ private fun MetricPill(value: String, label: String) {
 }
 
 @Composable
-private fun MediaFilters(media: List<PhotographyPhoto>) {
+private fun MediaFilters(media: List<PhotographyPhoto>, activeFilter: String) {
     val categories = media.mapNotNull { it.category.displayCategory() }.distinct()
     Column(
         modifier = Modifier()
@@ -245,19 +273,21 @@ private fun MediaFilters(media: List<PhotographyPhoto>) {
                 .gap(PortfolioTheme.Spacing.sm)
                 .flexWrap(FlexWrap.Wrap)
         ) {
-            FilterChip("All", "all", "#media-gallery", active = true)
-            FilterChip("Photos", "type:PHOTO", "#media-gallery")
-            FilterChip("Video", "type:VIDEO", "#media-gallery")
-            FilterChip("360", "type:VIDEO_360", "#media-gallery")
+            FilterChip("All", "all", activeFilter)
+            FilterChip("Photos", "type:PHOTO", activeFilter)
+            FilterChip("Video", "type:VIDEO", activeFilter)
+            FilterChip("360", "type:VIDEO_360", activeFilter)
             categories.forEach { category ->
-                FilterChip(category, "category:${category.slug()}", "#category-${category.slug()}")
+                FilterChip(category, "category:${category.slug()}", activeFilter)
             }
         }
     }
 }
 
 @Composable
-private fun FilterChip(label: String, filter: String, href: String, active: Boolean = false) {
+private fun FilterChip(label: String, filter: String, activeFilter: String) {
+    val active = filter == activeFilter
+    val href = "/photography?filter=${filter.urlQueryComponent()}#media-gallery"
     AnchorLink(
         label = label,
         href = href,
@@ -289,8 +319,15 @@ private fun MediaGallery(media: List<PhotographyPhoto>) {
             .gap(PortfolioTheme.Spacing.xxl)
             .paddingTop(PortfolioTheme.Spacing.lg)
     ) {
-        media.groupBy { it.category.normalizedCategory() }.forEach { (category, categoryItems) ->
-            CategorySection(category = category, items = categoryItems)
+        if (media.isEmpty()) {
+            Paragraph(
+                text = "No media matches this filter.",
+                modifier = Modifier().color("#c5bdb2").fontSize(1.05.rem)
+            )
+        } else {
+            media.groupBy { it.category.normalizedCategory() }.forEach { (category, categoryItems) ->
+                CategorySection(category = category, items = categoryItems)
+            }
         }
     }
 }
@@ -411,26 +448,43 @@ private fun MediaFrame(photo: PhotographyPhoto, large: Boolean) {
 
 @Composable
 private fun PhotoImage(photo: PhotographyPhoto) {
-    val fallback = photo.uploadFallbackSource()
-    val fallbackHandler = fallback?.let {
-        "this.onerror=null;this.src='${htmlAttr(it)}';"
-    }.orEmpty()
-    RawHtml(
-        html = """
-            <img class="photography-media" src="${htmlAttr(photo.primaryImageSource())}" alt="${htmlAttr(photo.altText)}" loading="lazy" decoding="async"${if (fallbackHandler.isNotBlank()) " onerror=\"$fallbackHandler\"" else ""}>
-        """.trimIndent()
-    )
+    when (photo.sourceKind) {
+        PhotographySourceKind.UPLOAD -> Picture(
+            sources = listOf(
+                ImageSource(
+                    srcset = photo.primaryImageSource(),
+                    type = photo.contentType.takeIf { it.startsWith("image/") }
+                )
+            ),
+            fallbackSrc = mediaSource(photo),
+            alt = photo.altText,
+            decoding = ImageDecoding.ASYNC,
+            modifier = Modifier().className("photography-picture")
+        )
+        PhotographySourceKind.EXTERNAL -> Image(
+            src = photo.primaryImageSource(),
+            alt = photo.altText,
+            decoding = ImageDecoding.ASYNC,
+            modifier = Modifier().className("photography-media")
+        )
+    }
 }
 
 @Composable
 private fun UploadedVideo(photo: PhotographyPhoto) {
-    val poster = photo.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { """ poster="${htmlAttr(it)}"""" } ?: ""
-    RawHtml(
-        html = """
-            <video class="photography-video" controls preload="metadata" playsinline$poster>
-                <source src="${htmlAttr(mediaSource(photo))}" type="${htmlAttr(photo.contentType)}">
-            </video>
-        """.trimIndent()
+    Video(
+        sources = listOf(
+            VideoSource(
+                src = mediaSource(photo),
+                type = photo.contentType
+            )
+        ),
+        poster = photo.thumbnailUrl?.takeIf { it.isNotBlank() },
+        controls = true,
+        playsInline = true,
+        preload = "metadata",
+        ariaLabel = photo.altText,
+        modifier = Modifier().className("photography-video")
     )
 }
 
@@ -438,10 +492,14 @@ private fun UploadedVideo(photo: PhotographyPhoto) {
 private fun ExternalVideo(photo: PhotographyPhoto) {
     val embedUrl = photo.externalUrl?.let { externalEmbedUrl(it) }
     when {
-        embedUrl != null -> RawHtml(
-            html = """
-                <iframe class="photography-iframe" src="${htmlAttr(embedUrl)}" title="${htmlAttr(photo.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-            """.trimIndent()
+        embedUrl != null -> Iframe(
+            src = embedUrl,
+            title = photo.title,
+            loading = "lazy",
+            allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+            modifier = Modifier()
+                .className("photography-iframe")
+                .attribute("allowfullscreen", "")
         )
         !photo.thumbnailUrl.isNullOrBlank() -> ExternalVideoFallback(photo, showImage = true)
         else -> ExternalVideoFallback(photo, showImage = false)
@@ -593,53 +651,6 @@ private fun EmptyPhotographyPage() {
     }
 }
 
-@Composable
-private fun FilterScript() {
-    RawHtml(
-        html = """
-            <script>
-            (function () {
-                var chips = Array.prototype.slice.call(document.querySelectorAll('[data-media-filter]'));
-                var items = Array.prototype.slice.call(document.querySelectorAll('[data-media-item]'));
-                var sections = Array.prototype.slice.call(document.querySelectorAll('[data-media-section]'));
-                function matches(item, filter) {
-                    if (filter === 'all') return true;
-                    if (filter.indexOf('type:') === 0) return item.getAttribute('data-media-type') === filter.slice(5);
-                    if (filter.indexOf('category:') === 0) return item.getAttribute('data-media-category') === filter.slice(9);
-                    return true;
-                }
-                function apply(filter) {
-                    chips.forEach(function (chip) {
-                        chip.classList.toggle('is-active', chip.getAttribute('data-media-filter') === filter);
-                    });
-                    items.forEach(function (item) {
-                        item.hidden = !matches(item, filter);
-                    });
-                    sections.forEach(function (section) {
-                        var visible = Array.prototype.slice.call(section.querySelectorAll('[data-media-item]')).some(function (item) {
-                            return !item.hidden;
-                        });
-                        section.hidden = !visible;
-                    });
-                }
-                chips.forEach(function (chip) {
-                    chip.addEventListener('click', function (event) {
-                        var filter = chip.getAttribute('data-media-filter');
-                        if (!filter) return;
-                        event.preventDefault();
-                        apply(filter);
-                        if (window.history && window.history.replaceState) {
-                            window.history.replaceState(null, '', chip.getAttribute('href'));
-                        }
-                    });
-                });
-                apply('all');
-            })();
-            </script>
-        """.trimIndent()
-    )
-}
-
 private fun mediaSource(photo: PhotographyPhoto): String =
     when (photo.sourceKind) {
         PhotographySourceKind.UPLOAD -> "/uploads/photography/${photo.uploadAssetRef().urlPathSegment()}"
@@ -652,17 +663,13 @@ private fun PhotographyPhoto.primaryImageSource(): String =
         PhotographySourceKind.EXTERNAL -> externalUrl.orEmpty()
     }
 
-private fun PhotographyPhoto.uploadFallbackSource(): String? =
-    if (sourceKind == PhotographySourceKind.UPLOAD) {
-        mediaSource(this).takeIf { it != primaryImageSource() }
-    } else {
-        null
-    }
-
 private fun PhotographyPhoto.uploadAssetRef(): String =
     storageKey.replace('\\', '/').substringAfterLast('/').takeIf { it.isNotBlank() } ?: id
 
 private fun String.urlPathSegment(): String =
+    URLEncoder.encode(this, StandardCharsets.UTF_8).replace("+", "%20")
+
+private fun String.urlQueryComponent(): String =
     URLEncoder.encode(this, StandardCharsets.UTF_8).replace("+", "%20")
 
 private fun externalEmbedUrl(url: String): String? =
@@ -707,13 +714,17 @@ private fun PhotographyMediaType.label(): String =
         PhotographyMediaType.VIDEO_360 -> "360 Video"
     }
 
-private fun html(value: String): String =
-    value
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
+private fun String?.normalizedMediaFilter(media: List<PhotographyPhoto>): String {
+    val candidate = this?.trim().orEmpty().ifBlank { "all" }
+    if (candidate == "all") return candidate
+    val validTypes = PhotographyMediaType.entries.map { "type:${it.name}" }.toSet()
+    val validCategories = media.map { "category:${it.category.normalizedCategory().slug()}" }.toSet()
+    return candidate.takeIf { it in validTypes || it in validCategories } ?: "all"
+}
 
-private fun htmlAttr(value: String): String =
-    html(value)
-        .replace("\"", "&quot;")
-        .replace("'", "&#39;")
+private fun PhotographyPhoto.matchesMediaFilter(filter: String): Boolean = when {
+    filter == "all" -> true
+    filter.startsWith("type:") -> mediaType.name == filter.removePrefix("type:")
+    filter.startsWith("category:") -> category.normalizedCategory().slug() == filter.removePrefix("category:")
+    else -> true
+}

@@ -18,6 +18,7 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.core.style.Color
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
@@ -70,7 +71,7 @@ private fun FullTimeHeroSection() {
                     .fontWeight(900)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .lineHeight(1.2)
-                    .style("text-shadow", "0 0 30px rgba(0,0,0,0.8)")
+                    .textShadow(TextShadow.pixels(0, 0, 30, Color.rgba(0, 0, 0, 0.8f)))
             )
             
             // Sub-headline
@@ -136,7 +137,7 @@ private fun UnfairAdvantageSection() {
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(280px, 1fr))")
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(280.px), gridFraction())))
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 AdvantageCard(
@@ -199,7 +200,7 @@ private fun TechnicalProficiencySection() {
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(280px, 1fr))")
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(280.px), gridFraction())))
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 ProficiencyCard(

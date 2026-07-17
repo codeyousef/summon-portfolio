@@ -1,122 +1,24 @@
 package code.yousef.portfolio.ui.scratchpad
 
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.foundation.RawHtml
+import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.forms.Form
+import codes.yousef.summon.components.forms.FormButton
+import codes.yousef.summon.components.forms.FormButtonVariant
+import codes.yousef.summon.components.forms.FormMethod
+import codes.yousef.summon.components.forms.FormTextField
 import codes.yousef.summon.components.layout.Box
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.layout.Column
+import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.modifier.*
 
-/**
- * A terminal overlay at the bottom of the scratchpad.
- * Supports commands like: help, clear, whoami, spawn cube, sudo rm -rf /
- */
+/** A server-native terminal: commands submit with a normal GET and return typed Summon output. */
 @Composable
-fun TerminalOverlay() {
-    GlobalStyle(
-        css = """
-        #terminal-overlay {
-            font-family: ${ScratchpadTheme.FONT_MONO};
-        }
+fun TerminalOverlay(command: String? = null) {
+    val response = command.toTerminalResponse()
 
-        #terminal-output {
-            scrollbar-width: thin;
-            scrollbar-color: ${ScratchpadTheme.TEXT_MUTED} ${ScratchpadTheme.BG_SECONDARY};
-        }
-
-        #terminal-input {
-            background: transparent;
-            border: none;
-            color: ${ScratchpadTheme.TEXT_PRIMARY};
-            font-family: ${ScratchpadTheme.FONT_MONO};
-            font-size: 14px;
-            outline: none;
-            width: 100%;
-            caret-color: ${ScratchpadTheme.TEXT_PRIMARY};
-        }
-
-        #terminal-input::placeholder {
-            color: ${ScratchpadTheme.TEXT_MUTED};
-        }
-
-        .terminal-line {
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .terminal-prompt {
-            color: ${ScratchpadTheme.ACCENT_ALT};
-        }
-
-        .terminal-command {
-            color: ${ScratchpadTheme.TEXT_PRIMARY};
-        }
-
-        .terminal-output {
-            color: ${ScratchpadTheme.TEXT_SECONDARY};
-        }
-
-        .terminal-error {
-            color: ${ScratchpadTheme.DANGER};
-        }
-
-        .terminal-success {
-            color: ${ScratchpadTheme.ACCENT_ALT};
-        }
-
-        /* Blinking cursor effect */
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-
-        .terminal-cursor {
-            display: inline-block;
-            width: 8px;
-            height: 14px;
-            background: ${ScratchpadTheme.TEXT_PRIMARY};
-            animation: blink 1s step-end infinite;
-            vertical-align: middle;
-            margin-left: 2px;
-        }
-
-        /* BSOD styles */
-        #bsod-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #0000aa;
-            color: white;
-            font-family: ${ScratchpadTheme.FONT_MONO};
-            z-index: 99999;
-            padding: 40px;
-            box-sizing: border-box;
-        }
-
-        #bsod-overlay.active {
-            display: block;
-        }
-
-        #bsod-overlay h1 {
-            background: #aaaaaa;
-            color: #0000aa;
-            display: inline-block;
-            padding: 4px 8px;
-            margin-bottom: 20px;
-        }
-
-        #bsod-overlay pre {
-            font-size: 16px;
-            line-height: 1.6;
-        }
-    """
-    )
-
-    // Terminal container
     Box(
         modifier = Modifier()
             .position(Position.Fixed)
@@ -125,70 +27,184 @@ fun TerminalOverlay() {
             .right(0.px)
             .height(200.px)
             .backgroundColor(ScratchpadTheme.BG_SECONDARY)
-            .style("border-top", "2px solid ${ScratchpadTheme.TEXT_MUTED}")
+            .border(BorderSide.Top, 2, BorderStyle.Solid, ScratchpadTheme.TEXT_MUTED)
             .zIndex(9500)
+            .fontFamily(ScratchpadTheme.FONT_MONO)
             .id("terminal-overlay")
     ) {
-        RawHtml(
-            html = """
-            <div style="height: 100%; display: flex; flex-direction: column; padding: 12px; min-height: 0; overflow: hidden;">
-                <!-- Terminal header -->
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid ${ScratchpadTheme.BORDER}; margin-bottom: 8px;">
-                    <span style="color: ${ScratchpadTheme.TEXT_MUTED}; font-size: 12px;">SCRATCHPAD TERMINAL v0.1.0</span>
-                    <span style="color: ${ScratchpadTheme.TEXT_MUTED}; font-size: 12px;">Type 'help' for commands</span>
-                </div>
+        Column(
+            modifier = Modifier()
+                .height(100.percent)
+                .display(Display.Flex)
+                .flexDirection(FlexDirection.Column)
+                .padding(12.px)
+                .minHeight(0.px)
+                .overflow(Overflow.Hidden)
+        ) {
+            Row(
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .justifyContent(JustifyContent.SpaceBetween)
+                    .alignItems(AlignItems.Center)
+                    .paddingBottom(8.px)
+                    .border(BorderSide.Bottom, 1, BorderStyle.Solid, ScratchpadTheme.BORDER)
+                    .marginBottom(8.px)
+            ) {
+                TerminalMutedText("SCRATCHPAD TERMINAL v0.2.0")
+                TerminalMutedText("Server-native · type 'help'")
+            }
 
-                <!-- Output area -->
-                <div id="terminal-output" style="flex: 1; overflow-y: auto; padding-right: 8px; min-height: 0;">
-                    <div class="terminal-line terminal-output">Welcome to the void. Type 'help' to see what you can do.</div>
-                </div>
+            Box(
+                modifier = Modifier()
+                    .flex(1, 1, "auto")
+                    .overflowY(Overflow.Auto)
+                    .paddingRight(8.px)
+                    .minHeight(0.px)
+                    .scrollbarWidth(ScrollbarWidth.Thin)
+                    .scrollbarColor(ScratchpadTheme.TEXT_MUTED, ScratchpadTheme.BG_SECONDARY)
+                    .id("terminal-output")
+            ) {
+                Text(
+                    text = response.output,
+                    modifier = Modifier()
+                        .color(response.color)
+                        .lineHeight(1.6)
+                        .whiteSpace(WhiteSpace.PreWrap)
+                        .wordBreak(WordBreak.BreakWord)
+                )
+            }
 
-                <!-- Input area -->
-                <div style="display: flex; align-items: center; padding-top: 8px; border-top: 1px solid ${ScratchpadTheme.BORDER};">
-                    <span class="terminal-prompt">guest@scratchpad:~$&nbsp;</span>
-                    <input type="text" id="terminal-input" placeholder="enter command..." autocomplete="off" spellcheck="false">
-                </div>
-            </div>
-        """.trimIndent()
-        )
+            Form(
+                action = "/scratchpad",
+                method = FormMethod.Get,
+                modifier = Modifier()
+                    .display(Display.Flex)
+                    .alignItems(AlignItems.FlexEnd)
+                    .gap(8.px)
+                    .paddingTop(8.px)
+                    .border(BorderSide.Top, 1, BorderStyle.Solid, ScratchpadTheme.BORDER)
+            ) {
+                Text(
+                    text = "guest@scratchpad:~$",
+                    modifier = Modifier()
+                        .color(ScratchpadTheme.ACCENT_ALT)
+                        .paddingBottom(10.px)
+                        .whiteSpace(WhiteSpace.NoWrap)
+                )
+                FormTextField(
+                    name = "command",
+                    label = "",
+                    defaultValue = "",
+                    placeholder = "enter command...",
+                    autoComplete = "off",
+                    modifier = Modifier().flex(1, 1, "auto").margin(0),
+                    fieldModifier = Modifier()
+                        .backgroundColor("transparent")
+                        .borderWidth(0)
+                        .borderRadius(0)
+                        .color(ScratchpadTheme.TEXT_PRIMARY)
+                        .fontFamily(ScratchpadTheme.FONT_MONO)
+                        .fontSize(14.px)
+                        .outline(OutlineStyle.None.value)
+                )
+                FormButton(
+                    text = "RUN",
+                    variant = FormButtonVariant.Secondary,
+                    fullWidth = false,
+                    modifier = Modifier()
+                        .backgroundColor(ScratchpadTheme.BG_SURFACE)
+                        .color(ScratchpadTheme.TEXT_PRIMARY)
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(ScratchpadTheme.TEXT_MUTED)
+                        .borderRadius(0)
+                        .padding(8.px, 12.px)
+                )
+            }
+        }
     }
 
-    // BSOD overlay (hidden by default)
-    Box(
+    if (response.showBlueScreen) {
+        BlueScreenOverlay()
+    }
+}
+
+@Composable
+private fun TerminalMutedText(value: String) {
+    Text(text = value, modifier = Modifier().color(ScratchpadTheme.TEXT_MUTED).fontSize(12.px))
+}
+
+@Composable
+private fun BlueScreenOverlay() {
+    Column(
         modifier = Modifier()
-            .id("bsod-overlay")
+            .position(Position.Fixed)
+            .inset(0)
+            .width(100.percent)
+            .height(100.percent)
+            .backgroundColor("#0000aa")
+            .color("#ffffff")
+            .fontFamily(ScratchpadTheme.FONT_MONO)
+            .zIndex(99999)
+            .padding(40.px)
+            .boxSizing(BoxSizing.BorderBox)
+            .gap(20.px)
     ) {
-        RawHtml(
-            html = """
-            <h1>Windows</h1>
-            <pre>
-A problem has been detected and Windows has been shut down to prevent damage
+        Text(
+            text = "Windows",
+            modifier = Modifier()
+                .display(Display.InlineBlock)
+                .backgroundColor("#aaaaaa")
+                .color("#0000aa")
+                .padding(4.px, 8.px)
+                .fontSize(24.px)
+                .fontWeight(700)
+        )
+        Text(
+            text = BLUE_SCREEN_MESSAGE,
+            modifier = Modifier().fontSize(16.px).lineHeight(1.6).whiteSpace(WhiteSpace.PreWrap)
+        )
+        Text(text = "Physical memory dump complete.")
+        Text(text = "Use the EXIT link when you are done admiring the void.", modifier = Modifier().fontSize(14.px))
+    }
+}
+
+private data class TerminalResponse(
+    val output: String,
+    val color: String = ScratchpadTheme.TEXT_SECONDARY,
+    val showBlueScreen: Boolean = false
+)
+
+private fun String?.toTerminalResponse(): TerminalResponse {
+    val normalized = this?.trim()?.lowercase().orEmpty()
+    return when (normalized) {
+        "" -> TerminalResponse("Welcome to the void. Type 'help' to see what you can do.")
+        "help" -> TerminalResponse(
+            "help             show this list\n" +
+                "whoami           inspect the current operator\n" +
+                "spawn balls      reveal a harmless burst\n" +
+                "clear            clear the terminal\n" +
+                "sudo rm -rf /     absolutely do not"
+        )
+        "whoami" -> TerminalResponse("guest — curious, unauthenticated, and probably procrastinating.", ScratchpadTheme.ACCENT_ALT)
+        "spawn balls", "spawn cube" -> TerminalResponse("Color burst spawned on the canvas.", ScratchpadTheme.ACCENT_ALT)
+        "clear" -> TerminalResponse("")
+        "sudo rm -rf /" -> TerminalResponse(
+            "Permission granted. This was a terrible idea.",
+            ScratchpadTheme.DANGER,
+            showBlueScreen = true
+        )
+        else -> TerminalResponse("command not found: $normalized", ScratchpadTheme.DANGER)
+    }
+}
+
+private const val BLUE_SCREEN_MESSAGE = """A problem has been detected and Windows has been shut down to prevent damage
 to your computer.
 
 IRQL_NOT_LESS_OR_EQUAL
 
-If this is the first time you've seen this Stop error screen,
-restart your computer. If this screen appears again, follow
-these steps:
-
-Check to make sure any new hardware or software is properly installed.
-If this is a new installation, ask your hardware or software manufacturer
-for any Windows updates you might need.
-
-If problems continue, disable or remove any newly installed hardware
-or software. Disable BIOS memory options such as caching or shadowing.
-
-Technical Information:
-
 *** STOP: 0x0000000A (0x00000000, 0x00000002, 0x00000001, 0x80544BE8)
 
-*** rm.sys - Address 0x80544BE8 base at 0x80544000 DateStamp 0x47d6d7df
+*** rm.sys - Address 0x80544BE8 base at 0x80544000
 
-Beginning dump of physical memory...
-            </pre>
-            <div id="bsod-progress" style="margin-top: 20px;">Physical memory dump complete.</div>
-            <div style="margin-top: 20px; font-size: 14px;">Press any key to continue... (just kidding, click anywhere)</div>
-        """.trimIndent()
-        )
-    }
-}
+Beginning dump of physical memory..."""

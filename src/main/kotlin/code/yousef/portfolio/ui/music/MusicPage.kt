@@ -16,7 +16,9 @@ import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
@@ -48,15 +50,15 @@ fun MusicPage(
     val featuredTracks = tracks.filter { it.featured }.sortedBy { it.order }
     val otherTracks = tracks.filter { !it.featured }.sortedBy { it.order }
 
-    GlobalStyle(
-        css = """
-        @media (max-width: 768px) {
-            .music-tracks-grid {
-                gap: ${PortfolioTheme.Spacing.md} !important;
-            }
+    TypedStyleSheet {
+        media(MediaQuery.MaxWidth(768)) {
+            rule(
+                StyleSelector.className("music-tracks-grid"),
+                Modifier().gap(PortfolioTheme.Spacing.md),
+                priority = StyleRulePriority.Important,
+            )
         }
-    """
-    )
+    }
 
     PageScaffold(locale = locale) {
         AppHeader(locale = locale, activeDestination = GlobalNavigationDestination.PROJECTS)

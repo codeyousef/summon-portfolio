@@ -6,18 +6,18 @@ import codes.yousef.summon.seo.HeadScope
 
 /**
  * Renderer for the Scratchpad page.
- * Uses a separate head configuration to:
- * - Prevent search engine indexing (noindex)
- * - Load scratchpad-specific JavaScript files
- * - Skip standard portfolio scripts (no Sigil, no Konami on scratchpad)
+ * Uses a separate head configuration and keeps the page server-native.
  */
 class ScratchpadRenderer {
 
-    fun scratchpadPage(locale: PortfolioLocale = PortfolioLocale.EN): SummonPage {
+    fun scratchpadPage(
+        locale: PortfolioLocale = PortfolioLocale.EN,
+        command: String? = null
+    ): SummonPage {
         return SummonPage(
             head = scratchpadHeadBlock(),
             content = {
-                ScratchpadPage(locale = locale)
+                ScratchpadPage(locale = locale, command = command)
             },
             locale = locale
         )
@@ -39,18 +39,5 @@ class ScratchpadRenderer {
 
         // Base hydration script
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
-
-        // Scratchpad-specific scripts (deferred to load after DOM)
-        head.script("/static/scratchpad-canvas.js", "scratchpad-canvas", "application/javascript", false, true, null)
-        head.script("/static/scratchpad-physics.js", "scratchpad-physics", "application/javascript", false, true, null)
-        head.script(
-            "/static/scratchpad-terminal.js",
-            "scratchpad-terminal",
-            "application/javascript",
-            false,
-            true,
-            null
-        )
-        head.script("/static/scratchpad-sticky.js", "scratchpad-sticky", "application/javascript", false, true, null)
     }
 }

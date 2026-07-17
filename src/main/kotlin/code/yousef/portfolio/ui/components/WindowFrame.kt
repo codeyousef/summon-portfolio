@@ -37,7 +37,7 @@ fun WindowFrame(
                 .gap(PortfolioTheme.Spacing.sm)
                 .padding(PortfolioTheme.Spacing.sm, PortfolioTheme.Spacing.md)
                 .background(PortfolioTheme.Colors.SURFACE)
-                .style("border-bottom", "1px solid ${PortfolioTheme.Colors.BORDER}")
+                .border(BorderSide.Bottom, 1, BorderStyle.Solid, PortfolioTheme.Colors.BORDER)
         ) {
             // Traffic light dots
             TrafficLightDot("#ff5f56") // Red - close

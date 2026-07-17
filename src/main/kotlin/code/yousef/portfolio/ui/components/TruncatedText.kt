@@ -17,10 +17,8 @@ fun TruncatedText(
     Text(
         text = text,
         modifier = modifier
-            .style("display", "-webkit-box")
-            .style("-webkit-line-clamp", maxLines.toString())
-            .style("-webkit-box-orient", "vertical")
-            .style("overflow", "hidden")
-            .style("text-overflow", "ellipsis")
+            .overflow(Overflow.Hidden)
+            .textOverflow(TextOverflow.Ellipsis),
+        maxLines = maxLines,
     )
 }

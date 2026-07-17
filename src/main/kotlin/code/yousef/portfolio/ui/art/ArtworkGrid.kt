@@ -9,7 +9,9 @@ import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StylePseudoClass
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -21,35 +23,48 @@ fun ArtworkGrid(
     locale: PortfolioLocale,
     onArtworkClick: (Artwork) -> Unit
 ) {
-    GlobalStyle(
-        css = """
-        .artwork-card {
-            transition: transform ${PortfolioTheme.Motion.DEFAULT}, box-shadow ${PortfolioTheme.Motion.DEFAULT};
+    TypedStyleSheet {
+        val card = StyleSelector.className("artwork-card")
+        val overlay = StyleSelector.className("artwork-overlay")
+        rule(
+            card,
+            Modifier().transition(
+                property = TransitionProperty.All,
+                duration = 200,
+                timingFunction = TransitionTimingFunction.Ease,
+            ),
+        )
+        rule(
+            card.pseudoClass(StylePseudoClass.Hover),
+            Modifier()
+                .transform(
+                    TransformFunction.TranslateY to "-4px",
+                    TransformFunction.Scale to "1.02",
+                )
+                .boxShadow(PortfolioTheme.Shadows.MEDIUM),
+        )
+        rule(card.pseudoClass(StylePseudoClass.Hover).descendant(overlay), Modifier().opacity(1f))
+        rule(
+            overlay,
+            Modifier()
+                .opacity(0f)
+                .transition(TransitionProperty.Opacity, duration = 200, timingFunction = TransitionTimingFunction.Ease),
+        )
+        media(MediaQuery.MaxWidth(768)) {
+            rule(
+                StyleSelector.className("artwork-grid"),
+                Modifier().gridTemplateColumns(
+                    gridAutoFill(gridMinMax(gridTrack(280.px), gridFraction())),
+                ),
+                priority = codes.yousef.summon.components.styles.StyleRulePriority.Important,
+            )
         }
-        .artwork-card:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: ${PortfolioTheme.Shadows.MEDIUM};
-        }
-        .artwork-card:hover .artwork-overlay {
-            opacity: 1;
-        }
-        .artwork-overlay {
-            opacity: 0;
-            transition: opacity ${PortfolioTheme.Motion.DEFAULT};
-        }
-
-        @media (max-width: 768px) {
-            .artwork-grid {
-                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
-            }
-        }
-    """
-    )
+    }
 
     Row(
         modifier = Modifier()
             .display(Display.Grid)
-            .gridTemplateColumns("repeat(auto-fill, minmax(320px, 1fr))")
+            .gridTemplateColumns(gridAutoFill(gridMinMax(gridTrack(320.px), gridFraction())))
             .gap(PortfolioTheme.Spacing.lg)
             .width(100.percent)
             .className("artwork-grid")

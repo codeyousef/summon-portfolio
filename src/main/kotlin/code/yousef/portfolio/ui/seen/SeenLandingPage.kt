@@ -65,7 +65,7 @@ private fun SeenHero(playgroundUrl: String, packagesUrl: String?) {
                     modifier = Modifier()
                         .width(cssClamp(96.px, 18.vw, 192.px))
                         .height(cssClamp(96.px, 18.vw, 192.px))
-                        .style("object-fit", "contain")
+                        .objectFit(ObjectFit.Contain)
                 )
                 Text(
                     text = "Seen",

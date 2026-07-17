@@ -855,6 +855,13 @@ fun Router.buildingRoutes(
         }
     }
     
+    // Confirm before clearing all data. The destructive POST remains a separate request so the
+    // workflow does not depend on a browser-side confirmation script.
+    get("/clear-data/confirm") { exchange ->
+        val session = exchange.requireAuth() ?: return@get
+        exchange.respondSummonPage(clearDataConfirmationPage(session.username))
+    }
+
     // Clear all data
     post("/clear-data") { exchange ->
         val session = exchange.requireAuth() ?: return@post
@@ -913,7 +920,6 @@ private fun buildingLoginPage(errorMessage: String?): SummonPage = SummonPage(
         head.title("${BuildingStrings.LOGIN_TITLE} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         // Add Tajawal Arabic font
         head.link(
             rel = "stylesheet",
@@ -928,7 +934,6 @@ private fun buildingChangePasswordPage(username: String, errorMessage: String?):
         head.title("${BuildingStrings.CHANGE_PASSWORD_TITLE} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -942,7 +947,6 @@ private fun resetPasswordPage(token: String?, errorMessage: String?): SummonPage
         head.title("${BuildingStrings.RESET_PASSWORD_TITLE} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -961,7 +965,6 @@ private fun userManagementPage(
         head.title("${BuildingStrings.USER_MANAGEMENT} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -975,7 +978,6 @@ private fun buildingDashboardPage(username: String, summary: code.yousef.portfol
         head.title("${BuildingStrings.DASHBOARD} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -993,7 +995,6 @@ private fun buildingsListPage(
         head.title("${BuildingStrings.BUILDINGS} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1011,7 +1012,6 @@ private fun buildingUnitsPage(
         head.title("${building.name} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1029,7 +1029,6 @@ private fun paymentsListPage(
         head.title("${BuildingStrings.PAYMENTS} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1048,7 +1047,6 @@ private fun bulkErrorPage(
         head.title("$title - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1067,7 +1065,6 @@ private fun bulkResultPage(
         head.title("${BuildingStrings.BULK_RESULT} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1095,7 +1092,6 @@ private fun bulkBuildingsReviewPage(
         head.title("${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1124,7 +1120,6 @@ private fun bulkApartmentsReviewPage(
         head.title("${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1153,7 +1148,6 @@ private fun bulkPaymentsReviewPage(
         head.title("${BuildingStrings.BULK_REVIEW} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1179,13 +1173,25 @@ private fun importPage(
         head.title("${BuildingStrings.IMPORT_DATA} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
         )
     },
     content = { ImportPage(username = username, successMessage = successMessage, errorMessage = errorMessage) }
+)
+
+private fun clearDataConfirmationPage(username: String): SummonPage = SummonPage(
+    head = { head ->
+        head.title("${BuildingStrings.CLEAR_DATA} - ${BuildingStrings.APP_TITLE}")
+        head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+        head.meta("robots", "noindex", null, null, null)
+        head.link(
+            rel = "stylesheet",
+            href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
+        )
+    },
+    content = { ClearDataConfirmationPage(username) }
 )
 
 private fun editBuildingPage(
@@ -1197,7 +1203,6 @@ private fun editBuildingPage(
         head.title("${BuildingStrings.EDIT_BUILDING} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1215,7 +1220,6 @@ private fun deleteBuildingPage(
         head.title("${BuildingStrings.DELETE_BUILDING} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"
@@ -1236,7 +1240,6 @@ private fun editApartmentPage(
         head.title("${BuildingStrings.EDIT_APARTMENT} - ${BuildingStrings.APP_TITLE}")
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
         head.meta("robots", "noindex", null, null, null)
-        head.style(BuildingTheme.globalStyles)
         head.link(
             rel = "stylesheet",
             href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap"

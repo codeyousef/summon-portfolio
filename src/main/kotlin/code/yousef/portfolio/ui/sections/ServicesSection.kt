@@ -11,7 +11,10 @@ import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
+import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
@@ -23,24 +26,27 @@ fun ServicesSection(
     onRequestServices: () -> Unit,
     modifier: Modifier = Modifier()
 ) {
-    // Responsive grid styles
-    GlobalStyle(
-        """
-        .services-bento-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: ${PortfolioTheme.Spacing.md};
-            width: 100%;
+    TypedStyleSheet {
+        val grid = StyleSelector.className("services-bento-grid")
+        rule(
+            grid,
+            Modifier()
+                .display(Display.Grid)
+                .gridTemplateColumns(gridRepeat(3, gridFraction()))
+                .gap(PortfolioTheme.Spacing.md)
+                .width(100.percent),
+        )
+        media(MediaQuery.MaxWidth(900)) {
+            rule(
+                grid,
+                Modifier()
+                    .display(Display.Flex)
+                    .flexDirection(FlexDirection.Column)
+                    .gap(PortfolioTheme.Spacing.md),
+                priority = StyleRulePriority.Important,
+            )
         }
-        @media (max-width: 900px) {
-            .services-bento-grid {
-                display: flex !important;
-                flex-direction: column !important;
-                gap: ${PortfolioTheme.Spacing.md} !important;
-            }
-        }
-        """
-    )
+    }
 
     ContentSection(modifier = modifier) {
         Column(
@@ -135,4 +141,3 @@ private fun ServiceCard(service: Service, locale: PortfolioLocale) {
         )
     }
 }
-

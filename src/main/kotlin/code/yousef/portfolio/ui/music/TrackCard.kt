@@ -3,6 +3,7 @@ package code.yousef.portfolio.ui.music
 import code.yousef.portfolio.content.model.MusicTrack
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioCardGradient
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
@@ -11,7 +12,9 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StylePseudoClass
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -22,17 +25,23 @@ fun TrackCard(
     track: MusicTrack,
     locale: PortfolioLocale
 ) {
-    GlobalStyle(
-        css = """
-        .track-card {
-            transition: transform ${PortfolioTheme.Motion.DEFAULT}, box-shadow ${PortfolioTheme.Motion.DEFAULT};
-        }
-        .track-card:hover {
-            transform: translateY(-2px);
-            box-shadow: ${PortfolioTheme.Shadows.MEDIUM};
-        }
-    """
-    )
+    TypedStyleSheet {
+        val card = StyleSelector.className("track-card")
+        rule(
+            card,
+            Modifier().transition(
+                property = TransitionProperty.All,
+                duration = 200,
+                timingFunction = TransitionTimingFunction.Ease,
+            ),
+        )
+        rule(
+            card.pseudoClass(StylePseudoClass.Hover),
+            Modifier()
+                .transform(TransformFunction.TranslateY to "-2px")
+                .boxShadow(PortfolioTheme.Shadows.MEDIUM),
+        )
+    }
 
     Column(
         modifier = Modifier()
@@ -82,7 +91,7 @@ fun TrackCard(
                             .display(Display.Flex)
                             .alignItems(AlignItems.Center)
                             .justifyContent(JustifyContent.Center)
-                            .background(PortfolioTheme.Gradients.CARD)
+                            .portfolioCardGradient()
                     ) {
                         Text(
                             text = "♪",

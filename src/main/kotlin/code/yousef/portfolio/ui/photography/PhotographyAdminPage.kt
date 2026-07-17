@@ -4,13 +4,14 @@ import code.yousef.portfolio.content.model.PhotographyMediaType
 import code.yousef.portfolio.content.model.PhotographyPhoto
 import code.yousef.portfolio.content.model.PhotographySourceKind
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.foundation.RawHtml
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.Form
 import codes.yousef.summon.components.forms.FormButton
 import codes.yousef.summon.components.forms.FormEncType
 import codes.yousef.summon.components.forms.FormMethod
+import codes.yousef.summon.components.forms.FormSelect
+import codes.yousef.summon.components.forms.FormSelectOption
 import codes.yousef.summon.components.forms.FormTextArea
 import codes.yousef.summon.components.forms.FormTextField
 import codes.yousef.summon.components.input.FormField
@@ -304,19 +305,20 @@ private fun SelectField(
     options: List<SelectOption>,
     modifier: Modifier = Modifier()
 ) {
-    Column(modifier = modifier.display(Display.Flex).flexDirection(FlexDirection.Column).gap(6.px)) {
-        AdminLabel(label)
-        RawHtml(
-            html = """
-                <select name="${htmlAttr(name)}" style="width:100%;padding:10px 12px;border:1px solid #30363d;border-radius:6px;background:#0d1117;color:#e6edf3">
-                    ${options.joinToString("") { option ->
-                        val selected = if (option.value == value) " selected" else ""
-                        "<option value=\"${htmlAttr(option.value)}\"$selected>${html(option.label)}</option>"
-                    }}
-                </select>
-            """.trimIndent()
-        )
-    }
+    FormSelect(
+        name = name,
+        label = label,
+        options = options.map { option ->
+            FormSelectOption(value = option.value, label = option.label)
+        },
+        selectedValue = value,
+        modifier = modifier
+            .display(Display.Flex)
+            .flexDirection(FlexDirection.Column)
+            .gap(6.px)
+            .marginBottom(0.px),
+        fieldModifier = InputModifier()
+    )
 }
 
 @Composable
@@ -480,14 +482,3 @@ private fun PhotographyPhoto.uploadAssetRef(): String =
 
 private fun String.urlPathSegment(): String =
     URLEncoder.encode(this, StandardCharsets.UTF_8).replace("+", "%20")
-
-private fun html(value: String): String =
-    value
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-
-private fun htmlAttr(value: String): String =
-    html(value)
-        .replace("\"", "&quot;")
-        .replace("'", "&#39;")
