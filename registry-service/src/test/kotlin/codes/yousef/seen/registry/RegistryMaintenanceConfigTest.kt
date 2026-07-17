@@ -106,6 +106,23 @@ class RegistryMaintenanceConfigTest {
     }
 
     @Test
+    fun `maintenance accepts the inert container port but rejects server mode`() {
+        val environment = maintenanceGcpEnvironment() + ("PORT" to "8080")
+        val config = RegistryMaintenanceConfig.fromEnvironment(
+            RegistryMaintenanceMode.ROOT_VERIFY,
+            environment,
+        )
+
+        assertEquals(RegistryMaintenanceMode.ROOT_VERIFY, config.mode)
+        assertFailsWith<IllegalArgumentException> {
+            RegistryMaintenanceConfig.fromEnvironment(
+                RegistryMaintenanceMode.ROOT_VERIFY,
+                environment + ("REGISTRY_SERVER_MODE" to "public-api"),
+            )
+        }
+    }
+
+    @Test
     fun `combined bootstrap command is rejected and explicit phases parse separately`() {
         assertFailsWith<IllegalArgumentException> {
             RegistryMaintenanceInvocation.parse(arrayOf("bootstrap"))
