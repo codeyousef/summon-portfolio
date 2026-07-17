@@ -1,0 +1,38 @@
+# Public pins and resource references only. Never put secret payloads here.
+container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/registry-service@sha256:REPLACE_WITH_64_HEX"
+signer_container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/registry-service@sha256:REPLACE_WITH_SEPARATELY_REVIEWED_64_HEX"
+
+online_key_version_numbers = {
+  releases  = "1"
+  security  = "1"
+  snapshot  = "1"
+  timestamp = "1"
+}
+
+online_public_keys_hex = {
+  releases  = "REPLACE_WITH_64_LOWERCASE_HEX"
+  security  = "REPLACE_WITH_64_LOWERCASE_HEX"
+  snapshot  = "REPLACE_WITH_64_LOWERCASE_HEX"
+  timestamp = "REPLACE_WITH_64_LOWERCASE_HEX"
+}
+
+trusted_root_v1_sha256 = "REPLACE_WITH_64_LOWERCASE_HEX"
+
+secret_versions = {
+  publisher_token        = "1"
+  trust_and_safety_token = "1"
+  security_token         = "1"
+  github_app_id          = "1"
+  github_app_private_key = "1"
+}
+
+portfolio_gateway_service_account = "REPLACE_WITH_PORTFOLIO_DEV_RUNTIME@portfolio-476219.iam.gserviceaccount.com"
+reviewer_service_account          = "REPLACE_WITH_MANUAL_REVIEWER@portfolio-476219.iam.gserviceaccount.com"
+github_ci_enabled                 = false # enable only after the protected GitHub environment exists
+
+workloads_enabled = false
+schedules_enabled = false
+schedules_paused  = true
+ceremony_operations = []
+edge_provisioned     = false
+edge_cutover_enabled = false

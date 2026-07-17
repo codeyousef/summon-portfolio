@@ -1,0 +1,3 @@
+# Production uses a different project and a different locked state bucket.
+bucket = "REPLACE_WITH_LOCKED_PROD_TOFU_STATE_BUCKET"
+prefix = "seen-registry/prod"
