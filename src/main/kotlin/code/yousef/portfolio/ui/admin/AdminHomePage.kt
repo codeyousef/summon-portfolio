@@ -76,7 +76,9 @@ fun AdminHomePage(
         Row(
             modifier = Modifier()
                 .display(Display.Grid)
-                .gridTemplateColumns("repeat(auto-fit, minmax(240px, 1fr))")
+                .gridTemplateColumns(
+                    gridAutoFit(gridMinMax(gridTrack(240.px), gridFraction()))
+                )
                 .gap(16.px)
                 .width(100.percent)
         ) {
@@ -94,7 +96,9 @@ private fun AdminCardLink(item: AdminLinkItem) {
         modifier = Modifier()
             .display(Display.Block)
             .padding(18.px)
-            .border("1px", "solid", if (item.primary) "#2ea043" else "#30363d")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(if (item.primary) "#2ea043" else "#30363d")
             .borderRadius(6.px)
             .backgroundColor(if (item.primary) "#10281a" else "#161b22")
             .color("#e6edf3")
@@ -137,7 +141,9 @@ private fun AdminPillLink(label: String, href: String) {
             .justifyContent(JustifyContent.Center)
             .height(38.px)
             .padding(0.px, 14.px)
-            .border("1px", "solid", "#30363d")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor("#30363d")
             .borderRadius(6.px)
             .color("#e6edf3")
             .textDecoration(TextDecoration.None),

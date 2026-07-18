@@ -90,7 +90,7 @@ private fun ArtworkCard(
             .position(Position.Relative)
             .borderRadius(PortfolioTheme.Radii.md)
             .overflow(Overflow.Hidden)
-            .cursor("pointer")
+            .cursor(Cursor.Pointer)
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .boxShadow(PortfolioTheme.Shadows.LOW)
             .className("artwork-card")

@@ -15,6 +15,7 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 
@@ -76,7 +77,9 @@ fun ServicesOverlay(
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .gridTemplateColumns("repeat(auto-fit, minmax(240px, 1fr))")
+                    .gridTemplateColumns(
+                        gridAutoFit(gridMinMax(gridTrack(240.px), gridFraction()))
+                    )
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 services.filter { it.featured }.forEach { service ->
@@ -139,4 +142,3 @@ fun ServicesOverlay(
         }
     }
 }
-

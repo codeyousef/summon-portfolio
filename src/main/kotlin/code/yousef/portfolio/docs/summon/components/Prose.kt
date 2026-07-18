@@ -156,11 +156,14 @@ private fun renderBlockSequence(nodes: List<Node>, document: MarkdownDocument) {
                     Row(
                         modifier = Modifier()
                             .display(Display.Grid)
-                            .gridTemplateColumns("minmax(0, 1fr) minmax(0, 1fr)")
+                            .gridTemplateColumns(
+                                gridMinMax(gridTrack("0"), gridFraction()),
+                                gridMinMax(gridTrack("0"), gridFraction()),
+                            )
                             .gap(PortfolioTheme.Spacing.lg)
                             .alignItems(AlignItems.FlexStart)
                             .mediaQuery(MediaQuery.MaxWidth(900)) {
-                                gridTemplateColumns("minmax(0, 1fr)")
+                                gridTemplateColumns(gridMinMax(gridTrack("0"), gridFraction()))
                             }
                     ) {
                         Box(modifier = Modifier().minWidth(0.px)) {

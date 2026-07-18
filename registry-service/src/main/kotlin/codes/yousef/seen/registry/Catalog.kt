@@ -1305,7 +1305,7 @@ private fun CatalogStyles() {
                 StyleSelector.all(
                     interactiveNavigationItems + interactiveCardItems + listOf(searchButton, downloadLink),
                 ),
-                Modifier().transition("none"),
+                Modifier().transitionProperty(TransitionProperty.None),
                 StyleRulePriority.Important,
             )
             rule(

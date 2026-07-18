@@ -58,7 +58,7 @@ fun BuildingLoginPage(errorMessage: String?) {
                     .color(BuildingTheme.Colors.TEXT_WHITE)
                     .padding(BuildingTheme.Spacing.md)
                     .borderRadius(BuildingTheme.BorderRadius.md)
-                    .fontWeight("600")
+                    .fontWeight(FontWeight.SemiBold)
                     .margin(BuildingTheme.Spacing.md, "0", "0", "0")
             )
         }
@@ -107,7 +107,7 @@ fun BuildingChangePasswordPage(username: String, errorMessage: String?) {
                     .color(BuildingTheme.Colors.TEXT_WHITE)
                     .padding(BuildingTheme.Spacing.md)
                     .borderRadius(BuildingTheme.BorderRadius.md)
-                    .fontWeight("600")
+                    .fontWeight(FontWeight.SemiBold)
                     .margin(BuildingTheme.Spacing.md, "0", "0", "0")
             )
         }
@@ -134,7 +134,7 @@ fun ResetPasswordPage(token: String?, errorMessage: String?) {
                     .color(BuildingTheme.Colors.TEXT_WHITE)
                     .padding(BuildingTheme.Spacing.md)
                     .borderRadius(BuildingTheme.BorderRadius.md)
-                    .fontWeight("600")
+                    .fontWeight(FontWeight.SemiBold)
                     .textAlign(TextAlign.Center)
                     .textDecoration(TextDecoration.None)
                     .display(Display.Block)
@@ -175,7 +175,7 @@ fun ResetPasswordPage(token: String?, errorMessage: String?) {
                         .color(BuildingTheme.Colors.TEXT_WHITE)
                         .padding(BuildingTheme.Spacing.md)
                         .borderRadius(BuildingTheme.BorderRadius.md)
-                        .fontWeight("600")
+                        .fontWeight(FontWeight.SemiBold)
                         .margin(BuildingTheme.Spacing.md, "0", "0", "0")
                 )
             }
@@ -217,7 +217,7 @@ fun UserManagementPage(
                         Text(
                             text = "${BuildingStrings.RESET_LINK_GENERATED} ($targetUser)",
                             modifier = Modifier()
-                                .fontWeight("600")
+                                .fontWeight(FontWeight.SemiBold)
                                 .color("#155724")
                                 .margin("0", "0", BuildingTheme.Spacing.sm, "0")
                         )
@@ -288,7 +288,7 @@ fun UserManagementPage(
                                 Text(
                                     text = user,
                                     modifier = Modifier()
-                                        .fontWeight("500")
+                                        .fontWeight(FontWeight.Medium)
                                         .color(BuildingTheme.Colors.TEXT_PRIMARY)
                                 )
                                 
@@ -304,7 +304,7 @@ fun UserManagementPage(
                                             .color(BuildingTheme.Colors.TEXT_PRIMARY)
                                             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
                                             .borderRadius(BuildingTheme.BorderRadius.md)
-                                            .fontWeight("500")
+                                            .fontWeight(FontWeight.Medium)
                                             .fontSize(BuildingTheme.FontSize.sm)
                                     )
                                 }
@@ -346,7 +346,7 @@ private fun BuildingAuthScaffold(
                 text = BuildingStrings.APP_TITLE,
                 modifier = Modifier()
                     .fontSize(BuildingTheme.FontSize.xxl)
-                    .fontWeight("700")
+                    .fontWeight(FontWeight.Bold)
                     .color(BuildingTheme.Colors.PRIMARY)
                     .textAlign(TextAlign.Center)
                     .margin("0", "0", BuildingTheme.Spacing.lg, "0")
@@ -365,7 +365,7 @@ private fun BuildingAuthScaffold(
                     text = title,
                     modifier = Modifier()
                         .fontSize(BuildingTheme.FontSize.xl)
-                        .fontWeight("600")
+                        .fontWeight(FontWeight.SemiBold)
                         .color(BuildingTheme.Colors.TEXT_PRIMARY)
                         .margin("0", "0", BuildingTheme.Spacing.sm, "0")
                 )
@@ -399,7 +399,7 @@ private fun FormGroup(label: String, content: @Composable () -> Unit) {
             text = label,
             modifier = Modifier()
                 .fontSize(BuildingTheme.FontSize.sm)
-                .fontWeight("500")
+                .fontWeight(FontWeight.Medium)
                 .color(BuildingTheme.Colors.TEXT_SECONDARY)
                 .margin("0", "0", BuildingTheme.Spacing.xs, "0")
         )
@@ -950,7 +950,7 @@ private fun PastDueWarningBadge() {
             .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.sm)
             .borderRadius(BuildingTheme.BorderRadius.full)
             .fontSize(BuildingTheme.FontSize.xs)
-            .fontWeight("500")
+            .fontWeight(FontWeight.Medium)
             .margin(BuildingTheme.Spacing.xs, "0", "0", "0")
     )
 }
@@ -1161,7 +1161,7 @@ fun ImportPage(
                                 .color(BuildingTheme.Colors.TEXT_WHITE)
                                 .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                                 .borderRadius(BuildingTheme.BorderRadius.md)
-                                .fontWeight("500")
+                                .fontWeight(FontWeight.Medium)
                         )
                     }
                 }
@@ -1187,7 +1187,7 @@ fun ImportPage(
                         .color(BuildingTheme.Colors.TEXT_WHITE)
                         .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                         .borderRadius(BuildingTheme.BorderRadius.md)
-                        .fontWeight("500")
+                        .fontWeight(FontWeight.Medium)
                         .textDecoration(TextDecoration.None)
                 ) {
                     Text(BuildingStrings.CLEAR_DATA)
@@ -1224,7 +1224,7 @@ fun ClearDataConfirmationPage(username: String) {
                                 .color(BuildingTheme.Colors.TEXT_WHITE)
                                 .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                                 .borderRadius(BuildingTheme.BorderRadius.md)
-                                .fontWeight("600")
+                                .fontWeight(FontWeight.SemiBold)
                         )
                     }
                     Link(
@@ -1235,7 +1235,7 @@ fun ClearDataConfirmationPage(username: String) {
                             .color(BuildingTheme.Colors.TEXT_PRIMARY)
                             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                             .borderRadius(BuildingTheme.BorderRadius.md)
-                            .fontWeight("600")
+                            .fontWeight(FontWeight.SemiBold)
                             .textDecoration(TextDecoration.None)
                     ) {
                         Text(BuildingStrings.CANCEL)
@@ -1316,7 +1316,7 @@ fun EditBuildingPage(
                                 .color(BuildingTheme.Colors.TEXT_WHITE)
                                 .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                                 .borderRadius(BuildingTheme.BorderRadius.md)
-                                .fontWeight("500")
+                                .fontWeight(FontWeight.Medium)
                         )
                         Link(
                             href = "/buildings",
@@ -1381,7 +1381,7 @@ fun DeleteBuildingPage(
                             text = "⚠️ ${BuildingStrings.CONFIRM_DELETE_BUILDING}",
                             modifier = Modifier()
                                 .color(BuildingTheme.Colors.DANGER_TEXT)
-                                .fontWeight("600")
+                                .fontWeight(FontWeight.SemiBold)
                                 .fontSize(BuildingTheme.FontSize.sm)
                         )
                         if (unitCount > 0) {
@@ -1429,7 +1429,7 @@ fun DeleteBuildingPage(
                                 .color(BuildingTheme.Colors.TEXT_WHITE)
                                 .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                                 .borderRadius(BuildingTheme.BorderRadius.md)
-                                .fontWeight("500")
+                                .fontWeight(FontWeight.Medium)
                         )
                     }
                     Link(
@@ -1505,7 +1505,7 @@ fun EditApartmentPage(
                         text = "معلومات الشقة",
                         modifier = Modifier()
                             .fontSize(BuildingTheme.FontSize.lg)
-                            .fontWeight("600")
+                            .fontWeight(FontWeight.SemiBold)
                             .color(BuildingTheme.Colors.PRIMARY)
                             .margin("0", "0", BuildingTheme.Spacing.md, "0")
                     )
@@ -1563,7 +1563,7 @@ fun EditApartmentPage(
                         text = "معلومات المستأجر",
                         modifier = Modifier()
                             .fontSize(BuildingTheme.FontSize.lg)
-                            .fontWeight("600")
+                            .fontWeight(FontWeight.SemiBold)
                             .color(BuildingTheme.Colors.PRIMARY)
                             .margin("0", "0", BuildingTheme.Spacing.md, "0")
                     )
@@ -1611,7 +1611,7 @@ fun EditApartmentPage(
                         text = "معلومات العقد",
                         modifier = Modifier()
                             .fontSize(BuildingTheme.FontSize.lg)
-                            .fontWeight("600")
+                            .fontWeight(FontWeight.SemiBold)
                             .color(BuildingTheme.Colors.PRIMARY)
                             .margin("0", "0", BuildingTheme.Spacing.md, "0")
                     )
@@ -1675,7 +1675,7 @@ fun EditApartmentPage(
                                 .color(BuildingTheme.Colors.TEXT_WHITE)
                                 .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.lg)
                                 .borderRadius(BuildingTheme.BorderRadius.md)
-                                .fontWeight("500")
+                                .fontWeight(FontWeight.Medium)
                         )
                         Link(
                             href = "/buildings/${building.id}",
@@ -2162,7 +2162,7 @@ private fun GridHeaderCell(text: String) {
     Box(
         modifier = Modifier()
             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
-            .fontWeight("600")
+            .fontWeight(FontWeight.SemiBold)
             .fontSize(BuildingTheme.FontSize.sm)
             .color(BuildingTheme.Colors.TEXT_SECONDARY)
             .textAlign(TextAlign.Right)
@@ -2263,7 +2263,7 @@ private fun NotificationBanner(upcomingPayments: List<PaymentWithDetails>) {
                         Text(
                             text = "${BuildingStrings.NOTIFICATIONS}: ${upcomingInMonth.size} ${BuildingStrings.PAYMENT_DUE_SOON}",
                             modifier = Modifier()
-                                .fontWeight("600")
+                                .fontWeight(FontWeight.SemiBold)
                                 .color(BuildingTheme.Colors.INFO_TEXT)
                                 .fontSize(BuildingTheme.FontSize.sm)
                         )
@@ -2317,7 +2317,7 @@ private fun NotificationCard(
                 Text(
                     text = "${payment.building?.name ?: ""} - ${payment.apartment?.unitNumber ?: ""}",
                     modifier = Modifier()
-                        .fontWeight("600")
+                        .fontWeight(FontWeight.SemiBold)
                         .color(textColor)
                         .fontSize(BuildingTheme.FontSize.sm)
                 )
@@ -2349,7 +2349,7 @@ private fun NotificationCard(
                     .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.sm)
                     .borderRadius(BuildingTheme.BorderRadius.full)
                     .fontSize(BuildingTheme.FontSize.xs)
-                    .fontWeight("600")
+                    .fontWeight(FontWeight.SemiBold)
             ) {
                 Text(BuildingStrings.formatDaysRemaining(daysUntilDue))
             }
@@ -2382,7 +2382,7 @@ private fun OverdueAlertBanner(overdueCount: Int) {
                 Text(
                     text = "تنبيه: $overdueCount دفعات متأخرة",
                     modifier = Modifier()
-                        .fontWeight("600")
+                        .fontWeight(FontWeight.SemiBold)
                         .color(BuildingTheme.Colors.DANGER_TEXT)
                         .fontSize(BuildingTheme.FontSize.sm)
                 )
@@ -2401,7 +2401,7 @@ private fun OverdueAlertBanner(overdueCount: Int) {
                     .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.md)
                     .borderRadius(BuildingTheme.BorderRadius.md)
                     .fontSize(BuildingTheme.FontSize.xs)
-                    .fontWeight("600")
+                    .fontWeight(FontWeight.SemiBold)
                     .textDecoration(TextDecoration.None)
             ) {
                 Text("عرض")

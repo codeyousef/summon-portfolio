@@ -88,7 +88,10 @@ private fun PhotographyStyles() {
             hero,
             Modifier()
                 .display(Display.Grid)
-                .gridTemplateColumns("minmax(0, 0.92fr) minmax(420px, 1.08fr)")
+                .gridTemplateColumns(
+                    gridMinMax(gridTrack("0"), gridFraction(0.92)),
+                    gridMinMax(gridTrack(420.px), gridFraction(1.08)),
+                )
                 .gap(32.px)
                 .alignItems(AlignItems.FlexEnd)
                 .minHeight("calc(100vh - 168px)")
@@ -245,7 +248,9 @@ private fun MetricPill(value: String, label: String) {
             .gap(2.px)
             .minWidth(116.px)
             .padding(12.px, 14.px)
-            .border("1px", "solid", "rgba(255,255,255,0.16)")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor("rgba(255,255,255,0.16)")
             .borderRadius(8.px)
             .backgroundColor("rgba(255,255,255,0.05)")
     ) {
@@ -296,7 +301,9 @@ private fun FilterChip(label: String, filter: String, activeFilter: String) {
             .alignItems(AlignItems.Center)
             .height(34.px)
             .padding(0.px, 14.px)
-            .border("1px", "solid", "rgba(255,255,255,0.18)")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor("rgba(255,255,255,0.18)")
             .borderRadius(999.px)
             .backgroundColor(if (active) "#ffffff" else "rgba(255,255,255,0.05)")
             .color(if (active) "#060607" else "#f3eee7")
@@ -397,7 +404,9 @@ private fun AlbumSection(album: String, items: List<PhotographyPhoto>) {
         Row(
             modifier = Modifier()
                 .display(Display.Grid)
-                .gridTemplateColumns("repeat(auto-fit, minmax(260px, 1fr))")
+                .gridTemplateColumns(
+                    gridAutoFit(gridMinMax(gridTrack(260.px), gridFraction()))
+                )
                 .gap(PortfolioTheme.Spacing.lg)
         ) {
             items.forEach { photo -> MediaCard(photo) }
@@ -414,7 +423,9 @@ private fun MediaCard(photo: PhotographyPhoto) {
             .gap(PortfolioTheme.Spacing.md)
             .minWidth(0.px)
             .padding(10.px)
-            .border("1px", "solid", "rgba(255,255,255,0.13)")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor("rgba(255,255,255,0.13)")
             .borderRadius(8.px)
             .backgroundColor("rgba(255,255,255,0.045)")
             .className("photography-card")

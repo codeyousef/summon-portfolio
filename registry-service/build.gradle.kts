@@ -24,7 +24,7 @@ application {
 dependencies {
     implementation("codes.yousef.aether:aether-core-jvm:0.6.0.0")
     implementation("codes.yousef.aether:aether-web-jvm:0.6.0.0")
-    implementation("codes.yousef:summon:0.7.0.3")
+    implementation("codes.yousef:summon:0.7.0.4")
     implementation("io.vertx:vertx-core:4.5.11")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")

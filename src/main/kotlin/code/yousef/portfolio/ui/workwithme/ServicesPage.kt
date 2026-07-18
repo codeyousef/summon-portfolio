@@ -165,7 +165,9 @@ private fun ServicesHeroSection() {
                         .fontWeight(600)
                         .fontSize(1.rem)
                         .textDecoration(TextDecoration.None)
-                        .border("1px", "solid", PortfolioTheme.Colors.BORDER),
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER),
                     target = null,
                     rel = null,
                     title = null,
@@ -249,7 +251,9 @@ private fun ServiceCard(
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border("1px", "solid", PortfolioTheme.Colors.BORDER)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
             .height("100%")
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.md)) {
@@ -355,11 +359,9 @@ private fun EngagementCard(
             .backgroundColor(if (highlighted) PortfolioTheme.Colors.SURFACE_STRONG else PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border(
-                "2px",
-                "solid",
-                if (highlighted) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.BORDER
-            )
+            .borderWidth(2)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(if (highlighted) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.BORDER)
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.md)) {
             if (highlighted) {
