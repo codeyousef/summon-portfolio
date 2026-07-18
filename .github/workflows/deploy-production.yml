@@ -520,6 +520,21 @@ jobs:
             echo "Verified ${smoke_url}" >> "${GITHUB_STEP_SUMMARY}"
           done
 
+          photography_html="$(curl --fail --silent --show-error \
+            --retry 4 --retry-all-errors --retry-delay 2 \
+            --retry-max-time 30 --connect-timeout 5 --max-time 10 \
+            'https://www.yousef.codes/photography')"
+          mapfile -t photography_assets < <(
+            grep -oE '/uploads/photography/[A-Za-z0-9._/-]+' <<<"${photography_html}" | sort -u || true
+          )
+          for photography_asset in "${photography_assets[@]}"; do
+            curl --fail --silent --show-error \
+              --retry 4 --retry-all-errors --retry-delay 2 \
+              --retry-max-time 30 --connect-timeout 5 --max-time 10 \
+              "https://www.yousef.codes${photography_asset}" >/dev/null
+            echo "Verified https://www.yousef.codes${photography_asset}" >> "${GITHUB_STEP_SUMMARY}"
+          done
+
           gcloud run services update-traffic "${SERVICE}" \
             --region "${GCP_REGION}" \
             --remove-tags runtime-canary \
