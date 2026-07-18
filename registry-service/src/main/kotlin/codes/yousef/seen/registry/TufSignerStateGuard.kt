@@ -247,6 +247,7 @@ class StateAwareTufSignerPolicyGuard(
     override fun authorize(request: TufSignerAuthorizationRequest) {
         requireAuthorizedCaller(request)
         val state = loadTrustedState()
+        requireRetainedDelegationState(request.operation, state.current)
         val candidate = parseCanonicalSigned(request.canonicalSignedBytes)
         when (request.role) {
             TufRole.RELEASES, TufRole.SECURITY -> authorizeDelegated(request, candidate, state)
@@ -269,6 +270,7 @@ class StateAwareTufSignerPolicyGuard(
         // opposite-role retention constraints are based on the latest pointer.
         requireAuthorizedCaller(request)
         val state = loadTrustedState()
+        requireRetainedDelegationState(request.operation, state.current)
         authorizeTimestamp(request.operation, parseCanonicalSigned(request.canonicalSignedBytes), state)
         if (!publicKey.contentEquals(state.root.timestampKey)) {
             rejectSigning("Timestamp signer key does not match the trusted root")
@@ -473,13 +475,13 @@ class StateAwareTufSignerPolicyGuard(
         val releasesDescriptor = descriptor(meta.getValue("releases.json"))
         val securityDescriptor = descriptor(meta.getValue("security.json"))
         val targets = validateTopLevelTargets(referenced(targetsDescriptor, "targets"), root)
-        verifyDelegatedEnvelope(
+        val releases = verifyDelegatedEnvelope(
             referenced(releasesDescriptor, TufRole.RELEASES),
             TufRole.RELEASES,
             releasesDescriptor.version,
             targets,
         )
-        verifyDelegatedEnvelope(
+        val security = verifyDelegatedEnvelope(
             referenced(securityDescriptor, TufRole.SECURITY),
             TufRole.SECURITY,
             securityDescriptor.version,
@@ -493,6 +495,8 @@ class StateAwareTufSignerPolicyGuard(
                 targets = targetsDescriptor,
                 releases = releasesDescriptor,
                 security = securityDescriptor,
+                releasesExpiry = Instant.parse(releases.string("expires")),
+                securityExpiry = Instant.parse(security.string("expires")),
             ),
             timestampGeneration = timestampObject.generation,
         )
@@ -601,6 +605,30 @@ class StateAwareTufSignerPolicyGuard(
             }
         } else if (operation == TufSigningOperation.BOOTSTRAP || version <= current.version) {
             rejectSigning("Candidate transaction does not advance the committed version")
+        }
+    }
+
+    /**
+     * Ordinary purpose-specific publication may replace an expired changing
+     * role while the retained role is still valid. Retaining an already-expired
+     * opposite role is allowed only for the fail-closed dual-expiry recovery
+     * transaction; every signer enforces this independently of the coordinator.
+     */
+    private fun requireRetainedDelegationState(
+        operation: TufSigningOperation,
+        current: CurrentTransaction?,
+    ) {
+        val committed = current ?: return
+        val retainedExpiry = when (operation) {
+            TufSigningOperation.RELEASE -> committed.securityExpiry
+            TufSigningOperation.SECURITY -> committed.releasesExpiry
+            else -> return
+        }
+        val now = clock.instant()
+        if (!retainedExpiry.isAfter(now) &&
+            (committed.releasesExpiry.isAfter(now) || committed.securityExpiry.isAfter(now))
+        ) {
+            rejectSigning("Expired opposite delegated metadata may be retained only when both delegated roles are expired")
         }
     }
 
@@ -739,6 +767,8 @@ class StateAwareTufSignerPolicyGuard(
         val targets: MetadataDescriptor,
         val releases: MetadataDescriptor,
         val security: MetadataDescriptor,
+        val releasesExpiry: Instant,
+        val securityExpiry: Instant,
     )
 
     private data class TrustedSignerState(

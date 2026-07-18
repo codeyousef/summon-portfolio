@@ -87,6 +87,22 @@ enum class RegistryMaintenanceMode(
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = false,
     ),
+    RECOVER_EXPIRED_RELEASES(
+        command = "recover-expired-releases-once",
+        signingRoles = setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
+        signingOperation = TufSigningOperation.RELEASE,
+        requiresPublicationLease = true,
+        allowImmutableMetadataCreates = true,
+        allowRootPointerWrite = false,
+    ),
+    RECOVER_EXPIRED_SECURITY(
+        command = "recover-expired-security-once",
+        signingRoles = setOf(TufRole.SECURITY, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
+        signingOperation = TufSigningOperation.SECURITY,
+        requiresPublicationLease = true,
+        allowImmutableMetadataCreates = true,
+        allowRootPointerWrite = false,
+    ),
     ;
 
     init {
@@ -139,6 +155,14 @@ data class RegistryMaintenanceInvocation(
             "refresh-security-once" -> {
                 require(args.size == 1) { "Usage: registry-service refresh-security-once" }
                 RegistryMaintenanceInvocation(RegistryMaintenanceMode.REFRESH_SECURITY)
+            }
+            "recover-expired-releases-once" -> {
+                require(args.size == 1) { "Usage: registry-service recover-expired-releases-once" }
+                RegistryMaintenanceInvocation(RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES)
+            }
+            "recover-expired-security-once" -> {
+                require(args.size == 1) { "Usage: registry-service recover-expired-security-once" }
+                RegistryMaintenanceInvocation(RegistryMaintenanceMode.RECOVER_EXPIRED_SECURITY)
             }
             "bootstrap" -> throw IllegalArgumentException(
                 "Combined bootstrap authority is disabled; run import-offline-bootstrap and bootstrap-online as separate jobs",
@@ -363,6 +387,12 @@ class RegistryMaintenanceResources private constructor(
         else -> throw IllegalArgumentException("This runtime is not a purpose-specific refresh runtime")
     }
 
+    fun recoverExpired(): Long = when (config.mode) {
+        RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES -> requireTuf().recoverExpiredReleases()
+        RegistryMaintenanceMode.RECOVER_EXPIRED_SECURITY -> requireTuf().recoverExpiredSecurity()
+        else -> throw IllegalArgumentException("This runtime is not an expired-metadata recovery runtime")
+    }
+
     private fun requireTuf(): TufPublisher = requireNotNull(tuf) {
         "The offline bootstrap importer has no online publisher"
     }
@@ -500,6 +530,14 @@ object RegistryMaintenanceRuntime {
                 RegistryMaintenanceMode.REFRESH_RELEASES,
                 RegistryMaintenanceMode.REFRESH_SECURITY ->
                     println("online_transaction_version=${resources.forceRefresh()}")
+                RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES,
+                RegistryMaintenanceMode.RECOVER_EXPIRED_SECURITY -> {
+                    println("online_transaction_version=${resources.recoverExpired()}")
+                    println("recovery_incomplete=true")
+                    println(
+                        "required_follow_up=${if (invocation.mode == RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES) "refresh-security-once" else "refresh-releases-once"}",
+                    )
+                }
             }
         }
     }
