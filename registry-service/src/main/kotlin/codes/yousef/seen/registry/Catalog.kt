@@ -275,7 +275,6 @@ private fun CatalogSearch(query: String) {
             maxLength = CATALOG_QUERY_MAX_LENGTH,
             id = "seen-package-search",
             modifier = Modifier()
-                .className("seen-package-search-field")
                 .flex(grow = 1, shrink = 1, basis = "320px")
                 .minWidth(0)
                 .gap("8px")
@@ -1008,7 +1007,7 @@ private fun CatalogStyles() {
     val headerLink = StyleSelector.className("seen-header-link")
     val packageCard = StyleSelector.className("seen-package-card")
     val releaseRow = StyleSelector.className("seen-release-row")
-    val searchField = StyleSelector.className("seen-package-search-field")
+    val searchForm = StyleSelector.className("seen-catalog-search")
     val searchButton = StyleSelector.className("seen-search-button")
     val downloadLink = StyleSelector.className("seen-download-link")
     val interactiveNavigationItems = listOf(
@@ -1185,7 +1184,7 @@ private fun CatalogStyles() {
             Modifier().color("#8198b0").opacity(1f),
         )
         rule(
-            searchField.descendant(StyleSelector.element(StyleElement.Label)),
+            searchForm.descendant(StyleSelector.element(StyleElement.Label)),
             Modifier().color(CatalogTheme.TEXT_SECONDARY),
             StyleRulePriority.Important,
         )
