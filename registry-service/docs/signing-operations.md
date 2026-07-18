@@ -219,6 +219,47 @@ exact candidate and clients accept the complete chain. Reruns must either be
 byte-identical and resume a safe interrupted transaction or fail without
 overwrite.
 
+### Development recovery after both delegated roles expire
+
+Routine refresh remains strict: a releases coordinator will not retain stale
+security metadata, and a security coordinator will not retain stale releases
+metadata. If and only if **both** delegated roles are already expired while the
+offline root and top-level targets remain valid, development has an explicit
+two-transaction recovery path. Run the role-separated releases job once with:
+
+```bash
+java -jar seen-registry-service-0.1.0-dev-all.jar \
+  recover-expired-releases-once
+```
+
+This command holds releases, snapshot, and timestamp authority only. It
+retains the signed security envelope byte-for-byte and commits fresh releases,
+snapshot, and timestamp metadata. The committed intermediate transaction is
+still expired: readiness and clients must continue to reject it. Immediately
+complete recovery through the ordinary security job:
+
+```bash
+java -jar seen-registry-service-0.1.0-dev-all.jar \
+  refresh-security-once
+```
+
+The symmetric `recover-expired-security-once` followed by
+`refresh-releases-once` is supported, but never run both recovery commands.
+After the first recovery transaction, only one delegated role remains expired,
+so another recovery command must fail. The commands reject fresh or partially
+expired state, expired root or targets, altered retained metadata, repository
+state mismatches, and any runtime that receives the opposite delegated signer.
+The coordinator uses the existing role-specific signing operation, and every
+delegated, snapshot, and timestamp signer independently reloads the committed
+chain: if the opposite retained role is expired, the signer authorizes the
+transaction only when both delegated roles are already expired. Thus a faulty
+coordinator cannot use routine publication to retain a single stale opposite
+role. The timestamp signer repeats this check immediately before its
+generation-matched commit.
+They do not add an unsigned mode, extend an expiry, combine releases and
+security authority, or make the intermediate transaction client-acceptable.
+Verify the final complete chain before restoring service readiness.
+
 ## Key rotation and threshold change
 
 All changes are monotonic. Never overwrite a versioned root or targets file.

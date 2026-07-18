@@ -486,6 +486,69 @@ class TufTest {
     }
 
     @Test
+    fun `dual expiry recovery advances releases first then completes with a strict security refresh`() {
+        val fixture = splitAuthorityFixture()
+        val initialSecurity = fixture.storage.getMetadata("1.security.json")!!
+        fixture.clock.advance(Duration.ofDays(8))
+
+        assertFailsWith<RegistryException> { fixture.releases.forceRefreshReleases() }
+        assertFailsWith<RegistryException> { fixture.security.forceRefreshSecurity() }
+        assertEquals(1L, signed(fixture.storage.getMetadata("timestamp.json")!!)["version"]!!.jsonPrimitive.content.toLong())
+
+        val recoveryVersion = fixture.releases.recoverExpiredReleases()
+        val recoveredReleases = fixture.storage.getMetadata("$recoveryVersion.releases.json")!!
+        val recoveryMeta = signed(fixture.storage.getMetadata("$recoveryVersion.snapshot.json")!!)["meta"]!!.jsonObject
+        assertReferenced(recoveryMeta["releases.json"]!!.jsonObject, recoveryVersion, recoveredReleases)
+        assertReferenced(recoveryMeta["security.json"]!!.jsonObject, 1, initialSecurity)
+        assertContentEquals(initialSecurity, fixture.storage.getMetadata("1.security.json"))
+        assertNull(fixture.storage.getMetadata("$recoveryVersion.security.json"))
+
+        val intermediate = assertFailsWith<RegistryException> { fixture.releases.verifyFreshTransaction() }
+        assertEquals("temporarily_unavailable", intermediate.code)
+        assertFailsWith<IllegalArgumentException> { fixture.security.recoverExpiredSecurity() }
+
+        val completedVersion = fixture.security.forceRefreshSecurity()
+        val completedSecurity = fixture.storage.getMetadata("$completedVersion.security.json")!!
+        val completedMeta = signed(fixture.storage.getMetadata("$completedVersion.snapshot.json")!!)["meta"]!!.jsonObject
+        assertReferenced(completedMeta["releases.json"]!!.jsonObject, recoveryVersion, recoveredReleases)
+        assertReferenced(completedMeta["security.json"]!!.jsonObject, completedVersion, completedSecurity)
+        assertNull(fixture.storage.getMetadata("$completedVersion.releases.json"))
+        assertEquals(completedVersion, fixture.security.verifyFreshTransaction())
+    }
+
+    @Test
+    fun `dual expiry recovery also supports security first and rejects fresh or partial expiry`() {
+        val guarded = splitAuthorityFixture()
+        assertFailsWith<IllegalArgumentException> { guarded.releases.recoverExpiredReleases() }
+        assertFailsWith<IllegalArgumentException> { guarded.security.recoverExpiredSecurity() }
+        guarded.clock.advance(Duration.ofHours(7))
+        assertFailsWith<IllegalArgumentException> { guarded.releases.recoverExpiredReleases() }
+        assertFailsWith<IllegalArgumentException> { guarded.security.recoverExpiredSecurity() }
+
+        val fixture = splitAuthorityFixture()
+        val initialReleases = fixture.storage.getMetadata("1.releases.json")!!
+        fixture.clock.advance(Duration.ofDays(8))
+
+        val recoveryVersion = fixture.security.recoverExpiredSecurity()
+        val recoveredSecurity = fixture.storage.getMetadata("$recoveryVersion.security.json")!!
+        val recoveryMeta = signed(fixture.storage.getMetadata("$recoveryVersion.snapshot.json")!!)["meta"]!!.jsonObject
+        assertReferenced(recoveryMeta["releases.json"]!!.jsonObject, 1, initialReleases)
+        assertReferenced(recoveryMeta["security.json"]!!.jsonObject, recoveryVersion, recoveredSecurity)
+        assertContentEquals(initialReleases, fixture.storage.getMetadata("1.releases.json"))
+        assertNull(fixture.storage.getMetadata("$recoveryVersion.releases.json"))
+        assertFailsWith<RegistryException> { fixture.security.verifyFreshTransaction() }
+        assertFailsWith<IllegalArgumentException> { fixture.releases.recoverExpiredReleases() }
+
+        val completedVersion = fixture.releases.forceRefreshReleases()
+        val completedReleases = fixture.storage.getMetadata("$completedVersion.releases.json")!!
+        val completedMeta = signed(fixture.storage.getMetadata("$completedVersion.snapshot.json")!!)["meta"]!!.jsonObject
+        assertReferenced(completedMeta["releases.json"]!!.jsonObject, completedVersion, completedReleases)
+        assertReferenced(completedMeta["security.json"]!!.jsonObject, recoveryVersion, recoveredSecurity)
+        assertNull(fixture.storage.getMetadata("$completedVersion.security.json"))
+        assertEquals(completedVersion, fixture.releases.verifyFreshTransaction())
+    }
+
+    @Test
     fun `expired publisher is fenced from replacing a newer timestamp transaction`() {
         val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
         val repository = InMemoryRegistryRepository()
@@ -567,6 +630,54 @@ private data class PublisherFixture(
     val storage: InMemoryRegistryObjectStorage,
     val publisher: TufPublisher,
 )
+
+private data class SplitAuthorityFixture(
+    val clock: MutableClock,
+    val storage: InMemoryRegistryObjectStorage,
+    val releases: TufPublisher,
+    val security: TufPublisher,
+)
+
+private fun splitAuthorityFixture(): SplitAuthorityFixture {
+    val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
+    val repository = InMemoryRegistryRepository()
+    val storage = InMemoryRegistryObjectStorage()
+    val authority = testOnlineSigners()
+    bootstrap(storage, authority, clock)
+    TufPublisher(
+        repository, storage, authority, "development", "seen-dev-registry-v1",
+        "https://seen.dev.yousef.codes/packages", clock,
+    ).ensureInitialTransaction()
+    val releases = TufPublisher(
+        repository,
+        storage,
+        TufOnlineSigners(
+            authority.releases,
+            PublicKeyOnlyTufSigner(authority.security.publicKey),
+            authority.snapshot,
+            authority.timestamp,
+        ),
+        "development",
+        "seen-dev-registry-v1",
+        "https://seen.dev.yousef.codes/packages",
+        clock,
+    )
+    val security = TufPublisher(
+        repository,
+        storage,
+        TufOnlineSigners(
+            PublicKeyOnlyTufSigner(authority.releases.publicKey),
+            authority.security,
+            authority.snapshot,
+            authority.timestamp,
+        ),
+        "development",
+        "seen-dev-registry-v1",
+        "https://seen.dev.yousef.codes/packages",
+        clock,
+    )
+    return SplitAuthorityFixture(clock, storage, releases, security)
+}
 
 private fun publisherFixture(): PublisherFixture {
     val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))

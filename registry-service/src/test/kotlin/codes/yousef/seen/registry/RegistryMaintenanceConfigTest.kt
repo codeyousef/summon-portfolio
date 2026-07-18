@@ -77,31 +77,39 @@ class RegistryMaintenanceConfigTest {
     }
 
     @Test
-    fun `purpose refresh commands cannot receive the opposite delegated signer`() {
-        val releaseMode = RegistryMaintenanceMode.REFRESH_RELEASES
-        val release = maintenanceGcpEnvironment() + maintenanceSignerEnvironment(releaseMode.signingRoles)
-        assertEquals(
-            setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
-            RegistryMaintenanceConfig.fromEnvironment(releaseMode, release).remoteOnlineSignerTargets.keys,
-        )
-        assertFailsWith<IllegalArgumentException> {
-            RegistryMaintenanceConfig.fromEnvironment(
-                releaseMode,
-                release + (maintenanceSignerUrl(TufRole.SECURITY) to maintenanceSignerEndpoint(TufRole.SECURITY)),
+    fun `purpose refresh and recovery commands cannot receive the opposite delegated signer`() {
+        listOf(
+            RegistryMaintenanceMode.REFRESH_RELEASES,
+            RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES,
+        ).forEach { releaseMode ->
+            val release = maintenanceGcpEnvironment() + maintenanceSignerEnvironment(releaseMode.signingRoles)
+            assertEquals(
+                setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
+                RegistryMaintenanceConfig.fromEnvironment(releaseMode, release).remoteOnlineSignerTargets.keys,
             )
+            assertFailsWith<IllegalArgumentException> {
+                RegistryMaintenanceConfig.fromEnvironment(
+                    releaseMode,
+                    release + (maintenanceSignerUrl(TufRole.SECURITY) to maintenanceSignerEndpoint(TufRole.SECURITY)),
+                )
+            }
         }
 
-        val securityMode = RegistryMaintenanceMode.REFRESH_SECURITY
-        val security = maintenanceGcpEnvironment() + maintenanceSignerEnvironment(securityMode.signingRoles)
-        assertEquals(
-            setOf(TufRole.SECURITY, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
-            RegistryMaintenanceConfig.fromEnvironment(securityMode, security).remoteOnlineSignerTargets.keys,
-        )
-        assertFailsWith<IllegalArgumentException> {
-            RegistryMaintenanceConfig.fromEnvironment(
-                securityMode,
-                security + (maintenanceSignerUrl(TufRole.RELEASES) to maintenanceSignerEndpoint(TufRole.RELEASES)),
+        listOf(
+            RegistryMaintenanceMode.REFRESH_SECURITY,
+            RegistryMaintenanceMode.RECOVER_EXPIRED_SECURITY,
+        ).forEach { securityMode ->
+            val security = maintenanceGcpEnvironment() + maintenanceSignerEnvironment(securityMode.signingRoles)
+            assertEquals(
+                setOf(TufRole.SECURITY, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
+                RegistryMaintenanceConfig.fromEnvironment(securityMode, security).remoteOnlineSignerTargets.keys,
             )
+            assertFailsWith<IllegalArgumentException> {
+                RegistryMaintenanceConfig.fromEnvironment(
+                    securityMode,
+                    security + (maintenanceSignerUrl(TufRole.RELEASES) to maintenanceSignerEndpoint(TufRole.RELEASES)),
+                )
+            }
         }
     }
 
@@ -141,6 +149,20 @@ class RegistryMaintenanceConfigTest {
                 arrayOf("import-offline-targets-rotation", "security", "2.targets.json"),
             )?.mode,
         )
+        assertEquals(
+            RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES,
+            RegistryMaintenanceInvocation.parse(arrayOf("recover-expired-releases-once"))?.mode,
+        )
+        assertEquals(
+            RegistryMaintenanceMode.RECOVER_EXPIRED_SECURITY,
+            RegistryMaintenanceInvocation.parse(arrayOf("recover-expired-security-once"))?.mode,
+        )
+        assertFailsWith<IllegalArgumentException> {
+            RegistryMaintenanceInvocation.parse(arrayOf("recover-expired-releases-once", "unexpected"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            RegistryMaintenanceInvocation.parse(arrayOf("recover-expired-security-once", "unexpected"))
+        }
     }
 }
 

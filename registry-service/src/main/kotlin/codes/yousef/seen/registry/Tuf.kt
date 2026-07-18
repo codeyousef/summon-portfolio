@@ -920,13 +920,29 @@ class TufPublisher(
 
     /** Always advances releases + snapshot + timestamp while retaining committed security byte-for-byte. */
     @Synchronized
-    fun forceRefreshReleases(): Long = forceRefreshRole(TufRole.RELEASES)
+    fun forceRefreshReleases(): Long = forceRefreshRole(TufRole.RELEASES, RefreshPolicy.STRICT)
 
     /** Always advances security + snapshot + timestamp while retaining committed releases byte-for-byte. */
     @Synchronized
-    fun forceRefreshSecurity(): Long = forceRefreshRole(TufRole.SECURITY)
+    fun forceRefreshSecurity(): Long = forceRefreshRole(TufRole.SECURITY, RefreshPolicy.STRICT)
 
-    private fun forceRefreshRole(role: String): Long {
+    /**
+     * Recovers a transaction in which both delegated roles have already expired by
+     * advancing releases while retaining the expired security envelope exactly.
+     * The resulting transaction intentionally remains unready until a normal
+     * security refresh completes it.
+     */
+    @Synchronized
+    fun recoverExpiredReleases(): Long = forceRefreshRole(TufRole.RELEASES, RefreshPolicy.DUAL_EXPIRY_RECOVERY)
+
+    /**
+     * Symmetric recovery entry point. The resulting transaction intentionally
+     * remains unready until a normal releases refresh completes it.
+     */
+    @Synchronized
+    fun recoverExpiredSecurity(): Long = forceRefreshRole(TufRole.SECURITY, RefreshPolicy.DUAL_EXPIRY_RECOVERY)
+
+    private fun forceRefreshRole(role: String, policy: RefreshPolicy): Long {
         require(role in setOf(TufRole.RELEASES, TufRole.SECURITY))
         val changingSigner = online.asMap().getValue(role)
         val retainedRole = if (role == TufRole.RELEASES) TufRole.SECURITY else TufRole.RELEASES
@@ -941,7 +957,23 @@ class TufPublisher(
             throw RegistryException(503, "temporarily_unavailable", "Signed $role metadata is being refreshed", true, 5)
         }
         return try {
-            publishUnlocked(currentPublicReleases(), expectedTimestamp = expectedTimestamp)
+            val allowedExpiredRetainedRole = when (policy) {
+                RefreshPolicy.STRICT -> null
+                RefreshPolicy.DUAL_EXPIRY_RECOVERY -> {
+                    val current = readOnlineState()
+                        ?: unavailableMetadata("Signed registry metadata is unavailable")
+                    val recoveryNow = clock.instant()
+                    require(!current.releasesExpiry.isAfter(recoveryNow) && !current.securityExpiry.isAfter(recoveryNow)) {
+                        "Expired delegated metadata recovery requires both releases and security metadata to be expired"
+                    }
+                    retainedRole
+                }
+            }
+            publishUnlocked(
+                currentPublicReleases(),
+                expectedTimestamp = expectedTimestamp,
+                allowedExpiredRetainedRole = allowedExpiredRetainedRole,
+            )
         } finally {
             repository.releaseMetadataPublication(publicationHolder)
         }
@@ -1148,8 +1180,15 @@ class TufPublisher(
         expectedTimestamp: ByteArray?,
         securityTargetsOverride: JsonObject? = null,
         recoverCompromisedDelegations: Boolean = false,
+        allowedExpiredRetainedRole: String? = null,
     ): Long {
         requireBootstrap()
+        require(allowedExpiredRetainedRole == null || allowedExpiredRetainedRole in setOf(TufRole.RELEASES, TufRole.SECURITY))
+        if (allowedExpiredRetainedRole != null) {
+            require(online.asMap().getValue(allowedExpiredRetainedRole) is PublicKeyOnlyTufSigner) {
+                "Only a public-key-only retained role may remain expired during recovery"
+            }
+        }
         val currentTargets = if (targetsOverride == null) {
             targetsRenewalPolicy.resolveCurrent(storage, requireOnlineTransaction = false)
         } else {
@@ -1162,7 +1201,13 @@ class TufPublisher(
             require(!recoverCompromisedDelegations) {
                 "A public-key-only releases authority cannot recover its own compromised delegation"
             }
-            retainedReleasesMetadata()
+            retainedReleasesMetadata(
+                if (allowedExpiredRetainedRole == TufRole.RELEASES) {
+                    RetainedRoleExpiryPolicy.REQUIRE_ALREADY_EXPIRED
+                } else {
+                    RetainedRoleExpiryPolicy.REQUIRE_RETAIN_WINDOW
+                },
+            )
         } else {
             val targetsForRelease = releaseTargets(publicReleases, recoverCompromisedDelegations)
             val releasesSigned = commonMetadata("targets", version, Duration.ofDays(7), environment, repositoryId, clock).toMutableMap().apply {
@@ -1172,7 +1217,14 @@ class TufPublisher(
         }
         val (securityVersion, security) = if (online.security is PublicKeyOnlyTufSigner) {
             require(securityTargetsOverride == null) { "A public-key-only authority cannot change security metadata" }
-            retainedSecurityMetadata(releaseTargets)
+            retainedSecurityMetadata(
+                releaseTargets,
+                if (allowedExpiredRetainedRole == TufRole.SECURITY) {
+                    RetainedRoleExpiryPolicy.REQUIRE_ALREADY_EXPIRED
+                } else {
+                    RetainedRoleExpiryPolicy.REQUIRE_RETAIN_WINDOW
+                },
+            )
         } else {
             val securitySigned = commonMetadata("targets", version, Duration.ofHours(6), environment, repositoryId, clock).toMutableMap().apply {
                 put("targets", securityTargetsOverride ?: securityTargetsForState(releaseTargets))
@@ -1233,7 +1285,11 @@ class TufPublisher(
             )
         }
         val committed = readOnlineState(validateRepositoryState = false)
-        check(committed != null && committed.version == version && committed.minimumExpiry.isAfter(clock.instant())) {
+        check(
+            committed != null &&
+                committed.version == version &&
+                committed.isValidAfterPublication(clock.instant(), allowedExpiredRetainedRole),
+        ) {
             "Committed TUF transaction failed complete-chain verification"
         }
         return version
@@ -1337,7 +1393,9 @@ class TufPublisher(
         resolverEligible(it, setOf("available", "yanked"))
     }
 
-    private fun retainedReleasesMetadata(): Triple<Long, ByteArray, JsonObject> {
+    private fun retainedReleasesMetadata(
+        expiryPolicy: RetainedRoleExpiryPolicy,
+    ): Triple<Long, ByteArray, JsonObject> {
         val timestamp = storage.getMetadata("timestamp.json")
             ?: throw RegistryException(503, "temporarily_unavailable", "Signed releases metadata is unavailable", true, 30)
         val timestampSigned = signedObject(timestamp, "timestamp", signingRole = TufRole.TIMESTAMP)
@@ -1354,19 +1412,29 @@ class TufPublisher(
         val releaseTargets = releasesSigned["targets"]!!.jsonObject
         validateCurrentReleaseTargets(releaseTargets)
         val expires = Instant.parse(releasesSigned["expires"]!!.jsonPrimitive.content)
-        if (!expires.isAfter(clock.instant().plus(RELEASES_RETAIN_WINDOW))) {
-            throw RegistryException(
-                503,
-                "temporarily_unavailable",
-                "Releases authority must refresh signed metadata before security publication",
-                retryable = true,
-                retryAfterSeconds = 300,
-            )
+        when (expiryPolicy) {
+            RetainedRoleExpiryPolicy.REQUIRE_RETAIN_WINDOW -> {
+                if (!expires.isAfter(clock.instant().plus(RELEASES_RETAIN_WINDOW))) {
+                    throw RegistryException(
+                        503,
+                        "temporarily_unavailable",
+                        "Releases authority must refresh signed metadata before security publication",
+                        retryable = true,
+                        retryAfterSeconds = 300,
+                    )
+                }
+            }
+            RetainedRoleExpiryPolicy.REQUIRE_ALREADY_EXPIRED -> require(!expires.isAfter(clock.instant())) {
+                "Recovery may retain releases metadata only after it has expired"
+            }
         }
         return Triple(releasesVersion, releases, releaseTargets)
     }
 
-    private fun retainedSecurityMetadata(releaseTargets: JsonObject): Pair<Long, ByteArray> {
+    private fun retainedSecurityMetadata(
+        releaseTargets: JsonObject,
+        expiryPolicy: RetainedRoleExpiryPolicy,
+    ): Pair<Long, ByteArray> {
         val timestamp = storage.getMetadata("timestamp.json")
             ?: throw RegistryException(503, "temporarily_unavailable", "Signed security metadata is unavailable", true, 30)
         val timestampSigned = signedObject(timestamp, "timestamp", signingRole = TufRole.TIMESTAMP)
@@ -1385,14 +1453,21 @@ class TufPublisher(
             releaseTargets,
         )
         val expires = Instant.parse(securitySigned["expires"]!!.jsonPrimitive.content)
-        if (!expires.isAfter(clock.instant().plus(SECURITY_RETAIN_WINDOW))) {
-            throw RegistryException(
-                503,
-                "temporarily_unavailable",
-                "Security authority must refresh signed metadata before promotion",
-                retryable = true,
-                retryAfterSeconds = 300,
-            )
+        when (expiryPolicy) {
+            RetainedRoleExpiryPolicy.REQUIRE_RETAIN_WINDOW -> {
+                if (!expires.isAfter(clock.instant().plus(SECURITY_RETAIN_WINDOW))) {
+                    throw RegistryException(
+                        503,
+                        "temporarily_unavailable",
+                        "Security authority must refresh signed metadata before promotion",
+                        retryable = true,
+                        retryAfterSeconds = 300,
+                    )
+                }
+            }
+            RetainedRoleExpiryPolicy.REQUIRE_ALREADY_EXPIRED -> require(!expires.isAfter(clock.instant())) {
+                "Recovery may retain security metadata only after it has expired"
+            }
         }
         return securityVersion to security
     }
@@ -1753,10 +1828,16 @@ class TufPublisher(
                 releasesSigned["targets"]!!.jsonObject,
             )
         }
-        val roleExpiries = listOf(expiry(releasesSigned), expiry(securitySigned))
+        val releasesExpiry = expiry(releasesSigned)
+        val securityExpiry = expiry(securitySigned)
+        val snapshotExpiry = expiry(snapshotSigned)
+        val timestampExpiry = expiry(timestampSigned)
         return OnlineState(
             version = version,
-            minimumExpiry = (roleExpiries + expiry(snapshotSigned) + expiry(timestampSigned)).min(),
+            releasesExpiry = releasesExpiry,
+            securityExpiry = securityExpiry,
+            snapshotExpiry = snapshotExpiry,
+            timestampExpiry = timestampExpiry,
         )
     }
 
@@ -1850,7 +1931,43 @@ class TufPublisher(
         }
     }
 
-    private data class OnlineState(val version: Long, val minimumExpiry: Instant)
+    private data class OnlineState(
+        val version: Long,
+        val releasesExpiry: Instant,
+        val securityExpiry: Instant,
+        val snapshotExpiry: Instant,
+        val timestampExpiry: Instant,
+    ) {
+        val minimumExpiry: Instant
+            get() = listOf(releasesExpiry, securityExpiry, snapshotExpiry, timestampExpiry).min()
+
+        fun isValidAfterPublication(now: Instant, allowedExpiredRetainedRole: String?): Boolean {
+            val releasesValid = if (allowedExpiredRetainedRole == TufRole.RELEASES) {
+                !releasesExpiry.isAfter(now)
+            } else {
+                releasesExpiry.isAfter(now)
+            }
+            val securityValid = if (allowedExpiredRetainedRole == TufRole.SECURITY) {
+                !securityExpiry.isAfter(now)
+            } else {
+                securityExpiry.isAfter(now)
+            }
+            return releasesValid &&
+                securityValid &&
+                snapshotExpiry.isAfter(now) &&
+                timestampExpiry.isAfter(now)
+        }
+    }
+
+    private enum class RefreshPolicy {
+        STRICT,
+        DUAL_EXPIRY_RECOVERY,
+    }
+
+    private enum class RetainedRoleExpiryPolicy {
+        REQUIRE_RETAIN_WINDOW,
+        REQUIRE_ALREADY_EXPIRED,
+    }
 
     private fun targetPath(stored: StoredRelease): String {
         val release = stored.record

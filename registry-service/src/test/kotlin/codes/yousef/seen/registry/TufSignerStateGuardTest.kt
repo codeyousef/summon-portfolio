@@ -412,7 +412,7 @@ class TufSignerStateGuardTest {
     }
 
     @Test
-    fun `expired top-level targets fail closed while expired online roles may be replaced`() {
+    fun `expired top-level targets fail closed while dual-expiry recovery is signer-authorized`() {
         val bootstrap = bootstrapScenario()
         val afterTargetsExpiry = Clock.fixed(NOW.plus(Duration.ofDays(31)), ZoneOffset.UTC)
         assertFailsWith<TufSigningRequestException> {
@@ -433,9 +433,83 @@ class TufSignerStateGuardTest {
             meta["releases.json"] = testFileMeta(recovery.candidateVersion, refreshedRelease)
         }
         recovery.store.put("${recovery.candidateVersion}.snapshot.json", refreshedSnapshot)
-        recovery.guard(TufRole.SNAPSHOT, clock = recoveryClock).authorize(
-            recovery.requestForBytes(TufRole.SNAPSHOT, signedBytes(refreshedSnapshot)),
+        val refreshedTimestamp = testEnvelope(
+            testCommon("timestamp", recovery.candidateVersion, Duration.ofHours(6), recoveryClock).toMutableMap().apply {
+                put("meta", buildJsonObject {
+                    put("snapshot.json", testFileMeta(recovery.candidateVersion, refreshedSnapshot))
+                })
+            }.let(::JsonObject),
+            listOf(recovery.base.online.timestamp),
         )
+        mapOf(
+            TufRole.RELEASES to refreshedRelease,
+            TufRole.SNAPSHOT to refreshedSnapshot,
+            TufRole.TIMESTAMP to refreshedTimestamp,
+        ).forEach { (role, envelope) ->
+            recovery.guard(role, clock = recoveryClock).authorize(
+                recovery.requestForBytes(role, signedBytes(envelope)),
+            )
+        }
+
+        val timestampRequest = recovery.requestForBytes(TufRole.TIMESTAMP, signedBytes(refreshedTimestamp))
+        val timestampSignature = recovery.base.online.timestamp.sign(timestampRequest.canonicalSignedBytes)
+        // Simulate another publisher committing the first recovery phase after
+        // authorization but before this timestamp signer reaches its CAS.
+        recovery.store.replaceTimestamp(refreshedTimestamp)
+        val changedState = assertFailsWith<TufSigningRequestException> {
+            recovery.guard(TufRole.TIMESTAMP, clock = recoveryClock).commitTimestamp(
+                timestampRequest,
+                timestampSignature,
+                recovery.base.online.timestamp.publicKey,
+            )
+        }
+        assertTrue(changedState.message.orEmpty().contains("both delegated roles are expired"))
+        assertEquals(0, recovery.store.commitCalls)
+    }
+
+    @Test
+    fun `signers reject retaining one expired delegated role unless both are expired`() {
+        val expiredSecurityOnly = releaseScenario()
+        val afterSecurityExpiry = Clock.fixed(NOW.plus(Duration.ofHours(7)), ZoneOffset.UTC)
+        expiredSecurityOnly.roles.forEach { role ->
+            assertFailsWith<TufSigningRequestException>(role) {
+                expiredSecurityOnly.guard(role, clock = afterSecurityExpiry).authorize(expiredSecurityOnly.request(role))
+            }
+        }
+
+        val expiredReleasesOnly = securityScenario()
+        val afterReleasesExpiry = Clock.fixed(NOW.plus(Duration.ofDays(8)), ZoneOffset.UTC)
+        val freshSecurity = testEnvelope(
+            testCommon("targets", 1, Duration.ofHours(6), afterReleasesExpiry).toMutableMap().apply {
+                put("targets", JsonObject(emptyMap()))
+            }.let(::JsonObject),
+            listOf(expiredReleasesOnly.base.online.security),
+        )
+        expiredReleasesOnly.store.put("1.security.json", freshSecurity)
+        val committedSnapshotSigned = signedObject(expiredReleasesOnly.store.bytes("1.snapshot.json")).toMutableMap()
+        committedSnapshotSigned["meta"] = JsonObject(
+            committedSnapshotSigned.getValue("meta").jsonObject.toMutableMap().apply {
+                put("security.json", testFileMeta(1, freshSecurity))
+            },
+        )
+        val committedSnapshot = testEnvelope(
+            JsonObject(committedSnapshotSigned),
+            listOf(expiredReleasesOnly.base.online.snapshot),
+        )
+        expiredReleasesOnly.store.put("1.snapshot.json", committedSnapshot)
+        val committedTimestampSigned = signedObject(
+            expiredReleasesOnly.store.bytes("timestamp.json"),
+        ).toMutableMap().apply {
+            put("meta", buildJsonObject { put("snapshot.json", testFileMeta(1, committedSnapshot)) })
+        }
+        expiredReleasesOnly.store.replaceTimestamp(
+            testEnvelope(JsonObject(committedTimestampSigned), listOf(expiredReleasesOnly.base.online.timestamp)),
+        )
+        expiredReleasesOnly.roles.forEach { role ->
+            assertFailsWith<TufSigningRequestException>(role) {
+                expiredReleasesOnly.guard(role, clock = afterReleasesExpiry).authorize(expiredReleasesOnly.request(role))
+            }
+        }
     }
 
     @Test
