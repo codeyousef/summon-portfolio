@@ -130,6 +130,11 @@ class CatalogTest {
         assertContains(searchPage, "maxlength=\"128\"")
         assertContains(searchPage, "latest version")
         assertContains(searchPage, "value=\"DEMO\"")
+        assertNotNull(
+            Regex(
+                """\.seen-package-search-field label\s*\{[^}]*color:\s*#d0dae8\s*!important;?[^}]*}"""
+            ).find(searchPage),
+        )
         assertContains(searchPage, "1 package found")
         assertContains(noMatches, "No packages match")
         assertContains(noMatches, "Clear search")
