@@ -61,10 +61,6 @@ resource "google_cloud_scheduler_job" "registry" {
   attempt_deadline = "30s"
   paused           = var.schedules_paused
 
-  retry_config {
-    retry_count = 0
-  }
-
   http_target {
     uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.long_lived[each.key].name}:run"
     http_method = "POST"
