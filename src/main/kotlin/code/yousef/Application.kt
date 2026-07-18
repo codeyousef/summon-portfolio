@@ -25,6 +25,9 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.db.ContentStoreDriver
 import code.yousef.portfolio.docs.*
+import code.yousef.portfolio.photography.GcsPhotoAssetStore
+import code.yousef.portfolio.photography.LocalPhotoAssetStore
+import code.yousef.portfolio.photography.PhotographyService
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
@@ -74,6 +77,14 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     
     val contentService = PortfolioContentService(contentStore)
     val contactService = ContactService(FileContactRepository(contentStore))
+    val photoAssetStore = appConfig.photographyUploadBucket?.let { bucket ->
+        GcsPhotoAssetStore(bucket = bucket, prefix = appConfig.photographyUploadPrefix)
+    } ?: LocalPhotoAssetStore(appConfig.photographyUploadDir)
+    val photographyService = PhotographyService(
+        contentStore = contentStore,
+        assetStore = photoAssetStore,
+        maxUploadBytes = appConfig.photographyMaxUploadBytes
+    )
     
     // Admin auth - use Firestore in production, file-based locally
     val adminAuthService: AdminAuthProvider = if (firestore != null) {
@@ -149,14 +160,19 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val seenDocsConfig = DocsConfig.seenFromEnv()
     val seenDocsCache = DocsCache(seenDocsConfig.cacheTtlSeconds)
     val seenDocsService = DocsService(seenDocsConfig, seenDocsCache)
-    val seenDocsRouter = DocsRouter(SeoExtractor(seenDocsConfig))
+    val seenDocsRouter = DocsRouter(
+        seoExtractor = SeoExtractor(seenDocsConfig),
+        seenPackagesEnabled = appConfig.registryUpstreamUrl != null,
+    )
     val seenDocsCatalog = DocsCatalog(seenDocsConfig)
     val seenWebhookHandler = WebhookHandler(seenDocsService, seenDocsCache, seenDocsConfig, seenDocsCatalog)
 
     // Seen
     val seenExecutionService = SeenExecutionService()
-    val seenPlaygroundRenderer = SeenPlaygroundRenderer()
-    val seenLandingRenderer = SeenLandingRenderer()
+    val seenPlaygroundRenderer = SeenPlaygroundRenderer(
+        packagesEnabled = appConfig.registryUpstreamUrl != null,
+    )
+    val seenLandingRenderer = SeenLandingRenderer(packagesEnabled = appConfig.registryUpstreamUrl != null)
 
     // AI Curriculum
     val aiProgressStore: AiProgressStore = if (firestore != null)
@@ -174,9 +190,11 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             contactService,
             contentService,
             adminAuthService,
+            photographyService,
             aiCurriculumRenderer = aiCurriculumRenderer,
             aiProgressStore = aiProgressStore,
             fifthWallTelemetryStore = fifthWallTelemetryStore,
+            markdownRenderer = markdownRenderer,
         )
     }
 
@@ -300,6 +318,14 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val staticHandler = StaticResourceHandler("static", "/static")
     // Root-level handler for hydration scripts (loaded by sigil-summon inline JS at /sigil-hydration.js)
     val rootHydrationHandler = StaticResourceHandler("static", "/")
+    val registryGateway = appConfig.registryUpstreamUrl?.let { publicUpstream ->
+        RegistryGatewayMiddleware(
+            publicHost = requireNotNull(appConfig.registryPublicHost),
+            upstreamUrl = publicUpstream,
+            releaseActionsUpstreamUrl = requireNotNull(appConfig.registryReleaseActionsUpstreamUrl),
+            securityActionsUpstreamUrl = requireNotNull(appConfig.registrySecurityActionsUpstreamUrl)
+        )
+    }
 
     val pipeline = Pipeline().apply {
         // Custom debug recovery to print stack traces
@@ -329,6 +355,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             }
         }
 
+        registryGateway?.let { use(it.middleware) }
+
         use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
         
         // Admin Site Middleware (only for main portfolio site, not building subdomain)
@@ -336,7 +364,20 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             val host = exchange.request.headers["Host"]?.substringBefore(":")
             val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
             val path = exchange.request.path
-            if (!isBuildingSite &&
+            if (
+                !isBuildingSite &&
+                (path == "/admin" ||
+                    path.startsWith("/admin/photography") ||
+                    path == "/admin/markdown-preview")
+            ) {
+                val session = exchange.session()
+                val username = session?.get("username") as? String
+                if (username == null) {
+                    exchange.redirect("/admin/login?next=${path}")
+                } else {
+                    next()
+                }
+            } else if (!isBuildingSite &&
                 path.startsWith("/admin") &&
                 !path.startsWith("/admin/login") &&
                 !path.startsWith("/admin/change-password")) {
@@ -346,13 +387,6 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 if (username == null) {
                     exchange.redirect("/admin/login")
                 } else {
-                    @Suppress("UNCHECKED_CAST")
-                    val hooks = exchange.attributes.getOrPut(Exchange.HtmlResponseHooksKey) {
-                        mutableListOf<(String) -> String>()
-                    } as MutableList<(String) -> String>
-                    hooks.add { html ->
-                        html.replace("</body>", """<script src="/static/markdown-preview.js"></script></body>""")
-                    }
                     adminRouter.asMiddleware()(exchange, next)
                 }
             } else if (!isBuildingSite && (path == "/ai" || path.startsWith("/ai/"))) {
@@ -383,7 +417,17 @@ fun main() {
     val appConfig = loadAppConfig()
     val resources = buildApplication(appConfig)
 
-    val config = VertxServerConfig(port = appConfig.port)
+    // Aether buffers request bodies before middleware. Only raise the global
+    // server cap on the development service that actually fronts the registry;
+    // other portfolio deployments retain Aether's smaller default.
+    val config = if (appConfig.registryUpstreamUrl != null) {
+        VertxServerConfig(
+            port = appConfig.port,
+            maxRequestBodySize = REGISTRY_GATEWAY_MAX_REQUEST_BYTES
+        )
+    } else {
+        VertxServerConfig(port = appConfig.port)
+    }
     val server = VertxServer(config, resources.pipeline) { exchange ->
         exchange.notFound("Route not found")
     }

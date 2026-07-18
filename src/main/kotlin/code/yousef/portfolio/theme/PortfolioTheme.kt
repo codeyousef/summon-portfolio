@@ -1,6 +1,8 @@
 package code.yousef.portfolio.theme
 
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.modifier.Modifier
+import codes.yousef.summon.modifier.backgroundLayers
 
 object PortfolioTheme {
     object Colors {
@@ -60,14 +62,46 @@ object PortfolioTheme {
         const val FONT_MONO = "\"JetBrains Mono\", \"Fira Code\", ui-monospace, SFMono-Regular, Menlo, monospace"
         const val HERO_TRACKING = "-0.025em"
     }
+}
 
-    object Gradients {
-        const val HERO =
-            "radial-gradient(circle at 20% 30%, rgba(255,70,104,0.2) 0%, transparent 60%)," +
-                "radial-gradient(circle at 80% 70%, rgba(106,215,255,0.15) 0%, transparent 60%)," +
-                "linear-gradient(180deg, #001a2c 0%, #05294a 100%)"
-        const val ACCENT = "linear-gradient(120deg, ${Colors.ACCENT}, ${Colors.ACCENT_ALT})"
-        const val CARD = "linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.06))"
-        const val GLASS = "linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.10))"
+fun Modifier.portfolioHeroGradient(): Modifier = backgroundLayers {
+    radialGradient {
+        position(20, 30)
+        colorStop("rgba(255,70,104,0.2)", "0%")
+        colorStop("transparent", "60%")
+    }
+    radialGradient {
+        position(80, 70)
+        colorStop("rgba(106,215,255,0.15)", "0%")
+        colorStop("transparent", "60%")
+    }
+    linearGradient {
+        angle(180)
+        colorStop(PortfolioTheme.Colors.BACKGROUND, "0%")
+        colorStop(PortfolioTheme.Colors.BACKGROUND_ALT, "100%")
+    }
+}
+
+fun Modifier.portfolioAccentGradient(): Modifier = backgroundLayers {
+    linearGradient {
+        angle(120)
+        colorStop(PortfolioTheme.Colors.ACCENT)
+        colorStop(PortfolioTheme.Colors.ACCENT_ALT)
+    }
+}
+
+fun Modifier.portfolioCardGradient(): Modifier = backgroundLayers {
+    linearGradient {
+        angle(180)
+        colorStop("rgba(255,255,255,0.15)")
+        colorStop("rgba(255,255,255,0.06)")
+    }
+}
+
+fun Modifier.portfolioGlassGradient(): Modifier = backgroundLayers {
+    linearGradient {
+        angle(180)
+        colorStop("rgba(255,255,255,0.20)")
+        colorStop("rgba(255,255,255,0.10)")
     }
 }

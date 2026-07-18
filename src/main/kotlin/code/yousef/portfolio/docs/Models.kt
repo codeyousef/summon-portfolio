@@ -3,6 +3,8 @@ package code.yousef.portfolio.docs
 
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
+import org.commonmark.node.Document
+import org.commonmark.node.Heading
 
 data class CachedDoc(
     val repoPath: String,
@@ -52,11 +54,46 @@ data class TocEntry(
 )
 
 data class MarkdownRenderResult(
-    val html: String,
+    val document: MarkdownDocument,
     val meta: MarkdownMeta,
     val toc: List<TocEntry>,
     val headings: List<TocEntry>
 )
+
+class MarkdownDocument internal constructor(
+    internal val root: Document,
+    internal val headingIds: Map<Heading, String>,
+    internal val directives: Map<String, MarkdownDirective>,
+    internal val requestPath: String,
+    internal val linkContext: MarkdownLinkContext? = null,
+    internal val pairParagraphsWithCode: Boolean = false
+) {
+    internal fun withLinkContext(context: MarkdownLinkContext): MarkdownDocument =
+        MarkdownDocument(
+            root = root,
+            headingIds = headingIds,
+            directives = directives,
+            requestPath = requestPath,
+            linkContext = context,
+            pairParagraphsWithCode = pairParagraphsWithCode
+        )
+
+    internal fun withParagraphCodePairs(): MarkdownDocument =
+        MarkdownDocument(
+            root = root,
+            headingIds = headingIds,
+            directives = directives,
+            requestPath = requestPath,
+            linkContext = linkContext,
+            pairParagraphsWithCode = true
+        )
+}
+
+internal sealed interface MarkdownDirective {
+    data class DetailsStart(val id: String, val summary: String) : MarkdownDirective
+    data class DetailsEnd(val id: String) : MarkdownDirective
+    data class AiRepl(val code: String) : MarkdownDirective
+}
 
 @Serializable
 data class DocsNavNode(

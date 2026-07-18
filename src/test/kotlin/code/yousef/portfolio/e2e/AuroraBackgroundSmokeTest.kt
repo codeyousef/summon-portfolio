@@ -58,8 +58,8 @@ class AuroraBackgroundSmokeTest {
                 "Aurora background should render a blend layer over the canvas boundary"
             )
             assertTrue(
-                body.contains("background: radial-gradient"),
-                "Aurora container should use a real background gradient declaration"
+                body.contains("background-image: radial-gradient"),
+                "Aurora container should use a valid typed background-image gradient declaration"
             )
             assertTrue(
                 body.contains("\"respectDevicePixelRatio\":false"),

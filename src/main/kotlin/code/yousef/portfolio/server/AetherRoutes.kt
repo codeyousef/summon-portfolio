@@ -12,7 +12,14 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.docs.*
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.i18n.PortfolioLocale
+import code.yousef.portfolio.photography.MultipartFormData
+import code.yousef.portfolio.photography.PhotographyService
+import code.yousef.portfolio.photography.extractMultipartBoundary
+import code.yousef.portfolio.photography.parseMultipartFormData
+import code.yousef.portfolio.seen.SEEN_PLAYGROUND_MAX_CODE_LENGTH
+import code.yousef.portfolio.seen.SEEN_PLAYGROUND_MAX_FORM_BYTES
 import code.yousef.portfolio.seen.SeenExecutionService
+import code.yousef.portfolio.seen.SeenPlaygroundCatalog
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.seen.SeenRunRequest
 import code.yousef.portfolio.ssr.*
@@ -22,6 +29,7 @@ import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryPayload
 import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryStore
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
+import code.yousef.portfolio.ui.admin.MARKDOWN_PREVIEW_MAX_CHARS
 import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.jvm.receiveParameters
 import codes.yousef.aether.core.respondJson
@@ -44,6 +52,7 @@ import kotlinx.serialization.encodeToString
 import kotlin.time.toJavaInstant
 
 private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+private const val MARKDOWN_PREVIEW_MAX_FORM_BYTES: Long = 64L * 1024L
 
 fun Router.summonRoutes(
     portfolioRenderer: PortfolioRenderer,
@@ -88,6 +97,13 @@ fun Router.summonRoutes(
     }
 }
 
+internal fun deploymentVersionPayload(
+    environment: Map<String, String> = System.getenv(),
+): Map<String, String> = mapOf(
+    "version" to "0.6.2.0-debug-2",
+    "revision" to (environment["K_REVISION"]?.trim()?.takeIf(String::isNotEmpty) ?: "local"),
+)
+
 internal fun Router.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,
     blogRenderer: BlogRenderer,
@@ -95,13 +111,17 @@ internal fun Router.portfolioRoutes(
     contactService: ContactService,
     contentService: PortfolioContentService,
     adminAuthService: AdminAuthProvider,
+    photographyService: PhotographyService,
     aiCurriculumRenderer: AiCurriculumRenderer? = null,
     aiProgressStore: AiProgressStore? = null,
     fifthWallTelemetryStore: FifthWallTelemetryStore? = null,
     fifthWallSessionStore: FifthWallSessionStore = FifthWallSessionStore(),
+    scratchpadRenderer: ScratchpadRenderer = ScratchpadRenderer(),
+    markdownRenderer: MarkdownRenderer? = null,
 ) {
     get("/version") { exchange ->
-        exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
+        exchange.response.setHeader("Cache-Control", "no-store")
+        exchange.respondJson(200, deploymentVersionPayload())
     }
 
     get("/") { exchange ->
@@ -140,6 +160,34 @@ internal fun Router.portfolioRoutes(
     get("/full-time") { exchange ->
         val page = portfolioRenderer.fullTimePage(locale = PortfolioLocale.EN)
         exchange.respondSummonPage(page)
+    }
+
+    get("/photography") { exchange ->
+        val page = portfolioRenderer.photographyPage(
+            photos = photographyService.publicPhotos(),
+            selectedFilter = exchange.request.queryParameter("filter")
+        )
+        exchange.respondSummonPage(page)
+    }
+
+    get("/scratchpad") { exchange ->
+        val page = scratchpadRenderer.scratchpadPage(
+            locale = PortfolioLocale.EN,
+            command = exchange.request.queryParameter("command")
+        )
+        exchange.respondSummonPage(page)
+    }
+
+    get("/uploads/photography/:id") { exchange ->
+        val id = URLDecoder.decode(exchange.pathParam("id").orEmpty(), StandardCharsets.UTF_8)
+        val asset = photographyService.assetForPublishedPhoto(id)
+        if (asset == null) {
+            exchange.respond(404, "Photo not found")
+            return@get
+        }
+        exchange.response.setHeader("Cache-Control", "public, max-age=604800")
+        exchange.response.setHeader("X-Content-Type-Options", "nosniff")
+        exchange.respondBytes(200, asset.contentType, asset.bytes)
     }
 
     get("/fifth-wall") { exchange ->
@@ -398,6 +446,91 @@ internal fun Router.portfolioRoutes(
         }
     }
 
+    get("/admin") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin")
+            return@get
+        }
+        if (session.mustChangePassword) {
+            exchange.redirect("/admin/change-password")
+            return@get
+        }
+        exchange.respondSummonPage(portfolioRenderer.adminHomePage(session.username))
+    }
+
+    if (markdownRenderer != null) {
+        get("/admin/markdown-preview") { exchange ->
+            val session = exchange.getAdminSession()
+            if (session == null) {
+                exchange.redirect("/admin/login?next=/admin/markdown-preview")
+                return@get
+            }
+            if (session.mustChangePassword) {
+                exchange.redirect("/admin/change-password")
+                return@get
+            }
+            exchange.respondSummonPage(portfolioRenderer.markdownPreviewPage(source = ""))
+        }
+
+        post("/admin/markdown-preview") { exchange ->
+            val session = exchange.getAdminSession()
+            if (session == null) {
+                exchange.redirect("/admin/login?next=/admin/markdown-preview")
+                return@post
+            }
+            if (session.mustChangePassword) {
+                exchange.redirect("/admin/change-password")
+                return@post
+            }
+            val declaredBytes = exchange.request.headers["Content-Length"]?.toLongOrNull()
+            if (declaredBytes != null && declaredBytes > MARKDOWN_PREVIEW_MAX_FORM_BYTES) {
+                exchange.respondSummonPage(
+                    portfolioRenderer.markdownPreviewPage(
+                        source = "",
+                        errorMessage = "The preview request is too large."
+                    ),
+                    413
+                )
+                return@post
+            }
+
+            val source = runCatching { exchange.receiveParameters()["markdown"].orEmpty() }
+                .getOrElse {
+                    exchange.respondSummonPage(
+                        portfolioRenderer.markdownPreviewPage(
+                            source = "",
+                            errorMessage = "The preview form could not be decoded."
+                        ),
+                        400
+                    )
+                    return@post
+                }
+            if (source.length > MARKDOWN_PREVIEW_MAX_CHARS) {
+                exchange.respondSummonPage(
+                    portfolioRenderer.markdownPreviewPage(
+                        source = source.take(MARKDOWN_PREVIEW_MAX_CHARS),
+                        errorMessage = "Markdown must be at most $MARKDOWN_PREVIEW_MAX_CHARS characters."
+                    ),
+                    413
+                )
+                return@post
+            }
+
+            val rendered = runCatching {
+                markdownRenderer.render(source, "/admin/markdown-preview").document
+            }
+            exchange.respondSummonPage(
+                portfolioRenderer.markdownPreviewPage(
+                    source = source,
+                    document = rendered.getOrNull(),
+                    errorMessage = rendered.exceptionOrNull()?.message?.let { "Preview failed: $it" }
+                ),
+                if (rendered.isSuccess) 200 else 400
+            )
+        }
+    }
+
     get("/admin/change-password") { exchange ->
         val session = exchange.getAdminSession()
         if (session == null) {
@@ -448,6 +581,113 @@ internal fun Router.portfolioRoutes(
             }
         }
     }
+
+    get("/admin/photography") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@get
+        }
+        val successMessage = when {
+            exchange.request.queryParameter("uploaded") == "true" -> "Photo uploaded."
+            exchange.request.queryParameter("saved") == "true" -> "Photo updated."
+            exchange.request.queryParameter("deleted") == "true" -> "Photo deleted."
+            else -> null
+        }
+        exchange.respondSummonPage(
+            portfolioRenderer.photographyAdminPage(
+                photos = photographyService.adminPhotos(),
+                successMessage = successMessage
+            )
+        )
+    }
+
+    post("/admin/photography") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@post
+        }
+
+        val boundary = extractMultipartBoundary(exchange.request.headers["Content-Type"].orEmpty())
+        if (boundary == null) {
+            exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = "Invalid upload request."
+                ),
+                400
+            )
+            return@post
+        }
+
+        val formData = parseMultipartFormData(exchange.request.bodyBytes(), boundary, fileFieldName = "photo")
+        when (val result = photographyService.upload(formData.fields, formData.file)) {
+            is PhotographyService.UploadResult.Success -> exchange.redirect("/admin/photography?uploaded=true")
+            is PhotographyService.UploadResult.Error -> exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = result.message
+                ),
+                400
+            )
+        }
+    }
+
+    post("/admin/photography/:id") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@post
+        }
+        val id = exchange.pathParam("id").orEmpty()
+        val contentType = exchange.request.headers["Content-Type"].orEmpty()
+        val formData = if (contentType.contains("multipart/form-data", ignoreCase = true)) {
+            val boundary = extractMultipartBoundary(contentType)
+            if (boundary == null) {
+                exchange.respondSummonPage(
+                    portfolioRenderer.photographyAdminPage(
+                        photos = photographyService.adminPhotos(),
+                        errorMessage = "Invalid upload request."
+                    ),
+                    400
+                )
+                return@post
+            }
+            parseMultipartFormData(exchange.request.bodyBytes(), boundary, fileFieldName = "photo")
+        } else {
+            MultipartFormData(fields = exchange.receiveParameters(), file = null)
+        }
+        when (val result = photographyService.update(id, formData.fields, formData.file)) {
+            is PhotographyService.UpdateResult.Success -> exchange.redirect("/admin/photography?saved=true")
+            is PhotographyService.UpdateResult.Error -> exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = result.message
+                ),
+                400
+            )
+        }
+    }
+
+    post("/admin/photography/:id/delete") { exchange ->
+        val session = exchange.getAdminSession()
+        if (session == null) {
+            exchange.redirect("/admin/login?next=/admin/photography")
+            return@post
+        }
+        val id = exchange.pathParam("id").orEmpty()
+        when (val result = photographyService.delete(id)) {
+            is PhotographyService.DeleteResult.Success -> exchange.redirect("/admin/photography?deleted=true")
+            is PhotographyService.DeleteResult.Error -> exchange.respondSummonPage(
+                portfolioRenderer.photographyAdminPage(
+                    photos = photographyService.adminPhotos(),
+                    errorMessage = result.message
+                ),
+                400
+            )
+        }
+    }
 }
 
 fun Router.seenRoutes(
@@ -461,8 +701,76 @@ fun Router.seenRoutes(
     }
 
     get("/playground") { exchange ->
-        val page = playgroundRenderer.playgroundPage()
+        val page = playgroundRenderer.playgroundPage(
+            SeenPlaygroundCatalog.state(
+                language = exchange.request.queryParameter("language").decodeQueryComponent(),
+                sample = exchange.request.queryParameter("sample").decodeQueryComponent(),
+            )
+        )
         exchange.respondSummonPage(page)
+    }
+
+    post("/playground/run") { exchange ->
+        val declaredLength = exchange.request.headers["Content-Length"]?.toLongOrNull()
+        if (declaredLength != null && declaredLength > SEEN_PLAYGROUND_MAX_FORM_BYTES) {
+            exchange.respondSummonPage(
+                playgroundRenderer.playgroundPage(
+                    SeenPlaygroundCatalog.state(
+                        validationMessage = "The submitted form is too large. Seen source is limited to $SEEN_PLAYGROUND_MAX_CODE_LENGTH characters.",
+                    )
+                ),
+                413,
+            )
+            return@post
+        }
+
+        val params = try {
+            exchange.receiveParameters()
+        } catch (_: Exception) {
+            exchange.respondSummonPage(
+                playgroundRenderer.playgroundPage(
+                    SeenPlaygroundCatalog.state(validationMessage = "The playground form could not be decoded.")
+                ),
+                400,
+            )
+            return@post
+        }
+        val language = SeenPlaygroundCatalog.normalizeLanguage(params["language"]?.take(16))
+        val sample = params["sample"]?.take(64)
+        val submittedCode = params["code"].orEmpty()
+        val validationMessage = when {
+            submittedCode.isBlank() -> "Enter a Seen program before running it."
+            submittedCode.length > SEEN_PLAYGROUND_MAX_CODE_LENGTH ->
+                "Seen source is limited to $SEEN_PLAYGROUND_MAX_CODE_LENGTH characters."
+            else -> null
+        }
+
+        if (validationMessage != null) {
+            exchange.respondSummonPage(
+                playgroundRenderer.playgroundPage(
+                    SeenPlaygroundCatalog.state(
+                        language = language,
+                        sample = sample,
+                        code = submittedCode.take(SEEN_PLAYGROUND_MAX_CODE_LENGTH),
+                        validationMessage = validationMessage,
+                    )
+                ),
+                400,
+            )
+            return@post
+        }
+
+        val result = executionService.execute(submittedCode, language)
+        exchange.respondSummonPage(
+            playgroundRenderer.playgroundPage(
+                SeenPlaygroundCatalog.state(
+                    language = language,
+                    sample = sample,
+                    code = submittedCode,
+                    result = result,
+                )
+            )
+        )
     }
 
     post("/api/seen/run") { exchange ->
@@ -648,8 +956,8 @@ fun Router.docsRoutes(
         }
 
         val rendered = markdownRenderer.render(fetchedDocument.body, canonicalPath)
-        val rewrittenHtml = linkRewriter.rewriteHtml(
-            html = rendered.html,
+        val rewrittenDocument = linkRewriter.rewrite(
+            document = rendered.document,
             requestPath = canonicalPath,
             repoPath = entry.repoPath,
             docsRoot = config.normalizedDocsRoot,
@@ -660,7 +968,7 @@ fun Router.docsRoutes(
         val page = docsRouter.render(
             requestPath = canonicalPath,
             origin = origin,
-            html = rewrittenHtml,
+            document = rewrittenDocument,
             meta = rendered.meta,
             toc = rendered.toc,
             sidebar = navTree,

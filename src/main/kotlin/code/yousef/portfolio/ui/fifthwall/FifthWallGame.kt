@@ -114,6 +114,13 @@ internal sealed interface FifthWallPrompt {
 internal data class FifthWallUiState(
     val levelIndex: Int = 0,
     val score: Int = 0,
+    val correctDecisions: Int = 0,
+    val countedDecisions: Int = 0,
+    val streak: Int = 0,
+    val bestStreak: Int = 0,
+    val decisionTimeTotalMs: Long = 0L,
+    val decisionTimeSamples: Int = 0,
+    val decisionStartedAtMs: Long = 0L,
     val queue: List<FifthWallPackage> = emptyList(),
     val selectedPackageId: String? = null,
     val draggedPackageId: String? = null,
@@ -143,6 +150,10 @@ internal data class FifthWallUiState(
     val glitchActive: Boolean = false,
     val glitchTriggered: Boolean = false,
     val wrenchVisible: Boolean = false,
+    val hudView: FifthWallHudView = FifthWallHudView.MANIFEST,
+    val soundMode: FifthWallSoundMode = FifthWallSoundMode.LOW,
+    val resumeBay: Int? = null,
+    val campaignCompleted: Boolean = false,
     val telemetrySessionId: String = "",
     val telemetryPayloadJson: String = "",
     val telemetryRevision: Int = 0
@@ -564,8 +575,18 @@ private val FifthWallSemanticLabels = listOf(
     "undocumented"
 )
 
-internal class FifthWallController {
-    private val random = Random(System.currentTimeMillis().toInt())
+internal class FifthWallController(
+    seed: Int = System.currentTimeMillis().toInt(),
+    initialCheckpoint: FifthWallCheckpoint? = null,
+    private val initialSoundMode: FifthWallSoundMode? = null,
+    private val clock: () -> Long = System::currentTimeMillis
+) {
+    private val random = Random(seed)
+    private var resumeCheckpoint = initialCheckpoint
+        ?.takeIf { it.isValid(clock()) }
+        ?.let { checkpoint ->
+            initialSoundMode?.let { checkpoint.copy(soundMode = it) } ?: checkpoint
+        }
     private var nextPackageId = 0
     private var telemetrySessionId = UUID.randomUUID().toString()
     private var telemetryRevision = 0
@@ -582,7 +603,7 @@ internal class FifthWallController {
     private var updateSpeedRecorded = false
     private var tribalStancePartA: String? = null
 
-    private fun now(): Long = System.currentTimeMillis()
+    private fun now(): Long = clock()
 
     private fun resetTelemetrySession() {
         telemetrySessionId = UUID.randomUUID().toString()
@@ -653,34 +674,121 @@ internal class FifthWallController {
         state.value = decorateState(base)
     }
 
-    val state: MutableState<FifthWallUiState> = mutableStateOf(
-        decorateState(
-            buildLevelState(levelIndex = 0, score = 0, chatMessages = emptyList()).copy(
+    private fun initialUiState(): FifthWallUiState {
+        val checkpoint = resumeCheckpoint
+        val levelIndex = checkpoint
+            ?.nextBay
+            ?.minus(1)
+            ?.takeIf { it in FifthWallLevels.indices }
+            ?: 0
+        return buildLevelState(
+            levelIndex = levelIndex,
+            score = checkpoint?.score ?: 0,
+            chatMessages = emptyList(),
+            correctDecisions = checkpoint?.correctDecisions ?: 0,
+            countedDecisions = checkpoint?.countedDecisions ?: 0,
+            bestStreak = checkpoint?.bestStreak ?: 0,
+            soundMode = checkpoint?.soundMode ?: initialSoundMode ?: FifthWallSoundMode.LOW
+        ).copy(
             prompt = FifthWallPrompt.Intro,
-            feedback = "Dispatch console ready. Begin when you want the first shift.",
-            feedbackTone = FifthWallFeedbackTone.Neutral
-            )
+            feedback = when {
+                checkpoint?.campaignCompleted == true -> "Campaign complete. Start a new shift when ready."
+                checkpoint != null -> "Checkpoint found for Bay ${checkpoint.nextBay}."
+                else -> "Dispatch console ready. Enter Bay 1 when ready."
+            },
+            feedbackTone = FifthWallFeedbackTone.Neutral,
+            resumeBay = checkpoint?.nextBay?.takeIf { it in 1..FifthWallLevels.size },
+            campaignCompleted = checkpoint?.campaignCompleted == true
         )
-    )
+    }
+
+    val state: MutableState<FifthWallUiState> = mutableStateOf(decorateState(initialUiState()))
 
     fun startShift() {
+        val soundMode = state.value.soundMode
+        resumeCheckpoint = null
         resetTelemetrySession()
         emitTelemetry("session_started", levelId = 1, details = mapOf("entry" to "intro"))
         emitTelemetry("level_started", levelId = 1, details = mapOf("reason" to "begin_shift"))
-        pushState(buildLevelState(levelIndex = 0, score = 0, chatMessages = emptyList()))
+        pushState(
+            buildLevelState(
+                levelIndex = 0,
+                score = 0,
+                chatMessages = emptyList(),
+                soundMode = soundMode
+            )
+        )
+    }
+
+    fun resumeShift() {
+        val checkpoint = resumeCheckpoint ?: run {
+            startShift()
+            return
+        }
+        if (checkpoint.campaignCompleted || checkpoint.nextBay !in 1..FifthWallLevels.size) {
+            startShift()
+            return
+        }
+        resetTelemetrySession()
+        emitTelemetry("session_started", levelId = checkpoint.nextBay, details = mapOf("entry" to "resume"))
+        emitTelemetry("level_started", levelId = checkpoint.nextBay, details = mapOf("reason" to "checkpoint"))
+        pushState(
+            buildLevelState(
+                levelIndex = checkpoint.nextBay - 1,
+                score = checkpoint.score,
+                chatMessages = emptyList(),
+                correctDecisions = checkpoint.correctDecisions,
+                countedDecisions = checkpoint.countedDecisions,
+                bestStreak = checkpoint.bestStreak,
+                soundMode = checkpoint.soundMode
+            )
+        )
     }
 
     fun reset() {
+        val soundMode = state.value.soundMode
+        resumeCheckpoint = null
         resetTelemetrySession()
         emitTelemetry("session_reset", levelId = 1)
         emitTelemetry("level_started", levelId = 1, details = mapOf("reason" to "reset"))
-        pushState(buildLevelState(levelIndex = 0, score = 0, chatMessages = emptyList()).copy(
-            feedback = "Shift reset. Focus a package and route it from the console."
-        ))
+        pushState(
+            buildLevelState(
+                levelIndex = 0,
+                score = 0,
+                chatMessages = emptyList(),
+                soundMode = soundMode
+            ).copy(
+                feedback = "New shift started. Focus a package and choose a route."
+            )
+        )
+    }
+
+    fun selectVisiblePackage(index: Int) {
+        state.value.visiblePackages().getOrNull(index)?.let { selectPackage(it.id) }
+    }
+
+    fun showManifest() {
+        val current = state.value
+        if (current.hudView != FifthWallHudView.MANIFEST) {
+            pushState(current.copy(hudView = FifthWallHudView.MANIFEST))
+        }
+    }
+
+    fun showRules() {
+        val current = state.value
+        if (current.hudView != FifthWallHudView.RULES) {
+            pushState(current.copy(hudView = FifthWallHudView.RULES))
+        }
+    }
+
+    fun cycleSoundMode() {
+        val current = state.value
+        pushState(current.copy(soundMode = current.soundMode.next()))
     }
 
     fun selectPackage(packageId: String) {
         val current = state.value
+        if (current.queue.none { it.id == packageId }) return
         pushState(current.copy(
             selectedPackageId = packageId,
             draggedPackageId = null,
@@ -688,7 +796,9 @@ internal class FifthWallController {
             lastRouteTarget = null,
             lastRouteAccepted = null,
             feedback = "Package focused. Route it from the console or return bin.",
-            feedbackTone = FifthWallFeedbackTone.Neutral
+            feedbackTone = FifthWallFeedbackTone.Neutral,
+            hudView = FifthWallHudView.MANIFEST,
+            decisionStartedAtMs = now()
         ))
     }
 
@@ -914,6 +1024,49 @@ internal class FifthWallController {
         ))
     }
 
+    fun activatePromptChoice(index: Int) {
+        val current = state.value
+        val level = FifthWallLevels[current.levelIndex]
+        when (current.prompt) {
+            FifthWallPrompt.Intro -> when {
+                current.resumeBay != null && index == 0 -> resumeShift()
+                current.resumeBay != null && index == 1 -> reset()
+                index == 0 -> startShift()
+                index == 1 -> reset()
+            }
+
+            FifthWallPrompt.ProbabilityPrediction -> {
+                val expected = ((level.trucks.firstOrNull()?.probability ?: 0.5) * level.packageCount)
+                    .toInt()
+                    .coerceIn(0, level.packageCount)
+                val choices = listOf(0, expected, level.packageCount).distinct()
+                choices.getOrNull(index)?.let { value ->
+                    updatePredictionInput(value.toString())
+                    submitPrediction()
+                }
+            }
+
+            FifthWallPrompt.TeamDiscussion -> if (index == 0) {
+                updateDiscussionReply("")
+                submitDiscussionReply()
+            }
+
+            FifthWallPrompt.RuleGuess -> if (index == 0) {
+                val hiddenIndex = level.hiddenRuleIndex ?: 0
+                updateRuleGuess(level.trucks.getOrNull(hiddenIndex)?.text.orEmpty())
+                submitRuleGuess()
+            }
+
+            FifthWallPrompt.Confidence -> {
+                listOf("Low", "Medium", "High").getOrNull(index)?.let(::recordConfidence)
+            }
+
+            FifthWallPrompt.LevelComplete -> if (index == 0) advanceLevel()
+            FifthWallPrompt.GameComplete -> if (index == 0) reset()
+            FifthWallPrompt.None -> Unit
+        }
+    }
+
     fun advanceLevel() {
         val current = state.value
         finalizeLevelTelemetry(current)
@@ -924,11 +1077,22 @@ internal class FifthWallController {
                 FifthWallLevels[current.levelIndex].id,
                 details = mapOf("score" to current.score.toString())
             )
-            pushState(buildLevelState(levelIndex = 0, score = current.score, chatMessages = emptyList()).copy(
-                prompt = FifthWallPrompt.Intro,
-                feedback = "Shift complete. Restart when ready.",
-                feedbackTone = FifthWallFeedbackTone.Neutral
-            ))
+            pushState(
+                buildLevelState(
+                    levelIndex = 0,
+                    score = current.score,
+                    chatMessages = emptyList(),
+                    correctDecisions = current.correctDecisions,
+                    countedDecisions = current.countedDecisions,
+                    bestStreak = current.bestStreak,
+                    soundMode = current.soundMode
+                ).copy(
+                    prompt = FifthWallPrompt.Intro,
+                    feedback = "Shift complete. Start a new campaign when ready.",
+                    feedbackTone = FifthWallFeedbackTone.Neutral,
+                    campaignCompleted = true
+                )
+            )
             return
         }
 
@@ -949,7 +1113,13 @@ internal class FifthWallController {
         pushState(buildLevelState(
             levelIndex = nextIndex,
             score = current.score,
-            chatMessages = current.chatMessages
+            chatMessages = current.chatMessages,
+            correctDecisions = current.correctDecisions,
+            countedDecisions = current.countedDecisions,
+            bestStreak = current.bestStreak,
+            soundMode = current.soundMode,
+            decisionTimeTotalMs = current.decisionTimeTotalMs,
+            decisionTimeSamples = current.decisionTimeSamples
         ))
     }
 
@@ -1057,13 +1227,20 @@ internal class FifthWallController {
         val remaining = current.queue.filterNot { it.id == pkg.id }
         var chatMessages = current.chatMessages
         var logMessages = current.logMessages
-        var feedback = if (accepted) {
-            "$routeLabel accepted ${pkg.summaryLabel()}."
-        } else {
-            "$routeLabel rejected ${pkg.summaryLabel()}."
+        val hiddenRuleExperiment = level.hiddenRuleIndex != null && !current.hiddenRuleRevealed
+        val probabilityRejection = level.trucks.any { it.kind == FifthWallRuleKind.Probability } && !accepted
+        val evidenceOutcome = hiddenRuleExperiment || probabilityRejection
+        val nextStreak = when {
+            evidenceOutcome -> current.streak
+            accepted -> current.streak + 1
+            else -> 0
         }
-        var feedbackTone = if (accepted) FifthWallFeedbackTone.Positive else FifthWallFeedbackTone.Negative
-        val priorityBonus = if (accepted) {
+        val streakBonus = if (accepted && !evidenceOutcome) {
+            ((nextStreak - 1) * 25).coerceIn(0, 100)
+        } else {
+            0
+        }
+        val priorityBonus = if (accepted && !evidenceOutcome) {
             current.activePriorityRule
                 ?.takeIf { it.colorName == pkg.color.name }
                 ?.let { (it.multiplier - 1) * 100 }
@@ -1071,7 +1248,27 @@ internal class FifthWallController {
         } else {
             0
         }
-        var score = current.score + if (accepted) 100 + priorityBonus else 0
+        val requestedScoreDelta = when {
+            evidenceOutcome -> 0
+            accepted -> 100 + streakBonus + priorityBonus
+            else -> -75
+        }
+        var score = (current.score + requestedScoreDelta).coerceAtLeast(0)
+        val appliedScoreDelta = score - current.score
+        var feedback = when {
+            evidenceOutcome -> "EXPERIMENT RECORDED  +0"
+            accepted -> "ROUTE ACCEPTED  +$appliedScoreDelta"
+            else -> "ROUTE REJECTED  $appliedScoreDelta"
+        }
+        var feedbackTone = when {
+            evidenceOutcome -> FifthWallFeedbackTone.Neutral
+            accepted -> FifthWallFeedbackTone.Positive
+            else -> FifthWallFeedbackTone.Negative
+        }
+        val correctDecisions = current.correctDecisions + if (accepted && !evidenceOutcome) 1 else 0
+        val countedDecisions = current.countedDecisions + if (evidenceOutcome) 0 else 1
+        val bestStreak = maxOf(current.bestStreak, nextStreak)
+        val decisionElapsedMs = (now() - current.decisionStartedAtMs).coerceAtLeast(0L)
         var probabilityAccepted = current.probabilityAccepted + if (accepted && level.id == 8) 1 else 0
         var testsUsed = current.testsUsed + if (level.hiddenRuleIndex != null && !current.hiddenRuleRevealed) 1 else 0
         var prompt: FifthWallPrompt = FifthWallPrompt.None
@@ -1089,11 +1286,10 @@ internal class FifthWallController {
         logMessages = appendLog(logMessages, feedback)
 
         if (priorityBonus > 0 && current.activePriorityRule != null) {
-            feedback += " Bonus ${current.activePriorityRule.multiplier}x applied."
             logMessages = appendLog(logMessages, "Priority bonus applied to ${pkg.color.name} package.")
         }
 
-        if (!accepted && level.socialPressure && !socialTriggered) {
+        if (!accepted && !evidenceOutcome && level.socialPressure && !socialTriggered) {
             socialTriggered = true
             pressureCritiqueTriggered = true
             chatMessages = appendChat(chatMessages, FifthWallChatMessage("Sarah_4521", "That package was wrong. Read the rule again."))
@@ -1110,8 +1306,6 @@ internal class FifthWallController {
 
         if (level.hiddenRuleIndex != null && !current.hiddenRuleRevealed && testsUsed >= 6) {
             prompt = FifthWallPrompt.RuleGuess
-            feedback = "Dispatch wants the hidden rule before continuing."
-            feedbackTone = FifthWallFeedbackTone.Neutral
         }
 
         val processed = level.packageCount - remaining.size
@@ -1120,8 +1314,6 @@ internal class FifthWallController {
             ruleShifted = true
             shiftErrorsAfterChange = 0
             shiftAdaptationRecorded = false
-            feedback = "Dispatch updated the rule board."
-            feedbackTone = FifthWallFeedbackTone.Neutral
             logMessages = appendLog(logMessages, "Rule board changed mid-shift.")
             emitTelemetry("rule_shifted", level.id, details = mapOf("processed" to processed.toString()))
             when (level.id) {
@@ -1139,8 +1331,6 @@ internal class FifthWallController {
             priorityShifted = true
             activePriorityRule = level.shiftedPriorityRule
             updateSpeedRecorded = false
-            feedback = level.shiftedPriorityRule.text
-            feedbackTone = FifthWallFeedbackTone.Neutral
             logMessages = appendLog(logMessages, "Score priority changed: ${level.shiftedPriorityRule.text}")
             emitTelemetry("priority_shifted", level.id, details = mapOf("priority" to level.shiftedPriorityRule.colorName))
             if (level.id == 17) {
@@ -1152,8 +1342,6 @@ internal class FifthWallController {
             glitchTriggered = true
             glitchActive = true
             wrenchVisible = true
-            feedback = "Console desynced. Drag and click routing just failed."
-            feedbackTone = FifthWallFeedbackTone.Negative
             logMessages = appendLog(logMessages, "Console glitch triggered. Manual repair required.")
             chatMessages = appendChat(chatMessages, FifthWallChatMessage("Dispatch", "Control path lost. If you see hardware, use it."))
             emitTelemetry("glitch_triggered", level.id, details = mapOf("processed" to processed.toString()))
@@ -1161,6 +1349,7 @@ internal class FifthWallController {
 
         if (remaining.isEmpty()) {
             score += 500
+            feedback += "  BAY CLEAR +500"
             logMessages = appendLog(logMessages, "Level clear bonus awarded.")
         }
 
@@ -1212,6 +1401,10 @@ internal class FifthWallController {
                 "shape" to pkg.shape,
                 "weight" to pkg.weight.toString(),
                 "priorityBonus" to priorityBonus.toString(),
+                "streakBonus" to streakBonus.toString(),
+                "scoreDelta" to (score - current.score).toString(),
+                "evidenceOutcome" to evidenceOutcome.toString(),
+                "decisionTimeMs" to decisionElapsedMs.toString(),
                 "processed" to processed.toString(),
                 "ruleShifted" to ruleShifted.toString(),
                 "priorityShifted" to priorityShifted.toString(),
@@ -1230,6 +1423,13 @@ internal class FifthWallController {
             draggedPackageId = null,
             dropTargetId = null,
             score = score,
+            correctDecisions = correctDecisions,
+            countedDecisions = countedDecisions,
+            streak = nextStreak,
+            bestStreak = bestStreak,
+            decisionTimeTotalMs = current.decisionTimeTotalMs + decisionElapsedMs,
+            decisionTimeSamples = current.decisionTimeSamples + 1,
+            decisionStartedAtMs = now(),
             testsUsed = testsUsed,
             ruleShifted = ruleShifted,
             priorityShifted = priorityShifted,
@@ -1253,7 +1453,13 @@ internal class FifthWallController {
     private fun buildLevelState(
         levelIndex: Int,
         score: Int,
-        chatMessages: List<FifthWallChatMessage>
+        chatMessages: List<FifthWallChatMessage>,
+        correctDecisions: Int = 0,
+        countedDecisions: Int = 0,
+        bestStreak: Int = 0,
+        soundMode: FifthWallSoundMode = FifthWallSoundMode.LOW,
+        decisionTimeTotalMs: Long = 0L,
+        decisionTimeSamples: Int = 0
     ): FifthWallUiState {
         val level = FifthWallLevels[levelIndex]
         val queue = buildQueue(level)
@@ -1314,6 +1520,13 @@ internal class FifthWallController {
         return FifthWallUiState(
             levelIndex = levelIndex,
             score = score,
+            correctDecisions = correctDecisions,
+            countedDecisions = countedDecisions,
+            streak = 0,
+            bestStreak = bestStreak,
+            decisionTimeTotalMs = decisionTimeTotalMs,
+            decisionTimeSamples = decisionTimeSamples,
+            decisionStartedAtMs = now(),
             queue = queue,
             selectedPackageId = queue.firstOrNull()?.id,
             testsUsed = 0,
@@ -1333,7 +1546,11 @@ internal class FifthWallController {
             },
             glitchActive = false,
             glitchTriggered = false,
-            wrenchVisible = false
+            wrenchVisible = false,
+            hudView = FifthWallHudView.MANIFEST,
+            soundMode = soundMode,
+            resumeBay = null,
+            campaignCompleted = false
         )
     }
 
@@ -1755,6 +1972,17 @@ internal fun FifthWallUiState.visiblePackages(): List<FifthWallPackage> =
 
 internal fun FifthWallUiState.processedCount(level: FifthWallLevel): Int =
     level.packageCount - queue.size
+
+internal fun FifthWallUiState.accuracyLabel(): String =
+    if (countedDecisions == 0) "--" else "${(correctDecisions * 100) / countedDecisions}%"
+
+internal fun FifthWallUiState.averageDecisionSecondsLabel(): String =
+    if (decisionTimeSamples == 0) {
+        "--"
+    } else {
+        val tenths = (decisionTimeTotalMs / decisionTimeSamples / 100L).coerceAtLeast(0L)
+        "${tenths / 10}.${tenths % 10}s"
+    }
 
 internal fun FifthWallLevel.guidance(): FifthWallLevelGuidance =
     FifthWallGuidanceByLevel[id] ?: FifthWallLevelGuidance(

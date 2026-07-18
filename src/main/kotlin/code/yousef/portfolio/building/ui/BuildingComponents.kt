@@ -19,6 +19,8 @@ fun BuildingPageLayout(
     currentPath: String = "/",
     content: @Composable () -> Unit
 ) {
+    BuildingBaseStyles()
+
     Box(
         modifier = Modifier()
             .fillMaxWidth()
@@ -50,22 +52,22 @@ fun BuildingNav(username: String?, currentPath: String) {
             .fillMaxWidth()
             .backgroundColor(BuildingTheme.Colors.BG_CARD)
             .padding(BuildingTheme.Spacing.md, BuildingTheme.Spacing.lg)
-            .style("box-shadow", "0 1px 3px ${BuildingTheme.Colors.SHADOW}")
+            .boxShadow("0 1px 3px ${BuildingTheme.Colors.SHADOW}")
     ) {
         Row(
             modifier = Modifier()
                 .fillMaxWidth()
                 .maxWidth("1200px")
                 .margin("0 auto")
-                .style("justify-content", "space-between")
-                .style("align-items", "center")
+                .justifyContent(JustifyContent.SpaceBetween)
+                .alignItems(AlignItems.Center)
         ) {
             // Title
             Text(
                 text = BuildingStrings.APP_TITLE,
                 modifier = Modifier()
                     .fontSize(BuildingTheme.FontSize.xl)
-                    .fontWeight("700")
+                    .fontWeight(FontWeight.Bold)
                     .color(BuildingTheme.Colors.PRIMARY)
             )
             
@@ -73,8 +75,8 @@ fun BuildingNav(username: String?, currentPath: String) {
             if (username != null) {
                 Row(
                     modifier = Modifier()
-                        .style("gap", BuildingTheme.Spacing.md)
-                        .style("align-items", "center")
+                        .gap(BuildingTheme.Spacing.md)
+                        .alignItems(AlignItems.Center)
                 ) {
                     NavLink(BuildingStrings.DASHBOARD, "/", currentPath)
                     NavLink(BuildingStrings.BUILDINGS, "/buildings", currentPath)
@@ -139,14 +141,14 @@ fun Card(
             .backgroundColor(BuildingTheme.Colors.BG_CARD)
             .borderRadius(BuildingTheme.BorderRadius.lg)
             .padding(BuildingTheme.Spacing.lg)
-            .style("box-shadow", "0 1px 3px ${BuildingTheme.Colors.SHADOW}")
+            .boxShadow("0 1px 3px ${BuildingTheme.Colors.SHADOW}")
     ) {
         if (title != null) {
             Text(
                 text = title,
                 modifier = Modifier()
                     .fontSize(BuildingTheme.FontSize.lg)
-                    .fontWeight("600")
+                    .fontWeight(FontWeight.SemiBold)
                     .color(BuildingTheme.Colors.TEXT_PRIMARY)
                     .margin("0", "0", BuildingTheme.Spacing.md, "0")
             )
@@ -169,14 +171,14 @@ fun StatCard(
             .backgroundColor(BuildingTheme.Colors.BG_CARD)
             .borderRadius(BuildingTheme.BorderRadius.lg)
             .padding(BuildingTheme.Spacing.lg)
-            .style("text-align", "center")
-            .style("box-shadow", "0 1px 3px ${BuildingTheme.Colors.SHADOW}")
+            .textAlign(TextAlign.Center)
+            .boxShadow("0 1px 3px ${BuildingTheme.Colors.SHADOW}")
     ) {
         Text(
             text = value,
             modifier = Modifier()
                 .fontSize(BuildingTheme.FontSize.xxxl)
-                .fontWeight("700")
+                .fontWeight(FontWeight.Bold)
                 .color(color)
         )
         Text(
@@ -220,7 +222,7 @@ fun StatusBadge(status: PaymentStatus) {
             .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.sm)
             .borderRadius(BuildingTheme.BorderRadius.full)
             .fontSize(BuildingTheme.FontSize.xs)
-            .fontWeight("500")
+            .fontWeight(FontWeight.Medium)
     )
 }
 
@@ -262,7 +264,9 @@ fun Alert(
             .color(textColor)
             .padding(BuildingTheme.Spacing.md)
             .borderRadius(BuildingTheme.BorderRadius.md)
-            .style("border", "1px solid $borderColor")
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(borderColor)
             .margin("0", "0", BuildingTheme.Spacing.md, "0")
     ) {
         Text(message)
@@ -282,7 +286,7 @@ fun EmptyState(message: String) {
         modifier = Modifier()
             .fillMaxWidth()
             .padding(BuildingTheme.Spacing.xxl)
-            .style("text-align", "center")
+            .textAlign(TextAlign.Center)
     ) {
         Text(
             text = message,
@@ -317,11 +321,11 @@ fun Button(
             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
             .borderRadius(BuildingTheme.BorderRadius.md)
             .fontSize(BuildingTheme.FontSize.sm)
-            .fontWeight("500")
-            .style("cursor", "pointer")
-            .style("display", "inline-flex")
-            .style("align-items", "center")
-            .style("justify-content", "center")
+            .fontWeight(FontWeight.Medium)
+            .cursor(Cursor.Pointer)
+            .display(Display.InlineFlex)
+            .alignItems(AlignItems.Center)
+            .justifyContent(JustifyContent.Center)
     ) {
         Text(text)
     }
@@ -343,15 +347,15 @@ fun PageHeader(
     Row(
         modifier = Modifier()
             .fillMaxWidth()
-            .style("justify-content", "space-between")
-            .style("align-items", "center")
+            .justifyContent(JustifyContent.SpaceBetween)
+            .alignItems(AlignItems.Center)
             .margin("0", "0", BuildingTheme.Spacing.lg, "0")
     ) {
         Text(
             text = title,
             modifier = Modifier()
                 .fontSize(BuildingTheme.FontSize.xxl)
-                .fontWeight("700")
+                .fontWeight(FontWeight.Bold)
                 .color(BuildingTheme.Colors.TEXT_PRIMARY)
         )
         
@@ -364,7 +368,7 @@ fun PageHeader(
                     .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
                     .borderRadius(BuildingTheme.BorderRadius.md)
                     .fontSize(BuildingTheme.FontSize.sm)
-                    .fontWeight("500")
+                    .fontWeight(FontWeight.Medium)
             ) {
                 Text(actionLabel)
             }

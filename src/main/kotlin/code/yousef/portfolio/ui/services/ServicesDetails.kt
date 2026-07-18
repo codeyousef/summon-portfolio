@@ -3,6 +3,7 @@ package code.yousef.portfolio.ui.services
 import code.yousef.portfolio.content.model.Service
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioCardGradient
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Paragraph
@@ -36,7 +37,7 @@ fun ServiceDetailsList(
                         .borderStyle(BorderStyle.Solid)
                         .borderColor(PortfolioTheme.Colors.BORDER)
                         .borderRadius(PortfolioTheme.Radii.lg)
-                        .background(PortfolioTheme.Gradients.CARD)
+                        .portfolioCardGradient()
                         .padding(PortfolioTheme.Spacing.xl)
                 ) {
                     Text(

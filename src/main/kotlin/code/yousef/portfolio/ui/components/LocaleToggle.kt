@@ -12,14 +12,13 @@ import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
 
 @Composable
-fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, nativeBaseUrl: String?) {
+fun LocaleToggle(current: PortfolioLocale, path: String = "") {
     Row(
         modifier = Modifier()
             .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
             .gap(PortfolioTheme.Spacing.xs)
             .padding(PortfolioTheme.Spacing.xs, PortfolioTheme.Spacing.sm)
-            .marginRight(PortfolioTheme.Spacing.lg)
             .borderWidth(1)
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
@@ -28,8 +27,7 @@ fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, nativeBase
         LocaleToggleButton(
             locale = PortfolioLocale.EN,
             current = current,
-            forceNativeLinks = forceNativeLinks,
-            nativeBaseUrl = nativeBaseUrl
+            path = path,
         )
         Text(
             text = "|",
@@ -40,8 +38,7 @@ fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, nativeBase
         LocaleToggleButton(
             locale = PortfolioLocale.AR,
             current = current,
-            forceNativeLinks = forceNativeLinks,
-            nativeBaseUrl = nativeBaseUrl
+            path = path,
         )
     }
 }
@@ -50,16 +47,18 @@ fun LocaleToggle(current: PortfolioLocale, forceNativeLinks: Boolean, nativeBase
 private fun LocaleToggleButton(
     locale: PortfolioLocale,
     current: PortfolioLocale,
-    forceNativeLinks: Boolean,
-    nativeBaseUrl: String?
+    path: String,
 ) {
     val isActive = locale == current
-    val href = if (forceNativeLinks) {
-        val baseRoot = nativeBaseUrl?.trimEnd('/') ?: portfolioBaseUrl().trimEnd('/')
-        if (locale == PortfolioLocale.EN) baseRoot else "$baseRoot/${locale.code}"
-    } else {
-        if (locale == PortfolioLocale.EN) "/" else "/${locale.code}"
+    val baseRoot = portfolioBaseUrl().trimEnd('/')
+    val normalizedPath = path.trim().let { value ->
+        when {
+            value.isBlank() || value == "/" -> ""
+            value.startsWith('/') -> value
+            else -> "/$value"
+        }
     }
+    val href = if (locale == PortfolioLocale.EN) "$baseRoot$normalizedPath" else "$baseRoot/${locale.code}$normalizedPath"
     AnchorLink(
         label = locale.code.uppercase(),
         href = href,

@@ -35,7 +35,7 @@ fun LightboxModal(
             .display(Display.Flex)
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
-            .cursor("pointer")
+            .cursor(Cursor.Pointer)
             .onClick { onClose() }
     ) {
         // Content container - stop propagation
@@ -47,7 +47,7 @@ fun LightboxModal(
                 .gap(PortfolioTheme.Spacing.lg)
                 .maxWidth(90.vw)
                 .maxHeight(90.vh)
-                .cursor("default")
+                .cursor(Cursor.Default)
                 .onClick { /* Stop propagation */ }
         ) {
             // Close button

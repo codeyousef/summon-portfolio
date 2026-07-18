@@ -21,7 +21,8 @@ import codes.yousef.summon.modifier.*
  */
 @Composable
 fun ScratchpadPage(
-    locale: PortfolioLocale = PortfolioLocale.EN
+    locale: PortfolioLocale = PortfolioLocale.EN,
+    command: String? = null
 ) {
     ScratchpadScaffold {
         // Return link
@@ -104,7 +105,7 @@ fun ScratchpadPage(
                 .borderColor(ScratchpadTheme.BORDER)
         ) {
             Text(
-                text = "drag to pan / scroll to zoom",
+                text = "native canvas / scroll to explore",
                 modifier = Modifier()
                     .fontSize(0.75.rem)
                     .color(ScratchpadTheme.TEXT_MUTED)
@@ -118,8 +119,8 @@ fun ScratchpadPage(
                 noteId = "hot-take-1",
                 title = "HOT TAKE #1",
                 content = "Microservices are just distributed monoliths with extra network latency.",
-                x = 4400,
-                y = 4850,
+                x = 200,
+                y = 250,
                 rotation = -3f,
                 color = StickyNoteColor.YELLOW
             )
@@ -128,8 +129,8 @@ fun ScratchpadPage(
                 noteId = "hot-take-2",
                 title = "HOT TAKE #2",
                 content = "The best code is the code you don't write.",
-                x = 4350,
-                y = 5200,
+                x = 150,
+                y = 600,
                 rotation = 2f,
                 color = StickyNoteColor.PINK
             )
@@ -138,8 +139,8 @@ fun ScratchpadPage(
                 noteId = "hot-take-3",
                 title = "HOT TAKE #3",
                 content = "GraphQL is just REST with extra steps and a type system you'll eventually ignore anyway.",
-                x = 5650,
-                y = 4800,
+                x = 1450,
+                y = 200,
                 rotation = -1f,
                 color = StickyNoteColor.CYAN
             )
@@ -148,8 +149,8 @@ fun ScratchpadPage(
                 noteId = "thought-1",
                 title = "THOUGHT",
                 content = "Every time I write 'TODO: fix later', I'm lying to future me.",
-                x = 5600,
-                y = 5150,
+                x = 1400,
+                y = 550,
                 rotation = 4f,
                 color = StickyNoteColor.GREEN
             )
@@ -158,8 +159,8 @@ fun ScratchpadPage(
                 noteId = "note-to-self-1",
                 title = "NOTE TO SELF",
                 content = "Stop starting new side projects. Finish the ones you have.\n\n(Posted 47 side projects ago)",
-                x = 4450,
-                y = 5500,
+                x = 250,
+                y = 900,
                 rotation = -2f,
                 color = StickyNoteColor.ORANGE,
                 maxWidth = 220
@@ -169,8 +170,8 @@ fun ScratchpadPage(
                 noteId = "unpopular-opinion-1",
                 title = "UNPOPULAR OPINION",
                 content = "CSS is actually fine. You just need to understand it.",
-                x = 5700,
-                y = 5400,
+                x = 1500,
+                y = 800,
                 rotation = 1f,
                 color = StickyNoteColor.PURPLE
             )
@@ -178,8 +179,8 @@ fun ScratchpadPage(
             StickyNote(
                 noteId = "code-wisdom-1",
                 content = "if (works) {\n  don't.touch();\n}",
-                x = 5000,
-                y = 5650,
+                x = 800,
+                y = 1050,
                 rotation = 0f,
                 color = StickyNoteColor.GREEN,
                 maxWidth = 160
@@ -187,12 +188,55 @@ fun ScratchpadPage(
 
             // The forbidden button
             DontClickButton(
-                x = 5100,
-                y = 5300
+                x = 900,
+                y = 700
             )
+
+            if (command?.trim()?.lowercase() in setOf("spawn balls", "spawn cube")) {
+                ColorBurst()
+            }
         }
 
         // Terminal at the bottom
-        TerminalOverlay()
+        TerminalOverlay(command = command)
     }
 }
+
+@Composable
+private fun ColorBurst() {
+    val balls = listOf(
+        BurstBall(-180, -110, 36, "#ff4d6d"),
+        BurstBall(-115, 80, 54, "#ffd166"),
+        BurstBall(-20, -145, 44, "#06d6a0"),
+        BurstBall(35, 105, 32, "#4cc9f0"),
+        BurstBall(110, -75, 62, "#9b5de5"),
+        BurstBall(185, 45, 40, "#f15bb5"),
+        BurstBall(-220, 25, 28, "#00bbf9"),
+        BurstBall(225, -135, 48, "#fb5607")
+    )
+
+    balls.forEach { ball ->
+        Box(
+            modifier = Modifier()
+                .position(Position.Absolute)
+                .left((980 + ball.offsetX).px)
+                .top((760 + ball.offsetY).px)
+                .width(ball.size.px)
+                .height(ball.size.px)
+                .borderRadius(999.px)
+                .backgroundColor(ball.color)
+                .borderWidth(2)
+                .borderStyle(BorderStyle.Solid)
+                .borderColor(ScratchpadTheme.TEXT_PRIMARY)
+                .boxShadow("5px 5px 0 ${ScratchpadTheme.BG_PRIMARY}")
+                .pointerEvents(PointerEvents.None)
+        ) {}
+    }
+}
+
+private data class BurstBall(
+    val offsetX: Int,
+    val offsetY: Int,
+    val size: Int,
+    val color: String
+)

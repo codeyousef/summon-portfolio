@@ -1,89 +1,129 @@
 package code.yousef.portfolio.docs
 
-import org.jsoup.Jsoup
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 
 class LinkRewriter {
 
-    fun rewriteHtml(
-        html: String,
+    fun rewrite(
+        document: MarkdownDocument,
         requestPath: String,
         repoPath: String,
         docsRoot: String,
         branch: String,
         basePath: String = ""
-    ): String {
-        val document = Jsoup.parseBodyFragment(html)
-        val repoDirectory = repoPath.substringBeforeLast('/', docsRoot)
-
-        document.select("a[href]").forEach { element ->
-            val href = element.attr("href").trim()
-            if (href.isBlank()) return@forEach
-
-            if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("mailto:")) {
-                element.attr("rel", "noopener")
-                element.attr("target", "_blank")
-                return@forEach
-            }
-
-            if (href.startsWith("#")) {
-                return@forEach
-            }
-
-            val (pathPart, fragment) = href.split("#", limit = 2).let {
-                it[0] to it.getOrNull(1)
-            }
-            val resolved = resolvePath(pathPart, repoDirectory)
-            val looksLikeMarkdown =
-                resolved.endsWith(".md") || !resolved.substringAfterLast('/', resolved).contains('.')
-
-            if (looksLikeMarkdown) {
-                val normalized = if (resolved.endsWith(".md")) resolved else "$resolved.md"
-                val stripped = stripDocsRoot(normalized, docsRoot).removeSuffix(".md")
-                val newHref = buildDocsHref(requestPath, stripped, fragment, basePath)
-                element.attr("href", newHref)
-                element.attr("data-doc-link", "true")
-                element.attr("rel", element.attr("rel").ifBlank { "noopener" })
-                return@forEach
-            }
-
-            // non-markdown relative link treated as asset
-            val assetPath = stripDocsRoot(resolved, docsRoot)
-            val rewritten = buildAssetPath(assetPath, branch)
-            val finalHref = fragment?.let { "$rewritten#$it" } ?: rewritten
-            element.attr("href", finalHref)
-        }
-
-        document.select("img[src]").forEach { element ->
-            val src = element.attr("src").trim()
-            if (src.isBlank()) return@forEach
-            if (src.startsWith("http://") || src.startsWith("https://")) return@forEach
-            val resolved = resolvePath(src, repoDirectory)
-            val assetPath = stripDocsRoot(resolved, docsRoot)
-            val rewritten = buildAssetPath(assetPath, branch)
-            element.attr("src", rewritten)
-        }
-
-        return document.body().html()
-    }
-
-    private fun resolvePath(segment: String, baseDirectory: String): String {
-        val base = if (baseDirectory.isBlank()) Paths.get(".") else Paths.get(baseDirectory)
-        return base.resolve(segment).normalize().toString().trimStart('/')
-    }
-
-    private fun stripDocsRoot(path: String, docsRoot: String): String {
-        val normalizedRoot = docsRoot.trim('/').ifBlank { "docs" }
-        return path.removePrefix("$normalizedRoot/").trimStart('/')
-    }
-
-    private fun buildDocsHref(currentPath: String, target: String, fragment: String?, basePath: String = ""): String {
-        val prefix = if (target.isBlank()) basePath.ifBlank { "" } else "$basePath/${target.trimStart('/')}"
-        return if (fragment != null) "$prefix#$fragment" else prefix.ifBlank { "/" }
-    }
-
-    private fun buildAssetPath(assetPath: String, branch: String): String {
-        val normalized = assetPath.trimStart('/')
-        return "/__asset/$normalized?ref=$branch"
-    }
+    ): MarkdownDocument = document.withLinkContext(
+        MarkdownLinkContext(
+            requestPath = requestPath,
+            repoPath = repoPath,
+            docsRoot = docsRoot,
+            branch = branch,
+            basePath = basePath
+        )
+    )
 }
+
+internal data class MarkdownLinkContext(
+    val requestPath: String,
+    val repoPath: String,
+    val docsRoot: String,
+    val branch: String,
+    val basePath: String
+)
+
+internal data class ResolvedMarkdownLink(
+    val href: String,
+    val target: String? = null,
+    val rel: String? = null,
+    val isDocLink: Boolean = false
+)
+
+internal fun MarkdownDocument.resolveMarkdownLink(rawDestination: String): ResolvedMarkdownLink? {
+    val href = safeUrl(rawDestination, allowMailto = true) ?: return null
+    if (href.isExternalUrl() || href.startsWith("mailto:", ignoreCase = true)) {
+        return ResolvedMarkdownLink(href = href, target = "_blank", rel = "noopener")
+    }
+    if (href.startsWith("#")) return ResolvedMarkdownLink(href = href)
+
+    val context = linkContext ?: return ResolvedMarkdownLink(href = href)
+    val repoDirectory = context.repoPath.substringBeforeLast('/', context.docsRoot)
+    val (pathPart, fragment) = href.split("#", limit = 2).let { parts ->
+        parts[0] to parts.getOrNull(1)
+    }
+    val resolved = resolvePath(pathPart, repoDirectory) ?: return null
+    val looksLikeMarkdown =
+        resolved.endsWith(".md", ignoreCase = true) ||
+            !resolved.substringAfterLast('/', resolved).contains('.')
+
+    if (looksLikeMarkdown) {
+        val normalized = if (resolved.endsWith(".md", ignoreCase = true)) resolved else "$resolved.md"
+        val stripped = stripDocsRoot(normalized, context.docsRoot).removeSuffix(".md")
+        return ResolvedMarkdownLink(
+            href = buildDocsHref(stripped, fragment, context.basePath),
+            rel = "noopener",
+            isDocLink = true
+        )
+    }
+
+    val assetPath = stripDocsRoot(resolved, context.docsRoot)
+    val rewritten = buildAssetPath(assetPath, context.branch)
+    return ResolvedMarkdownLink(
+        href = fragment?.let { "$rewritten#$it" } ?: rewritten
+    )
+}
+
+internal fun MarkdownDocument.resolveMarkdownImage(rawSource: String): String? {
+    val source = safeUrl(rawSource, allowMailto = false) ?: return null
+    if (source.isExternalUrl()) return source
+
+    val context = linkContext ?: return source
+    val repoDirectory = context.repoPath.substringBeforeLast('/', context.docsRoot)
+    val resolved = resolvePath(source, repoDirectory) ?: return null
+    val assetPath = stripDocsRoot(resolved, context.docsRoot)
+    return buildAssetPath(assetPath, context.branch)
+}
+
+private fun safeUrl(raw: String, allowMailto: Boolean): String? {
+    val value = raw.trim()
+    if (value.isBlank()) return null
+    if (value.any { it.code < 0x20 || it.code == 0x7f }) return null
+    if (value.startsWith("//") || value.startsWith("\\\\")) return null
+
+    val schemeMatch = SCHEME.find(value)
+    if (schemeMatch != null) {
+        val scheme = schemeMatch.groupValues[1].lowercase()
+        when (scheme) {
+            "http", "https" -> if (!value.startsWith("$scheme://", ignoreCase = true)) return null
+            "mailto" -> if (!allowMailto || value.length <= "mailto:".length) return null
+            else -> return null
+        }
+    }
+    return value
+}
+
+private fun String.isExternalUrl(): Boolean =
+    startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
+
+private fun resolvePath(segment: String, baseDirectory: String): String? = runCatching {
+    val base = if (baseDirectory.isBlank()) Paths.get(".") else Paths.get(baseDirectory)
+    base.resolve(segment).normalize().toString().replace('\\', '/').trimStart('/')
+}.getOrNull()?.takeUnless { it == ".." || it.startsWith("../") }
+
+private fun stripDocsRoot(path: String, docsRoot: String): String {
+    val normalizedRoot = docsRoot.trim('/').ifBlank { "docs" }
+    return path.removePrefix("$normalizedRoot/").trimStart('/')
+}
+
+private fun buildDocsHref(target: String, fragment: String?, basePath: String): String {
+    val prefix = if (target.isBlank()) basePath.ifBlank { "" } else "$basePath/${target.trimStart('/')}"
+    return if (fragment != null) "$prefix#$fragment" else prefix.ifBlank { "/" }
+}
+
+private fun buildAssetPath(assetPath: String, branch: String): String {
+    val normalized = assetPath.trimStart('/')
+    val encodedBranch = URLEncoder.encode(branch, StandardCharsets.UTF_8).replace("+", "%20")
+    return "/__asset/$normalized?ref=$encodedBranch"
+}
+
+private val SCHEME = Regex("""^([A-Za-z][A-Za-z0-9+.-]*):""")

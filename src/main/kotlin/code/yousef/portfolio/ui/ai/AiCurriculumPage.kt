@@ -3,10 +3,12 @@ package code.yousef.portfolio.ui.ai
 import code.yousef.portfolio.ai.AiLessonEntry
 import code.yousef.portfolio.ai.AiSubLessonEntry
 import code.yousef.portfolio.docs.DocsNavTree
+import code.yousef.portfolio.docs.MarkdownDocument
 import code.yousef.portfolio.docs.MarkdownMeta
 import code.yousef.portfolio.docs.NeighborLinks
 import code.yousef.portfolio.docs.TocEntry
 import code.yousef.portfolio.docs.summon.DocsShell
+import code.yousef.portfolio.docs.summon.components.Prose
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
@@ -14,20 +16,17 @@ import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.PortfolioFooter
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.display.RichText
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.forms.Form
 import codes.yousef.summon.components.forms.FormButton
 import codes.yousef.summon.components.forms.FormEncType
 import codes.yousef.summon.components.forms.FormHiddenField
 import codes.yousef.summon.components.forms.FormMethod
-import codes.yousef.summon.components.foundation.RawHtml
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
-import codes.yousef.summon.components.styles.GlobalStyle
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
@@ -38,22 +37,20 @@ import codes.yousef.summon.modifier.*
 @Composable
 fun AiLessonPage(
     requestPath: String,
-    html: String,
+    document: MarkdownDocument,
     toc: List<TocEntry>,
     sidebar: DocsNavTree,
     meta: MarkdownMeta,
     neighbors: NeighborLinks,
     sectionId: String?
 ) {
-    AiCurriculumStyles()
-
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         AppHeader(locale = PortfolioLocale.EN)
 
         SectionWrap(maxWidthPx = 1500) {
             DocsShell(
                 requestPath = requestPath,
-                html = html,
+                document = document,
                 toc = toc,
                 sidebar = sidebar,
                 meta = meta,
@@ -70,15 +67,12 @@ fun AiLessonPage(
 fun AiLessonLandingPage(
     slug: String,
     entry: AiLessonEntry,
-    introHtml: String,
+    introDocument: MarkdownDocument,
     subLessons: List<AiSubLessonEntry>,
     progress: Map<String, Boolean>,
     sidebar: DocsNavTree,
     requestPath: String
 ) {
-    AiCurriculumStyles()
-    AiLandingStyles()
-
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         AppHeader(locale = PortfolioLocale.EN)
 
@@ -107,37 +101,20 @@ fun AiLessonLandingPage(
                 Text(
                     text = "$completedSubs / $totalSubs sub-lessons completed ($pct%)",
                     modifier = Modifier()
-                        .className("ai-summary-text")
+                        .fontSize(0.9.rem)
+                        .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                        .fontWeight(600)
                 )
-                RawHtml(
-                    html = """<div class="ai-progress-bar-track"><div class="ai-progress-bar-fill" style="width:${pct}%"></div></div>"""
-                )
+                AiProgressBar(percent = pct)
             }
 
             // Intro prose
-            if (introHtml.isNotBlank()) {
-                Column(
-                    modifier = Modifier()
-                        .className("prose")
-                        .backgroundColor(PortfolioTheme.Colors.SURFACE)
-                        .borderWidth(1)
-                        .borderStyle(BorderStyle.Solid)
-                        .borderColor(PortfolioTheme.Colors.BORDER)
-                        .borderRadius(PortfolioTheme.Radii.lg)
-                        .padding(PortfolioTheme.Spacing.xl)
-                        .marginBottom(PortfolioTheme.Spacing.lg)
-                        .width(100.percent)
-                ) {
-                    RichText(
-                        introHtml,
-                        modifier = Modifier()
-                            .fontSize(1.rem)
-                            .lineHeight(1.7)
-                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                            .fontFamily(PortfolioTheme.Typography.FONT_SANS)
-                    )
-                }
-            }
+            Prose(
+                document = introDocument,
+                modifier = Modifier()
+                    .marginBottom(PortfolioTheme.Spacing.lg)
+                    .width(100.percent)
+            )
 
             // Sub-lesson cards
             Text(
@@ -159,7 +136,6 @@ fun AiLessonLandingPage(
 
                     Row(
                         modifier = Modifier()
-                            .className("ai-sub-card")
                             .display(Display.Flex)
                             .alignItems(AlignItems.Center)
                             .gap(PortfolioTheme.Spacing.md)
@@ -170,6 +146,12 @@ fun AiLessonLandingPage(
                             .borderRadius(PortfolioTheme.Radii.md)
                             .padding(PortfolioTheme.Spacing.md)
                             .width(100.percent)
+                            .transition(
+                                property = TransitionProperty.BorderColor,
+                                duration = 200,
+                                timingFunction = TransitionTimingFunction.Ease
+                            )
+                            .hover(Modifier().borderColor(PortfolioTheme.Colors.ACCENT_ALT))
                     ) {
                         // Number badge
                         Box(
@@ -218,7 +200,7 @@ fun AiLessonLandingPage(
 @Composable
 fun AiSubLessonPage(
     requestPath: String,
-    html: String,
+    document: MarkdownDocument,
     toc: List<TocEntry>,
     sidebar: DocsNavTree,
     meta: MarkdownMeta,
@@ -227,9 +209,6 @@ fun AiSubLessonPage(
     isCompleted: Boolean,
     currentPath: String
 ) {
-    AiCurriculumStyles()
-    AiSubLessonStyles()
-
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         AppHeader(locale = PortfolioLocale.EN)
 
@@ -251,14 +230,35 @@ fun AiSubLessonPage(
                     )
                 ) {
                     FormButton(
-                        text = if (isCompleted) "Completed \u2713" else "Mark as completed"
+                        text = if (isCompleted) "Completed \u2713" else "Mark as completed",
+                        modifier = Modifier()
+                            .padding(8.px, 20.px)
+                            .borderRadius(8.px)
+                            .fontWeight(600)
+                            .cursor(Cursor.Pointer)
+                            .borderWidth(1)
+                            .borderStyle(BorderStyle.Solid)
+                            .borderColor(PortfolioTheme.Colors.BORDER)
+                            .backgroundColor(PortfolioTheme.Colors.SURFACE)
+                            .color(PortfolioTheme.Colors.TEXT_PRIMARY)
+                            .transition(
+                                property = TransitionProperty.All,
+                                duration = 200,
+                                timingFunction = TransitionTimingFunction.Ease
+                            )
+                            .hover(
+                                Modifier()
+                                    .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                                    .color("#fff")
+                                    .borderColor(PortfolioTheme.Colors.ACCENT)
+                            )
                     )
                 }
             }
 
             DocsShell(
                 requestPath = requestPath,
-                html = html,
+                document = document,
                 toc = toc,
                 sidebar = sidebar,
                 meta = meta,
@@ -273,9 +273,6 @@ fun AiSubLessonPage(
 
 @Composable
 fun AiOverviewPage(entries: List<AiLessonEntry>, progress: Map<String, Boolean> = emptyMap()) {
-    AiCurriculumStyles()
-    AiOverviewStyles()
-
     PageScaffold(locale = PortfolioLocale.EN, enableAuroraEffects = false) {
         AppHeader(locale = PortfolioLocale.EN)
 
@@ -313,11 +310,11 @@ fun AiOverviewPage(entries: List<AiLessonEntry>, progress: Map<String, Boolean> 
                     Text(
                         text = "$doneCount / $totalCount lessons completed ($pct%)",
                         modifier = Modifier()
-                            .className("ai-summary-text")
+                            .fontSize(0.9.rem)
+                            .color(PortfolioTheme.Colors.TEXT_SECONDARY)
+                            .fontWeight(600)
                     )
-                    RawHtml(
-                        html = """<div class="ai-progress-bar-track"><div class="ai-progress-bar-fill" style="width:${pct}%"></div></div>"""
-                    )
+                    AiProgressBar(percent = pct)
                 }
             }
 
@@ -387,9 +384,22 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>, progress
                     .fontWeight(600)
             )
             if (phaseTotal > 0) {
-                RawHtml(
-                    html = """<span class="ai-phase-badge${if (allDone) " all-done" else ""}">$phaseDone/$phaseTotal</span>"""
-                )
+                Box(
+                    modifier = Modifier()
+                        .display(Display.InlineBlock)
+                        .marginLeft(12.px)
+                        .padding(2.px, 10.px)
+                        .borderRadius(12.px)
+                        .fontSize(0.8.rem)
+                        .fontWeight(600)
+                        .backgroundColor(if (allDone) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.SURFACE)
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(if (allDone) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.BORDER)
+                        .color(if (allDone) "#fff" else PortfolioTheme.Colors.TEXT_SECONDARY)
+                ) {
+                    Text(text = "$phaseDone/$phaseTotal")
+                }
             }
         }
 
@@ -410,11 +420,16 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>, progress
                 ) {
                     // Server-rendered checkmark
                     if (lesson.sectionId != null) {
-                        RawHtml(
-                            html = if (isLessonDone)
-                                """<span style="color:${PortfolioTheme.Colors.ACCENT};font-weight:700;font-size:1.1rem;flex-shrink:0;">&#10003;</span>"""
-                            else
-                                """<span style="color:${PortfolioTheme.Colors.TEXT_SECONDARY};font-size:1.1rem;flex-shrink:0;">&#9675;</span>"""
+                        Text(
+                            text = if (isLessonDone) "\u2713" else "\u25cb",
+                            modifier = Modifier()
+                                .color(
+                                    if (isLessonDone) PortfolioTheme.Colors.ACCENT
+                                    else PortfolioTheme.Colors.TEXT_SECONDARY
+                                )
+                                .fontWeight(if (isLessonDone) 700 else 400)
+                                .fontSize(1.1.rem)
+                                .flexShrink(0)
                         )
                     }
 
@@ -422,10 +437,10 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>, progress
                         label = lesson.title,
                         href = "/ai/${lesson.slug}",
                         modifier = Modifier()
-                            .className("ai-lesson-link")
                             .color(PortfolioTheme.Colors.ACCENT_ALT)
                             .textDecoration(TextDecoration.None)
                             .hover(Modifier().textDecoration(TextDecoration.Underline))
+                            .visited(Modifier().color(PortfolioTheme.Colors.ACCENT_ALT))
                             .let { mod ->
                                 if (isLessonDone) mod.opacity(0.6f).textDecoration(TextDecoration.LineThrough)
                                 else mod
@@ -441,111 +456,32 @@ private fun PhaseCard(phaseTitle: String, lessons: List<AiLessonEntry>, progress
 // ── Shared styles ──────────────────────────────────────────────────────────
 
 @Composable
-private fun AiCurriculumStyles() {
-    GlobalStyle(
-        """
-        /* Phase badge */
-        .ai-phase-badge {
-            display: inline-block;
-            margin-left: 12px;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            background: ${PortfolioTheme.Colors.SURFACE};
-            border: 1px solid ${PortfolioTheme.Colors.BORDER};
-            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-            vertical-align: middle;
-        }
-        .ai-phase-badge.all-done {
-            background: ${PortfolioTheme.Colors.ACCENT};
-            color: #fff;
-            border-color: ${PortfolioTheme.Colors.ACCENT};
-        }
-
-        /* Progress bar */
-        .ai-progress-bar-track {
-            width: 100%;
-            height: 8px;
-            background: ${PortfolioTheme.Colors.BORDER};
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 6px;
-        }
-        .ai-progress-bar-fill {
-            height: 100%;
-            background: ${PortfolioTheme.Colors.ACCENT};
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-        .ai-summary-text {
-            font-size: 0.9rem;
-            color: ${PortfolioTheme.Colors.TEXT_SECONDARY};
-            font-weight: 600;
-        }
-        """
-    )
-}
-
-@Composable
-private fun AiOverviewStyles() {
-    GlobalStyle(
-        """
-        /* Overview lesson link hover */
-        .ai-lesson-link:visited {
-            color: ${PortfolioTheme.Colors.ACCENT_ALT};
-        }
-        """
-    )
-}
-
-@Composable
-private fun AiLandingStyles() {
-    GlobalStyle(
-        """
-        .ai-sub-card {
-            transition: border-color 0.2s ease;
-        }
-        .ai-sub-card:hover {
-            border-color: ${PortfolioTheme.Colors.ACCENT_ALT} !important;
-        }
-        """
-    )
-}
-
-@Composable
-private fun AiSubLessonStyles() {
-    GlobalStyle(
-        """
-        /* Completion button styling */
-        .ai-completion-form button {
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid ${PortfolioTheme.Colors.BORDER};
-            background: ${PortfolioTheme.Colors.SURFACE};
-            color: ${PortfolioTheme.Colors.TEXT_PRIMARY};
-            transition: all 0.2s ease;
-        }
-        .ai-completion-form button:hover {
-            background: ${PortfolioTheme.Colors.ACCENT};
-            color: #fff;
-            border-color: ${PortfolioTheme.Colors.ACCENT};
-        }
-        """
-    )
-}
-
-private fun htmlEscape(value: String): String = buildString(value.length) {
-    value.forEach { ch ->
-        when (ch) {
-            '&' -> append("&amp;")
-            '<' -> append("&lt;")
-            '>' -> append("&gt;")
-            '"' -> append("&quot;")
-            '\'' -> append("&#39;")
-            else -> append(ch)
-        }
+private fun AiProgressBar(percent: Int) {
+    val normalizedPercent = percent.coerceIn(0, 100)
+    Box(
+        modifier = Modifier()
+            .width(100.percent)
+            .height(8.px)
+            .backgroundColor(PortfolioTheme.Colors.BORDER)
+            .borderRadius(4.px)
+            .overflow(Overflow.Hidden)
+            .marginTop(6.px)
+            .role("progressbar")
+            .ariaAttribute("valuemin", "0")
+            .ariaAttribute("valuemax", "100")
+            .ariaAttribute("valuenow", normalizedPercent.toString())
+    ) {
+        Box(
+            modifier = Modifier()
+                .width(normalizedPercent.percent)
+                .height(100.percent)
+                .backgroundColor(PortfolioTheme.Colors.ACCENT)
+                .borderRadius(4.px)
+                .transition(
+                    property = TransitionProperty.Width,
+                    duration = 300,
+                    timingFunction = TransitionTimingFunction.Ease
+                )
+        ) {}
     }
 }

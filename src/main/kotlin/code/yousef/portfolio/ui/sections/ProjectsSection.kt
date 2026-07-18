@@ -9,8 +9,8 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.resolveSummonInline
 import codes.yousef.summon.annotation.Composable
-import codes.yousef.summon.components.display.RichText
 import codes.yousef.summon.components.display.Text
+import codes.yousef.summon.components.html.P
 import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.AnchorLink
@@ -184,12 +184,28 @@ private fun ProjectCard(project: Project, locale: PortfolioLocale) {
             )
         }
         if (description.hasSummonLink) {
-            RichText(
-                "<p>${description.html}</p>",
+            P(
                 modifier = Modifier()
                     .color(PortfolioTheme.Colors.TEXT_SECONDARY)
                     .lineHeight(1.7)
-            )
+            ) {
+                description.textSegments.forEachIndexed { index, segment ->
+                    if (segment.isNotEmpty()) {
+                        Text(text = segment)
+                    }
+                    if (index < description.textSegments.lastIndex) {
+                        AnchorLink(
+                            label = description.summonLinkLabel.orEmpty(),
+                            href = summonMarketingUrl(),
+                            modifier = Modifier()
+                                .color("inherit")
+                                .textDecoration(TextDecoration.Underline),
+                            rel = "noopener",
+                            navigationMode = LinkNavigationMode.Native
+                        )
+                    }
+                }
+            }
         } else {
             Text(
                 text = description.value,

@@ -3,6 +3,9 @@ package code.yousef.portfolio.ui.workwithme
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.ContextNavigationIds
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
+import code.yousef.portfolio.ui.components.workWithMeNavigationContext
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.ContactFooterSection
@@ -15,6 +18,7 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.core.style.Color
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
@@ -27,7 +31,11 @@ import codes.yousef.summon.modifier.*
 @Composable
 fun FullTimePage(locale: PortfolioLocale) {
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.WORK,
+            context = workWithMeNavigationContext(locale, ContextNavigationIds.FULL_TIME),
+        )
         
         // Hero Section
         FullTimeHeroSection()
@@ -63,7 +71,7 @@ private fun FullTimeHeroSection() {
                     .fontWeight(900)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .lineHeight(1.2)
-                    .style("text-shadow", "0 0 30px rgba(0,0,0,0.8)")
+                    .textShadow(TextShadow.pixels(0, 0, 30, Color.rgba(0, 0, 0, 0.8f)))
             )
             
             // Sub-headline
@@ -129,7 +137,7 @@ private fun UnfairAdvantageSection() {
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(280px, 1fr))")
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(280.px), gridFraction())))
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 AdvantageCard(
@@ -156,7 +164,9 @@ private fun AdvantageCard(title: String, description: String) {
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border("1px", "solid", PortfolioTheme.Colors.BORDER)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.sm)) {
             Text(
@@ -192,7 +202,7 @@ private fun TechnicalProficiencySection() {
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(280px, 1fr))")
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(280.px), gridFraction())))
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 ProficiencyCard(
@@ -224,7 +234,9 @@ private fun ProficiencyCard(level: String, skills: List<String>) {
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border("1px", "solid", PortfolioTheme.Colors.BORDER)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.md)) {
             Text(
@@ -361,7 +373,9 @@ private fun DeploymentDocsSection() {
                         .borderRadius(PortfolioTheme.Radii.md)
                         .fontWeight(600)
                         .textDecoration(TextDecoration.None)
-                        .border("1px", "solid", PortfolioTheme.Colors.BORDER),
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER),
                     target = "_blank",
                     rel = "noopener noreferrer",
                     title = null,

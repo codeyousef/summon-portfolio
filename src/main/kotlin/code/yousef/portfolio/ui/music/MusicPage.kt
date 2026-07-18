@@ -6,6 +6,7 @@ import code.yousef.portfolio.i18n.LocalizedText
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.ContactFooterSection
@@ -15,7 +16,9 @@ import codes.yousef.summon.components.display.Paragraph
 import codes.yousef.summon.components.display.Text
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
@@ -47,20 +50,18 @@ fun MusicPage(
     val featuredTracks = tracks.filter { it.featured }.sortedBy { it.order }
     val otherTracks = tracks.filter { !it.featured }.sortedBy { it.order }
 
-    GlobalStyle(
-        css = """
-        @media (max-width: 768px) {
-            .music-tracks-grid {
-                gap: ${PortfolioTheme.Spacing.md} !important;
-            }
+    TypedStyleSheet {
+        media(MediaQuery.MaxWidth(768)) {
+            rule(
+                StyleSelector.className("music-tracks-grid"),
+                Modifier().gap(PortfolioTheme.Spacing.md),
+                priority = StyleRulePriority.Important,
+            )
         }
-    """
-    )
+    }
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
-
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        AppHeader(locale = locale, activeDestination = GlobalNavigationDestination.PROJECTS)
 
         // Hero section
         SectionWrap {

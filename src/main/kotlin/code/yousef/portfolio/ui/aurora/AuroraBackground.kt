@@ -1,6 +1,6 @@
 package code.yousef.portfolio.ui.aurora
 
-import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioHeroGradient
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.extensions.percent
@@ -41,7 +41,7 @@ fun AuroraBackground(
             .left(0.px)
             .width(100.percent)
             .height(config.heightVh.vh)
-            .style("background", PortfolioTheme.Gradients.HERO)
+            .portfolioHeroGradient()
             .zIndex(0)
             .pointerEvents(PointerEvents.None) // Allow clicks to pass through
     ) {

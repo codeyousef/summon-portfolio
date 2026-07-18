@@ -1,0 +1,640 @@
+name: Deploy portfolio production to Cloud Run
+
+on:
+  push:
+    branches: [master]
+
+concurrency:
+  group: portfolio-deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SERVICE: portfolio
+  CONTAINER_REPO: portfolio-production
+  GCP_PROJECT_ID: portfolio-476219
+  GCP_REGION: us-central1
+  PHOTOGRAPHY_UPLOAD_BUCKET: portfolio-476219-portfolio-uploads
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Test portfolio before publication
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
+        run: ./gradlew --no-daemon --max-workers=2 test
+
+  publish-image:
+    needs: test
+    if: ${{ vars.PORTFOLIO_PROD_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: portfolio-production-image
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image_uri: ${{ steps.image.outputs.uri }}
+      service: ${{ steps.target.outputs.service }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Select scoped production identities
+        id: target
+        env:
+          PROD_IMAGE_PUBLISHER: ${{ vars.GCP_PORTFOLIO_PROD_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
+          PROVIDER: ${{ vars.GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${PROVIDER}" || { echo "GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER is not configured" >&2; exit 1; }
+          test -n "${PROD_IMAGE_PUBLISHER}" || { echo "Scoped portfolio production image publisher is not configured" >&2; exit 1; }
+          test "${PROVIDER}" = "projects/236814539128/locations/global/workloadIdentityPools/portfolio-prod-github/providers/github"
+          test "${PROD_IMAGE_PUBLISHER}" = "portfolio-prod-image-pub@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          echo "service=${SERVICE}" >> "${GITHUB_OUTPUT}"
+          echo "publisher=${PROD_IMAGE_PUBLISHER}" >> "${GITHUB_OUTPUT}"
+
+      - name: Authenticate image publisher with GitHub OIDC
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ steps.target.outputs.publisher }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Download Seen compiler tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p seen-tools
+          gcloud storage cp --recursive "gs://seen-compiler-tools/*" seen-tools/
+          expected_count="$(wc -l < .github/seen-tools-production.sha256)"
+          actual_count="$(find seen-tools -type f | wc -l)"
+          test "${actual_count}" = "${expected_count}" || {
+            echo "Seen compiler object inventory differs from the reviewed production manifest" >&2
+            exit 1
+          }
+          sha256sum --check --strict .github/seen-tools-production.sha256
+          test -f seen-tools/seen || { echo "Seen compiler executable is missing" >&2; exit 1; }
+          chmod +x seen-tools/seen
+
+      - name: Build image locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${{ steps.target.outputs.service }}"
+          image_tag="${image_name}:${GITHUB_SHA}"
+          docker build --tag "${image_tag}" .
+
+      - name: Refresh image-publisher authentication
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ steps.target.outputs.publisher }}
+
+      - name: Authenticate Docker to Artifact Registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud auth print-access-token | \
+            docker login \
+              --username oauth2accesstoken \
+              --password-stdin \
+              "https://${GCP_REGION}-docker.pkg.dev"
+
+      - name: Publish immutable image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${{ steps.target.outputs.service }}"
+          image_tag="${image_name}:${GITHUB_SHA}"
+          docker push "${image_tag}"
+          digest="$(gcloud artifacts docker images describe "${image_tag}" --format='value(image_summary.digest)')"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Artifact Registry did not return an immutable digest" >&2; exit 1; }
+          echo "uri=${image_name}@${digest}" >> "${GITHUB_OUTPUT}"
+
+  deploy:
+    needs: publish-image
+    if: ${{ vars.PORTFOLIO_PROD_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: portfolio-production
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      previous_traffic: ${{ steps.before.outputs.served_traffic }}
+      promotion_authorized: ${{ steps.promotion-gate.outputs.authorized }}
+    steps:
+      - name: Check out deployment workspace
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate explicit deployment inputs
+        env:
+          DEPLOYER: ${{ vars.GCP_PORTFOLIO_PROD_DEPLOYER_SERVICE_ACCOUNT }}
+          PROVIDER: ${{ vars.GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+          RUNTIME: ${{ vars.GCP_PORTFOLIO_PROD_RUNTIME_SERVICE_ACCOUNT }}
+          IMAGE_URI: ${{ needs.publish-image.outputs.image_uri }}
+          TARGET_SERVICE: ${{ needs.publish-image.outputs.service }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${PROVIDER}"
+          test -n "${DEPLOYER}"
+          test -n "${RUNTIME}"
+          [[ "${IMAGE_URI}" =~ @sha256:[0-9a-f]{64}$ ]]
+          image_prefix="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${CONTAINER_REPO}/${SERVICE}@sha256:"
+          [[ "${IMAGE_URI}" == "${image_prefix}"* ]]
+          test "${PROVIDER}" = "projects/236814539128/locations/global/workloadIdentityPools/portfolio-prod-github/providers/github"
+          test "${DEPLOYER}" = "portfolio-prod-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          test "${RUNTIME}" = "portfolio-prod-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+          test "${TARGET_SERVICE}" = "${SERVICE}"
+
+      - name: Authenticate scoped Cloud Run deployer
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PORTFOLIO_PROD_DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Capture resolved served traffic
+        id: before
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_json="$(gcloud run services describe "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          if jq -e '[.spec.traffic[]? | select(.latestRevision == true)] | length > 0' \
+            <<<"${service_json}" >/dev/null; then
+            resolved_before="$(jq -c \
+              '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+                | sort_by(.revisionName)
+                | group_by(.revisionName)
+                | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
+                | sort_by(.revisionName)' \
+              <<<"${service_json}")"
+            jq -e '
+              length > 0 and
+              (map(.percent) | add) == 100 and
+              all(.[];
+                (.revisionName | type == "string") and
+                (.revisionName | test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) and
+                (.percent | type == "number") and
+                .percent > 0
+              )
+            ' <<<"${resolved_before}" >/dev/null
+            pinned_spec="$(jq -r 'map("\(.revisionName)=\(.percent)") | join(",")' <<<"${resolved_before}")"
+            test -n "${pinned_spec}"
+            gcloud run services update-traffic "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --to-revisions "${pinned_spec}" \
+              --quiet
+            service_json="$(gcloud run services describe "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --format=json)"
+            echo "Pinned the previously served production allocation to explicit revisions before canary creation." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+          jq -e '[.spec.traffic[]? | select(.latestRevision == true)] | length == 0' \
+            <<<"${service_json}" >/dev/null
+          served_traffic="$(jq -c \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+              | sort_by(.revisionName)
+              | group_by(.revisionName)
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
+              | sort_by(.revisionName)' \
+            <<<"${service_json}")"
+          jq -e '
+            length > 0 and
+            (map(.percent) | add) == 100 and
+            (map(.revisionName) | unique | length) == length and
+            all(.[];
+              (.revisionName | type == "string") and
+              (.revisionName | test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) and
+              (.percent | type == "number") and
+              .percent > 0
+            )
+          ' <<<"${served_traffic}" >/dev/null
+          echo "served_traffic=${served_traffic}" >> "${GITHUB_OUTPUT}"
+
+      - name: Deploy immutable image after explicit enablement
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_completed=false
+          cleanup_failed_deploy() {
+            status=$?
+            trap - EXIT
+            if [[ "${deploy_completed}" == "true" ]]; then
+              exit "${status}"
+            fi
+            echo "Candidate deployment failed; removing any partial public route tag." >&2
+            gcloud run services update-traffic "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --remove-tags runtime-canary \
+              --quiet || echo "::error::Failed to remove a partial candidate route tag."
+            exit "${status}"
+          }
+          trap cleanup_failed_deploy EXIT
+
+          gcloud run deploy "${SERVICE}" \
+            --image "${{ needs.publish-image.outputs.image_uri }}" \
+            --region "${GCP_REGION}" \
+            --service-account "${{ vars.GCP_PORTFOLIO_PROD_RUNTIME_SERVICE_ACCOUNT }}" \
+            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${SERVICE}" \
+            --remove-secrets "NEXT_PUBLIC_POSTHOG_KEY,NEXT_PUBLIC_POSTHOG_HOST" \
+            --port 8080 \
+            --quiet \
+            --memory 2Gi \
+            --concurrency 4 \
+            --max-instances 3 \
+            --no-traffic \
+            --tag runtime-canary
+          deploy_completed=true
+          trap - EXIT
+
+      - name: Verify zero-traffic candidate
+        id: candidate
+        env:
+          PREVIOUS_TRAFFIC: ${{ steps.before.outputs.served_traffic }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_verified=false
+          cleanup_failed_candidate() {
+            status=$?
+            trap - EXIT
+            if [[ "${candidate_verified}" == "true" ]]; then
+              exit "${status}"
+            fi
+            echo "Candidate verification failed; removing its public route tag." >&2
+            gcloud run services update-traffic "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --remove-tags runtime-canary \
+              --quiet || echo "::error::Failed to remove the rejected candidate route tag."
+            exit "${status}"
+          }
+          trap cleanup_failed_candidate EXIT
+
+          service_json="$(gcloud run services describe "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          candidate="$(jq -c '[.status.traffic[]? | select(.tag == "runtime-canary")]' <<<"${service_json}")"
+          jq -e 'length == 1 and .[0].url != null and .[0].url != "" and .[0].revisionName != null and .[0].revisionName != ""' \
+            <<<"${candidate}" >/dev/null
+          url="$(jq -r '.[0].url' <<<"${candidate}")"
+          revision="$(jq -r '.[0].revisionName' <<<"${candidate}")"
+          [[ "${url}" == https://* ]]
+          [[ "${revision}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]
+
+          served_traffic="$(jq -c \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+              | sort_by(.revisionName)
+              | group_by(.revisionName)
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
+              | sort_by(.revisionName)' \
+            <<<"${service_json}")"
+          test "${served_traffic}" = "${PREVIOUS_TRAFFIC}"
+
+          candidate_percent="$(jq --arg revision "${revision}" \
+            '[.status.traffic[]? | select(.revisionName == $revision) | (.percent // 0)] | add // 0' \
+            <<<"${service_json}")"
+          test "${candidate_percent}" = "0"
+
+          revision_json="$(gcloud run revisions describe "${revision}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          test "$(jq -r '.spec.serviceAccountName' <<<"${revision_json}")" = "${{ vars.GCP_PORTFOLIO_PROD_RUNTIME_SERVICE_ACCOUNT }}"
+          test "$(jq -r '.spec.containers[0].image' <<<"${revision_json}")" = "${{ needs.publish-image.outputs.image_uri }}"
+          jq -e --arg value "${GCP_PROJECT_ID}" \
+            '.spec.containers[0].env | any(.name == "GOOGLE_CLOUD_PROJECT" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e --arg value "${PHOTOGRAPHY_UPLOAD_BUCKET}" \
+            '.spec.containers[0].env | any(.name == "PHOTOGRAPHY_UPLOAD_BUCKET" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e --arg value "photography/${SERVICE}" \
+            '.spec.containers[0].env | any(.name == "PHOTOGRAPHY_UPLOAD_PREFIX" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e '
+            .spec.containers[0].env | all(
+              .name != "SEEN_REGISTRY_PUBLIC_HOST" and
+              .name != "SEEN_REGISTRY_UPSTREAM_URL" and
+              .name != "SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL" and
+              .name != "SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL" and
+              .name != "NEXT_PUBLIC_POSTHOG_KEY" and
+              .name != "NEXT_PUBLIC_POSTHOG_HOST"
+            )
+          ' <<<"${revision_json}" >/dev/null
+          jq -e '.status.conditions | any(.type == "Ready" and .status == "True")' \
+            <<<"${revision_json}" >/dev/null
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 3 \
+            --retry-max-time 60 --connect-timeout 5 --max-time 15 "${url}/" >/dev/null
+          echo "revision=${revision}" >> "${GITHUB_OUTPUT}"
+          echo "url=${url}" >> "${GITHUB_OUTPUT}"
+          echo "Deployed ${{ needs.publish-image.outputs.image_uri }} to zero-traffic candidate ${revision} (${url})" >> "${GITHUB_STEP_SUMMARY}"
+          candidate_verified=true
+          trap - EXIT
+
+      - name: Revalidate production traffic immediately before promotion
+        id: promotion-gate
+        env:
+          PREVIOUS_TRAFFIC: ${{ steps.before.outputs.served_traffic }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_json="$(gcloud run services describe "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          jq -e '[.spec.traffic[]? | select(.latestRevision == true)] | length == 0' \
+            <<<"${service_json}" >/dev/null
+          current_traffic="$(jq -c \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+              | sort_by(.revisionName)
+              | group_by(.revisionName)
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
+              | sort_by(.revisionName)' \
+            <<<"${service_json}")"
+          test "${current_traffic}" = "${PREVIOUS_TRAFFIC}" || {
+            echo "Production traffic changed after capture; refusing to overwrite it" >&2
+            exit 1
+          }
+          echo "authorized=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Promote verified candidate and smoke production domains
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          PREVIOUS_TRAFFIC: ${{ steps.before.outputs.served_traffic }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${CANDIDATE_REVISION}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]
+          test "${SERVICE}" = "portfolio"
+          jq -e '
+            length > 0 and
+            (map(.percent) | add) == 100 and
+            (map(.revisionName) | unique | length) == length and
+            all(.[];
+              (.revisionName | type == "string") and
+              (.revisionName | test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) and
+              (.percent | type == "number") and
+              .percent > 0
+            )
+          ' <<<"${PREVIOUS_TRAFFIC}" >/dev/null
+          restore_spec="$(jq -r 'map("\(.revisionName)=\(.percent)") | join(",")' <<<"${PREVIOUS_TRAFFIC}")"
+          test -n "${restore_spec}"
+
+          promotion_verified=false
+          rollback_on_exit() {
+            status=$?
+            trap - EXIT
+            if [[ "${promotion_verified}" == "true" ]]; then
+              exit "${status}"
+            fi
+            if (( status == 0 )); then
+              status=1
+            fi
+            echo "Production verification failed; restoring the previously served traffic." >&2
+            set +e
+            gcloud run services update-traffic "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --remove-tags runtime-canary \
+              --quiet
+            tag_cleanup_status=$?
+            gcloud run services update-traffic "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --to-revisions "${restore_spec}" \
+              --quiet
+            rollback_status=$?
+            restored_traffic=""
+            if (( rollback_status == 0 )); then
+              restored_json="$(gcloud run services describe "${SERVICE}" \
+                --region "${GCP_REGION}" \
+                --format=json)"
+              rollback_status=$?
+            fi
+            if (( rollback_status == 0 )); then
+              restored_traffic="$(jq -c \
+                '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+                  | sort_by(.revisionName)
+                  | group_by(.revisionName)
+                  | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
+                  | sort_by(.revisionName)' \
+                <<<"${restored_json}")"
+              rollback_status=$?
+            fi
+            set -e
+            if (( rollback_status == 0 )) && [[ "${restored_traffic}" == "${PREVIOUS_TRAFFIC}" ]]; then
+              echo "Restored the pre-deployment production traffic allocation." >> "${GITHUB_STEP_SUMMARY}"
+            else
+              echo "::error::Automatic production rollback did not restore the captured allocation."
+              echo "Automatic production rollback failed; manual recovery is required." >> "${GITHUB_STEP_SUMMARY}"
+            fi
+            if (( tag_cleanup_status != 0 )); then
+              echo "::error::Automatic rollback could not remove the rejected candidate route tag."
+            fi
+            exit "${status}"
+          }
+          trap rollback_on_exit EXIT
+
+          gcloud run services update-traffic "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --to-revisions "${CANDIDATE_REVISION}=100" \
+            --quiet
+
+          service_json="$(gcloud run services describe "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          jq -e --arg revision "${CANDIDATE_REVISION}" '
+            [.status.traffic[]? | select((.percent // 0) > 0)] as $served |
+            ($served | map(.percent) | add) == 100 and
+            ($served | all(.revisionName == $revision))
+          ' <<<"${service_json}" >/dev/null
+
+          custom_domain_revision=""
+          convergence_deadline=$((SECONDS + 300))
+          attempt=0
+          while (( SECONDS < convergence_deadline )); do
+            ((attempt += 1))
+            version_json="$(curl --fail --silent --show-error \
+              --connect-timeout 5 --max-time 10 \
+              -H 'Cache-Control: no-cache' \
+              'https://www.yousef.codes/version' 2>/dev/null || true)"
+            custom_domain_revision="$(jq -r '.revision // empty' <<<"${version_json}" 2>/dev/null || true)"
+            if [[ "${custom_domain_revision}" == "${CANDIDATE_REVISION}" ]]; then
+              break
+            fi
+            echo "Waiting for www.yousef.codes to serve ${CANDIDATE_REVISION} (attempt ${attempt})."
+            sleep 5
+          done
+          test "${custom_domain_revision}" = "${CANDIDATE_REVISION}"
+          echo "Verified www.yousef.codes is serving ${CANDIDATE_REVISION}." >> "${GITHUB_STEP_SUMMARY}"
+
+          smoke_urls=(
+            "https://www.yousef.codes/"
+            "https://www.yousef.codes/projects"
+            "https://www.yousef.codes/services"
+            "https://www.yousef.codes/full-time"
+            "https://www.yousef.codes/photography"
+            "https://www.yousef.codes/scratchpad"
+            "https://www.yousef.codes/fifth-wall"
+            "https://www.yousef.codes/blog"
+            "https://www.yousef.codes/ar"
+            "https://www.yousef.codes/admin/login"
+            "https://summon.yousef.codes/"
+            "https://summon.yousef.codes/docs"
+            "https://materia.yousef.codes/"
+            "https://sigil.yousef.codes/"
+            "https://aether.yousef.codes/"
+            "https://seen.yousef.codes/"
+            "https://seen.yousef.codes/playground"
+          )
+          for smoke_url in "${smoke_urls[@]}"; do
+            echo "Probing ${smoke_url}"
+            curl --fail --location --max-redirs 5 --silent --show-error \
+              --retry 4 --retry-all-errors --retry-delay 2 \
+              --retry-max-time 30 --connect-timeout 5 --max-time 10 "${smoke_url}" >/dev/null
+            echo "Verified ${smoke_url}" >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+          photography_html="$(curl --fail --silent --show-error \
+            --retry 4 --retry-all-errors --retry-delay 2 \
+            --retry-max-time 30 --connect-timeout 5 --max-time 10 \
+            'https://www.yousef.codes/photography')"
+          mapfile -t photography_assets < <(
+            grep -oE '/uploads/photography/[A-Za-z0-9._/-]+' <<<"${photography_html}" | sort -u || true
+          )
+          for photography_asset in "${photography_assets[@]}"; do
+            curl --fail --silent --show-error \
+              --retry 4 --retry-all-errors --retry-delay 2 \
+              --retry-max-time 30 --connect-timeout 5 --max-time 10 \
+              "https://www.yousef.codes${photography_asset}" >/dev/null
+            echo "Verified https://www.yousef.codes${photography_asset}" >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+          gcloud run services update-traffic "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --remove-tags runtime-canary \
+            --quiet
+
+          promotion_verified=true
+          trap - EXIT
+          echo "Promoted verified revision ${CANDIDATE_REVISION} to 100% of production traffic." >> "${GITHUB_STEP_SUMMARY}"
+
+  recover-production-traffic:
+    needs: deploy
+    if: ${{ always() && needs.deploy.result != 'success' && needs.deploy.outputs.previous_traffic != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: portfolio-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out recovery workspace
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate recovery identity
+        env:
+          DEPLOYER: ${{ vars.GCP_PORTFOLIO_PROD_DEPLOYER_SERVICE_ACCOUNT }}
+          PROVIDER: ${{ vars.GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${PROVIDER}" = "projects/236814539128/locations/global/workloadIdentityPools/portfolio-prod-github/providers/github"
+          test "${DEPLOYER}" = "portfolio-prod-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+
+      - name: Authenticate scoped Cloud Run recovery identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PORTFOLIO_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PORTFOLIO_PROD_DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Remove rejected route and restore traffic when promotion started
+        env:
+          PREVIOUS_TRAFFIC: ${{ needs.deploy.outputs.previous_traffic }}
+          PROMOTION_AUTHORIZED: ${{ needs.deploy.outputs.promotion_authorized }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '
+            length > 0 and
+            (map(.percent) | add) == 100 and
+            (map(.revisionName) | unique | length) == length and
+            all(.[];
+              (.revisionName | type == "string") and
+              (.revisionName | test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) and
+              (.percent | type == "number") and
+              .percent > 0
+            )
+          ' <<<"${PREVIOUS_TRAFFIC}" >/dev/null
+
+          service_json="$(gcloud run services describe "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          if jq -e '[.status.traffic[]? | select(.tag == "runtime-canary")] | length > 0' \
+            <<<"${service_json}" >/dev/null; then
+            gcloud run services update-traffic "${SERVICE}" \
+              --region "${GCP_REGION}" \
+              --remove-tags runtime-canary \
+              --quiet
+          fi
+
+          if [[ "${PROMOTION_AUTHORIZED}" != "true" ]]; then
+            echo "Promotion was not authorized; production traffic was left unchanged." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          restore_spec="$(jq -r 'map("\(.revisionName)=\(.percent)") | join(",")' <<<"${PREVIOUS_TRAFFIC}")"
+          test -n "${restore_spec}"
+          gcloud run services update-traffic "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --to-revisions "${restore_spec}" \
+            --quiet
+          restored_json="$(gcloud run services describe "${SERVICE}" \
+            --region "${GCP_REGION}" \
+            --format=json)"
+          restored_traffic="$(jq -c \
+            '[.status.traffic[]? | select((.percent // 0) > 0) | {revisionName, percent}]
+              | sort_by(.revisionName)
+              | group_by(.revisionName)
+              | map({revisionName: .[0].revisionName, percent: (map(.percent) | add)})
+              | sort_by(.revisionName)' \
+            <<<"${restored_json}")"
+          test "${restored_traffic}" = "${PREVIOUS_TRAFFIC}"
+          echo "The independent recovery job restored the captured production allocation." >> "${GITHUB_STEP_SUMMARY}"

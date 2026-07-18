@@ -5,6 +5,8 @@ import code.yousef.portfolio.content.model.HeroMetric
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.HeroStrings
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioCardGradient
+import code.yousef.portfolio.theme.portfolioGlassGradient
 import code.yousef.portfolio.ui.components.*
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import codes.yousef.summon.annotation.Composable
@@ -21,6 +23,19 @@ import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.extensions.vw
 import codes.yousef.summon.modifier.*
+
+private val heroTitleShadows = arrayOf(
+    TextShadow.pixels(0, 0, 20, Color.rgba(0, 0, 0, 0.8f)),
+    TextShadow.pixels(0, 0, 40, Color.rgba(0, 0, 0, 0.5f)),
+    TextShadow.pixels(0, 2, 4, Color.rgba(0, 0, 0, 0.9f)),
+)
+
+private val heroSubtitleShadows = arrayOf(
+    TextShadow.pixels(0, 0, 8, Color.BLACK),
+    TextShadow.pixels(0, 0, 16, Color.rgba(0, 0, 0, 0.9f)),
+    TextShadow.pixels(0, 0, 32, Color.rgba(0, 0, 0, 0.7f)),
+    TextShadow.pixels(0, 2, 4, Color.BLACK),
+)
 
 @Composable
 fun HeroSection(
@@ -65,7 +80,7 @@ fun HeroSection(
                         }
                         .backgroundClipText()
                         .color(Color.TRANSPARENT)
-                        .style("text-shadow", "0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.9)")
+                        .textShadow(*heroTitleShadows)
                 )
                 Text(
                     text = secondaryTitle,
@@ -74,7 +89,7 @@ fun HeroSection(
                         .fontWeight(700)
                         .letterSpacing("-0.02em")
                         .color(PortfolioTheme.Colors.TEXT_PRIMARY)
-                        .style("text-shadow", "0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.9)")
+                        .textShadow(*heroTitleShadows)
                 )
                 Paragraph(
                     text = subtitle,
@@ -82,7 +97,7 @@ fun HeroSection(
                         .color("#e8e8f0")
                         .fontSize(cssClamp(16.px, 2.2.vw, 22.px))
                         .lineHeight(1.5)
-                        .style("text-shadow", "0 0 8px rgba(0,0,0,1), 0 0 16px rgba(0,0,0,0.9), 0 0 32px rgba(0,0,0,0.7), 0 2px 4px rgba(0,0,0,1)")
+                        .textShadow(*heroSubtitleShadows)
                 )
                 CtaRow(
                     primaryLabel = hero.ctaPrimary.resolve(locale),
@@ -111,7 +126,7 @@ private fun HeroIntroCard(tagline: String, locale: PortfolioLocale) {
             .borderStyle(BorderStyle.Solid)
             .borderColor(PortfolioTheme.Colors.BORDER)
             .borderRadius(PortfolioTheme.Radii.lg)
-            .background(PortfolioTheme.Gradients.GLASS)
+            .portfolioGlassGradient()
             .boxShadow(PortfolioTheme.Shadows.LOW)
     ) {
         Row(
@@ -285,7 +300,7 @@ private fun HeroMockCard() {
             modifier = Modifier()
                 .aspectRatio(1.35 / 1)
                 .borderRadius(PortfolioTheme.Radii.lg)
-                .background(PortfolioTheme.Gradients.CARD)
+                .portfolioCardGradient()
                 .borderWidth(1)
                 .borderStyle(BorderStyle.Solid)
                 .borderColor(PortfolioTheme.Colors.BORDER)

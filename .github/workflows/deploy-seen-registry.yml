@@ -1,0 +1,179 @@
+name: Seen registry validation and image publication
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/deploy-seen-registry.yml
+      - infra/registry/**
+      - registry-service/**
+  push:
+    branches: [dev, master]
+    paths:
+      - .github/workflows/deploy-seen-registry.yml
+      - infra/registry/**
+      - registry-service/**
+  workflow_dispatch:
+
+concurrency:
+  group: seen-registry-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  GCP_PROJECT_ID: portfolio-476219
+  GCP_REGION: us-central1
+  ARTIFACT_REPOSITORY: seen-registry
+
+jobs:
+  validate:
+    name: Validate registry code and infrastructure
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            registry-service/*.gradle.kts
+            registry-service/gradle.properties
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: 1.12.4
+
+      - name: Check shell syntax
+        run: bash -n registry-service/scripts/provision-development-owner.sh
+
+      - name: Test and package the isolated registry
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
+        run: |
+          ./gradlew \
+            -p registry-service \
+            --no-daemon \
+            --max-workers=2 \
+            test shadowJar
+
+      - name: Validate OpenTofu roots and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu fmt -check -recursive infra/registry
+          for environment in dev prod; do
+            root="infra/registry/environments/${environment}"
+            tofu -chdir="${root}" init -backend=false -input=false
+            tofu -chdir="${root}" validate
+            tofu -chdir="${root}" test
+          done
+
+  publish-development-image:
+    name: Publish immutable development image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: seen-registry-development-image
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate workload identity configuration
+        env:
+          PROVIDER: ${{ vars.GCP_REGISTRY_WORKLOAD_IDENTITY_PROVIDER }}
+          PUBLISHER: ${{ vars.GCP_REGISTRY_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${PROVIDER}" || { echo "GCP_REGISTRY_WORKLOAD_IDENTITY_PROVIDER is not configured" >&2; exit 1; }
+          test -n "${PUBLISHER}" || { echo "GCP_REGISTRY_IMAGE_PUBLISHER_SERVICE_ACCOUNT is not configured" >&2; exit 1; }
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            registry-service/*.gradle.kts
+            registry-service/gradle.properties
+
+      - name: Build registry artifact
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
+        run: |
+          ./gradlew \
+            -p registry-service \
+            --no-daemon \
+            --max-workers=2 \
+            shadowJar
+
+      - name: Build candidate image locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
+          docker build \
+            --file registry-service/Dockerfile \
+            --build-arg "VCS_REF=${GITHUB_SHA}" \
+            --tag "${image_name}:${GITHUB_SHA}" \
+            .
+
+      - name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_REGISTRY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_REGISTRY_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Authenticate Docker to Artifact Registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud auth print-access-token | \
+            docker login \
+              --username oauth2accesstoken \
+              --password-stdin \
+              "https://${GCP_REGION}-docker.pkg.dev"
+
+      - name: Publish image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
+          image_tag="${image_name}:${GITHUB_SHA}"
+          docker push "${image_tag}"
+          digest="$(gcloud artifacts docker images describe "${image_tag}" --format='value(image_summary.digest)')"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Artifact Registry did not return an immutable digest" >&2; exit 1; }
+          echo "name=${image_name}" >> "${GITHUB_OUTPUT}"
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+          echo "uri=${image_name}@${digest}" >> "${GITHUB_OUTPUT}"
+          echo "Published image: ${image_name}@${digest}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Attest image provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true

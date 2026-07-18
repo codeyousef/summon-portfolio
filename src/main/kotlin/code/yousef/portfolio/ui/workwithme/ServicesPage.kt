@@ -3,6 +3,9 @@ package code.yousef.portfolio.ui.workwithme
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.ContextNavigationIds
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
+import code.yousef.portfolio.ui.components.workWithMeNavigationContext
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
 import code.yousef.portfolio.ui.sections.ContactFooterSection
@@ -15,9 +18,17 @@ import codes.yousef.summon.components.layout.Column
 import codes.yousef.summon.components.layout.Row
 import codes.yousef.summon.components.navigation.ButtonLink
 import codes.yousef.summon.components.navigation.LinkNavigationMode
+import codes.yousef.summon.components.styles.AnimationEasing
+import codes.yousef.summon.components.styles.AnimationIterationCount
+import codes.yousef.summon.components.styles.AnimationName
+import codes.yousef.summon.components.styles.TypedStyleSheet
+import codes.yousef.summon.components.styles.animation
+import codes.yousef.summon.core.style.Color
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.rem
 import codes.yousef.summon.modifier.*
+
+private val availabilityPulseAnimation = AnimationName.named("availability-pulse")
 
 /**
  * Consulting & Services page.
@@ -26,8 +37,20 @@ import codes.yousef.summon.modifier.*
  */
 @Composable
 fun ServicesPage(locale: PortfolioLocale) {
+    TypedStyleSheet {
+        keyframes(availabilityPulseAnimation) {
+            from(Modifier().opacity(1f).transform(TransformFunction.Scale to "1"))
+            frame(50, Modifier().opacity(0.45f).transform(TransformFunction.Scale to "1.45"))
+            to(Modifier().opacity(1f).transform(TransformFunction.Scale to "1"))
+        }
+    }
+
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.WORK,
+            context = workWithMeNavigationContext(locale, ContextNavigationIds.CONSULTING),
+        )
         
         // Hero Section
         ServicesHeroSection()
@@ -65,7 +88,12 @@ private fun ServicesHeroSection() {
                         .height(10.px)
                         .borderRadius(5.px)
                         .backgroundColor("#22c55e") // green
-                        .style("animation", "pulse 2s infinite")
+                        .animation(
+                            name = availabilityPulseAnimation,
+                            duration = AnimationDuration.VerySlow,
+                            easing = AnimationEasing.EaseInOut,
+                            iterationCount = AnimationIterationCount.Infinite,
+                        )
                 ) {}
                 Text(
                     text = "Currently accepting new projects",
@@ -84,7 +112,7 @@ private fun ServicesHeroSection() {
                     .fontWeight(900)
                     .color(PortfolioTheme.Colors.TEXT_PRIMARY)
                     .lineHeight(1.2)
-                    .style("text-shadow", "0 0 30px rgba(0,0,0,0.8)")
+                    .textShadow(TextShadow.pixels(0, 0, 30, Color.rgba(0, 0, 0, 0.8f)))
             )
             
             // Sub-headline
@@ -137,7 +165,9 @@ private fun ServicesHeroSection() {
                         .fontWeight(600)
                         .fontSize(1.rem)
                         .textDecoration(TextDecoration.None)
-                        .border("1px", "solid", PortfolioTheme.Colors.BORDER),
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER),
                     target = null,
                     rel = null,
                     title = null,
@@ -168,7 +198,7 @@ private fun SpecializedServicesSection() {
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(300.px), gridFraction())))
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 ServiceCard(
@@ -221,7 +251,9 @@ private fun ServiceCard(
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border("1px", "solid", PortfolioTheme.Colors.BORDER)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
             .height("100%")
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.md)) {
@@ -285,7 +317,7 @@ private fun EngagementModelsSection() {
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(300.px), gridFraction())))
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 EngagementCard(
@@ -327,11 +359,9 @@ private fun EngagementCard(
             .backgroundColor(if (highlighted) PortfolioTheme.Colors.SURFACE_STRONG else PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border(
-                "2px",
-                "solid",
-                if (highlighted) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.BORDER
-            )
+            .borderWidth(2)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(if (highlighted) PortfolioTheme.Colors.ACCENT else PortfolioTheme.Colors.BORDER)
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.md)) {
             if (highlighted) {
@@ -391,7 +421,7 @@ private fun WhyWorkWithMeSection() {
             Row(
                 modifier = Modifier()
                     .display(Display.Grid)
-                    .style("grid-template-columns", "repeat(auto-fit, minmax(250px, 1fr))")
+                    .gridTemplateColumns(gridAutoFit(gridMinMax(gridTrack(250.px), gridFraction())))
                     .gap(PortfolioTheme.Spacing.lg)
             ) {
                 WhyCard(

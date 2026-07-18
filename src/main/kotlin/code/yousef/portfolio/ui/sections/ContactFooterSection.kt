@@ -72,7 +72,7 @@ fun ContactFooterSection(
                             .color(PortfolioTheme.Colors.ACCENT)
                             .fontWeight(600)
                             .textDecoration(TextDecoration.Underline)
-                            .style("text-underline-offset", "4px"),
+                            .textUnderlineOffset(4),
                         target = "_blank",
                         rel = "noopener noreferrer",
                         navigationMode = LinkNavigationMode.Native,
@@ -169,4 +169,3 @@ private fun CompactContactForm(
         )
     }
 }
-

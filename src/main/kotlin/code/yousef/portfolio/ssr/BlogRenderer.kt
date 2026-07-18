@@ -25,14 +25,14 @@ class BlogRenderer(
 
     fun renderDetail(locale: PortfolioLocale, slug: String): RenderResult {
         val post = contentService.load().blogPosts.firstOrNull { it.slug.equals(slug, ignoreCase = true) }
-        val contentHtml = post?.let {
-            markdownRenderer.render(it.content, "/blog/${it.slug}").html
+        val contentDocument = post?.let {
+            markdownRenderer.render(it.content, "/blog/${it.slug}").document
         }
         val page = SummonPage(
             head = detailHead(locale, post, slug),
             content = {
                 if (post != null) {
-                    BlogDetailPage(post = post, contentHtml = contentHtml!!, locale = locale)
+                    BlogDetailPage(post = post, contentDocument = contentDocument!!, locale = locale)
                 } else {
                     BlogNotFoundPage(locale = locale)
                 }

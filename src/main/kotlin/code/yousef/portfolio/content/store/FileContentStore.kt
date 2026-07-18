@@ -5,6 +5,7 @@ import code.yousef.portfolio.content.ContentStore
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.content.model.BlogPost
 import code.yousef.portfolio.content.model.HeroContent
+import code.yousef.portfolio.content.model.PhotographyPhoto
 import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.content.model.Service
 import code.yousef.portfolio.content.model.Testimonial
@@ -29,6 +30,7 @@ data class ContentSnapshot(
     val blogPosts: List<BlogPost> = PortfolioContentSeed.blogPosts,
     val testimonials: List<Testimonial> = emptyList(),
     val contactSubmissions: List<ContactSubmission> = emptyList(),
+    val photographyPhotos: List<PhotographyPhoto> = emptyList(),
     /**
      * Version marker to distinguish intentionally-empty content from missing/corrupt files.
      * If null, data was migrated from an older format or newly created with defaults.
@@ -36,7 +38,14 @@ data class ContentSnapshot(
     val version: Int? = CURRENT_VERSION
 ) {
     fun toPortfolioContent(): PortfolioContent =
-        PortfolioContent(hero = hero, projects = projects, services = services, blogPosts = blogPosts, testimonials = testimonials)
+        PortfolioContent(
+            hero = hero,
+            projects = projects,
+            services = services,
+            blogPosts = blogPosts,
+            testimonials = testimonials,
+            photographyPhotos = photographyPhotos
+        )
 
     companion object {
         const val CURRENT_VERSION = 1
@@ -139,6 +148,20 @@ class FileContentStore(
 
     override fun deleteContactSubmission(id: String) = mutate { snap ->
         snap.copy(contactSubmissions = snap.contactSubmissions.filterNot { it.id == id })
+    }
+
+    override fun listPhotographyPhotos(): List<PhotographyPhoto> =
+        snapshot().photographyPhotos.sortedWith(compareBy<PhotographyPhoto> { it.order }.thenByDescending { it.uploadedAt })
+
+    override fun upsertPhotographyPhoto(photo: PhotographyPhoto) = mutate { snap ->
+        snap.copy(
+            photographyPhotos = (snap.photographyPhotos.filterNot { it.id == photo.id } + photo)
+                .sortedWith(compareBy<PhotographyPhoto> { it.order }.thenByDescending { it.uploadedAt })
+        )
+    }
+
+    override fun deletePhotographyPhoto(id: String) = mutate { snap ->
+        snap.copy(photographyPhotos = snap.photographyPhotos.filterNot { it.id == id })
     }
 
     private fun mutate(transform: (ContentSnapshot) -> ContentSnapshot) {
