@@ -149,6 +149,11 @@ jobs:
       previous_traffic: ${{ steps.before.outputs.served_traffic }}
       promotion_authorized: ${{ steps.promotion-gate.outputs.authorized }}
     steps:
+      - name: Check out deployment workspace
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
       - name: Validate explicit deployment inputs
         env:
           DEPLOYER: ${{ vars.GCP_PORTFOLIO_PROD_DEPLOYER_SERVICE_ACCOUNT }}
@@ -554,6 +559,11 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Check out recovery workspace
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
       - name: Validate recovery identity
         env:
           DEPLOYER: ${{ vars.GCP_PORTFOLIO_PROD_DEPLOYER_SERVICE_ACCOUNT }}
