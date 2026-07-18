@@ -67,6 +67,52 @@ exactly the required `ceremony_operations` entry for one reviewed operation and
 remove it immediately afterward; unselected ceremony identities have no data,
 secret, pointer, or signer-invocation IAM.
 
+### Schedule activation gate
+
+With `refresh_jobs_enabled=true`, enabling schedules creates five schedules:
+source verification, scanning, promotion, releases refresh, and security
+refresh. Setting `schedules_paused=false` activates all five; it is not only a
+metadata-refresh switch.
+
+First apply `schedules_enabled=true` with `schedules_paused=true`. Review every
+schedule's name, UTC cadence, Cloud Run target, scheduler service account,
+one-task/zero-retry target job, and IAM changes. Exercise an approved refresh
+schedule while paused and verify that its scheduler-originated execution uses
+the scheduler service account, completes successfully, and advances a fresh
+public TUF chain. Unpausing requires a separate complete plan and explicit
+approval naming all five schedules. Verify their enabled state and first
+automatic executions before declaring the rollout complete.
+
+Cloud Scheduler omits an all-default retry block from its API response. Keep
+`retry_config` absent when the intended policy is the API default of zero
+retries; declaring only `retry_count = 0` causes perpetual plan drift without
+changing runtime behavior.
+
+### Temporary plan-reader access
+
+A complete plan may require project-level bucket metadata access. If the
+reviewed operator lacks it, obtain explicit approval for the exact principal,
+project, duration, role name, and permissions. The registry bucket-metadata
+plan reader is limited to `storage.buckets.get`,
+`storage.buckets.getIamPolicy`, and `storage.buckets.list`; it receives no
+object-data access.
+
+Record the temporary binding and role names. After the approved plan/apply
+workflow—or after a failure—remove the binding, delete the custom role, remove
+copied SDK credential/configuration directories, and verify that the principal
+has no remaining binding and the role is deleted. Cleanup failure blocks
+completion.
+
+### Local OpenTofu artifacts
+
+Treat backend configuration, non-example variable files, state, saved plans,
+rendered plan JSON, and copied cloud configuration as sensitive local
+artifacts. Use `umask 077`, save plans as `*.tfplan` in an ignored private
+location, review and apply the exact saved plan, then delete the plan and any
+rendered output when the operation completes or is abandoned. Never force-add
+these files. Confirm expected paths with `git check-ignore -v` before
+committing.
+
 For transitional functional testing with `edge_cutover_enabled=false`, the module emits
 the exact gateway values:
 

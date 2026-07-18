@@ -57,11 +57,15 @@ docs/private/
 .idea/
 .vscode/
 .gradle/
+/.agents/
 
 # Ignore local GCP service account keys
 gh-deployer.json
 *.key.json
 gha-creds-*.json
+*.private-key.pem
+*.private.pem
+*.key.pem
 
 # Local OpenTofu state configuration and generated plans.
 infra/registry/environments/*/backend.hcl

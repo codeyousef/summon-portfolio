@@ -57,11 +57,12 @@ identity. Trust-plane deployment requires a separate reviewed operator.
 
 It does not create offline keys, TUF envelopes, the publisher token, or GitHub
 App/GitLab credential values. Add the read-only GitHub App ID and PEM key out of
-band before deployment. Review schedules remain disabled by default; after all
-three jobs are deployed and exercised successfully, an owner reruns with
-`REGISTRY_ENABLE_REVIEW_SCHEDULES=true`. The deployment workflow verifies every
-pre-provisioned dependency and fails closed instead of escalating its own
-permissions.
+band before deployment. Leave `REGISTRY_ENABLE_REVIEW_SCHEDULES` unset in
+OpenTofu-managed environments: the legacy owner helper must not create or
+update schedules. Provision and activate the v2 schedules only through the
+staged gate documented in [registry infrastructure](../infra/registry/README.md#schedule-activation-gate).
+The deployment workflow verifies every pre-provisioned dependency and fails
+closed instead of escalating its own permissions.
 
 ## Signing boundary
 
