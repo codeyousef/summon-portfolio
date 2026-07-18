@@ -2,10 +2,22 @@ package code.yousef.portfolio.admin
 
 import codes.yousef.aether.admin.AdminSite
 import codes.yousef.aether.admin.ModelAdmin
+import codes.yousef.aether.admin.QuickActionsWidget
 import code.yousef.portfolio.db.*
 
 fun createAdminSite(): AdminSite {
     val admin = AdminSite()
+
+    admin.registerWidget(
+        QuickActionsWidget(
+            id = "portfolio-tools",
+            title = "Portfolio tools",
+            order = 10,
+            actions = listOf(
+                QuickActionsWidget.QuickAction("Preview Markdown", "/admin/markdown-preview")
+            )
+        )
+    )
     
     admin.register(Projects, object : ModelAdmin<ProjectEntity>(Projects) {
         override val listDisplay = listOf("slug", "category", "featured", "order")

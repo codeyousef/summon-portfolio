@@ -1,8 +1,14 @@
 package code.yousef.portfolio.ssr
 
 import code.yousef.portfolio.content.PortfolioContentService
+import code.yousef.portfolio.content.model.PhotographyPhoto
+import code.yousef.portfolio.docs.MarkdownDocument
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
+import code.yousef.portfolio.ui.admin.AdminHomePage
+import code.yousef.portfolio.ui.admin.MarkdownPreviewPage
+import code.yousef.portfolio.ui.photography.PhotographyAdminPage
+import code.yousef.portfolio.ui.photography.PhotographyPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
 import code.yousef.portfolio.ui.summon.SummonLandingPage
 import code.yousef.portfolio.ui.workwithme.FullTimePage
@@ -76,6 +82,79 @@ class PortfolioRenderer(
         )
     }
 
+    fun photographyPage(photos: List<PhotographyPhoto>, selectedFilter: String? = null): SummonPage {
+        return SummonPage(
+            head = headBlockFor(
+                locale = PortfolioLocale.EN,
+                pageTitle = "Photography & Motion | Yousef",
+                description = "Albums, still photography, standard video, and 360 video work by Yousef."
+            ),
+            content = {
+                PhotographyPage(
+                    photos = photos,
+                    selectedFilter = selectedFilter,
+                    locale = PortfolioLocale.EN
+                )
+            },
+            locale = PortfolioLocale.EN
+        )
+    }
+
+    fun photographyAdminPage(
+        photos: List<PhotographyPhoto>,
+        errorMessage: String? = null,
+        successMessage: String? = null
+    ): SummonPage {
+        return SummonPage(
+            head = { head ->
+                head.title("Photography Admin | Yousef")
+                head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+                head.meta("robots", "noindex", null, null, null)
+                head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+            },
+            content = {
+                PhotographyAdminPage(
+                    photos = photos,
+                    errorMessage = errorMessage,
+                    successMessage = successMessage
+                )
+            },
+            locale = PortfolioLocale.EN
+        )
+    }
+
+    fun adminHomePage(username: String): SummonPage {
+        return SummonPage(
+            head = { head ->
+                head.title("Admin | Yousef")
+                head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+                head.meta("robots", "noindex", null, null, null)
+                head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+            },
+            content = {
+                AdminHomePage(username = username)
+            },
+            locale = PortfolioLocale.EN
+        )
+    }
+
+    fun markdownPreviewPage(
+        source: String,
+        document: MarkdownDocument? = null,
+        errorMessage: String? = null,
+    ): SummonPage = SummonPage(
+        head = { head ->
+            head.title("Markdown Preview | Yousef")
+            head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+            head.meta("robots", null, "noindex, nofollow", null, null)
+            head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+        },
+        content = {
+            MarkdownPreviewPage(source = source, document = document, errorMessage = errorMessage)
+        },
+        locale = PortfolioLocale.EN,
+    )
+
     fun summonLandingPage(docsUrl: String, apiReferenceUrl: String): SummonPage {
         return SummonPage(
             head = headBlockFor(
@@ -118,8 +197,6 @@ class PortfolioRenderer(
         // Hydration script also loads synchronously to ensure polyfill is applied
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
         // Sigil hydration bundle auto-loads via sigilStaticAssets() - no manual script needed
-        // Non-critical cleanup script (async)
-        head.script("/static/textarea-cleanup.js", "textarea-cleanup", "application/javascript", true, false, null)
         // (Structured data currently omitted until HeadScope gains inline support)
     }
 

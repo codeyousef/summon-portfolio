@@ -4,6 +4,7 @@ import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import code.yousef.portfolio.ui.components.ServicesOverlay
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.foundation.SectionWrap
@@ -31,7 +32,10 @@ fun ProjectsPage(
     val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.PROJECTS,
+        )
         SectionWrap {
             Text(
                 text = "Featured Projects",

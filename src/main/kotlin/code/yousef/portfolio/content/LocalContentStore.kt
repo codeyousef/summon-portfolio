@@ -15,6 +15,7 @@ class LocalContentStore : ContentStore {
     private val blogPosts: MutableList<BlogPost> = PortfolioContentSeed.blogPosts.toMutableList()
     private val testimonials: MutableList<Testimonial> = PortfolioContentSeed.testimonials.toMutableList()
     private val contactSubmissions: MutableList<ContactSubmission> = mutableListOf()
+    private val photographyPhotos: MutableList<PhotographyPhoto> = mutableListOf()
     private var hero = PortfolioContentSeed.hero
     
     override fun loadPortfolioContent(): PortfolioContent = PortfolioContent(
@@ -22,7 +23,8 @@ class LocalContentStore : ContentStore {
         projects = projects.sortedBy { it.order },
         services = services.sortedBy { it.order },
         blogPosts = blogPosts.sortedByDescending { it.publishedAt },
-        testimonials = testimonials.sortedBy { it.order }
+        testimonials = testimonials.sortedBy { it.order },
+        photographyPhotos = photographyPhotos.sortedWith(compareBy<PhotographyPhoto> { it.order }.thenByDescending { it.uploadedAt })
     )
     
     override fun listProjects(): List<Project> = projects.sortedBy { it.order }
@@ -84,5 +86,17 @@ class LocalContentStore : ContentStore {
 
     override fun deleteContactSubmission(id: String) {
         contactSubmissions.removeIf { it.id == id }
+    }
+
+    override fun listPhotographyPhotos(): List<PhotographyPhoto> =
+        photographyPhotos.sortedWith(compareBy<PhotographyPhoto> { it.order }.thenByDescending { it.uploadedAt })
+
+    override fun upsertPhotographyPhoto(photo: PhotographyPhoto) {
+        photographyPhotos.removeIf { it.id == photo.id }
+        photographyPhotos.add(photo)
+    }
+
+    override fun deletePhotographyPhoto(id: String) {
+        photographyPhotos.removeIf { it.id == id }
     }
 }

@@ -1,0 +1,4 @@
+# Create and harden this state bucket out-of-band before init. The registry
+# stack must never manage its own backend.
+bucket = "REPLACE_WITH_LOCKED_DEV_TOFU_STATE_BUCKET"
+prefix = "seen-registry/dev"

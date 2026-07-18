@@ -5,7 +5,10 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Row
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
+import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.modifier.*
 
 /**
@@ -23,27 +26,16 @@ fun SplitView(
     gapValue: String = PortfolioTheme.Spacing.xl,
     modifier: Modifier = Modifier()
 ) {
-    // Register responsive styles
-    GlobalStyle(
-        css = """
-        .split-view {
-            display: flex;
-            flex-direction: row;
+    TypedStyleSheet {
+        val splitView = StyleSelector.className("split-view")
+        val pane = StyleSelector.className("split-view-pane")
+        rule(splitView, Modifier().display(Display.Flex).flexDirection(FlexDirection.Row))
+        rule(pane, Modifier().flex(grow = 1, shrink = 1, basis = "0%").minWidth(0))
+        media(MediaQuery.MaxWidth(768)) {
+            rule(splitView, Modifier().flexDirection(FlexDirection.Column), StyleRulePriority.Important)
+            rule(pane, Modifier().width(100.percent))
         }
-        .split-view-pane {
-            flex: 1;
-            min-width: 0;
-        }
-        @media (max-width: 768px) {
-            .split-view {
-                flex-direction: column !important;
-            }
-            .split-view-pane {
-                width: 100%;
-            }
-        }
-        """
-    )
+    }
 
     // Determine actual direction based on RTL and reverseOrder
     val isRtl = locale?.direction == "rtl"

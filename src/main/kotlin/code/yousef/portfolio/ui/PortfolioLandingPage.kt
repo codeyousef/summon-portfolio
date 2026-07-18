@@ -9,6 +9,7 @@ import code.yousef.portfolio.ssr.sigilMarketingUrl
 import code.yousef.portfolio.ssr.summonMarketingUrl
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import code.yousef.portfolio.ui.components.ServicesOverlay
 import code.yousef.portfolio.ui.components.CodeBlock
 import code.yousef.portfolio.ui.foundation.PageScaffold
@@ -44,8 +45,10 @@ fun PortfolioLandingPage(
     val closeServicesModal = { servicesModalState.value = false }
 
     PageScaffold(locale = locale) {
-        AppHeader(locale = locale)
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.HOME,
+        )
         
         // 2. Hero Section (The Hook)
         HeroSection(locale)
@@ -484,7 +487,7 @@ private fun EngineeringCard(
                 modifier = Modifier()
                     .width(48.px)
                     .height(48.px)
-                    .style("object-fit", "contain")
+                    .objectFit(ObjectFit.Contain)
             )
             Column(
                 modifier = Modifier()

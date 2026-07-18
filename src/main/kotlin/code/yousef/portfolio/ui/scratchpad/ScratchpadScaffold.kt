@@ -2,7 +2,15 @@ package code.yousef.portfolio.ui.scratchpad
 
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.AnimationName
+import codes.yousef.summon.components.styles.AnimationIterationCount
+import codes.yousef.summon.components.styles.StyleElement
+import codes.yousef.summon.components.styles.StylePseudoClass
+import codes.yousef.summon.components.styles.StylePseudoElement
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
+import codes.yousef.summon.components.styles.animation
+import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
 import codes.yousef.summon.extensions.vh
 import codes.yousef.summon.extensions.vw
@@ -31,76 +39,48 @@ object ScratchpadTheme {
 fun ScratchpadScaffold(
     content: () -> Unit
 ) {
-    GlobalStyle(
-        css = """
-        /* Reset and base styles for scratchpad */
-        html, body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: ${ScratchpadTheme.BG_PRIMARY};
-            font-family: ${ScratchpadTheme.FONT_MONO};
-            color: ${ScratchpadTheme.TEXT_PRIMARY};
-            cursor: crosshair;
+    val flicker = AnimationName.named("scratchpad-flicker")
+    val scrollbarThumb = StyleSelector.Universal.pseudoElement(StylePseudoElement.WebkitScrollbarThumb)
+    TypedStyleSheet {
+        rule(
+            StyleSelector.element(StyleElement.Html).or(StyleSelector.element(StyleElement.Body)),
+            Modifier()
+                .margin(0)
+                .padding(0)
+                .overflow(Overflow.Hidden)
+                .backgroundColor(ScratchpadTheme.BG_PRIMARY)
+                .fontFamily(ScratchpadTheme.FONT_MONO)
+                .color(ScratchpadTheme.TEXT_PRIMARY)
+                .cursor(Cursor.Crosshair)
+        )
+        keyframes(flicker) {
+            from(Modifier().opacity(1f))
+            frame(50, Modifier().opacity(0.98f))
+            to(Modifier().opacity(1f))
         }
-
-        /* Scanline effect */
-        .scratchpad-container::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 255, 0, 0.03) 2px,
-                rgba(0, 255, 0, 0.03) 4px
-            );
-            pointer-events: none;
-            z-index: 10000;
-        }
-
-        /* CRT flicker effect (subtle) */
-        @keyframes flicker {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.98; }
-        }
-
-        .scratchpad-container {
-            animation: flicker 0.15s infinite;
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: ${ScratchpadTheme.BG_SECONDARY};
-        }
-        ::-webkit-scrollbar-thumb {
-            background: ${ScratchpadTheme.TEXT_MUTED};
-            border-radius: 0;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: ${ScratchpadTheme.TEXT_SECONDARY};
-        }
-
-        /* Selection color */
-        ::selection {
-            background: ${ScratchpadTheme.TEXT_PRIMARY};
-            color: ${ScratchpadTheme.BG_PRIMARY};
-        }
-
-        /* Disable text selection on canvas */
-        .infinite-canvas {
-            user-select: none;
-        }
-    """
-    )
+        rule(
+            StyleSelector.Universal.pseudoElement(StylePseudoElement.WebkitScrollbar),
+            Modifier().width(8.px).height(8.px)
+        )
+        rule(
+            StyleSelector.Universal.pseudoElement(StylePseudoElement.WebkitScrollbarTrack),
+            Modifier().backgroundColor(ScratchpadTheme.BG_SECONDARY)
+        )
+        rule(
+            scrollbarThumb,
+            Modifier().backgroundColor(ScratchpadTheme.TEXT_MUTED).borderRadius(0)
+        )
+        rule(
+            scrollbarThumb.pseudoClass(StylePseudoClass.Hover),
+            Modifier().backgroundColor(ScratchpadTheme.TEXT_SECONDARY)
+        )
+        rule(
+            StyleSelector.Universal.pseudoElement(StylePseudoElement.Selection),
+            Modifier()
+                .backgroundColor(ScratchpadTheme.TEXT_PRIMARY)
+                .color(ScratchpadTheme.BG_PRIMARY)
+        )
+    }
 
     Box(
         modifier = Modifier()
@@ -112,6 +92,28 @@ fun ScratchpadScaffold(
             .backgroundColor(ScratchpadTheme.BG_PRIMARY)
             .overflow(Overflow.Hidden)
             .className("scratchpad-container")
+            .animation(
+                name = flicker,
+                duration = AnimationDuration.Fast,
+                iterationCount = AnimationIterationCount.Infinite
+            )
+            .before {
+                position(Position.Fixed)
+                    .inset(0)
+                    .width(100.percent)
+                    .height(100.percent)
+                    .backgroundLayers {
+                        linearGradient(repeating = true) {
+                            angle(0)
+                            colorStop("transparent", "0")
+                            colorStop("transparent", "2px")
+                            colorStop("rgba(0, 255, 0, 0.03)", "2px")
+                            colorStop("rgba(0, 255, 0, 0.03)", "4px")
+                        }
+                    }
+                    .pointerEvents(PointerEvents.None)
+                    .zIndex(10000)
+            }
     ) {
         content()
     }

@@ -43,7 +43,7 @@ class AiCurriculumRenderer(
             content = {
                 AiLessonPage(
                     requestPath = "/$slug",
-                    html = rendered.html,
+                    document = rendered.document,
                     toc = rendered.toc,
                     sidebar = navTree,
                     meta = meta,
@@ -73,7 +73,7 @@ class AiCurriculumRenderer(
                 AiLessonLandingPage(
                     slug = slug,
                     entry = entry,
-                    introHtml = introRendered.html,
+                    introDocument = introRendered.document,
                     subLessons = subLessons,
                     progress = progress,
                     sidebar = navTree,
@@ -102,7 +102,7 @@ class AiCurriculumRenderer(
             content = {
                 AiSubLessonPage(
                     requestPath = "/$slug/$sub",
-                    html = wrapProsePairs(rendered.html),
+                    document = rendered.document.withParagraphCodePairs(),
                     toc = rendered.toc,
                     sidebar = navTree,
                     meta = meta,
@@ -119,32 +119,8 @@ class AiCurriculumRenderer(
         head.title("$title · AI Curriculum · Yousef")
         head.meta("robots", null, "noindex, nofollow", null, null)
         head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
-        // Prism.js syntax highlighting
-        head.link("stylesheet", "https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css", null, null, null, null)
-        head.script("https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js", "prism-core", "application/javascript", false, true, null)
-        head.script("https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js", "prism-python", "application/javascript", false, true, null)
-        head.script("https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js", "prism-bash", "application/javascript", false, true, null)
-        // REPL styles and script
-        head.link("stylesheet", "/static/ai-repl.css", null, null, null, null)
-        head.script("/static/ai-repl.js", "ai-repl", "application/javascript", false, true, null)
         // Hydration
         head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
     }
 
-    companion object {
-        /**
-         * Wraps consecutive <p> + <pre> blocks into a side-by-side grid.
-         * A <p> immediately followed by a <pre> gets wrapped in <div class="prose-pair">.
-         */
-        internal fun wrapProsePairs(html: String): String {
-            // Match a <p>...</p> block followed (with optional whitespace) by a <pre>...</pre> block
-            val pattern = Regex(
-                """(<p>.*?</p>)\s*(<pre>.*?</pre>)""",
-                RegexOption.DOT_MATCHES_ALL
-            )
-            return pattern.replace(html) { match ->
-                """<div class="prose-pair">${match.groupValues[1]}${match.groupValues[2]}</div>"""
-            }
-        }
-    }
 }

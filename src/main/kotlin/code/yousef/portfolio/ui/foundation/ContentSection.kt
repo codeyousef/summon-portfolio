@@ -4,9 +4,14 @@ import code.yousef.portfolio.theme.PortfolioTheme
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.components.layout.Column
-import codes.yousef.summon.components.styles.GlobalStyle
+import codes.yousef.summon.components.styles.StyleAttribute
+import codes.yousef.summon.components.styles.StyleRulePriority
+import codes.yousef.summon.components.styles.StyleSelector
+import codes.yousef.summon.components.styles.TypedStyleSheet
 import codes.yousef.summon.core.style.Color
+import codes.yousef.summon.extensions.percent
 import codes.yousef.summon.extensions.px
+import codes.yousef.summon.extensions.vw
 import codes.yousef.summon.modifier.*
 
 @Composable
@@ -15,19 +20,23 @@ fun ContentSection(
     surface: Boolean = true,
     content: () -> Unit
 ) {
-    GlobalStyle(css = """
-        /* Consistent mobile padding */
-        @media (max-width: 768px) {
-            [data-content-section="wrapper"] {
-                padding: ${PortfolioTheme.Spacing.xs} !important;
-                width: 100% !important;
-                max-width: 100vw !important;
-            }
-            [data-content-section="inner"] {
-                padding: ${PortfolioTheme.Spacing.md} !important;
-            }
+    TypedStyleSheet {
+        media(MediaQuery.MaxWidth(768)) {
+            rule(
+                StyleSelector.Universal.attribute(StyleAttribute.data("content-section"), "wrapper"),
+                Modifier()
+                    .padding(PortfolioTheme.Spacing.xs)
+                    .width(100.percent)
+                    .maxWidth(100.vw),
+                priority = StyleRulePriority.Important,
+            )
+            rule(
+                StyleSelector.Universal.attribute(StyleAttribute.data("content-section"), "inner"),
+                Modifier().padding(PortfolioTheme.Spacing.md),
+                priority = StyleRulePriority.Important,
+            )
         }
-    """)
+    }
     
     val wrapperModifier = modifier
         .maxWidth(1200.px)

@@ -26,10 +26,8 @@ dependencies {
     // Caching
     implementation(libs.caffeine)
 
-    // Markdown & HTML
+    // Markdown parsing (rendered exclusively through typed Summon components)
     implementation(libs.bundles.commonmark)
-    implementation(libs.owasp.html.sanitizer)
-    implementation(libs.jsoup)
 
     // Summon SSR framework
     implementation(libs.summon)
@@ -49,6 +47,8 @@ dependencies {
     // Google Cloud Firestore
     implementation(platform(libs.google.cloud.bom))
     implementation(libs.google.cloud.firestore)
+    implementation(libs.google.cloud.storage)
+    implementation(libs.google.auth.oauth2.http)
 
     // Apache POI for Excel (.xlsx) import
     implementation(libs.poi.ooxml)
@@ -56,6 +56,7 @@ dependencies {
     // Testing
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.jsoup)
 }
 
 tasks {

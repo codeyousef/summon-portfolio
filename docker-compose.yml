@@ -12,6 +12,9 @@ services:
       - PORT=8080
       - PORTFOLIO_CONTENT_PATH=/app/storage/content.json
       - ADMIN_CREDENTIALS_PATH=/app/storage/admin-credentials.json
+      - PHOTOGRAPHY_UPLOAD_DIR=/app/storage/uploads/photography
+      - PHOTOGRAPHY_UPLOAD_PREFIX=photography
+      - PHOTOGRAPHY_MAX_UPLOAD_BYTES=15728640
       # Firestore settings (optional, fallback)
       - USE_LOCAL_STORE=true
       # - GCP_PROJECT_ID=your-project-id

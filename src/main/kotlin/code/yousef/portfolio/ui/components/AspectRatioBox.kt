@@ -3,7 +3,7 @@ package code.yousef.portfolio.ui.components
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.layout.Box
 import codes.yousef.summon.modifier.Modifier
-import codes.yousef.summon.modifier.style
+import codes.yousef.summon.modifier.aspectRatio
 import codes.yousef.summon.modifier.width
 
 /**
@@ -18,7 +18,7 @@ fun AspectRatioBox(
 ) {
     Box(
         modifier = modifier
-            .style("aspect-ratio", ratio.toString())
+            .aspectRatio(ratio)
             .width("100%")
     ) {
         content()

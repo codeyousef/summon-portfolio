@@ -23,6 +23,7 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
     private val testimonialsCollection = firestore.collection("testimonials")
     private val heroCollection = firestore.collection("hero")
     private val contactSubmissionsCollection = firestore.collection("contact_submissions")
+    private val photographyPhotosCollection = firestore.collection("photography_photos")
 
     private val lock = ReentrantLock()
 
@@ -36,7 +37,8 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
             projects = listProjects(),
             services = listServices(),
             blogPosts = listBlogPosts(),
-            testimonials = listTestimonials()
+            testimonials = listTestimonials(),
+            photographyPhotos = listPhotographyPhotos()
         )
     }
 
@@ -232,6 +234,36 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
         }
     }
 
+    override fun listPhotographyPhotos(): List<PhotographyPhoto> = runBlocking {
+        withContext(Dispatchers.IO) {
+            retry {
+                photographyPhotosCollection.get().get().documents.mapNotNull { doc ->
+                    doc.toPhotographyPhoto()
+                }.sortedWith(compareBy<PhotographyPhoto> { it.order }.thenByDescending { it.uploadedAt })
+            }
+        }
+    }
+
+    override fun upsertPhotographyPhoto(photo: PhotographyPhoto) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { photographyPhotosCollection.document(photo.id).set(photo.toMap()).get() }
+                }
+            }
+        }
+    }
+
+    override fun deletePhotographyPhoto(id: String) {
+        lock.withLock {
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    retry { photographyPhotosCollection.document(id).delete().get() }
+                }
+            }
+        }
+    }
+
     private suspend fun ensureSeedData() = withContext(Dispatchers.IO) {
         // Check if data exists, if not seed it
         val projectsExist = retry { projectsCollection.limit(1).get().get().documents.isNotEmpty() }
@@ -354,6 +386,39 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
         }
     }
 
+    private fun com.google.cloud.firestore.DocumentSnapshot.toPhotographyPhoto(): PhotographyPhoto? {
+        val data = this.data ?: return null
+        return try {
+            PhotographyPhoto(
+                id = id,
+                title = data["title"] as? String ?: return null,
+                altText = data["altText"] as? String ?: return null,
+                caption = data["caption"] as? String,
+                takenAt = (data["takenAt"] as? String)?.takeIf { it.isNotBlank() }?.let { LocalDate.parse(it) },
+                order = (data["order"] as? Number)?.toInt() ?: 0,
+                published = data["published"] as? Boolean ?: false,
+                storageKey = data["storageKey"] as? String ?: return null,
+                contentType = data["contentType"] as? String ?: "application/octet-stream",
+                originalFilename = data["originalFilename"] as? String,
+                sizeBytes = (data["sizeBytes"] as? Number)?.toLong() ?: 0L,
+                mediaType = (data["mediaType"] as? String)?.let {
+                    runCatching { PhotographyMediaType.valueOf(it) }.getOrNull()
+                } ?: PhotographyMediaType.PHOTO,
+                sourceKind = (data["sourceKind"] as? String)?.let {
+                    runCatching { PhotographySourceKind.valueOf(it) }.getOrNull()
+                } ?: PhotographySourceKind.UPLOAD,
+                category = data["category"] as? String ?: "Uncategorized",
+                albumTitle = data["albumTitle"] as? String,
+                externalUrl = data["externalUrl"] as? String,
+                thumbnailUrl = data["thumbnailUrl"] as? String,
+                featured = data["featured"] as? Boolean ?: false,
+                uploadedAt = (data["uploadedAt"] as? String)?.let { Instant.parse(it) } ?: Instant.now()
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun Map<String, Any>.toLocalizedText(key: String): LocalizedText? {
         val value = this[key] ?: return null
@@ -434,6 +499,27 @@ class FirestoreContentStore(private val firestore: Firestore) : ContentStore {
         "ctaPrimary" to ctaPrimary.toMap(),
         "ctaSecondary" to ctaSecondary.toMap(),
         "metrics" to metrics.map { it.toMap() }
+    )
+
+    private fun PhotographyPhoto.toMap(): Map<String, Any?> = mapOf(
+        "title" to title,
+        "altText" to altText,
+        "caption" to caption,
+        "takenAt" to takenAt?.toString(),
+        "order" to order,
+        "published" to published,
+        "storageKey" to storageKey,
+        "contentType" to contentType,
+        "originalFilename" to originalFilename,
+        "sizeBytes" to sizeBytes,
+        "mediaType" to mediaType.name,
+        "sourceKind" to sourceKind.name,
+        "category" to category,
+        "albumTitle" to albumTitle,
+        "externalUrl" to externalUrl,
+        "thumbnailUrl" to thumbnailUrl,
+        "featured" to featured,
+        "uploadedAt" to uploadedAt.toString()
     )
 
     private fun HeroMetric.toMap(): Map<String, Any?> = mapOf(

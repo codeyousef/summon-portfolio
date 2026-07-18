@@ -1,11 +1,13 @@
 package code.yousef.portfolio.ui.blog
 
 import code.yousef.portfolio.content.model.BlogPost
+import code.yousef.portfolio.docs.MarkdownDocument
 import code.yousef.portfolio.docs.summon.components.Prose
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.BlogStrings
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
+import code.yousef.portfolio.ui.components.GlobalNavigationDestination
 import code.yousef.portfolio.ui.foundation.ContentSection
 import code.yousef.portfolio.ui.foundation.PageScaffold
 import code.yousef.portfolio.ui.sections.ContactFooterSection
@@ -23,13 +25,15 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun BlogDetailPage(
     post: BlogPost,
-    contentHtml: String,
+    contentDocument: MarkdownDocument,
     locale: PortfolioLocale
 ) {
     val formatter = detailDateFormatter(locale)
     PageScaffold(locale = locale, enableAuroraEffects = false) {
-        AppHeader(locale = locale)
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.BLOG,
+        )
         ContentSection(surface = false) {
             Column(
                 modifier = Modifier()
@@ -86,7 +90,7 @@ fun BlogDetailPage(
                     }
                 }
 
-                Prose(contentHtml)
+                Prose(contentDocument)
 
                 val backLabel = BlogStrings.Detail.back.resolve(locale)
                 AnchorLink(
@@ -108,8 +112,10 @@ fun BlogDetailPage(
 @Composable
 fun BlogNotFoundPage(locale: PortfolioLocale) {
     PageScaffold(locale = locale, enableAuroraEffects = false) {
-        AppHeader(locale = locale)
-        Box(modifier = Modifier().height(PortfolioTheme.Spacing.xxl)) {}
+        AppHeader(
+            locale = locale,
+            activeDestination = GlobalNavigationDestination.BLOG,
+        )
         ContentSection(surface = false) {
             Column(
                 modifier = Modifier()

@@ -4,6 +4,7 @@ import code.yousef.portfolio.content.model.Project
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.i18n.strings.ProjectsStrings
 import code.yousef.portfolio.theme.PortfolioTheme
+import code.yousef.portfolio.theme.portfolioHeroGradient
 import code.yousef.portfolio.ui.components.AspectRatioBox
 import code.yousef.portfolio.ui.components.GlassPill
 import code.yousef.portfolio.ui.components.SplitView
@@ -75,7 +76,7 @@ private fun ProjectItem(
                             modifier = Modifier()
                                 .width("100%")
                                 .height("100%")
-                                .objectFit("cover")
+                                .objectFit(ObjectFit.Cover)
                         )
                     } else {
                         GradientPlaceholder(
@@ -165,7 +166,7 @@ private fun GradientPlaceholder(label: String) {
         modifier = Modifier()
             .width("100%")
             .height("100%")
-            .background(PortfolioTheme.Gradients.HERO)
+            .portfolioHeroGradient()
             .display(Display.Flex)
             .alignItems(AlignItems.Center)
             .justifyContent(JustifyContent.Center)
@@ -179,4 +180,3 @@ private fun GradientPlaceholder(label: String) {
         )
     }
 }
-

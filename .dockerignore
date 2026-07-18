@@ -1,5 +1,16 @@
 .git
+gha-creds-*.json
+.offline-keys
 .gradle
+**/.gradle
+**/build
 **/.DS_Store
 .idea
 **/*.iml
+
+# The isolated registry image packages the already verified standalone JAR.
+# Re-include only that artifact; no portfolio classes or Seen compiler tools are
+# copied into the registry runtime image.
+!registry-service/build
+!registry-service/build/libs
+!registry-service/build/libs/*-all.jar
