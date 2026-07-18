@@ -377,6 +377,25 @@ jobs:
             ($served | all(.revisionName == $revision))
           ' <<<"${service_json}" >/dev/null
 
+          custom_domain_revision=""
+          convergence_deadline=$((SECONDS + 300))
+          attempt=0
+          while (( SECONDS < convergence_deadline )); do
+            ((attempt += 1))
+            version_json="$(curl --fail --silent --show-error \
+              --connect-timeout 5 --max-time 10 \
+              -H 'Cache-Control: no-cache' \
+              'https://dev.yousef.codes/version' 2>/dev/null || true)"
+            custom_domain_revision="$(jq -r '.revision // empty' <<<"${version_json}" 2>/dev/null || true)"
+            if [[ "${custom_domain_revision}" == "${CANDIDATE_REVISION}" ]]; then
+              break
+            fi
+            echo "Waiting for dev.yousef.codes to serve ${CANDIDATE_REVISION} (attempt ${attempt})."
+            sleep 5
+          done
+          test "${custom_domain_revision}" = "${CANDIDATE_REVISION}"
+          echo "Verified dev.yousef.codes is serving ${CANDIDATE_REVISION}." >> "${GITHUB_STEP_SUMMARY}"
+
           smoke_urls=(
             "https://dev.yousef.codes/"
             "https://dev.yousef.codes/projects"
@@ -386,10 +405,10 @@ jobs:
             "https://dev.yousef.codes/scratchpad"
             "https://dev.yousef.codes/fifth-wall"
             "https://dev.yousef.codes/blog"
-            "https://dev.yousef.codes/docs"
             "https://dev.yousef.codes/ar"
             "https://dev.yousef.codes/admin/login"
             "https://summon.dev.yousef.codes/"
+            "https://summon.dev.yousef.codes/docs"
             "https://materia.dev.yousef.codes/"
             "https://sigil.dev.yousef.codes/"
             "https://aether.dev.yousef.codes/"
@@ -400,6 +419,7 @@ jobs:
             "https://seen.dev.yousef.codes/packages/api/v1/packages"
           )
           for smoke_url in "${smoke_urls[@]}"; do
+            echo "Probing ${smoke_url}"
             curl --fail --location --max-redirs 5 --silent --show-error \
               --retry 12 --retry-all-errors --retry-delay 5 \
               --retry-max-time 180 --connect-timeout 10 --max-time 30 "${smoke_url}" >/dev/null
