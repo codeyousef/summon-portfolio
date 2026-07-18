@@ -33,7 +33,11 @@ fun DontClickButton(
         rule(
             button,
             Modifier()
-                .transition("all 0.15s ease")
+                .transition(
+                    property = TransitionProperty.All,
+                    duration = 150,
+                    timingFunction = TransitionTimingFunction.Ease,
+                )
                 .animation(
                     name = pulse,
                     duration = AnimationDuration.VerySlow,

@@ -67,7 +67,7 @@ fun BuildingNav(username: String?, currentPath: String) {
                 text = BuildingStrings.APP_TITLE,
                 modifier = Modifier()
                     .fontSize(BuildingTheme.FontSize.xl)
-                    .fontWeight("700")
+                    .fontWeight(FontWeight.Bold)
                     .color(BuildingTheme.Colors.PRIMARY)
             )
             
@@ -148,7 +148,7 @@ fun Card(
                 text = title,
                 modifier = Modifier()
                     .fontSize(BuildingTheme.FontSize.lg)
-                    .fontWeight("600")
+                    .fontWeight(FontWeight.SemiBold)
                     .color(BuildingTheme.Colors.TEXT_PRIMARY)
                     .margin("0", "0", BuildingTheme.Spacing.md, "0")
             )
@@ -178,7 +178,7 @@ fun StatCard(
             text = value,
             modifier = Modifier()
                 .fontSize(BuildingTheme.FontSize.xxxl)
-                .fontWeight("700")
+                .fontWeight(FontWeight.Bold)
                 .color(color)
         )
         Text(
@@ -222,7 +222,7 @@ fun StatusBadge(status: PaymentStatus) {
             .padding(BuildingTheme.Spacing.xs, BuildingTheme.Spacing.sm)
             .borderRadius(BuildingTheme.BorderRadius.full)
             .fontSize(BuildingTheme.FontSize.xs)
-            .fontWeight("500")
+            .fontWeight(FontWeight.Medium)
     )
 }
 
@@ -321,7 +321,7 @@ fun Button(
             .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
             .borderRadius(BuildingTheme.BorderRadius.md)
             .fontSize(BuildingTheme.FontSize.sm)
-            .fontWeight("500")
+            .fontWeight(FontWeight.Medium)
             .cursor(Cursor.Pointer)
             .display(Display.InlineFlex)
             .alignItems(AlignItems.Center)
@@ -355,7 +355,7 @@ fun PageHeader(
             text = title,
             modifier = Modifier()
                 .fontSize(BuildingTheme.FontSize.xxl)
-                .fontWeight("700")
+                .fontWeight(FontWeight.Bold)
                 .color(BuildingTheme.Colors.TEXT_PRIMARY)
         )
         
@@ -368,7 +368,7 @@ fun PageHeader(
                     .padding(BuildingTheme.Spacing.sm, BuildingTheme.Spacing.md)
                     .borderRadius(BuildingTheme.BorderRadius.md)
                     .fontSize(BuildingTheme.FontSize.sm)
-                    .fontWeight("500")
+                    .fontWeight(FontWeight.Medium)
             ) {
                 Text(actionLabel)
             }

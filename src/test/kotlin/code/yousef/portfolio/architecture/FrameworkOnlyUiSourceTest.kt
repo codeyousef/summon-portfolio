@@ -16,6 +16,7 @@ class FrameworkOnlyUiSourceTest {
     fun `guard detects representative raw markup style and script escape hatches`() {
         val fixtureRoot = Files.createTempDirectory("framework-only-source-guard")
         val fixture = fixtureRoot.resolve("RawUiFixture.kt")
+        val tripleQuote = "\"\"\""
         try {
             Files.writeString(
                 fixture,
@@ -23,6 +24,17 @@ class FrameworkOnlyUiSourceTest {
                     fun rawUiFixture() {
                         RawHtml("<main>raw markup</main>")
                         Modifier().style("color: red")
+                        Modifier().display("flex")
+                        Modifier().display(value = "grid")
+                        Modifier().fontWeight("700")
+                        Modifier().fontWeight(${tripleQuote}bold${tripleQuote})
+                        Modifier().outline(OutlineStyle.None.value)
+                        Modifier().border("1px", "solid", "#ffffff")
+                        Modifier().border(width = "1px", style = "solid", color = "#ffffff")
+                        Modifier().gridTemplateColumns(value = "repeat(2, 1fr)")
+                        Modifier().gridTemplateRows(${tripleQuote}auto 1fr${tripleQuote})
+                        Modifier().transition(value = "all 150ms ease")
+                        Modifier().transition(${tripleQuote}opacity 200ms linear${tripleQuote})
                         js("window.alert('raw script')")
                     }
                 """.trimIndent(),
@@ -33,7 +45,36 @@ class FrameworkOnlyUiSourceTest {
             assertTrue("RawHtml bypasses typed Summon components" in detectedRules)
             assertTrue("raw inline HTML bypasses typed components" in detectedRules)
             assertTrue("Modifier.style injects raw CSS" in detectedRules)
+            assertTrue("enum-backed Summon modifiers require typed enum values" in detectedRules)
+            assertTrue("Summon border shorthands require typed BorderStyle values" in detectedRules)
+            assertTrue("Summon grid modifiers require GridTrack values" in detectedRules)
+            assertTrue("simple Summon transitions require typed property and timing values" in detectedRules)
             assertTrue("Kotlin js() embeds raw JavaScript" in detectedRules)
+        } finally {
+            Files.deleteIfExists(fixture)
+            Files.deleteIfExists(fixtureRoot)
+        }
+    }
+
+    @Test
+    fun `enum guard ignores unrelated functions without modifier receivers`() {
+        val fixtureRoot = Files.createTempDirectory("typed-modifier-false-positive-guard")
+        val fixture = fixtureRoot.resolve("UnrelatedFunctionsFixture.kt")
+        try {
+            Files.writeString(
+                fixture,
+                """
+                    fun display(value: String): String = value
+
+                    fun unrelatedFunctionCall() {
+                        display("flex")
+                    }
+                """.trimIndent(),
+            )
+
+            val violations = inspectKotlinSource(fixtureRoot, fixture)
+
+            assertTrue(violations.none { it.rule == "enum-backed Summon modifiers require typed enum values" })
         } finally {
             Files.deleteIfExists(fixture)
             Files.deleteIfExists(fixtureRoot)
@@ -115,6 +156,101 @@ class FrameworkOnlyUiSourceTest {
                     }
                 }
             }
+            enumBackedModifierLiterals.forEach { pattern ->
+                pattern.findAll(commentFree).forEach { match ->
+                    val startsInsideLiteral = codeOnly[match.range.first].isWhitespace()
+                    val method = match.groupValues[1]
+                    val value = match.groupValues[2]
+                    if (!startsInsideLiteral && isRepresentedByModifierEnum(method, value)) {
+                        add(
+                            violation(
+                                projectRoot,
+                                source,
+                                original,
+                                match.range.first,
+                                "enum-backed Summon modifiers require typed enum values",
+                            )
+                        )
+                    }
+                }
+            }
+            enumValueExtractionModifierCall.findAll(commentFree).forEach { match ->
+                val startsInsideLiteral = codeOnly[match.range.first].isWhitespace()
+                if (!startsInsideLiteral && match.groupValues[1] in enumBackedModifierValues) {
+                    add(
+                        violation(
+                            projectRoot,
+                            source,
+                            original,
+                            match.range.first,
+                            "enum-backed Summon modifiers require typed enum values",
+                        )
+                    )
+                }
+            }
+            borderStyleLiterals.forEach { pattern ->
+                pattern.findAll(commentFree).forEach { match ->
+                    val startsInsideLiteral = codeOnly[match.range.first].isWhitespace()
+                    val style = match.groupValues[1]
+                    if (!startsInsideLiteral && style in enumBackedModifierValues.getValue("borderStyle")) {
+                        add(
+                            violation(
+                                projectRoot,
+                                source,
+                                original,
+                                match.range.first,
+                                "Summon border shorthands require typed BorderStyle values",
+                            )
+                        )
+                    }
+                }
+            }
+            gridModifierLiterals.forEach { pattern ->
+                pattern.findAll(commentFree).forEach { match ->
+                    if (!codeOnly[match.range.first].isWhitespace()) {
+                        add(
+                            violation(
+                                projectRoot,
+                                source,
+                                original,
+                                match.range.first,
+                                "Summon grid modifiers require GridTrack values",
+                            )
+                        )
+                    }
+                }
+            }
+            typedTransitionLiterals.forEach { pattern ->
+                pattern.findAll(commentFree).forEach { match ->
+                    val startsInsideLiteral = codeOnly[match.range.first].isWhitespace()
+                    val property = match.groupValues[1]
+                    val timingFunction = match.groupValues[4]
+                    if (
+                        !startsInsideLiteral &&
+                        property in enumBackedModifierValues.getValue("transitionProperty") &&
+                        timingFunction in enumBackedModifierValues.getValue("transitionTimingFunction")
+                    ) {
+                        add(
+                            violation(
+                                projectRoot,
+                                source,
+                                original,
+                                match.range.first,
+                                "simple Summon transitions require typed property and timing values",
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isRepresentedByModifierEnum(method: String, value: String): Boolean {
+        val values = enumBackedModifierValues[method] ?: return false
+        return when (method) {
+            "textDecoration" -> value.trim().split(Regex("""\s+""")).all(values::contains)
+            "backgroundBlendModes" -> value.split(',').map(String::trim).all(values::contains)
+            else -> value in values
         }
     }
 
@@ -344,6 +480,131 @@ class FrameworkOnlyUiSourceTest {
             ".xhtml",
         )
         val textResourceExtensions = setOf("md", "txt", "yaml", "yml", "xml", "json", "svg")
+
+        val enumBackedModifierLiterals = listOf(
+            Regex(
+                """\.\s*([A-Za-z][A-Za-z0-9]*)\s*\(\s*(?:[A-Za-z][A-Za-z0-9]*\s*=\s*)?"([^"\\]*)"""
+            ),
+            Regex(
+                "\\.\\s*([A-Za-z][A-Za-z0-9]*)\\s*\\(\\s*" +
+                    "(?:[A-Za-z][A-Za-z0-9]*\\s*=\\s*)?\"\"\"([^\"]*)\"\"\""
+            ),
+        )
+        val enumValueExtractionModifierCall = Regex(
+            """\.\s*([A-Za-z][A-Za-z0-9]*)\s*\(\s*(?:[A-Za-z][A-Za-z0-9]*\s*=\s*)?""" +
+                """[A-Za-z][A-Za-z0-9_.]*\.\s*value\b"""
+        )
+        val borderStyleLiterals = listOf(
+            Regex("""\.\s*border\s*\(\s*[^,]+,\s*"([^"\\]*)"""),
+            Regex("""\.\s*border\s*\([^)]*\bstyle\s*=\s*"([^"\\]*)"""),
+        )
+        val gridModifierLiterals = listOf(
+            Regex(
+                """\b(?:gridTemplateColumns|gridTemplateRows)\s*\(\s*""" +
+                    """(?:[A-Za-z][A-Za-z0-9]*\s*=\s*)?"([^"\\]*)"""
+            ),
+            Regex(
+                "\\b(?:gridTemplateColumns|gridTemplateRows)\\s*\\(\\s*" +
+                    "(?:[A-Za-z][A-Za-z0-9]*\\s*=\\s*)?\"\"\"([^\"]*)\"\"\""
+            ),
+        )
+        val typedTransitionLiterals = listOf(
+            Regex(
+                """\.\s*transition\s*\(\s*(?:[A-Za-z][A-Za-z0-9]*\s*=\s*)?""" +
+                    """"([a-z-]+)\s+(\d+(?:\.\d+)?)(ms|s)\s+([a-z-]+)""" +
+                    """(?:\s+\d+(?:\.\d+)?(?:ms|s))?"\s*\)"""
+            ),
+            Regex(
+                "\\.\\s*transition\\s*\\(\\s*(?:[A-Za-z][A-Za-z0-9]*\\s*=\\s*)?" +
+                    "\"\"\"([a-z-]+)\\s+(\\d+(?:\\.\\d+)?)(ms|s)\\s+([a-z-]+)" +
+                    "(?:\\s+\\d+(?:\\.\\d+)?(?:ms|s))?\"\"\"\\s*\\)"
+            ),
+        )
+        val enumBackedModifierValues = mapOf(
+            "position" to setOf("static", "relative", "absolute", "fixed", "sticky"),
+            "overflow" to setOf("visible", "hidden", "scroll", "auto"),
+            "overflowX" to setOf("visible", "hidden", "scroll", "auto"),
+            "overflowY" to setOf("visible", "hidden", "scroll", "auto"),
+            "display" to setOf(
+                "none", "block", "inline", "inline-block", "flex", "grid", "inline-flex", "inline-grid"
+            ),
+            "visibility" to setOf("visible", "hidden", "collapse"),
+            "justifyContent" to setOf(
+                "flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly"
+            ),
+            "justifyItems" to setOf("start", "end", "center", "stretch", "baseline"),
+            "justifySelf" to setOf("auto", "start", "end", "center", "stretch", "baseline"),
+            "alignItems" to setOf("flex-start", "flex-end", "center", "baseline", "stretch"),
+            "alignSelf" to setOf("auto", "flex-start", "flex-end", "center", "baseline", "stretch"),
+            "alignContent" to setOf(
+                "flex-start", "flex-end", "center", "space-between", "space-around", "stretch"
+            ),
+            "flexDirection" to setOf("row", "row-reverse", "column", "column-reverse"),
+            "flexWrap" to setOf("nowrap", "wrap", "wrap-reverse"),
+            "cursor" to setOf(
+                "auto", "default", "none", "context-menu", "help", "pointer", "progress", "wait", "cell",
+                "crosshair", "text", "vertical-text", "alias", "copy", "move", "no-drop", "not-allowed",
+                "grab", "grabbing", "all-scroll", "col-resize", "row-resize", "n-resize", "e-resize",
+                "s-resize", "w-resize", "ne-resize", "nw-resize", "se-resize", "sw-resize", "ew-resize",
+                "ns-resize", "nesw-resize", "nwse-resize", "zoom-in", "zoom-out",
+            ),
+            "pointerEvents" to setOf(
+                "auto", "none", "visiblePainted", "visibleFill", "visibleStroke", "visible", "painted", "fill",
+                "stroke", "all",
+            ),
+            "backgroundClip" to setOf("border-box", "padding-box", "content-box", "text"),
+            "borderStyle" to setOf(
+                "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset"
+            ),
+            "fontStyle" to setOf("normal", "italic", "oblique"),
+            "fontWeight" to setOf(
+                "100", "200", "300", "400", "500", "600", "700", "800", "900", "normal", "bold"
+            ),
+            "textAlign" to setOf("left", "right", "center", "justify", "start", "end"),
+            "textDecoration" to setOf("none", "underline", "line-through", "overline"),
+            "whiteSpace" to setOf("normal", "nowrap", "pre", "pre-line", "pre-wrap", "break-spaces"),
+            "textTransform" to setOf(
+                "none", "capitalize", "uppercase", "lowercase", "full-width", "full-size-kana"
+            ),
+            "objectFit" to setOf("fill", "contain", "cover", "none", "scale-down"),
+            "transitionProperty" to setOf(
+                "all", "none", "transform", "opacity", "background", "background-color", "color", "height",
+                "width", "margin", "padding", "border", "border-color", "border-radius", "box-shadow",
+                "text-shadow", "font-size", "font-weight", "line-height", "letter-spacing", "visibility", "z-index",
+            ),
+            "transitionTimingFunction" to setOf(
+                "ease", "linear", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end",
+                "cubic-bezier(0.4, 0, 0.2, 1)",
+            ),
+            "mixBlendMode" to setOf(
+                "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn",
+                "hard-light", "soft-light", "difference", "exclusion",
+            ),
+            "backgroundBlendModes" to setOf(
+                "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn",
+                "hard-light", "soft-light", "difference", "exclusion",
+            ),
+            "wordBreak" to setOf("normal", "break-all", "keep-all", "break-word"),
+            "overflowWrap" to setOf("normal", "break-word", "anywhere"),
+            "textOverflow" to setOf("clip", "ellipsis"),
+            "boxSizing" to setOf("content-box", "border-box"),
+            "colorScheme" to setOf(
+                "normal", "light", "dark", "light dark", "dark light", "only light", "only dark"
+            ),
+            "listStyle" to setOf(
+                "none", "disc", "circle", "square", "decimal", "decimal-leading-zero", "lower-alpha", "upper-alpha",
+                "lower-roman", "upper-roman", "disclosure-open", "disclosure-closed",
+            ),
+            "listStyleType" to setOf(
+                "none", "disc", "circle", "square", "decimal", "decimal-leading-zero", "lower-alpha", "upper-alpha",
+                "lower-roman", "upper-roman", "disclosure-open", "disclosure-closed",
+            ),
+            "scrollbarWidth" to setOf("auto", "thin", "none"),
+            "scrollBehavior" to setOf("auto", "smooth"),
+            "outline" to setOf(
+                "auto", "none", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset"
+            ),
+        )
 
         val codeRules = listOf(
             Rule("RawHtml bypasses typed Summon components", Regex("""\bRawHtml\b""")),

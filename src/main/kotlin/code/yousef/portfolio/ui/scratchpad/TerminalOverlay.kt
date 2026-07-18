@@ -105,7 +105,7 @@ fun TerminalOverlay(command: String? = null) {
                         .color(ScratchpadTheme.TEXT_PRIMARY)
                         .fontFamily(ScratchpadTheme.FONT_MONO)
                         .fontSize(14.px)
-                        .outline(OutlineStyle.None.value)
+                        .outline(OutlineStyle.None)
                 )
                 FormButton(
                     text = "RUN",

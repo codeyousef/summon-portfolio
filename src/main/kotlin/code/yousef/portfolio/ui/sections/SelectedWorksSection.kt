@@ -76,7 +76,7 @@ private fun ProjectItem(
                             modifier = Modifier()
                                 .width("100%")
                                 .height("100%")
-                                .objectFit("cover")
+                                .objectFit(ObjectFit.Cover)
                         )
                     } else {
                         GradientPlaceholder(

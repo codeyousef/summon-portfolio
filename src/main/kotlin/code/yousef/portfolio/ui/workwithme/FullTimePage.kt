@@ -164,7 +164,9 @@ private fun AdvantageCard(title: String, description: String) {
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border("1px", "solid", PortfolioTheme.Colors.BORDER)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.sm)) {
             Text(
@@ -232,7 +234,9 @@ private fun ProficiencyCard(level: String, skills: List<String>) {
             .backgroundColor(PortfolioTheme.Colors.SURFACE)
             .borderRadius(PortfolioTheme.Radii.lg)
             .padding(PortfolioTheme.Spacing.lg)
-            .border("1px", "solid", PortfolioTheme.Colors.BORDER)
+            .borderWidth(1)
+            .borderStyle(BorderStyle.Solid)
+            .borderColor(PortfolioTheme.Colors.BORDER)
     ) {
         Column(modifier = Modifier().gap(PortfolioTheme.Spacing.md)) {
             Text(
@@ -369,7 +373,9 @@ private fun DeploymentDocsSection() {
                         .borderRadius(PortfolioTheme.Radii.md)
                         .fontWeight(600)
                         .textDecoration(TextDecoration.None)
-                        .border("1px", "solid", PortfolioTheme.Colors.BORDER),
+                        .borderWidth(1)
+                        .borderStyle(BorderStyle.Solid)
+                        .borderColor(PortfolioTheme.Colors.BORDER),
                     target = "_blank",
                     rel = "noopener noreferrer",
                     title = null,
