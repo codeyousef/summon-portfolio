@@ -97,6 +97,13 @@ fun Router.summonRoutes(
     }
 }
 
+internal fun deploymentVersionPayload(
+    environment: Map<String, String> = System.getenv(),
+): Map<String, String> = mapOf(
+    "version" to "0.6.2.0-debug-2",
+    "revision" to (environment["K_REVISION"]?.trim()?.takeIf(String::isNotEmpty) ?: "local"),
+)
+
 internal fun Router.portfolioRoutes(
     portfolioRenderer: PortfolioRenderer,
     blogRenderer: BlogRenderer,
@@ -113,7 +120,8 @@ internal fun Router.portfolioRoutes(
     markdownRenderer: MarkdownRenderer? = null,
 ) {
     get("/version") { exchange ->
-        exchange.respondJson(200, mapOf("version" to "0.6.2.0-debug-2"))
+        exchange.response.setHeader("Cache-Control", "no-store")
+        exchange.respondJson(200, deploymentVersionPayload())
     }
 
     get("/") { exchange ->
