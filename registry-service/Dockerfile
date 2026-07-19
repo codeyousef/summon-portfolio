@@ -3,7 +3,7 @@ FROM eclipse-temurin:21-jre
 ARG VCS_REF=unknown
 ARG BUILD_DATE=unknown
 
-LABEL org.opencontainers.image.title="Seen development registry" \
+LABEL org.opencontainers.image.title="Seen package registry" \
       org.opencontainers.image.description="Isolated Seen package registry service" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}"

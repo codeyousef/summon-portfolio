@@ -67,7 +67,17 @@ internal class GoogleAdcRegistryIdentityTokenProvider(
 }
 
 internal fun interface RegistryProxyForwarder {
-    suspend fun forward(exchange: Exchange, upstreamUrl: String, identityToken: String?)
+    suspend fun forward(
+        exchange: Exchange,
+        upstreamUrl: String,
+        identityToken: String?,
+        callerAuthorization: RegistryCallerAuthorization,
+    )
+}
+
+internal enum class RegistryCallerAuthorization {
+    PRESERVE,
+    STRIP,
 }
 
 private object AetherRegistryProxyForwarder : RegistryProxyForwarder {
@@ -88,13 +98,21 @@ private object AetherRegistryProxyForwarder : RegistryProxyForwarder {
         removeRequestHeaders = ProxyConfig.DEFAULT_HOP_BY_HOP_HEADERS + REGISTRY_STRIPPED_REQUEST_HEADERS
     )
 
-    override suspend fun forward(exchange: Exchange, upstreamUrl: String, identityToken: String?) {
+    override suspend fun forward(
+        exchange: Exchange,
+        upstreamUrl: String,
+        identityToken: String?,
+        callerAuthorization: RegistryCallerAuthorization,
+    ) {
         exchange.proxyTo(upstreamUrl, proxyConfig) {
             // Preserve the public contract path, including the /packages prefix.
             rewritePath { it }
-            // Keep the caller's Authorization header for registry authorization. Cloud Run
-            // invocation credentials use the separate serverless authorization header.
             REGISTRY_STRIPPED_REQUEST_HEADERS.forEach(::removeHeader)
+            if (callerAuthorization == RegistryCallerAuthorization.STRIP) {
+                removeHeader("Authorization")
+            }
+            // Cloud Run invocation credentials always use the separate
+            // serverless authorization header.
             identityToken?.let { header(SERVERLESS_AUTHORIZATION, "Bearer $it") }
         }
     }
@@ -103,19 +121,36 @@ private object AetherRegistryProxyForwarder : RegistryProxyForwarder {
 internal class RegistryGatewayMiddleware(
     publicHost: String,
     upstreamUrl: String,
-    releaseActionsUpstreamUrl: String,
-    securityActionsUpstreamUrl: String,
+    releaseActionsUpstreamUrl: String? = null,
+    securityActionsUpstreamUrl: String? = null,
     private val identityTokenProvider: RegistryIdentityTokenProvider = GoogleAdcRegistryIdentityTokenProvider(),
     private val proxyForwarder: RegistryProxyForwarder = AetherRegistryProxyForwarder
 ) {
-    private data class Upstream(val url: String, val audience: String?)
+    private data class Upstream(val url: String, val audience: String?, val host: String)
 
     private val log = LoggerFactory.getLogger(RegistryGatewayMiddleware::class.java)
     private val random = SecureRandom()
     private val publicHost = parsePublicHost(publicHost)
     private val publicUpstream = parseUpstream(upstreamUrl)
-    private val releaseActionsUpstream = parseUpstream(releaseActionsUpstreamUrl)
-    private val securityActionsUpstream = parseUpstream(securityActionsUpstreamUrl)
+    private val releaseActionsUpstream = releaseActionsUpstreamUrl?.let(::parseUpstream)
+    private val securityActionsUpstream = securityActionsUpstreamUrl?.let(::parseUpstream)
+    private val callerAuthorization = if (releaseActionsUpstream == null) {
+        RegistryCallerAuthorization.STRIP
+    } else {
+        RegistryCallerAuthorization.PRESERVE
+    }
+
+    init {
+        require((releaseActionsUpstream == null) == (securityActionsUpstream == null)) {
+            "Registry action upstreams must both be configured or both be absent"
+        }
+        require(
+            listOfNotNull(publicUpstream, releaseActionsUpstream, securityActionsUpstream)
+                .none { it.host == publicHost }
+        ) {
+            "Registry upstream host must differ from the public gateway host"
+        }
+    }
 
     val middleware: Middleware = { exchange, next -> handle(exchange, next) }
 
@@ -127,8 +162,12 @@ internal class RegistryGatewayMiddleware(
 
         try {
             val upstream = selectUpstream(exchange.request.method, exchange.request.path)
+            if (upstream == null) {
+                respondUnavailableAction(exchange)
+                return
+            }
             val identityToken = upstream.audience?.let(identityTokenProvider::tokenForAudience)
-            proxyForwarder.forward(exchange, upstream.url, identityToken)
+            proxyForwarder.forward(exchange, upstream.url, identityToken, callerAuthorization)
         } catch (error: CancellationException) {
             throw error
         } catch (error: ProxyTimeoutException) {
@@ -156,12 +195,27 @@ internal class RegistryGatewayMiddleware(
             (path == REGISTRY_PUBLIC_PREFIX || path.startsWith("$REGISTRY_PUBLIC_PREFIX/"))
     }
 
-    private fun selectUpstream(method: HttpMethod, path: String): Upstream = when {
+    private fun selectUpstream(method: HttpMethod, path: String): Upstream? = when {
         method == HttpMethod.POST && RELEASE_ACTION_PATH.matches(path) ->
             releaseActionsUpstream
         method == HttpMethod.POST && SECURITY_ACTION_PATH.matches(path) ->
             securityActionsUpstream
         else -> publicUpstream
+    }
+
+    private suspend fun respondUnavailableAction(exchange: Exchange) {
+        val requestId = "req_" + ByteArray(18).also(random::nextBytes).let {
+            Base64.getUrlEncoder().withoutPadding().encodeToString(it)
+        }
+        val body = """{"error":{"code":"not_found","message":"Route not found","request_id":"$requestId","occurred_at":"${Instant.now()}","retryable":false,"details":{}}}"""
+            .encodeToByteArray()
+        exchange.response.statusCode = 404
+        exchange.response.setHeader("Content-Type", "application/json; charset=utf-8")
+        exchange.response.setHeader("Cache-Control", "no-store")
+        exchange.response.setHeader("X-Request-Id", requestId)
+        exchange.response.setHeader("Content-Length", body.size.toString())
+        exchange.response.write(body)
+        exchange.response.end()
     }
 
     private suspend fun respondGatewayError(exchange: Exchange, status: Int) {
@@ -187,7 +241,7 @@ internal class RegistryGatewayMiddleware(
         require(scheme == "https" || scheme == "http") {
             "Registry upstream URL must use HTTPS, or HTTP for loopback development"
         }
-        require(!uri.rawAuthority.isNullOrBlank() && uri.userInfo == null) {
+        require(!uri.rawAuthority.isNullOrBlank() && !uri.host.isNullOrBlank() && uri.userInfo == null) {
             "Registry upstream URL must contain a host and must not contain user info"
         }
         require(uri.rawPath.isNullOrEmpty() || uri.rawPath == "/") {
@@ -205,7 +259,8 @@ internal class RegistryGatewayMiddleware(
         val origin = "$scheme://${uri.rawAuthority}"
         return Upstream(
             url = origin,
-            audience = if (scheme == "https") origin else null
+            audience = if (scheme == "https") origin else null,
+            host = requireNotNull(uri.host).lowercase(),
         )
     }
 

@@ -6,13 +6,14 @@ values, custodian identities, recovery locations, or incident contacts. Those
 details belong in the private security record linked from the active incident
 or ceremony ticket.
 
-The development policy is machine-readable with:
+The fixed signing policy is machine-readable without loading runtime secrets:
 
 ```bash
-java -jar seen-registry-service-0.1.0-dev-all.jar describe-signing-policy
+REGISTRY_ENVIRONMENT=production \
+  java -jar seen-registry-service.jar describe-signing-policy
 ```
 
-The expected policy is root 2-of-3 and top-level targets 2-of-2 offline, with
+The policy is root 2-of-3 and top-level targets 2-of-2 offline, with
 distinct one-key online roles for releases, security, snapshot, and timestamp.
 Production must use separate keys, identities, storage, and trust roots; never
 promote development key material.
@@ -154,13 +155,50 @@ expiry. Transfer only signed metadata. Record its filename, length, SHA-256,
 version, expiry, and signing key IDs. Power down and securely erase working
 copies before returning primary media to custody.
 
+## Production launch boundary
+
+The initial production launch serves only credential-free public reads through
+the authenticated portfolio gateway. It has no package writer, archive upload,
+source-verification, scanning, promotion, release/security action, scheduler,
+or edge-cutover surface. The only valid production trust identity is:
+
+- environment: `production`;
+- repository ID: `seen-prod-registry-v1`;
+- registry origin: `https://seen.yousef.codes/packages`.
+
+Generate a fresh three-key root set and fresh two-key targets set for this
+identity on the network-disabled ceremony host. Production must also use four
+online keys created in its isolated project. A development root, targets file,
+envelope, online key version, object, state file, or root digest is never a
+production input, even for a temporary smoke test.
+
+Infrastructure starts inert. Each foundation, image-publication, ceremony,
+refresh, verifier, and read-only API phase needs a complete saved OpenTofu plan,
+independent review, explicit approval, and application of that exact saved
+plan. During bootstrap, select only one ephemeral ceremony operation at a time.
+After executing and verifying it, apply another complete saved plan with the
+selector empty to remove the job and all of its temporary secret, metadata, and
+signer-invocation authority. The exact rollout order and plan controls are in
+[Seen registry infrastructure](../../infra/registry/README.md#production-read-only-rollout).
+
+The production metadata-refresh jobs are a later, separately gated surface.
+They invoke only their role-locked signers, run one task with zero retries, and
+have no scheduler. They do not add a package writer or action endpoint.
+
 ## Initial root and targets ceremony
 
-First run the deployment workflow with `operation=provision`. Download the
-short-lived `seen-registry-dev-online-keys-*` artifact, verify its workflow run
-and digest, then move it to the offline host. Configure three root public keys
-and signers, two targets public keys and signers, and the four online **public**
-keys. Run:
+First apply only the isolated environment foundation. Leave all application,
+refresh, ceremony, and schedule selectors false. From the reviewed concrete KMS
+versions, retrieve and independently verify the four online **public** keys for
+releases, security, snapshot, and timestamp. Record their project, key, version,
+public-key bytes, and key IDs as public ceremony inputs; an image build or CI
+artifact is not the source of trust for those values.
+
+On the offline host, set `REGISTRY_ENVIRONMENT` and
+`REGISTRY_REPOSITORY_ID` to the exact approved identity, configure three fresh
+root public keys and signers, two fresh targets public keys and signers, and the
+four reviewed online public keys. Record and independently verify the exact
+registry origin that the online importer will enforce. Run:
 
 ```bash
 java -jar seen-registry-service-0.1.0-dev-all.jar \
@@ -169,15 +207,20 @@ java -jar seen-registry-service-0.1.0-dev-all.jar \
 
 The output must contain canonical `1.root.json`, `root.json`, and
 `1.targets.json`. Verify root is signed by at least 2 of its 3 keys, targets by
-both targets keys, and that the role topology matches the provision artifact.
-Configure only the signed envelopes as one-shot import inputs. The ephemeral
-root importer verifies them, creates the immutable version-one root and targets
-objects, and conditionally creates `root.json`. The bootstrap coordinator then
-invokes the four operation-mapped signer services, creates the immutable
-delegated and snapshot objects, and waits for the timestamp signer to commit
-`timestamp.json`. Neither identity receives a key version; only the root
-importer can write `root.json`, and only the timestamp signer can write
-`timestamp.json`.
+both targets keys, and that the role topology and online public keys match the
+reviewed KMS evidence. Configure only the signed envelopes as numeric-versioned
+one-shot import inputs; never select `latest`.
+
+In the first saved-plan phase, the ephemeral offline bootstrap importer verifies
+the exact environment, repository, origin, thresholds, key bindings, and
+canonical bytes, creates the immutable version-one root and targets objects,
+and conditionally creates `root.json`. Remove that job and authority after
+read-back verification. In a new saved-plan phase, the online bootstrap
+coordinator invokes the four operation-mapped signer services, creates the
+immutable delegated and snapshot objects, and waits for the timestamp signer to
+commit `timestamp.json`. Neither identity receives an online private key
+version; only the root importer can write `root.json`, and only the timestamp
+signer can write `timestamp.json`.
 
 After read-back verification, confirm the transfer inputs and ephemeral jobs
 are deleted, all temporary access is gone, and the pre-traffic policy gate
@@ -185,7 +228,7 @@ passes. Never use `latest` for ceremony inputs.
 
 ## Expiry and routine renewal
 
-Development metadata lifetimes are bounded to root 365 days, targets 30 days,
+Metadata lifetimes are bounded to root 365 days, targets 30 days,
 releases 7 days, snapshot 1 day, and security/timestamp 6 hours. Operation-
 specific coordinators refresh online roles before expiry through their private
 signer services. Alerts should page at 90/60/30
@@ -322,7 +365,7 @@ java -jar seen-registry-service-0.1.0-dev-all.jar \
 ```
 
 The new root must be signed by the old root threshold and by the new root
-threshold. The development helper fixes both policies at 2-of-3 and rejects
+threshold. The fixed-policy helper requires both policies at 2-of-3 and rejects
 changes to targets, snapshot, timestamp, environment, repository, origin, or
 expiry policy. All three replacement root keys must be fresh, mutually
 distinct, and distinct from every currently trusted role key. Do not remove an
@@ -376,7 +419,7 @@ evidence or silently republish the same version.
   quorum and dual-sign the next root. If
   the old root threshold may be compromised, the repository trust is lost;
   publish an incident notice and require out-of-band client rebootstrap.
-- **One targets key:** because development is 2-of-2, freeze delegated changes,
+- **One targets key:** because the targets policy is 2-of-2, freeze delegated changes,
   rotate the targets authority through a dual-threshold root update, then
   publish newly authorized targets. Do not lower the threshold as a shortcut.
 - **Releases or security:** disable the affected signer key and invocation

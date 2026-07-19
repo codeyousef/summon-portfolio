@@ -43,14 +43,19 @@ internal fun loadAppConfig(env: Map<String, String>): AppConfig {
     val registrySecurityActionsUpstreamUrl = env["SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL"]
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
-    val registryValues = listOf(
-        registryPublicHost,
-        registryUpstreamUrl,
+    val registryBaseValues = listOf(registryPublicHost, registryUpstreamUrl)
+    require(registryBaseValues.all { it == null } || registryBaseValues.all { it != null }) {
+        "Registry routing requires both the public host and API upstream URL"
+    }
+    val registryActionValues = listOf(
         registryReleaseActionsUpstreamUrl,
         registrySecurityActionsUpstreamUrl,
     )
-    require(registryValues.all { it == null } || registryValues.all { it != null }) {
-        "Registry routing requires the public host and all three isolated upstream URLs"
+    require(registryActionValues.all { it == null } || registryActionValues.all { it != null }) {
+        "Registry action routing requires both isolated action upstream URLs or neither"
+    }
+    require(registryBaseValues.all { it != null } || registryActionValues.all { it == null }) {
+        "Registry action routing cannot be enabled without the public host and API upstream URL"
     }
     
     return AppConfig(

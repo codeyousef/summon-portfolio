@@ -177,3 +177,111 @@ jobs:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
+
+  publish-production-candidate-image:
+    name: Publish immutable production candidate image
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/master' &&
+      vars.SEEN_REGISTRY_PROD_IMAGE_PUBLISH_ENABLED == 'true'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: seen-registry-production-image
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      PROD_PROJECT_ID: ${{ vars.GCP_REGISTRY_PROD_PROJECT_ID }}
+      PROD_PROVIDER: ${{ vars.GCP_REGISTRY_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+      PROD_PUBLISHER: ${{ vars.GCP_REGISTRY_PROD_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate production image publication inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${PROD_PROJECT_ID}" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]
+          test "${PROD_PROJECT_ID}" != "portfolio-476219"
+          [[ "${PROD_PROVIDER}" =~ ^projects/[1-9][0-9]*/locations/global/workloadIdentityPools/[a-z0-9-]+/providers/[a-z0-9-]+$ ]]
+          test "${PROD_PUBLISHER}" = "seen-registry-prod-image-pub@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            registry-service/*.gradle.kts
+            registry-service/gradle.properties
+
+      - name: Build registry artifact
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
+        run: |
+          ./gradlew \
+            -p registry-service \
+            --no-daemon \
+            --max-workers=2 \
+            shadowJar
+
+      - name: Build production candidate image locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="${GCP_REGION}-docker.pkg.dev/${PROD_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
+          docker build \
+            --file registry-service/Dockerfile \
+            --build-arg "VCS_REF=${GITHUB_SHA}" \
+            --tag "${image_name}:${GITHUB_SHA}" \
+            .
+
+      - name: Authenticate with production GitHub OIDC
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.PROD_PROVIDER }}
+          service_account: ${{ env.PROD_PUBLISHER }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.PROD_PROJECT_ID }}
+
+      - name: Authenticate Docker to Artifact Registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud auth print-access-token | \
+            docker login \
+              --username oauth2accesstoken \
+              --password-stdin \
+              "https://${GCP_REGION}-docker.pkg.dev"
+
+      - name: Publish immutable production candidate
+        id: production-image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="${GCP_REGION}-docker.pkg.dev/${PROD_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
+          image_tag="${image_name}:${GITHUB_SHA}"
+          docker push "${image_tag}"
+          digest="$(gcloud artifacts docker images describe "${image_tag}" --project "${PROD_PROJECT_ID}" --format='value(image_summary.digest)')"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Artifact Registry did not return an immutable digest" >&2; exit 1; }
+          echo "name=${image_name}" >> "${GITHUB_OUTPUT}"
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+          echo "uri=${image_name}@${digest}" >> "${GITHUB_OUTPUT}"
+          echo "Published production candidate: ${image_name}@${digest}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "This candidate is not deployed. Application and signer use require separate digest review and a complete saved OpenTofu plan." >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Attest production candidate provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-name: ${{ steps.production-image.outputs.name }}
+          subject-digest: ${{ steps.production-image.outputs.digest }}
+          push-to-registry: true

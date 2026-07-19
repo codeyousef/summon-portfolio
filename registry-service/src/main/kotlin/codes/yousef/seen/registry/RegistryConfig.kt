@@ -32,7 +32,7 @@ data class RegistryConfig(
 ) {
     val signingOperation: TufSigningOperation?
         get() = when (serverMode) {
-            RegistryServerMode.PUBLIC_API -> null
+            RegistryServerMode.PUBLIC_API, RegistryServerMode.READ_ONLY_PUBLIC_API -> null
             RegistryServerMode.RELEASE_ACTIONS -> TufSigningOperation.RELEASE
             RegistryServerMode.SECURITY_ACTIONS -> TufSigningOperation.SECURITY
         }
@@ -41,8 +41,27 @@ data class RegistryConfig(
         get() = serverMode.signingRoles
 
     init {
-        require(environment == "development") {
-            "This staged service is development-only until Aether bearer validation is enabled"
+        require(environment == "development" || environment == "production") {
+            "REGISTRY_ENVIRONMENT must be development or production"
+        }
+        require(environment != "production" || serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API) {
+            "Production permits only the credential-free read-only public API"
+        }
+        require(serverMode != RegistryServerMode.READ_ONLY_PUBLIC_API || environment == "production") {
+            "The read-only public API is reserved for production"
+        }
+        val expectedRepositoryId = if (environment == "production") {
+            "seen-prod-registry-v1"
+        } else {
+            "seen-dev-registry-v1"
+        }
+        val expectedRegistryOrigin = if (environment == "production") {
+            "https://seen.yousef.codes/packages"
+        } else {
+            "https://seen.dev.yousef.codes/packages"
+        }
+        require(repositoryId == expectedRepositoryId && registryOrigin == expectedRegistryOrigin) {
+            "Registry environment, repository ID, and origin must match the official deployment identity"
         }
         when (serverMode) {
             RegistryServerMode.PUBLIC_API -> {
@@ -61,6 +80,16 @@ data class RegistryConfig(
                 require(securityToken == null && securityPrincipal.isBlank()) {
                     "Public API must not receive the security action credential"
                 }
+            }
+            RegistryServerMode.READ_ONLY_PUBLIC_API -> {
+                require(
+                    writerMode.isBlank() && writerToken.isBlank() && writerPrincipal.isBlank() &&
+                        ownerAllowlist.isEmpty() && !writersEnabled && publicDelay.isZero
+                ) { "Read-only public API must not receive publisher configuration" }
+                require(
+                    trustAndSafetyToken == null && trustAndSafetyPrincipal.isBlank() &&
+                        securityToken == null && securityPrincipal.isBlank()
+                ) { "Read-only public API must not receive enforcement credentials" }
             }
             RegistryServerMode.RELEASE_ACTIONS -> {
                 requirePublisherCredential()
@@ -87,10 +116,21 @@ data class RegistryConfig(
         if (storageMode == "gcp") {
             require(!projectId.isNullOrBlank()) { "GOOGLE_CLOUD_PROJECT is required for GCP storage" }
             require(!metadataBucket.isNullOrBlank()) { "REGISTRY_METADATA_BUCKET is required" }
+            val expectedFirestoreDatabase = if (environment == "production") {
+                "seen-registry-prod"
+            } else {
+                "seen-registry-dev"
+            }
+            require(firestoreDatabase == expectedFirestoreDatabase) {
+                "Registry environment and Firestore database must match the official deployment identity"
+            }
             when (serverMode) {
                 RegistryServerMode.PUBLIC_API -> require(!quarantineBucket.isNullOrBlank() && !publicBucket.isNullOrBlank()) {
                     "Public API requires quarantine and public buckets"
                 }
+                RegistryServerMode.READ_ONLY_PUBLIC_API -> require(
+                    quarantineBucket == null && !publicBucket.isNullOrBlank(),
+                ) { "Read-only public API requires only metadata and public buckets" }
                 RegistryServerMode.RELEASE_ACTIONS, RegistryServerMode.SECURITY_ACTIONS -> require(
                     quarantineBucket == null && publicBucket == null,
                 ) { "Action surfaces must receive only the metadata bucket" }
@@ -169,11 +209,15 @@ data class RegistryConfig(
                 metadataBucket = env["REGISTRY_METADATA_BUCKET"],
                 objectPrefix = env["REGISTRY_OBJECT_PREFIX"]?.trim('/') ?: "v1",
                 writerMode = env["REGISTRY_WRITER_MODE"].orEmpty().ifBlank {
-                    if (serverMode != RegistryServerMode.SECURITY_ACTIONS) "opaque-dev" else ""
+                    if (serverMode in setOf(RegistryServerMode.PUBLIC_API, RegistryServerMode.RELEASE_ACTIONS)) {
+                        "opaque-dev"
+                    } else ""
                 },
                 writerToken = env["REGISTRY_WRITER_TOKEN"].orEmpty().trim(),
                 writerPrincipal = env["REGISTRY_WRITER_PRINCIPAL"].orEmpty().ifBlank {
-                    if (serverMode != RegistryServerMode.SECURITY_ACTIONS) "internal-dev-publisher" else ""
+                    if (serverMode in setOf(RegistryServerMode.PUBLIC_API, RegistryServerMode.RELEASE_ACTIONS)) {
+                        "internal-dev-publisher"
+                    } else ""
                 },
                 ownerAllowlist = if (serverMode == RegistryServerMode.PUBLIC_API) {
                     env.csv("REGISTRY_OWNER_ALLOWLIST").toSet()
@@ -240,25 +284,29 @@ enum class RegistryServerMode(
     val argument: String,
 ) {
     PUBLIC_API("public-api", "serve-public-api"),
+    READ_ONLY_PUBLIC_API("read-only-public-api", "serve-read-only-public-api"),
     RELEASE_ACTIONS("release-actions", "serve-release-actions"),
     SECURITY_ACTIONS("security-actions", "serve-security-actions"),
     ;
 
     val signingRoles: Set<String>
         get() = when (this) {
-            PUBLIC_API -> emptySet()
+            PUBLIC_API, READ_ONLY_PUBLIC_API -> emptySet()
             RELEASE_ACTIONS -> setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP)
             SECURITY_ACTIONS -> setOf(TufRole.SECURITY, TufRole.SNAPSHOT, TufRole.TIMESTAMP)
         }
 
     val exposesRegistryRoutes: Boolean
+        get() = this == PUBLIC_API || this == READ_ONLY_PUBLIC_API
+
+    val exposesRegistryMutations: Boolean
         get() = this == PUBLIC_API
 
     companion object {
         fun fromEnvironment(value: String): RegistryServerMode = entries.firstOrNull {
             it.environmentValue == value
         } ?: throw IllegalArgumentException(
-            "REGISTRY_SERVER_MODE must be public-api, release-actions, or security-actions",
+            "REGISTRY_SERVER_MODE must be public-api, read-only-public-api, release-actions, or security-actions",
         )
 
         fun fromArgument(value: String): RegistryServerMode? = entries.firstOrNull { it.argument == value }
@@ -315,6 +363,19 @@ private fun rejectServerEnvironment(
 
     val surfaceForbidden = when (mode) {
         RegistryServerMode.PUBLIC_API -> setOf(
+            "REGISTRY_SECURITY_TOKEN",
+            "REGISTRY_SECURITY_PRINCIPAL",
+        )
+        RegistryServerMode.READ_ONLY_PUBLIC_API -> setOf(
+            "REGISTRY_QUARANTINE_BUCKET",
+            "REGISTRY_WRITER_MODE",
+            "REGISTRY_WRITER_TOKEN",
+            "REGISTRY_WRITER_PRINCIPAL",
+            "REGISTRY_OWNER_ALLOWLIST",
+            "REGISTRY_WRITERS_ENABLED",
+            "REGISTRY_PUBLIC_DELAY_SECONDS",
+            "REGISTRY_TRUST_AND_SAFETY_TOKEN",
+            "REGISTRY_TRUST_AND_SAFETY_PRINCIPAL",
             "REGISTRY_SECURITY_TOKEN",
             "REGISTRY_SECURITY_PRINCIPAL",
         )

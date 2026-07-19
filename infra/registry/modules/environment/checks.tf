@@ -38,8 +38,8 @@ check "inactive_ceremonies_have_no_authority" {
 
 check "signers_use_exact_versions" {
   assert {
-    condition = !var.enabled || !var.workloads_enabled || alltrue([
-      for role in local.roles : endswith(
+    condition = !var.enabled || !local.signers_enabled || alltrue([
+      for role in local.selected_signer_roles : endswith(
         local.online_key_versions[role],
         "/cryptoKeyVersions/${var.online_key_version_numbers[role]}",
       )
@@ -60,19 +60,22 @@ check "distinct_online_keys" {
 
 check "feature_dependencies" {
   assert {
-    condition = (
-      (!var.schedules_enabled || var.workloads_enabled) &&
-      (!var.refresh_jobs_enabled || var.workloads_enabled) &&
-      (length(var.ceremony_operations) == 0 || var.workloads_enabled)
-    )
-    error_message = "Schedules, refresh jobs, and ceremonies require workloads_enabled."
+    condition     = !var.schedules_enabled || var.workloads_enabled
+    error_message = "Schedules remain available only with the complete writer-capable workload stack. Refresh and ceremony jobs are selected independently and never imply schedules."
   }
 }
 
-check "signer_oidc_egress_is_dev_only" {
+check "signer_oidc_egress_requires_signers" {
   assert {
-    condition     = !var.signer_jwks_all_apis_enabled || var.environment == "dev"
-    error_message = "The all-APIs signer OIDC egress exception is limited to the development canary."
+    condition     = !var.signer_jwks_all_apis_enabled || (var.enabled && local.signers_enabled)
+    error_message = "The explicitly gated all-APIs OIDC JWKS route may exist only while selected signer services require it."
+  }
+}
+
+check "signers_require_oidc_jwks_egress" {
+  assert {
+    condition     = !var.enabled || !local.signers_enabled || var.signer_jwks_all_apis_enabled
+    error_message = "Selected signer services require the explicitly reviewed OIDC JWKS private-VIP route in this network design."
   }
 }
 
@@ -108,7 +111,43 @@ check "workload_secret_inputs" {
       ) &&
       (var.edge_cutover_enabled || var.portfolio_gateway_service_account != null)
     )
-    error_message = "Workloads require API/action token versions, one complete source credential, and the existing gateway service account."
+    error_message = "Writer workloads require API/action token versions, one complete source credential, and the existing gateway service account."
+  }
+}
+
+check "api_gateway_input" {
+  assert {
+    condition = !var.enabled || !local.api_enabled || (
+      var.edge_cutover_enabled || var.portfolio_gateway_service_account != null
+    )
+    error_message = "An enabled API requires the reviewed portfolio gateway service account unless an approved edge cutover owns invocation."
+  }
+}
+
+check "read_only_api_contract" {
+  assert {
+    condition = !local.read_only_api_enabled || (
+      local.api_service.api.argument == "serve-read-only-public-api" &&
+      local.api_service.api.server_mode == "read-only-public-api" &&
+      length(local.api_service.api.secrets) == 0 &&
+      toset(keys(local.read_only_api_environment)) == toset([
+        "GOOGLE_CLOUD_PROJECT",
+        "REGISTRY_ENVIRONMENT",
+        "REGISTRY_FIRESTORE_DATABASE",
+        "REGISTRY_METADATA_BUCKET",
+        "REGISTRY_OBJECT_PREFIX",
+        "REGISTRY_ORIGIN",
+        "REGISTRY_PUBLIC_BUCKET",
+        "REGISTRY_REPOSITORY_ID",
+        "REGISTRY_STORAGE_MODE",
+      ]) &&
+      contains(local.firestore_readers, "api") &&
+      !contains(local.firestore_users, "api") &&
+      contains(local.metadata_readers, "api") &&
+      !contains(keys(local.metadata_creator_suffixes), "api") &&
+      !contains([for request in values(local.secret_access_requests) : request.identity], "api")
+    )
+    error_message = "The read-only API must retain the exact credential-free environment and read-only Firestore/metadata/public authority shape."
   }
 }
 

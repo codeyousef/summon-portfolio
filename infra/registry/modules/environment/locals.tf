@@ -1,6 +1,32 @@
 locals {
   roles = toset(["releases", "security", "snapshot", "timestamp"])
 
+  read_only_api_enabled     = var.read_only_api_enabled && !var.workloads_enabled
+  api_enabled               = var.workloads_enabled || local.read_only_api_enabled
+  root_verifier_job_enabled = var.workloads_enabled || var.root_verifier_job_enabled
+  ceremony_signer_roles = {
+    online_bootstrap          = local.roles
+    targets_renewal           = toset(["snapshot", "timestamp"])
+    targets_releases_rotation = toset(["releases", "snapshot", "timestamp"])
+    targets_security_rotation = toset(["security", "snapshot", "timestamp"])
+  }
+  selected_signer_roles = toset([
+    for role in local.roles : role
+    if var.workloads_enabled || var.refresh_jobs_enabled || anytrue([
+      for operation in var.ceremony_operations : contains(
+        lookup(local.ceremony_signer_roles, operation, toset([])),
+        role,
+      )
+    ])
+  ])
+  signers_enabled = length(local.selected_signer_roles) > 0
+  container_workloads_enabled = (
+    local.api_enabled ||
+    local.root_verifier_job_enabled ||
+    var.refresh_jobs_enabled ||
+    length(var.ceremony_operations) > 0
+  )
+
   common_labels = merge({
     application = "seen-registry"
     environment = var.environment
@@ -23,6 +49,7 @@ locals {
     "monitoring.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
+    "sts.googleapis.com",
     "storage.googleapis.com",
   ])
 
@@ -123,7 +150,7 @@ locals {
     REGISTRY_METADATA_BUCKET = var.bucket_names.metadata
   }
 
-  api_environment = merge(
+  writer_api_environment = merge(
     local.identity_environment,
     local.firestore_environment,
     local.quarantine_environment,
@@ -138,6 +165,14 @@ locals {
       REGISTRY_WRITERS_ENABLED      = var.environment == "dev" ? "true" : "false"
       REGISTRY_PROMOTION_MODE       = "disabled"
     },
+  )
+
+  read_only_api_environment = merge(
+    local.identity_environment,
+    local.firestore_environment,
+    local.public_environment,
+    local.metadata_environment,
+    { REGISTRY_STORAGE_MODE = "gcp" },
   )
 
   coordinator_environment = merge(
@@ -187,22 +222,34 @@ check "environment_pair" {
 
 check "workload_inputs" {
   assert {
-    condition = !var.enabled || !var.workloads_enabled || (
-      var.container_image != null &&
-      var.signer_container_image != null &&
-      toset(keys(var.online_key_version_numbers)) == local.roles &&
-      toset(keys(var.online_public_keys_hex)) == local.roles &&
-      var.trusted_root_v1_sha256 != null
+    condition = !var.enabled || (
+      (!local.container_workloads_enabled || var.container_image != null) &&
+      (!local.container_workloads_enabled || toset(keys(var.online_public_keys_hex)) == local.roles) &&
+      (!local.signers_enabled || (
+        var.signer_container_image != null &&
+        toset(keys(var.online_key_version_numbers)) == local.selected_signer_roles &&
+        var.trusted_root_v1_sha256 != null
+      ))
     )
-    error_message = "Enabled workloads require separate immutable application and signer images plus concrete versions and public keys for all online roles."
+    error_message = "Selected runtimes require an immutable application image and every online public key; signer-backed operations additionally require a separately reviewed signer image, concrete key versions, and the trusted root pin."
   }
 }
 
-check "production_is_inert" {
+check "read_only_api_is_production_only" {
+  assert {
+    condition     = !var.read_only_api_enabled || (var.environment == "prod" && !var.workloads_enabled)
+    error_message = "read_only_api_enabled is reserved for production and cannot be combined with the writer-capable stack."
+  }
+}
+
+check "production_launch_shape" {
   assert {
     condition = var.environment != "prod" || !var.enabled || (
-      !var.workloads_enabled && !var.schedules_enabled && length(var.ceremony_operations) == 0
+      !var.workloads_enabled &&
+      !var.schedules_enabled &&
+      !var.edge_provisioned &&
+      !var.edge_cutover_enabled
     )
-    error_message = "Production workloads, schedules, and ceremonies remain disabled until the production launch gate is intentionally changed."
+    error_message = "Production permits only the explicitly selected read-only API, verifier, refresh, ceremony, and image-publication resources; writer workloads, schedules, and edge remain disabled."
   }
 }

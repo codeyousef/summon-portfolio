@@ -10,6 +10,32 @@ import kotlin.test.assertTrue
 
 class RegistryMaintenanceConfigTest {
     @Test
+    fun `production maintenance is pinned to the production repository and origin`() {
+        val mode = RegistryMaintenanceMode.ONLINE_BOOTSTRAP
+        val production = maintenanceGcpEnvironment() + mapOf(
+            "REGISTRY_ENVIRONMENT" to "production",
+            "REGISTRY_REPOSITORY_ID" to "seen-prod-registry-v1",
+            "REGISTRY_ORIGIN" to "https://seen.yousef.codes/packages",
+            "GOOGLE_CLOUD_PROJECT" to "seen-registry-production",
+        ) + maintenanceSignerEnvironment(mode.signingRoles)
+
+        val config = RegistryMaintenanceConfig.fromEnvironment(mode, production)
+        assertEquals("production", config.environment)
+        assertEquals("seen-prod-registry-v1", config.repositoryId)
+        assertEquals("https://seen.yousef.codes/packages", config.registryOrigin)
+        assertEquals("seen-registry-prod", config.firestoreDatabase)
+
+        listOf(
+            "REGISTRY_REPOSITORY_ID" to "seen-dev-registry-v1",
+            "REGISTRY_ORIGIN" to "https://seen.dev.yousef.codes/packages",
+        ).forEach { mismatch ->
+            assertFailsWith<IllegalArgumentException>(mismatch.first) {
+                RegistryMaintenanceConfig.fromEnvironment(mode, production + mismatch)
+            }
+        }
+    }
+
+    @Test
     fun `every maintenance command receives exactly its signer roles and lease capability`() {
         RegistryMaintenanceMode.entries.forEach { mode ->
             val config = RegistryMaintenanceConfig.fromEnvironment(

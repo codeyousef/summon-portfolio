@@ -40,13 +40,13 @@ resource "google_dns_record_set" "restricted_googleapis_wildcard" {
 
 # Google-signed OIDC tokens are verified against the public JWKS endpoint at
 # www.googleapis.com/oauth2/v3/certs. That request does not complete through
-# the restricted VIP in this stack, so development may explicitly resolve its
-# exact hostname through the all-APIs Private Google Access VIP. The firewall
-# is signer-tag and VIP scoped, not hostname/path scoped: a compromised signer
-# could address another Google API on that VIP. The resource conditions make
-# this dev-canary exception structurally unavailable outside development.
+# the restricted VIP in this stack, so a separately reviewed environment may
+# explicitly resolve its exact hostname through the all-APIs Private Google
+# Access VIP. The firewall is signer-tag and VIP scoped, not hostname/path
+# scoped: a compromised signer could address another Google API on that VIP.
+# The false-by-default input and signer dependency keep this exception explicit.
 resource "google_dns_record_set" "private_googleapis_a" {
-  count = var.enabled && var.environment == "dev" && var.signer_jwks_all_apis_enabled ? 1 : 0
+  count = var.enabled && var.signer_jwks_all_apis_enabled ? 1 : 0
 
   project      = var.project_id
   managed_zone = google_dns_managed_zone.restricted_googleapis[0].name
@@ -57,7 +57,7 @@ resource "google_dns_record_set" "private_googleapis_a" {
 }
 
 resource "google_dns_record_set" "oidc_certificates_private" {
-  count = var.enabled && var.environment == "dev" && var.signer_jwks_all_apis_enabled ? 1 : 0
+  count = var.enabled && var.signer_jwks_all_apis_enabled ? 1 : 0
 
   project      = var.project_id
   managed_zone = google_dns_managed_zone.restricted_googleapis[0].name
@@ -91,7 +91,7 @@ resource "google_compute_firewall" "restricted_googleapis_egress" {
 }
 
 resource "google_compute_firewall" "oidc_certificates_private_egress" {
-  count = var.enabled && var.environment == "dev" && var.signer_jwks_all_apis_enabled ? 1 : 0
+  count = var.enabled && var.signer_jwks_all_apis_enabled ? 1 : 0
 
   project            = var.project_id
   name               = "${var.name_prefix}-allow-oidc-certificates"

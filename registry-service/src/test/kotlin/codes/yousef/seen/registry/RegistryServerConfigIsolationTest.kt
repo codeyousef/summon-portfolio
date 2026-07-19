@@ -1,11 +1,94 @@
 package codes.yousef.seen.registry
 
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class RegistryServerConfigIsolationTest {
+    @Test
+    fun `production read only API accepts only public read credentials and buckets`() {
+        val env = serverGcpBase() + mapOf(
+            "REGISTRY_ENVIRONMENT" to "production",
+            "REGISTRY_REPOSITORY_ID" to "seen-prod-registry-v1",
+            "REGISTRY_ORIGIN" to "https://seen.yousef.codes/packages",
+            "REGISTRY_FIRESTORE_DATABASE" to "seen-registry-prod",
+            "REGISTRY_SERVER_MODE" to RegistryServerMode.READ_ONLY_PUBLIC_API.environmentValue,
+            "REGISTRY_PUBLIC_BUCKET" to "public",
+        )
+        val config = RegistryConfig.fromEnvironment(env)
+
+        assertEquals(RegistryServerMode.READ_ONLY_PUBLIC_API, config.serverMode)
+        assertTrue(config.serverMode.exposesRegistryRoutes)
+        assertFalse(config.serverMode.exposesRegistryMutations)
+        assertNull(config.quarantineBucket)
+        assertEquals("public", config.publicBucket)
+        assertEquals("", config.writerMode)
+        assertEquals("", config.writerToken)
+        assertEquals("", config.writerPrincipal)
+        assertEquals(emptySet(), config.ownerAllowlist)
+        assertFalse(config.writersEnabled)
+        assertEquals(Duration.ZERO, config.publicDelay)
+        assertNull(config.trustAndSafetyToken)
+        assertEquals("", config.trustAndSafetyPrincipal)
+        assertNull(config.securityToken)
+        assertEquals("", config.securityPrincipal)
+        assertEquals(emptySet(), config.remoteOnlineSignerTargets.keys)
+
+        listOf(
+            "REGISTRY_QUARANTINE_BUCKET" to "quarantine",
+            "REGISTRY_WRITER_TOKEN" to "w".repeat(32),
+            "REGISTRY_TRUST_AND_SAFETY_TOKEN" to "r".repeat(32),
+            "REGISTRY_SECURITY_TOKEN" to "s".repeat(32),
+            "REGISTRY_WRITERS_ENABLED" to "false",
+            "REGISTRY_PUBLIC_DELAY_SECONDS" to "0",
+        ).forEach { forbidden ->
+            assertFailsWith<IllegalArgumentException>(forbidden.first) {
+                RegistryConfig.fromEnvironment(env + forbidden)
+            }
+        }
+        assertFailsWith<IllegalArgumentException> {
+            RegistryConfig.fromEnvironment(env - "REGISTRY_PUBLIC_BUCKET")
+        }
+        listOf(
+            "REGISTRY_REPOSITORY_ID" to "seen-dev-registry-v1",
+            "REGISTRY_ORIGIN" to "https://seen.dev.yousef.codes/packages",
+            "REGISTRY_FIRESTORE_DATABASE" to "seen-registry-dev",
+        ).forEach { mismatch ->
+            assertFailsWith<IllegalArgumentException>(mismatch.first) {
+                RegistryConfig.fromEnvironment(env + mismatch)
+            }
+        }
+    }
+
+    @Test
+    fun `production rejects every credentialed or action server mode`() {
+        val publicApi = serverGcpBase() + mapOf(
+            "REGISTRY_ENVIRONMENT" to "production",
+            "REGISTRY_REPOSITORY_ID" to "seen-prod-registry-v1",
+            "REGISTRY_ORIGIN" to "https://seen.yousef.codes/packages",
+            "REGISTRY_FIRESTORE_DATABASE" to "seen-registry-prod",
+            "REGISTRY_QUARANTINE_BUCKET" to "quarantine",
+            "REGISTRY_PUBLIC_BUCKET" to "public",
+            "REGISTRY_OWNER_ALLOWLIST" to "seen",
+            "REGISTRY_WRITER_TOKEN" to "w".repeat(32),
+            "REGISTRY_TRUST_AND_SAFETY_TOKEN" to "r".repeat(32),
+        )
+        assertFailsWith<IllegalArgumentException> { RegistryConfig.fromEnvironment(publicApi) }
+
+        val developmentReadOnly = (publicApi - setOf(
+            "REGISTRY_QUARANTINE_BUCKET",
+            "REGISTRY_OWNER_ALLOWLIST",
+            "REGISTRY_WRITER_TOKEN",
+            "REGISTRY_TRUST_AND_SAFETY_TOKEN",
+        )) + ("REGISTRY_SERVER_MODE" to RegistryServerMode.READ_ONLY_PUBLIC_API.environmentValue) +
+            ("REGISTRY_ENVIRONMENT" to "development")
+        assertFailsWith<IllegalArgumentException> { RegistryConfig.fromEnvironment(developmentReadOnly) }
+    }
+
     @Test
     fun `public API receives package buckets publisher and report review credentials only`() {
         val env = serverGcpBase() + mapOf(

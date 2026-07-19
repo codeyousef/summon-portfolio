@@ -1,15 +1,12 @@
 locals {
-  long_lived_firestore_users = toset(concat(
-    [
-      "api",
-      "source",
-      "scanner",
-      "promoter",
-      "release_actions",
-      "security_actions",
-    ],
-    var.refresh_jobs_enabled ? ["release_refresh", "security_refresh"] : [],
-  ))
+  writer_firestore_users = toset([
+    "api",
+    "source",
+    "scanner",
+    "promoter",
+    "release_actions",
+    "security_actions",
+  ])
 
   ceremony_firestore_users = setintersection(
     var.ceremony_operations,
@@ -23,38 +20,43 @@ locals {
   )
 
   firestore_users = setunion(
-    var.workloads_enabled ? local.long_lived_firestore_users : toset([]),
+    var.workloads_enabled ? local.writer_firestore_users : toset([]),
+    var.refresh_jobs_enabled ? toset(["release_refresh", "security_refresh"]) : toset([]),
     local.ceremony_firestore_users,
   )
 
-  long_lived_metadata_readers = toset(concat(
-    [
-      "api",
-      "promoter",
-      "release_actions",
-      "security_actions",
-      "signer_releases",
-      "signer_security",
-      "signer_snapshot",
-      "signer_timestamp",
-      "root_verifier",
-    ],
-    var.refresh_jobs_enabled ? ["release_refresh", "security_refresh"] : [],
-  ))
+  firestore_readers = local.read_only_api_enabled ? toset(["api"]) : toset([])
+
+  writer_metadata_readers = toset([
+    "api",
+    "promoter",
+    "release_actions",
+    "security_actions",
+  ])
+
+  signer_metadata_readers = toset([
+    for role in local.selected_signer_roles : "signer_${role}"
+  ])
 
   metadata_readers = setunion(
-    var.workloads_enabled ? local.long_lived_metadata_readers : toset([]),
+    var.workloads_enabled ? local.writer_metadata_readers : toset([]),
+    local.read_only_api_enabled ? toset(["api"]) : toset([]),
+    local.signers_enabled ? local.signer_metadata_readers : toset([]),
+    local.root_verifier_job_enabled ? toset(["root_verifier"]) : toset([]),
+    var.refresh_jobs_enabled ? toset(["release_refresh", "security_refresh"]) : toset([]),
     var.ceremony_operations,
   )
 
-  long_lived_metadata_creator_suffixes = merge({
+  writer_metadata_creator_suffixes = {
     promoter         = [".releases.json", ".snapshot.json"]
     release_actions  = [".releases.json", ".snapshot.json"]
     security_actions = [".security.json", ".snapshot.json"]
-    }, var.refresh_jobs_enabled ? {
+  }
+
+  refresh_metadata_creator_suffixes = {
     release_refresh  = [".releases.json", ".snapshot.json"]
     security_refresh = [".security.json", ".snapshot.json"]
-  } : {})
+  }
 
   ceremony_metadata_creator_suffixes = {
     targets_renewal           = [".targets.json", ".snapshot.json"]
@@ -64,7 +66,8 @@ locals {
   }
 
   metadata_creator_suffixes = merge(
-    var.workloads_enabled ? local.long_lived_metadata_creator_suffixes : {},
+    var.workloads_enabled ? local.writer_metadata_creator_suffixes : {},
+    var.refresh_jobs_enabled ? local.refresh_metadata_creator_suffixes : {},
     {
       for identity, suffixes in local.ceremony_metadata_creator_suffixes :
       identity => suffixes if contains(var.ceremony_operations, identity)
@@ -90,6 +93,23 @@ resource "google_project_iam_member" "firestore_user" {
   condition {
     title       = "seen_registry_${var.environment}_database_${replace(each.value, "_", "-")}"
     description = "Restricts registry data access to its environment-specific Firestore database."
+    expression = join(" || ", [
+      "resource.name == 'projects/${var.project_id}/databases/${var.firestore_database}'",
+      "resource.name.startsWith('projects/${var.project_id}/databases/${var.firestore_database}/')",
+    ])
+  }
+}
+
+resource "google_project_iam_member" "firestore_reader" {
+  for_each = var.enabled ? local.firestore_readers : toset([])
+
+  project = var.project_id
+  role    = "roles/datastore.viewer"
+  member  = "serviceAccount:${google_service_account.runtime[each.value].email}"
+
+  condition {
+    title       = "seen_registry_${var.environment}_database_read_${replace(each.value, "_", "-")}"
+    description = "Restricts read-only registry data access to its environment-specific Firestore database."
     expression = join(" || ", [
       "resource.name == 'projects/${var.project_id}/databases/${var.firestore_database}'",
       "resource.name.startsWith('projects/${var.project_id}/databases/${var.firestore_database}/')",
@@ -163,7 +183,7 @@ resource "google_storage_bucket_iam_member" "bootstrap_metadata_creator" {
 }
 
 resource "google_storage_bucket_iam_member" "timestamp_pointer_replacer" {
-  count = var.enabled && var.workloads_enabled ? 1 : 0
+  count = var.enabled && local.signers_enabled ? 1 : 0
 
   bucket = google_storage_bucket.registry["metadata"].name
   role   = google_project_iam_custom_role.pointer_replacer[0].name
@@ -233,7 +253,7 @@ resource "google_storage_bucket_iam_member" "promoter_quarantine" {
 }
 
 resource "google_storage_bucket_iam_member" "api_public_reader" {
-  count = var.enabled && var.workloads_enabled ? 1 : 0
+  count = var.enabled && local.api_enabled ? 1 : 0
 
   bucket = google_storage_bucket.registry["public"].name
   role   = "roles/storage.objectViewer"

@@ -64,6 +64,11 @@ class TufSignerServerConfigTest {
         }
         assertFailsWith<IllegalArgumentException> {
             TufSignerServerConfig.fromEnvironment(
+                baseEnvironment() + ("REGISTRY_REPOSITORY_ID" to "seen-dev-registry-v2"),
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            TufSignerServerConfig.fromEnvironment(
                 baseEnvironment() + ("REGISTRY_TUF_SIGNER_KMS_KEY_VERSION" to
                     "projects/seen-dev-123456/locations/us-central1/keyRings/seen-registry-dev/" +
                     "cryptoKeys/seen-registry-dev-releases/cryptoKeyVersions/latest"),
@@ -74,6 +79,23 @@ class TufSignerServerConfigTest {
                 baseEnvironment() + ("REGISTRY_TUF_SIGNER_PUBLIC_KEY_HEX" to "A".repeat(64)),
             )
         }
+    }
+
+    @Test
+    fun `accepts only the exact production repository and role key binding`() {
+        val config = TufSignerServerConfig.fromEnvironment(
+            baseEnvironment() + mapOf(
+                "K_SERVICE" to "seen-tuf-releases-prod",
+                "REGISTRY_ENVIRONMENT" to "production",
+                "REGISTRY_REPOSITORY_ID" to "seen-prod-registry-v1",
+                "REGISTRY_TUF_SIGNER_KMS_KEY_VERSION" to
+                    "projects/seen-prod-123456/locations/us-central1/keyRings/seen-registry-prod/" +
+                    "cryptoKeys/seen-registry-prod-releases/cryptoKeyVersions/1",
+            ),
+        )
+
+        assertEquals("production", config.environment)
+        assertEquals("seen-prod-registry-v1", config.repositoryId)
     }
 
     @Test

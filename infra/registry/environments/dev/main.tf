@@ -98,9 +98,18 @@ module "registry" {
   schedules_enabled                 = var.schedules_enabled
   schedules_paused                  = var.schedules_paused
   network_cidr                      = "10.42.0.0/24"
-  signer_jwks_all_apis_enabled      = true
-  edge_provisioned                  = var.edge_provisioned
-  edge_cutover_enabled              = var.edge_cutover_enabled
-  portfolio_fallback_service        = "portfolio-dev"
-  edge_certificate_domains          = ["seen.dev.yousef.codes"]
+  signer_jwks_all_apis_enabled = (
+    var.workloads_enabled ||
+    var.refresh_jobs_enabled ||
+    length(setintersection(var.ceremony_operations, toset([
+      "online_bootstrap",
+      "targets_renewal",
+      "targets_releases_rotation",
+      "targets_security_rotation",
+    ]))) > 0
+  )
+  edge_provisioned           = var.edge_provisioned
+  edge_cutover_enabled       = var.edge_cutover_enabled
+  portfolio_fallback_service = "portfolio-dev"
+  edge_certificate_domains   = ["seen.dev.yousef.codes"]
 }

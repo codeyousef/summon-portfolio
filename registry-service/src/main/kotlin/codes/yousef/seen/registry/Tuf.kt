@@ -774,8 +774,18 @@ class TufBootstrapImporter(
     private val registryOrigin: String,
     private val clock: Clock,
 ) {
+    init {
+        val (expectedRepositoryId, expectedRegistryOrigin) = when (environment) {
+            "development" -> "seen-dev-registry-v1" to "https://seen.dev.yousef.codes/packages"
+            "production" -> "seen-prod-registry-v1" to "https://seen.yousef.codes/packages"
+            else -> throw IllegalArgumentException("Bootstrap environment must be development or production")
+        }
+        require(repositoryId == expectedRepositoryId && registryOrigin == expectedRegistryOrigin) {
+            "Bootstrap repository identity does not match the configured environment"
+        }
+    }
+
     fun import(rootBytes: ByteArray, targetsBytes: ByteArray): TufBootstrapResult {
-        require(registryOrigin == "https://seen.dev.yousef.codes/packages") { "Bootstrap envelope is only valid for the official development origin" }
         val rootEnvelope = parseCanonicalEnvelope(rootBytes)
         val rootSigned = rootEnvelope["signed"]!!.jsonObject
         validateCommon(rootSigned, "root", Duration.ofDays(365))

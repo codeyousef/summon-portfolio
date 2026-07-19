@@ -13,6 +13,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.Base64
 import java.security.MessageDigest
+import org.slf4j.LoggerFactory
 
 class RegistryService(
     private val config: RegistryConfig,
@@ -23,6 +24,8 @@ class RegistryService(
     private val clock: Clock,
     private val random: SecureRandom = SecureRandom(),
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
     fun createPackage(request: CreatePackageRequest, principal: WriterPrincipal): PackageRecord {
         requireWritersEnabled()
         val (owner) = IdentityRules.requireIdentity(request.identity)
@@ -53,14 +56,24 @@ class RegistryService(
         return record
     }
 
-    fun listPublicPackages(): PackagePage = PackagePage(
-        repository.listPackages().map(StoredPackage::record).filter { it.latestActiveVersion != null },
-    )
+    fun listPublicPackages(): PackagePage {
+        val visiblePackages = repository.listReleases()
+            .asSequence()
+            .map(StoredRelease::record)
+            .filter(ReleaseRecord::isPubliclyReadable)
+            .map(ReleaseRecord::`package`)
+            .toSet()
+        return PackagePage(
+            repository.listPackages()
+                .map(StoredPackage::record)
+                .filter { it.identity in visiblePackages },
+        )
+    }
 
     fun getPackage(identity: String, principal: WriterPrincipal? = null): PackageRecord {
         IdentityRules.requireIdentity(identity)
         val stored = repository.getPackage(identity) ?: notFound()
-        if (stored.record.latestActiveVersion == null && principal?.subject != stored.ownerPrincipal) notFound()
+        if (principal?.subject != stored.ownerPrincipal && !hasPublicRelease(identity)) notFound()
         return stored.record
     }
 
@@ -225,15 +238,16 @@ class RegistryService(
         val pkg = repository.getPackage(identity) ?: notFound()
         val includePrivate = principal?.subject == pkg.ownerPrincipal
         val records = repository.listReleases(identity).map(StoredRelease::record).filter {
-            includePrivate || (it.state.visibility == "public" && it.state.availability != "unavailable")
+            includePrivate || it.isPubliclyReadable()
         }
-        if (!includePrivate && pkg.record.latestActiveVersion == null) notFound()
+        if (!includePrivate && records.isEmpty()) notFound()
         return ReleasePage(records)
     }
 
     fun getRelease(identity: String, version: String, principal: WriterPrincipal? = null): ReleaseRecord {
         val release = repository.getRelease(identity, version) ?: notFound()
-        if (release.record.state.availability == "unavailable" && principal?.subject != release.ownerPrincipal) notFound()
+        val ownerAccess = principal?.subject == release.ownerPrincipal
+        if (!ownerAccess && !release.record.isPubliclyReadable()) notFound()
         return release.record
     }
 
@@ -274,14 +288,18 @@ class RegistryService(
 
     fun metadata(filename: String): ByteArray {
         if (!Regex("^(?:[1-9][0-9]*\\.)?(?:root|targets|releases|security|snapshot)\\.json$|^timestamp\\.json$").matches(filename)) notFound()
-        tuf.verifyFreshTransaction()
+        verifyFreshMetadata("service-metadata")
         return tuf.publicMetadata(filename) ?: notFound()
     }
 
-    fun isReady(): Boolean = runCatching {
-        tuf.verifyFreshTransaction()
-        storage.getMetadata("1.root.json") != null && storage.getMetadata("1.targets.json") != null && storage.getMetadata("timestamp.json") != null
-    }.getOrDefault(false)
+    fun isReady(): Boolean = try {
+        verifyFreshMetadata("service-readiness")
+        storage.getMetadata("1.root.json") != null &&
+            storage.getMetadata("1.targets.json") != null &&
+            storage.getMetadata("timestamp.json") != null
+    } catch (_: Exception) {
+        false
+    }
 
     fun beginIdempotency(value: StoredIdempotency, now: Instant): IdempotencyBegin = repository.beginIdempotency(value, now)
 
@@ -291,8 +309,7 @@ class RegistryService(
     fun publicBlob(digest: String): ByteArray {
         IdentityRules.requireDigest(digest)
         val authorized = repository.listReleases().any {
-            it.record.archive.sha256 == digest && it.record.state.visibility == "public" &&
-                it.record.state.availability in setOf("available", "yanked")
+            it.record.archive.sha256 == digest && it.record.isPubliclyReadable()
         }
         if (!authorized) notFound()
         return storage.getPublicBlob(digest) ?: notFound()
@@ -313,6 +330,18 @@ class RegistryService(
         val stored = repository.findReleaseByUpload(uploadId) ?: notFound()
         if (stored.ownerPrincipal != principal.subject) notFound()
         return stored
+    }
+
+    private fun hasPublicRelease(identity: String): Boolean = repository.listReleases(identity)
+        .any { it.record.isPubliclyReadable() }
+
+    private fun verifyFreshMetadata(runtime: String) {
+        try {
+            tuf.verifyFreshTransaction()
+        } catch (error: Exception) {
+            error.tufMetadataExpiryEvent(config.environment, runtime)?.let(log::error)
+            throw error
+        }
     }
 
     private fun recoverReservation(
@@ -461,3 +490,8 @@ class RegistryService(
         val CAPABILITIES = setOf("file", "network", "process", "environment", "dynamic-load", "ffi", "unsafe", "native-link", "macro")
     }
 }
+
+private fun ReleaseRecord.isPubliclyReadable(): Boolean =
+    state.lifecycle == "active" &&
+        state.visibility == "public" &&
+        state.availability in setOf("available", "yanked")

@@ -78,13 +78,25 @@ variable "labels" {
 }
 
 variable "workloads_enabled" {
-  description = "Deploys Cloud Run services and long-lived jobs. Keep false until signer state/commit guards are available."
+  description = "Deploys the complete writer-capable development stack: public API, action services, review jobs, signers, and their mutation authority."
+  type        = bool
+  default     = false
+}
+
+variable "read_only_api_enabled" {
+  description = "Deploys only the credential-free production public API. It receives Firestore plus public/metadata read authority and no writer surface."
+  type        = bool
+  default     = false
+}
+
+variable "root_verifier_job_enabled" {
+  description = "Deploys the read-only root-chain verification job independently from the writer pipeline."
   type        = bool
   default     = false
 }
 
 variable "refresh_jobs_enabled" {
-  description = "Deploys role-specific refresh jobs after their CLI commands exist."
+  description = "Deploys only the role-specific metadata refresh jobs and the signers they require. It does not create schedules."
   type        = bool
   default     = false
 }
@@ -404,7 +416,7 @@ variable "private_service_ingress" {
 }
 
 variable "signer_jwks_all_apis_enabled" {
-  description = "Development-only canary exception allowing signer-tagged workloads to reach the all-APIs private VIP for Google OIDC JWKS verification."
+  description = "Explicitly allows signer-tagged workloads to reach the all-APIs private VIP for the exact Google OIDC JWKS hostname. Keep false unless separately reviewed."
   type        = bool
   default     = false
 }

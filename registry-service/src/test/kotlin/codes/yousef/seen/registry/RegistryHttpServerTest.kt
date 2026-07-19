@@ -8,6 +8,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.Test
@@ -16,6 +17,71 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class RegistryHttpServerTest {
+    @Test
+    fun `read only transport does not intercept or retain archive uploads`() {
+        val config = testConfig().copy(
+            environment = "production",
+            repositoryId = "seen-prod-registry-v1",
+            registryOrigin = "https://seen.yousef.codes/packages",
+            serverMode = RegistryServerMode.READ_ONLY_PUBLIC_API,
+            writerMode = "",
+            writerToken = "",
+            writerPrincipal = "",
+            ownerAllowlist = emptySet(),
+            writersEnabled = false,
+            publicDelay = Duration.ZERO,
+            trustAndSafetyToken = null,
+            trustAndSafetyPrincipal = "",
+        )
+        val clock = Clock.fixed(Instant.parse("2026-07-19T00:00:00Z"), ZoneOffset.UTC)
+        val mutableRepository = InMemoryRegistryRepository()
+        val mutableStorage = InMemoryRegistryObjectStorage()
+        val repository = ReadOnlyRegistryRepository(mutableRepository)
+        val storage = ReadOnlyRegistryObjectStorage(mutableStorage)
+        val tuf = TufPublisher(
+            repository,
+            storage,
+            testOnlineSigners(),
+            config.environment,
+            config.repositoryId,
+            config.registryOrigin,
+            clock,
+        )
+        val routes = RegistryRoutes(
+            service = RegistryService(config, repository, storage, ArchiveValidator(), tuf, clock),
+            auth = null,
+            clock = clock,
+            catalogNavigationLinks = CatalogNavigationLinks.fromRegistryOrigin(config.registryOrigin),
+            mutationsEnabled = false,
+        )
+        val pipeline = Pipeline().apply { use(routes.router.asMiddleware()) }
+        RegistryHttpServer(
+            VertxServerConfig(
+                port = 0,
+                decompressionSupported = false,
+                maxRequestBodySize = ArchivePolicy.MAX_COMPRESSED_BYTES.toInt() + 1,
+            ),
+            pipeline,
+            routes,
+            streamingUploadsEnabled = false,
+        ) { exchange ->
+            exchange.respondJson(404, mapOf("error" to "not_found"), RegistryJson)
+        }.use { server ->
+            server.start()
+            val uploadId = "upl_0123456789abcdef"
+            val response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI("http://127.0.0.1:${server.actualPort}/packages/api/v1/uploads/$uploadId/archive"))
+                    .header("Content-Type", "application/gzip")
+                    .PUT(HttpRequest.BodyPublishers.ofByteArray("not accepted".encodeToByteArray()))
+                    .build(),
+                HttpResponse.BodyHandlers.ofByteArray(),
+            )
+
+            assertEquals(404, response.statusCode())
+            assertNull(mutableStorage.getQuarantine(uploadId))
+        }
+    }
+
     @Test
     fun `production transport streams an authenticated archive into quarantine`() {
         val fixture = fixture()

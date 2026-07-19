@@ -1,7 +1,31 @@
 # The foundation flag remains false until a separately reviewed production
 # project, state bucket, notification channel, and launch plan exist.
+# The root fixes the signed identity to production / seen-prod-registry-v1 /
+# https://seen.yousef.codes/packages; none of those values is overridden here.
 project_id                   = "REPLACE_WITH_DEDICATED_PRODUCTION_PROJECT"
 enable_production_foundation = false
 notification_channel_ids     = []
 billing_account_id            = null
 monthly_budget_usd            = null
+
+# Every launch capability is independently reviewed and false by default.
+# Enable one rollout phase per complete saved plan. The production root never
+# exposes writer/action workloads, schedules, or edge cutover. Refresh jobs are
+# manual and schedule-free. Select at most one ceremony operation, then return
+# the set to empty in a separately reviewed cleanup plan after it succeeds.
+enable_production_read_only_api = false
+enable_production_root_verifier = false
+enable_production_refresh_jobs  = false
+production_ceremony_operations  = []
+signer_jwks_all_apis_enabled    = false
+github_ci_enabled                = false
+
+# Supply only immutable digests, public trust inputs, numeric secret versions,
+# and the existing gateway identity in an ignored, mode-0600 tfvars file.
+container_image                   = null
+signer_container_image            = null
+online_key_version_numbers        = {}
+online_public_keys_hex            = {}
+trusted_root_v1_sha256            = null
+secret_versions                   = {}
+portfolio_gateway_service_account = null

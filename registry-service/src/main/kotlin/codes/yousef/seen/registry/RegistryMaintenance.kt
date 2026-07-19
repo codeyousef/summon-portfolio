@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
 import java.util.Base64
+import org.slf4j.LoggerFactory
 
 enum class RegistryMaintenanceMode(
     val command: String,
@@ -188,11 +189,9 @@ data class RegistryMaintenanceConfig(
     val bootstrapTargetsEnvelopeBase64: String? = null,
 ) {
     init {
-        require(environment == "development") {
-            "This staged maintenance runtime is development-only"
-        }
-        require(registryOrigin == "https://seen.dev.yousef.codes/packages") {
-            "Maintenance is pinned to the official development registry origin"
+        val identity = maintenanceRepositoryIdentity(environment)
+        require(repositoryId == identity.repositoryId && registryOrigin == identity.registryOrigin) {
+            "Maintenance repository ID and origin must match the selected environment"
         }
         require(onlinePublicKeysHex.keys == TufRole.ONLINE.toSet()) {
             "All and only online TUF public keys are required"
@@ -242,15 +241,17 @@ data class RegistryMaintenanceConfig(
         ): RegistryMaintenanceConfig {
             rejectMaintenanceEnvironment(mode, env)
             val storageMode = env["REGISTRY_STORAGE_MODE"] ?: "gcp"
+            val environment = env["REGISTRY_ENVIRONMENT"] ?: "development"
+            val identity = maintenanceRepositoryIdentity(environment)
             return RegistryMaintenanceConfig(
                 mode = mode,
-                environment = env["REGISTRY_ENVIRONMENT"] ?: "development",
-                repositoryId = env["REGISTRY_REPOSITORY_ID"] ?: "seen-dev-registry-v1",
-                registryOrigin = (env["REGISTRY_ORIGIN"] ?: "https://seen.dev.yousef.codes/packages").trimEnd('/'),
+                environment = environment,
+                repositoryId = env["REGISTRY_REPOSITORY_ID"] ?: identity.repositoryId,
+                registryOrigin = (env["REGISTRY_ORIGIN"] ?: identity.registryOrigin).trimEnd('/'),
                 storageMode = storageMode,
                 projectId = env["GOOGLE_CLOUD_PROJECT"]?.takeIf { storageMode == "gcp" },
                 firestoreDatabase = if (storageMode == "gcp" && mode.requiresPublicationLease) {
-                    env["REGISTRY_FIRESTORE_DATABASE"] ?: "seen-registry-dev"
+                    env["REGISTRY_FIRESTORE_DATABASE"] ?: identity.firestoreDatabase
                 } else null,
                 metadataBucket = env["REGISTRY_METADATA_BUCKET"]?.takeIf { storageMode == "gcp" },
                 objectPrefix = env["REGISTRY_OBJECT_PREFIX"]?.trim('/') ?: "v1",
@@ -265,6 +266,26 @@ data class RegistryMaintenanceConfig(
             )
         }
     }
+}
+
+private data class MaintenanceRepositoryIdentity(
+    val repositoryId: String,
+    val registryOrigin: String,
+    val firestoreDatabase: String,
+)
+
+private fun maintenanceRepositoryIdentity(environment: String): MaintenanceRepositoryIdentity = when (environment) {
+    "development" -> MaintenanceRepositoryIdentity(
+        repositoryId = "seen-dev-registry-v1",
+        registryOrigin = "https://seen.dev.yousef.codes/packages",
+        firestoreDatabase = "seen-registry-dev",
+    )
+    "production" -> MaintenanceRepositoryIdentity(
+        repositoryId = "seen-prod-registry-v1",
+        registryOrigin = "https://seen.yousef.codes/packages",
+        firestoreDatabase = "seen-registry-prod",
+    )
+    else -> throw IllegalArgumentException("Maintenance environment must be development or production")
 }
 
 private fun rejectMaintenanceEnvironment(
@@ -488,57 +509,67 @@ private fun maintenancePublicKeyOnlySigners(publicKeysHex: Map<String, String>):
 }
 
 object RegistryMaintenanceRuntime {
+    private val log = LoggerFactory.getLogger(RegistryMaintenanceRuntime::class.java)
+
     fun run(
         invocation: RegistryMaintenanceInvocation,
         config: RegistryMaintenanceConfig = RegistryMaintenanceConfig.fromEnvironment(invocation.mode),
     ) {
-        RegistryMaintenanceResources.create(config).use { resources ->
-            when (invocation.mode) {
-                RegistryMaintenanceMode.IMPORT_OFFLINE_BOOTSTRAP -> {
-                    val result = resources.importOfflineBootstrap()
-                    println("root_sha256=${sha256(result.root)}")
-                    println("root_key_ids=${result.rootKeyIds.joinToString(",")}")
-                    println("targets_sha256=${sha256(result.targets)}")
-                    println("targets_key_ids=${result.targetsKeyIds.joinToString(",")}")
-                }
-                RegistryMaintenanceMode.ONLINE_BOOTSTRAP ->
-                    println("online_transaction_version=${resources.bootstrapOnline()}")
-                RegistryMaintenanceMode.TARGETS_RENEWAL -> {
-                    val candidate = readInput(invocation)
-                    val result = resources.importTargetsRenewal(candidate)
-                    println("targets_version=${result.targetsVersion}")
-                    println("targets_sha256=${sha256(candidate)}")
-                    println("online_transaction_version=${result.onlineTransactionVersion}")
-                }
-                RegistryMaintenanceMode.TARGETS_ROTATION_RELEASES,
-                RegistryMaintenanceMode.TARGETS_ROTATION_SECURITY -> {
-                    val candidate = readInput(invocation)
-                    val result = resources.importTargetsRotation(candidate)
-                    println("targets_version=${result.targetsVersion}")
-                    println("targets_sha256=${sha256(candidate)}")
-                    println("affected_role=${invocation.mode.signingOperation?.changingRole}")
-                    println("online_transaction_version=${result.onlineTransactionVersion}")
-                }
-                RegistryMaintenanceMode.ROOT_VERIFY ->
-                    println("root_version=${resources.verifyRootChain()}")
-                RegistryMaintenanceMode.ROOT_IMPORT -> {
-                    val candidate = readInput(invocation)
-                    val result = resources.importRootRotation(candidate)
-                    println("root_version=${result.rootVersion}")
-                    println("root_sha256=${sha256(candidate)}")
-                }
-                RegistryMaintenanceMode.REFRESH_RELEASES,
-                RegistryMaintenanceMode.REFRESH_SECURITY ->
-                    println("online_transaction_version=${resources.forceRefresh()}")
-                RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES,
-                RegistryMaintenanceMode.RECOVER_EXPIRED_SECURITY -> {
-                    println("online_transaction_version=${resources.recoverExpired()}")
-                    println("recovery_incomplete=true")
-                    println(
-                        "required_follow_up=${if (invocation.mode == RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES) "refresh-security-once" else "refresh-releases-once"}",
-                    )
+        try {
+            RegistryMaintenanceResources.create(config).use { resources ->
+                when (invocation.mode) {
+                    RegistryMaintenanceMode.IMPORT_OFFLINE_BOOTSTRAP -> {
+                        val result = resources.importOfflineBootstrap()
+                        println("root_sha256=${sha256(result.root)}")
+                        println("root_key_ids=${result.rootKeyIds.joinToString(",")}")
+                        println("targets_sha256=${sha256(result.targets)}")
+                        println("targets_key_ids=${result.targetsKeyIds.joinToString(",")}")
+                    }
+                    RegistryMaintenanceMode.ONLINE_BOOTSTRAP ->
+                        println("online_transaction_version=${resources.bootstrapOnline()}")
+                    RegistryMaintenanceMode.TARGETS_RENEWAL -> {
+                        val candidate = readInput(invocation)
+                        val result = resources.importTargetsRenewal(candidate)
+                        println("targets_version=${result.targetsVersion}")
+                        println("targets_sha256=${sha256(candidate)}")
+                        println("online_transaction_version=${result.onlineTransactionVersion}")
+                    }
+                    RegistryMaintenanceMode.TARGETS_ROTATION_RELEASES,
+                    RegistryMaintenanceMode.TARGETS_ROTATION_SECURITY -> {
+                        val candidate = readInput(invocation)
+                        val result = resources.importTargetsRotation(candidate)
+                        println("targets_version=${result.targetsVersion}")
+                        println("targets_sha256=${sha256(candidate)}")
+                        println("affected_role=${invocation.mode.signingOperation?.changingRole}")
+                        println("online_transaction_version=${result.onlineTransactionVersion}")
+                    }
+                    RegistryMaintenanceMode.ROOT_VERIFY ->
+                        println("root_version=${resources.verifyRootChain()}")
+                    RegistryMaintenanceMode.ROOT_IMPORT -> {
+                        val candidate = readInput(invocation)
+                        val result = resources.importRootRotation(candidate)
+                        println("root_version=${result.rootVersion}")
+                        println("root_sha256=${sha256(candidate)}")
+                    }
+                    RegistryMaintenanceMode.REFRESH_RELEASES,
+                    RegistryMaintenanceMode.REFRESH_SECURITY ->
+                        println("online_transaction_version=${resources.forceRefresh()}")
+                    RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES,
+                    RegistryMaintenanceMode.RECOVER_EXPIRED_SECURITY -> {
+                        println("online_transaction_version=${resources.recoverExpired()}")
+                        println("recovery_incomplete=true")
+                        println(
+                            "required_follow_up=${if (invocation.mode == RegistryMaintenanceMode.RECOVER_EXPIRED_RELEASES) "refresh-security-once" else "refresh-releases-once"}",
+                        )
+                    }
                 }
             }
+        } catch (error: Exception) {
+            error.tufMetadataExpiryEvent(
+                config.environment,
+                "job-${invocation.mode.command}",
+            )?.let(log::error)
+            throw error
         }
     }
 

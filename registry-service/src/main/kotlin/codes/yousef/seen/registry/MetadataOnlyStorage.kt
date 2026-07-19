@@ -141,7 +141,7 @@ private fun requireVersionedMetadata(filename: String) {
     }
 }
 
-private fun requireReadableMetadata(filename: String) {
+internal fun requireReadableMetadata(filename: String) {
     require(filename == ROOT_POINTER || filename == TIMESTAMP_POINTER || VERSIONED_METADATA_FILENAME.matches(filename)) {
         "Unsupported metadata filename"
     }
