@@ -29,13 +29,20 @@ internal fun Throwable.isClosedChannelTransportFailure(): Boolean {
 
 class RegistryRoutes(
     private val service: RegistryService,
-    private val auth: OpaqueDevWriterAuthenticator,
+    private val auth: OpaqueDevWriterAuthenticator?,
     private val clock: Clock,
     private val json: kotlinx.serialization.json.Json = RegistryJson,
     private val catalogNavigationLinks: CatalogNavigationLinks = CatalogNavigationLinks.development(),
+    private val mutationsEnabled: Boolean = true,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val random = SecureRandom()
+
+    init {
+        require(mutationsEnabled == (auth != null)) {
+            "Registry mutation routes require one explicit authenticator"
+        }
+    }
 
     val router: Router = router {
         get("/health") { exchange -> safe(exchange) { exchange.respondJson(200, mapOf("status" to "ok")) } }
@@ -47,29 +54,33 @@ class RegistryRoutes(
         get("/packages") { exchange -> safe(exchange) { respondCatalog(exchange) } }
 
         get("/packages/api/v1/packages") { exchange -> safe(exchange) { exchange.respondJson(200, service.listPublicPackages(), json) } }
-        post("/packages/api/v1/packages") { exchange -> safe(exchange) { requestId ->
-            val principal = writer(exchange)
-            idempotentJson<CreatePackageRequest, PackageRecord>(exchange, requestId, principal, 201, { value ->
-                mapOf("Location" to value.links.self)
-            }) { request ->
-                auth.authorizeOwner(IdentityRules.requireIdentity(request.identity).first)
-                service.createPackage(request, principal)
-            }
-        } }
+        if (mutationsEnabled) {
+            post("/packages/api/v1/packages") { exchange -> safe(exchange) { requestId ->
+                val principal = writer(exchange)
+                idempotentJson<CreatePackageRequest, PackageRecord>(exchange, requestId, principal, 201, { value ->
+                    mapOf("Location" to value.links.self)
+                }) { request ->
+                    requireNotNull(auth).authorizeOwner(IdentityRules.requireIdentity(request.identity).first)
+                    service.createPackage(request, principal)
+                }
+            } }
+        }
         get("/packages/api/v1/packages/:owner/:name") { exchange -> safe(exchange) {
             exchange.respondJson(200, service.getPackage(identity(exchange), optionalWriter(exchange)), json)
         } }
         get("/packages/api/v1/packages/:owner/:name/releases") { exchange -> safe(exchange) {
             exchange.respondJson(200, service.listReleases(identity(exchange), optionalWriter(exchange)), json)
         } }
-        post("/packages/api/v1/packages/:owner/:name/releases") { exchange -> safe(exchange) { requestId ->
-            val owner = exchange.pathParamOrThrow("owner")
-            val principal = writer(exchange)
-            auth.authorizeOwner(owner)
-            idempotentJson<ReserveReleaseRequest, ReleaseReservation>(exchange, requestId, principal, 201, { value ->
-                mapOf("Location" to value.release.links.self)
-            }) { request -> service.reserveRelease(identity(exchange), request, principal) }
-        } }
+        if (mutationsEnabled) {
+            post("/packages/api/v1/packages/:owner/:name/releases") { exchange -> safe(exchange) { requestId ->
+                val owner = exchange.pathParamOrThrow("owner")
+                val principal = writer(exchange)
+                requireNotNull(auth).authorizeOwner(owner)
+                idempotentJson<ReserveReleaseRequest, ReleaseReservation>(exchange, requestId, principal, 201, { value ->
+                    mapOf("Location" to value.release.links.self)
+                }) { request -> service.reserveRelease(identity(exchange), request, principal) }
+            } }
+        }
         get("/packages/api/v1/packages/:owner/:name/releases/:version") { exchange -> safe(exchange) {
             exchange.respondJson(200, service.getRelease(identity(exchange), exchange.pathParamOrThrow("version"), optionalWriter(exchange)), json)
         } }
@@ -90,21 +101,23 @@ class RegistryRoutes(
             exchange.response.setHeader("ETag", "\"sha256:${proof.sha256()}\"")
             exchange.respondJson(200, proof, json)
         } }
-        put("/packages/api/v1/uploads/:uploadId/archive") { exchange -> safe(exchange) {
-            val principal = writer(exchange)
-            val bytes = exchange.request.bodyBytes()
-            service.uploadArchive(exchange.pathParamOrThrow("uploadId"), exchange.request.headers["X-Seen-Archive-Sha256"], bytes, principal)
-            exchange.response.statusCode = 204
-            exchange.response.setHeader("X-Seen-Archive-Sha256", sha256(bytes))
-            exchange.response.setHeader("ETag", "\"sha256:${sha256(bytes)}\"")
-            exchange.response.end()
-        } }
-        post("/packages/api/v1/uploads/:uploadId/complete") { exchange -> safe(exchange) { requestId ->
-            val principal = writer(exchange)
-            idempotentJson<CompleteUploadRequest, ReleaseRecord>(exchange, requestId, principal, 202, { value ->
-                mapOf("Location" to value.links.self)
-            }) { request -> service.completeUpload(exchange.pathParamOrThrow("uploadId"), request, principal) }
-        } }
+        if (mutationsEnabled) {
+            put("/packages/api/v1/uploads/:uploadId/archive") { exchange -> safe(exchange) {
+                val principal = writer(exchange)
+                val bytes = exchange.request.bodyBytes()
+                service.uploadArchive(exchange.pathParamOrThrow("uploadId"), exchange.request.headers["X-Seen-Archive-Sha256"], bytes, principal)
+                exchange.response.statusCode = 204
+                exchange.response.setHeader("X-Seen-Archive-Sha256", sha256(bytes))
+                exchange.response.setHeader("ETag", "\"sha256:${sha256(bytes)}\"")
+                exchange.response.end()
+            } }
+            post("/packages/api/v1/uploads/:uploadId/complete") { exchange -> safe(exchange) { requestId ->
+                val principal = writer(exchange)
+                idempotentJson<CompleteUploadRequest, ReleaseRecord>(exchange, requestId, principal, 202, { value ->
+                    mapOf("Location" to value.links.self)
+                }) { request -> service.completeUpload(exchange.pathParamOrThrow("uploadId"), request, principal) }
+            } }
+        }
         get("/packages/api/v1/metadata/:filename") { exchange -> safe(exchange) {
             val filename = exchange.pathParamOrThrow("filename")
             val bytes = service.metadata(filename)
@@ -379,8 +392,12 @@ class RegistryRoutes(
         return digest.digest().toHex()
     }
 
-    private fun writer(exchange: Exchange): WriterPrincipal = auth.authenticate(exchange.request.headers["Authorization"])
-    private fun optionalWriter(exchange: Exchange): WriterPrincipal? = exchange.request.headers["Authorization"]?.let(auth::authenticate)
+    private fun writer(exchange: Exchange): WriterPrincipal = requireNotNull(auth) {
+        "Registry mutation authentication is unavailable"
+    }.authenticate(exchange.request.headers["Authorization"])
+    private fun optionalWriter(exchange: Exchange): WriterPrincipal? = auth?.let { authenticator ->
+        exchange.request.headers["Authorization"]?.let(authenticator::authenticate)
+    }
     private fun identity(exchange: Exchange): String = "${exchange.pathParamOrThrow("owner")}/${exchange.pathParamOrThrow("name")}"
     private fun requireIdempotency(exchange: Exchange): String {
         val value = exchange.request.headers["Idempotency-Key"] ?: throw RegistryException(400, "idempotency_key_required", "Idempotency-Key is required")

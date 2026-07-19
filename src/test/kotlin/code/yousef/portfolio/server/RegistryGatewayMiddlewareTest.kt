@@ -125,6 +125,45 @@ class RegistryGatewayMiddlewareTest {
     }
 
     @Test
+    fun `API-only gateway strips caller authorization before the upstream network request`() = runBlocking {
+        val authorization = CompletableFuture<String?>()
+        val executor = Executors.newSingleThreadExecutor()
+        val upstream = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
+            createContext("/") { request ->
+                authorization.complete(request.requestHeaders.getFirst("Authorization"))
+                val response = "catalog".encodeToByteArray()
+                request.sendResponseHeaders(200, response.size.toLong())
+                request.responseBody.use { it.write(response) }
+            }
+            this.executor = executor
+            start()
+        }
+
+        try {
+            val gateway = RegistryGatewayMiddleware(
+                publicHost = "seen.yousef.codes",
+                upstreamUrl = "http://127.0.0.1:${upstream.address.port}",
+            )
+            val exchange = TestExchange(TestRequest(
+                path = "/packages/api/v1/packages",
+                headers = Headers.of(
+                    "Host" to "seen.yousef.codes",
+                    "Authorization" to "Bearer unrelated-visitor-credential",
+                ),
+            ))
+
+            gateway.handle(exchange) { error("the production registry route must be proxied") }
+
+            assertNull(authorization.get(5, TimeUnit.SECONDS))
+            assertEquals(200, exchange.testResponse.statusCode)
+            assertEquals("catalog", exchange.testResponse.body.decodeToString())
+        } finally {
+            upstream.stop(0)
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
     fun `adds Cloud Run identity separately and only for the exact public route`() = runBlocking {
         val audiences = mutableListOf<String>()
         val forwarded = mutableListOf<Triple<String, String, String?>>()
@@ -137,7 +176,7 @@ class RegistryGatewayMiddlewareTest {
                 audiences += audience
                 "cloud-run-id-token"
             },
-            proxyForwarder = RegistryProxyForwarder { exchange, upstreamUrl, identityToken ->
+            proxyForwarder = RegistryProxyForwarder { exchange, upstreamUrl, identityToken, _ ->
                 forwarded += Triple(exchange.request.path, upstreamUrl, identityToken)
                 exchange.respond(204, "")
             }
@@ -193,7 +232,7 @@ class RegistryGatewayMiddlewareTest {
                 audiences += audience
                 "identity-for-$audience"
             },
-            proxyForwarder = RegistryProxyForwarder { exchange, upstreamUrl, _ ->
+            proxyForwarder = RegistryProxyForwarder { exchange, upstreamUrl, _, _ ->
                 forwarded += exchange.request.path to upstreamUrl
                 exchange.respond(204, "")
             }
@@ -246,10 +285,8 @@ class RegistryGatewayMiddlewareTest {
         val gateway = RegistryGatewayMiddleware(
             publicHost = "seen.yousef.codes",
             upstreamUrl = "https://registry-prod-api.example.run.app",
-            releaseActionsUpstreamUrl = "https://registry-prod-release-actions.example.run.app",
-            securityActionsUpstreamUrl = "https://registry-prod-security-actions.example.run.app",
             identityTokenProvider = RegistryIdentityTokenProvider { "identity" },
-            proxyForwarder = RegistryProxyForwarder { _, upstreamUrl, _ -> forwarded += upstreamUrl }
+            proxyForwarder = RegistryProxyForwarder { _, upstreamUrl, _, _ -> forwarded += upstreamUrl }
         )
 
         var fallThrough = 0
@@ -271,6 +308,49 @@ class RegistryGatewayMiddlewareTest {
     }
 
     @Test
+    fun `API-only gateway keeps isolated release and security actions unavailable`() = runBlocking {
+        val audiences = mutableListOf<String>()
+        val forwarded = mutableListOf<String>()
+        val gateway = RegistryGatewayMiddleware(
+            publicHost = "seen.yousef.codes",
+            upstreamUrl = "https://registry-prod-api.example.run.app",
+            identityTokenProvider = RegistryIdentityTokenProvider { audience ->
+                audiences += audience
+                "identity"
+            },
+            proxyForwarder = RegistryProxyForwarder { exchange, upstreamUrl, _, _ ->
+                forwarded += upstreamUrl
+                exchange.respond(204, "")
+            }
+        )
+
+        val actionPaths = listOf(
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/yank",
+            "/packages/api/v1/packages/seen/demo/releases/1.0.0/actions/security-quarantine",
+        )
+        actionPaths.forEach { path ->
+            val exchange = TestExchange(TestRequest(
+                method = HttpMethod.POST,
+                path = path,
+                headers = Headers.of("Host" to "seen.yousef.codes"),
+            ))
+
+            gateway.handle(exchange) { error("registry paths must not fall through") }
+
+            val envelope = Json.parseToJsonElement(exchange.testResponse.body.decodeToString())
+                .jsonObject["error"]!!.jsonObject
+            assertEquals(404, exchange.testResponse.statusCode)
+            assertEquals("not_found", envelope["code"]!!.jsonPrimitive.content)
+            assertEquals(false, envelope["retryable"]!!.jsonPrimitive.content.toBoolean())
+            assertEquals("no-store", exchange.testResponse.headers.build()["Cache-Control"])
+            assertTrue(exchange.testResponse.ended)
+        }
+
+        assertTrue(audiences.isEmpty())
+        assertTrue(forwarded.isEmpty())
+    }
+
+    @Test
     fun `returns a generic gateway error without leaking upstream details`() = runBlocking {
         val gateway = RegistryGatewayMiddleware(
             publicHost = DEV_REGISTRY_PUBLIC_HOST,
@@ -278,7 +358,7 @@ class RegistryGatewayMiddlewareTest {
             releaseActionsUpstreamUrl = "https://registry-release-actions.example.run.app",
             securityActionsUpstreamUrl = "https://registry-security-actions.example.run.app",
             identityTokenProvider = RegistryIdentityTokenProvider { "identity-token" },
-            proxyForwarder = RegistryProxyForwarder { _, _, _ ->
+            proxyForwarder = RegistryProxyForwarder { _, _, _, _ ->
                 error("internal-service-name and secret-token")
             }
         )
@@ -316,6 +396,31 @@ class RegistryGatewayMiddlewareTest {
             )
         }
         assertTrue(error.message.orEmpty().contains("loopback"))
+    }
+
+    @Test
+    fun `rejects an upstream that would recurse through the public gateway`() {
+        val error = assertFailsWith<IllegalArgumentException> {
+            RegistryGatewayMiddleware(
+                publicHost = "seen.yousef.codes",
+                upstreamUrl = "https://seen.yousef.codes",
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("must differ"))
+    }
+
+    @Test
+    fun `rejects a partially configured isolated action surface`() {
+        val error = assertFailsWith<IllegalArgumentException> {
+            RegistryGatewayMiddleware(
+                publicHost = "seen.yousef.codes",
+                upstreamUrl = "https://registry-prod-api.example.run.app",
+                releaseActionsUpstreamUrl = "https://registry-prod-release-actions.example.run.app",
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("both be configured or both be absent"))
     }
 
     @Test

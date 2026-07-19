@@ -95,7 +95,28 @@ class ApplicationEnforcementWiringTest {
             ), clock),
             expectedRoles = emptySet(),
             expectedRegistryRoutes = true,
-            expectedHandled = setOf(HEALTH_PATH, REPORT_PATH),
+            expectedEnforcementRoutes = true,
+            expectedHandled = setOf(HEALTH_PATH, CATALOG_PATH, PACKAGE_CREATE_PATH, REPORT_PATH),
+        )
+        assertSurface(
+            RegistryResources.create(base.copy(
+                environment = "production",
+                repositoryId = "seen-prod-registry-v1",
+                registryOrigin = "https://seen.yousef.codes/packages",
+                serverMode = RegistryServerMode.READ_ONLY_PUBLIC_API,
+                writerMode = "",
+                writerToken = "",
+                writerPrincipal = "",
+                ownerAllowlist = emptySet(),
+                writersEnabled = false,
+                publicDelay = Duration.ZERO,
+                trustAndSafetyToken = null,
+                trustAndSafetyPrincipal = "",
+            ), clock),
+            expectedRoles = emptySet(),
+            expectedRegistryRoutes = true,
+            expectedEnforcementRoutes = false,
+            expectedHandled = setOf(HEALTH_PATH, CATALOG_PATH),
         )
         assertSurface(
             RegistryResources.create(base.copy(
@@ -108,6 +129,7 @@ class ApplicationEnforcementWiringTest {
             ), clock),
             expectedRoles = setOf(TufRole.RELEASES, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
             expectedRegistryRoutes = false,
+            expectedEnforcementRoutes = true,
             expectedHandled = setOf(HEALTH_PATH, YANK_PATH),
         )
         assertSurface(
@@ -126,6 +148,7 @@ class ApplicationEnforcementWiringTest {
             ), clock),
             expectedRoles = setOf(TufRole.SECURITY, TufRole.SNAPSHOT, TufRole.TIMESTAMP),
             expectedRegistryRoutes = false,
+            expectedEnforcementRoutes = true,
             expectedHandled = setOf(HEALTH_PATH, SECURITY_PATH),
         )
     }
@@ -134,14 +157,16 @@ class ApplicationEnforcementWiringTest {
         resources: RegistryResources,
         expectedRoles: Set<String>,
         expectedRegistryRoutes: Boolean,
+        expectedEnforcementRoutes: Boolean,
         expectedHandled: Set<String>,
     ) {
         try {
             assertEquals(expectedRoles, resources.activeSigningRoles)
             assertEquals(expectedRegistryRoutes, resources.hasRegistryRoutes)
-            listOf(HEALTH_PATH, REPORT_PATH, YANK_PATH, SECURITY_PATH).forEach { path ->
+            assertEquals(expectedEnforcementRoutes, resources.hasEnforcementRoutes)
+            listOf(HEALTH_PATH, CATALOG_PATH, PACKAGE_CREATE_PATH, REPORT_PATH, YANK_PATH, SECURITY_PATH).forEach { path ->
                 val exchange = WiringExchange(WiringRequest(
-                    method = if (path == HEALTH_PATH) HttpMethod.GET else HttpMethod.POST,
+                    method = if (path in setOf(HEALTH_PATH, CATALOG_PATH)) HttpMethod.GET else HttpMethod.POST,
                     path = path,
                     headers = Headers.Empty,
                     body = ByteArray(0),
@@ -182,6 +207,8 @@ class ApplicationEnforcementWiringTest {
 
     private companion object {
         const val HEALTH_PATH = "/health"
+        const val CATALOG_PATH = "/packages"
+        const val PACKAGE_CREATE_PATH = "/packages/api/v1/packages"
         const val REPORT_PATH = "/packages/api/v1/reports"
         const val YANK_PATH = "/packages/api/v1/packages/seen/demo/releases/1.2.3/actions/yank"
         const val SECURITY_PATH =

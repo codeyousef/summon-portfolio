@@ -75,6 +75,47 @@ class TufTest {
     }
 
     @Test
+    fun `production bootstrap imports only with the exact production identity`() {
+        val clock = Clock.fixed(Instant.parse("2026-07-16T00:00:00Z"), ZoneOffset.UTC)
+        val online = testOnlineSigners()
+        val rootKeys = (1..3).map(::testSigner)
+        val targetKeys = (4..5).map(::testSigner)
+        val fixture = TufBootstrapper(
+            InMemoryRegistryObjectStorage(), rootKeys.map(TufSigner::publicKey), rootKeys,
+            targetKeys.map(TufSigner::publicKey), targetKeys, online.publicKeys(),
+            "production", "seen-prod-registry-v1", clock,
+        ).bootstrap()
+        val importedStorage = InMemoryRegistryObjectStorage()
+
+        TufBootstrapImporter(
+            importedStorage, online.publicKeys(), "production", "seen-prod-registry-v1",
+            "https://seen.yousef.codes/packages", clock,
+        ).import(fixture.root, fixture.targets)
+
+        assertContentEquals(fixture.root, importedStorage.getMetadata("1.root.json"))
+        assertContentEquals(fixture.targets, importedStorage.getMetadata("1.targets.json"))
+
+        assertFailsWith<IllegalArgumentException> {
+            TufBootstrapImporter(
+                InMemoryRegistryObjectStorage(), online.publicKeys(), "production", "seen-dev-registry-v1",
+                "https://seen.yousef.codes/packages", clock,
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            TufBootstrapImporter(
+                InMemoryRegistryObjectStorage(), online.publicKeys(), "production", "seen-prod-registry-v1",
+                "https://seen.dev.yousef.codes/packages", clock,
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            TufBootstrapImporter(
+                InMemoryRegistryObjectStorage(), online.publicKeys(), "staging", "seen-prod-registry-v1",
+                "https://seen.yousef.codes/packages", clock,
+            )
+        }
+    }
+
+    @Test
     fun `offline import uses conditional writes only`() {
         val fixtureStorage = InMemoryRegistryObjectStorage()
         val clock = Clock.fixed(Instant.parse("2026-07-16T00:00:00Z"), ZoneOffset.UTC)

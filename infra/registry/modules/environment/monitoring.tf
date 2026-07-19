@@ -1,5 +1,5 @@
 locals {
-  signer_service_names      = [for service in values(local.signer_services) : service.name]
+  signer_service_names      = [for service in values(local.selected_signer_services) : service.name]
   application_service_names = [for service in values(local.application_services) : service.name]
 
   kms_signing_alerts = {
@@ -11,7 +11,7 @@ locals {
       resource_type = "global"
       filter = join(" ", [
         "resource.type=\"cloudkms_cryptokeyversion\"",
-        "protoPayload.methodName=\"google.cloud.kms.v1.KeyManagementService.AsymmetricSign\"",
+        "protoPayload.methodName=\"AsymmetricSign\"",
         "resource.labels.key_ring_id=\"${var.kms_key_ring}\"",
         "resource.labels.crypto_key_id=\"${var.online_key_names[role]}\"",
         "protoPayload.authenticationInfo.principalEmail!=\"${local.service_account_ids["signer_${role}"]}@${var.project_id}.iam.gserviceaccount.com\"",
@@ -35,7 +35,7 @@ locals {
       filter = join(" ", [
         "resource.type=\"cloud_run_revision\"",
         "resource.labels.service_name:(\"${join("\" OR \"", local.signer_service_names)}\")",
-        "(httpRequest.status=401 OR httpRequest.status=403 OR jsonPayload.event=\"tuf_signing_rejected\")",
+        "(httpRequest.status=401 OR httpRequest.status=403 OR textPayload:\"event=tuf_signing_rejected\")",
       ])
     }
     registry_job_failure = {
@@ -52,8 +52,8 @@ locals {
       resource_type = "cloud_run_revision"
       filter = join(" ", [
         "resource.type=\"cloud_run_revision\"",
-        "jsonPayload.event=\"tuf_metadata_expiry_breach\"",
-        "jsonPayload.environment=\"${var.runtime_environment}\"",
+        "textPayload:\"event=tuf_metadata_expiry_breach\"",
+        "textPayload:\"environment=${var.runtime_environment}\"",
       ])
     }
     metadata_expiry_breach_job = {
@@ -61,13 +61,24 @@ locals {
       resource_type = "cloud_run_job"
       filter = join(" ", [
         "resource.type=\"cloud_run_job\"",
-        "jsonPayload.event=\"tuf_metadata_expiry_breach\"",
-        "jsonPayload.environment=\"${var.runtime_environment}\"",
+        "textPayload:\"event=tuf_metadata_expiry_breach\"",
+        "textPayload:\"environment=${var.runtime_environment}\"",
       ])
     }
   }
 
   log_alerts = merge(local.kms_signing_alerts, local.runtime_log_alerts)
+}
+
+resource "google_project_iam_audit_config" "cloudkms_data_read" {
+  count = var.enabled && var.monitoring_enabled ? 1 : 0
+
+  project = var.project_id
+  service = "cloudkms.googleapis.com"
+
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
 }
 
 resource "google_logging_metric" "registry_alert" {
@@ -83,6 +94,8 @@ resource "google_logging_metric" "registry_alert" {
     value_type  = "INT64"
     unit        = "1"
   }
+
+  depends_on = [google_project_iam_audit_config.cloudkms_data_read]
 }
 
 resource "google_monitoring_alert_policy" "registry_log_alert" {
@@ -121,7 +134,7 @@ resource "google_monitoring_alert_policy" "registry_log_alert" {
 }
 
 resource "google_monitoring_uptime_check_config" "metadata" {
-  count = var.enabled && var.monitoring_enabled ? 1 : 0
+  count = var.enabled && var.monitoring_enabled && local.api_enabled ? 1 : 0
 
   project      = var.project_id
   display_name = "${var.name_prefix} public timestamp metadata"
@@ -155,7 +168,7 @@ resource "google_monitoring_uptime_check_config" "metadata" {
 }
 
 resource "google_monitoring_alert_policy" "metadata_uptime" {
-  count = var.enabled && var.monitoring_enabled ? 1 : 0
+  count = var.enabled && var.monitoring_enabled && local.api_enabled ? 1 : 0
 
   project               = var.project_id
   display_name          = "${var.name_prefix}: public timestamp unavailable"

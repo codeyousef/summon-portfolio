@@ -45,8 +45,12 @@ data class TufSignerServerConfig(
     init {
         require(CLOUD_RUN_SERVICE.matches(cloudRunService)) { "K_SERVICE is invalid" }
         require(environment in ENVIRONMENTS) { "REGISTRY_ENVIRONMENT must be development or production" }
-        val expectedRepositoryPrefix = if (environment == "development") "seen-dev-" else "seen-prod-"
-        require(REPOSITORY_ID.matches(repositoryId) && repositoryId.startsWith(expectedRepositoryPrefix)) {
+        val expectedRepositoryId = if (environment == "development") {
+            "seen-dev-registry-v1"
+        } else {
+            "seen-prod-registry-v1"
+        }
+        require(repositoryId == expectedRepositoryId) {
             "REGISTRY_REPOSITORY_ID is not bound to REGISTRY_ENVIRONMENT"
         }
         require(role in TufRole.ONLINE) { "REGISTRY_TUF_SIGNER_ROLE must name one online TUF role" }
@@ -140,7 +144,6 @@ data class TufSignerServerConfig(
         private val ABSOLUTE_MAXIMUM_SIGNING_TIMEOUT = Duration.ofSeconds(30)
         private val CLOUD_RUN_SERVICE = Regex("^[a-z][a-z0-9-]{0,62}$")
         private val ENVIRONMENTS = setOf("development", "production")
-        private val REPOSITORY_ID = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
         private val PUBLIC_KEY_HEX = Regex("^[0-9a-f]{64}$")
         private val KMS_KEY_VERSION = Regex(
             "^projects/[a-z0-9][a-z0-9-]{3,62}/locations/[a-z0-9-]{1,63}/keyRings/([A-Za-z0-9_-]{1,63})/" +
@@ -350,12 +353,11 @@ class TufSignerHttpServer private constructor(
                 when {
                     result.succeeded() -> signature(response, requireNotNull(result.result()))
                     result.cause() is TufSigningRequestException -> {
-                        log.warn(
-                            "TUF role signer request rejected role={} operation={} reason={}",
+                        log.warn(tufSigningRejectedEvent(
                             config.role,
                             operation.wireValue,
                             result.cause().sanitizedSignerRejectionReason(),
-                        )
+                        ))
                         reject(response, 422)
                     }
                     else -> {

@@ -1,6 +1,6 @@
 locals {
   long_lived_signer_authorizations = concat(
-    [
+    var.workloads_enabled ? [
       { operation = "release", role = "releases", identity = "promoter" },
       { operation = "release", role = "snapshot", identity = "promoter" },
       { operation = "release", role = "timestamp", identity = "promoter" },
@@ -10,7 +10,7 @@ locals {
       { operation = "security", role = "security", identity = "security_actions" },
       { operation = "security", role = "snapshot", identity = "security_actions" },
       { operation = "security", role = "timestamp", identity = "security_actions" },
-    ],
+    ] : [],
     var.refresh_jobs_enabled ? [
       { operation = "release", role = "releases", identity = "release_refresh" },
       { operation = "release", role = "snapshot", identity = "release_refresh" },
@@ -58,7 +58,7 @@ locals {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "signer_invoker" {
-  for_each = var.enabled && var.workloads_enabled ? local.signer_callers : {}
+  for_each = var.enabled && local.signers_enabled ? local.signer_callers : {}
 
   project  = var.project_id
   location = var.region

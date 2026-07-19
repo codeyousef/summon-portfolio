@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
         return
     }
     if (args.singleOrNull() == "describe-signing-policy") {
-        println("seen-tuf-development-v1 root=offline:2/3 targets=offline:2/2 releases=role-locked-signer:1/1 security=role-locked-signer:1/1 snapshot=role-locked-signer:1/1 timestamp=role-locked-signer:1/1 public-delay=259200 promotion=disabled")
+        println(signingPolicyDescription(System.getenv()["REGISTRY_ENVIRONMENT"] ?: "development"))
         return
     }
     if (args.firstOrNull() == "prepare-offline-bootstrap") {
@@ -80,11 +80,22 @@ fun main(args: Array<String>) {
     }
     val requestedServerMode = args.singleOrNull()?.let(RegistryServerMode::fromArgument)
     require(args.isEmpty() || requestedServerMode != null) {
-        "Usage: registry-service [serve-public-api|serve-release-actions|serve-security-actions|serve-tuf-signer|describe-signing-policy|verify-source-once|scan-once|promote-once|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-targets-rotation <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-root-rotation <current-N.root.json> <output-dir>|import-offline-bootstrap|bootstrap-online|import-offline-targets-renewal <N.targets.json>|import-offline-targets-rotation <releases|security> <N.targets.json>|verify-root-chain|import-offline-root-rotation <N.root.json>|refresh-releases-once|refresh-security-once|recover-expired-releases-once|recover-expired-security-once]"
+        "Usage: registry-service [serve-public-api|serve-read-only-public-api|serve-release-actions|serve-security-actions|serve-tuf-signer|describe-signing-policy|verify-source-once|scan-once|promote-once|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-targets-rotation <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-root-rotation <current-N.root.json> <output-dir>|import-offline-bootstrap|bootstrap-online|import-offline-targets-renewal <N.targets.json>|import-offline-targets-rotation <releases|security> <N.targets.json>|verify-root-chain|import-offline-root-rotation <N.root.json>|refresh-releases-once|refresh-security-once|recover-expired-releases-once|recover-expired-security-once]"
     }
     val config = RegistryConfig.fromEnvironment(serverModeOverride = requestedServerMode)
     val resources = RegistryResources.create(config)
     resources.startAndWait()
+}
+
+internal fun signingPolicyDescription(environment: String): String {
+    val exposurePolicy = when (environment) {
+        "development" -> "public-delay=259200 promotion=disabled"
+        "production" -> "public-delay=disabled promotion=disabled writer=disabled mode=read-only"
+        else -> throw IllegalArgumentException("REGISTRY_ENVIRONMENT must be development or production")
+    }
+    return "seen-tuf-$environment-v1 root=offline:2/3 targets=offline:2/2 " +
+        "releases=role-locked-signer:1/1 security=role-locked-signer:1/1 " +
+        "snapshot=role-locked-signer:1/1 timestamp=role-locked-signer:1/1 $exposurePolicy"
 }
 
 class RegistryResources private constructor(
@@ -95,7 +106,7 @@ class RegistryResources private constructor(
     val tuf: TufPublisher,
     private val clock: Clock,
     private val routes: RegistryRoutes?,
-    private val enforcementRoutes: EnforcementRoutes,
+    private val enforcementRoutes: EnforcementRoutes?,
     private val serverMode: RegistryServerMode,
     internal val activeSigningRoles: Set<String>,
 ) : AutoCloseable {
@@ -103,8 +114,13 @@ class RegistryResources private constructor(
     private var server: RegistryHttpServer? = null
 
     fun startAndWait() {
-        tuf.requireBootstrap()
-        tuf.verifyFreshTransaction()
+        try {
+            tuf.requireBootstrap()
+            tuf.verifyFreshTransaction()
+        } catch (error: Exception) {
+            error.tufMetadataExpiryEvent(config.environment, "service-startup")?.let(log::error)
+            throw error
+        }
         val pipeline = routePipeline()
         server = RegistryHttpServer(
             config = VertxServerConfig(
@@ -114,7 +130,7 @@ class RegistryResources private constructor(
             ),
             pipeline = pipeline,
             routes = routes,
-            streamingUploadsEnabled = serverMode.exposesRegistryRoutes,
+            streamingUploadsEnabled = serverMode.exposesRegistryMutations,
             fallback = { exchange -> exchange.respondJson(404, ErrorEnvelope(ApiError(
                 code = "not_found",
                 message = "Resource was not found",
@@ -131,11 +147,12 @@ class RegistryResources private constructor(
     }
 
     internal fun routePipeline(): Pipeline = Pipeline().apply {
-        use(enforcementRoutes.router.asMiddleware())
+        enforcementRoutes?.let { use(it.router.asMiddleware()) }
         routes?.let { use(it.router.asMiddleware()) }
     }
 
     internal val hasRegistryRoutes: Boolean get() = routes != null
+    internal val hasEnforcementRoutes: Boolean get() = enforcementRoutes != null
 
     override fun close() {
         server?.close()
@@ -155,10 +172,28 @@ class RegistryResources private constructor(
             require(signingRoles == config.configuredSigningRoles) {
                 "Runtime signing roles must match its validated configuration"
             }
-            val repository: RegistryRepository = if (config.storageMode == "gcp") FirestoreRegistryRepository.create(config) else InMemoryRegistryRepository()
+            val mutableRepository: RegistryRepository = if (config.storageMode == "gcp") {
+                FirestoreRegistryRepository.create(config)
+            } else {
+                InMemoryRegistryRepository()
+            }
+            val repository: RegistryRepository = if (config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API) {
+                ReadOnlyRegistryRepository(mutableRepository)
+            } else {
+                mutableRepository
+            }
+            val tufRepository: RegistryRepository = if (
+                config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API
+            ) {
+                TufVerificationRegistryRepository(mutableRepository)
+            } else {
+                repository
+            }
             val storage: RegistryObjectStorage = when {
                 config.storageMode == "gcp" && config.serverMode == RegistryServerMode.PUBLIC_API ->
                     GcsRegistryObjectStorage.create(config)
+                config.storageMode == "gcp" && config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API ->
+                    GcsReadOnlyRegistryObjectStorage.create(config)
                 config.storageMode == "gcp" -> GcsMetadataOnlyRegistryObjectStorage.create(
                     projectId = requireNotNull(config.projectId),
                     metadataBucket = requireNotNull(config.metadataBucket),
@@ -167,6 +202,8 @@ class RegistryResources private constructor(
                     allowRootPointerWrite = false,
                 )
                 config.serverMode == RegistryServerMode.PUBLIC_API -> InMemoryRegistryObjectStorage()
+                config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API ->
+                    ReadOnlyRegistryObjectStorage(InMemoryRegistryObjectStorage())
                 else -> RestrictedMetadataRegistryObjectStorage(
                     allowImmutableCreates = true,
                     allowRootPointerWrite = false,
@@ -202,57 +239,74 @@ class RegistryResources private constructor(
                     signer(TufRole.TIMESTAMP),
                 )
             }
-            val tuf = TufPublisher(repository, storage, online, config.environment, config.repositoryId, config.registryOrigin, clock)
-            val registryRoutes = if (config.serverMode == RegistryServerMode.PUBLIC_API) {
+            val tuf = TufPublisher(
+                tufRepository,
+                storage,
+                online,
+                config.environment,
+                config.repositoryId,
+                config.registryOrigin,
+                clock,
+            )
+            val registryRoutes = if (config.serverMode.exposesRegistryRoutes) {
                 val service = RegistryService(config, repository, storage, ArchiveValidator(), tuf, clock)
-                val auth = OpaqueDevWriterAuthenticator(config.writerToken, config.writerPrincipal, config.ownerAllowlist)
+                val auth = if (config.serverMode.exposesRegistryMutations) {
+                    OpaqueDevWriterAuthenticator(config.writerToken, config.writerPrincipal, config.ownerAllowlist)
+                } else null
                 RegistryRoutes(
                     service = service,
                     auth = auth,
                     clock = clock,
                     catalogNavigationLinks = CatalogNavigationLinks.fromRegistryOrigin(config.registryOrigin),
+                    mutationsEnabled = config.serverMode.exposesRegistryMutations,
                 )
             } else null
-            val enforcementCredentials = when (config.serverMode) {
-                RegistryServerMode.PUBLIC_API -> listOf(
-                    OpaqueEnforcementCredential(
+            val enforcement = if (config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API) {
+                null
+            } else {
+                val enforcementCredentials = when (config.serverMode) {
+                    RegistryServerMode.PUBLIC_API -> listOf(
+                        OpaqueEnforcementCredential(
+                            config.writerToken,
+                            EnforcementPrincipal(config.writerPrincipal, setOf(EnforcementRoles.PUBLISHER)),
+                        ),
+                        OpaqueEnforcementCredential(
+                            requireNotNull(config.trustAndSafetyToken),
+                            EnforcementPrincipal(
+                                config.trustAndSafetyPrincipal,
+                                setOf(EnforcementRoles.TRUST_AND_SAFETY),
+                            ),
+                        ),
+                    )
+                    RegistryServerMode.RELEASE_ACTIONS -> listOf(OpaqueEnforcementCredential(
                         config.writerToken,
                         EnforcementPrincipal(config.writerPrincipal, setOf(EnforcementRoles.PUBLISHER)),
-                    ),
-                    OpaqueEnforcementCredential(
-                        requireNotNull(config.trustAndSafetyToken),
-                        EnforcementPrincipal(
-                            config.trustAndSafetyPrincipal,
-                            setOf(EnforcementRoles.TRUST_AND_SAFETY),
-                        ),
-                    ),
+                    ))
+                    RegistryServerMode.SECURITY_ACTIONS -> listOf(OpaqueEnforcementCredential(
+                        requireNotNull(config.securityToken),
+                        EnforcementPrincipal(config.securityPrincipal, setOf(EnforcementRoles.SECURITY)),
+                    ))
+                    RegistryServerMode.READ_ONLY_PUBLIC_API -> error("Read-only registry cannot construct enforcement routes")
+                }
+                val enforcementAuth = OpaqueEnforcementAuthenticator(enforcementCredentials)
+                EnforcementRoutes(
+                    service = EnforcementService(repository, config.environment, clock),
+                    repository = repository,
+                    auth = enforcementAuth,
+                    metadataPublisher = if (config.serverMode == RegistryServerMode.PUBLIC_API) {
+                        UnusedEnforcementMetadataPublisher
+                    } else {
+                        TufEnforcementMetadataPublisher(repository, tuf)
+                    },
+                    clock = clock,
+                    surfaces = when (config.serverMode) {
+                        RegistryServerMode.PUBLIC_API -> setOf(EnforcementRouteSurface.REPORTS_AND_APPEALS)
+                        RegistryServerMode.RELEASE_ACTIONS -> setOf(EnforcementRouteSurface.RELEASE_ACTIONS)
+                        RegistryServerMode.SECURITY_ACTIONS -> setOf(EnforcementRouteSurface.SECURITY_ACTIONS)
+                        RegistryServerMode.READ_ONLY_PUBLIC_API -> emptySet()
+                    },
                 )
-                RegistryServerMode.RELEASE_ACTIONS -> listOf(OpaqueEnforcementCredential(
-                    config.writerToken,
-                    EnforcementPrincipal(config.writerPrincipal, setOf(EnforcementRoles.PUBLISHER)),
-                ))
-                RegistryServerMode.SECURITY_ACTIONS -> listOf(OpaqueEnforcementCredential(
-                    requireNotNull(config.securityToken),
-                    EnforcementPrincipal(config.securityPrincipal, setOf(EnforcementRoles.SECURITY)),
-                ))
             }
-            val enforcementAuth = OpaqueEnforcementAuthenticator(enforcementCredentials)
-            val enforcement = EnforcementRoutes(
-                service = EnforcementService(repository, config.environment, clock),
-                repository = repository,
-                auth = enforcementAuth,
-                metadataPublisher = if (config.serverMode == RegistryServerMode.PUBLIC_API) {
-                    UnusedEnforcementMetadataPublisher
-                } else {
-                    TufEnforcementMetadataPublisher(repository, tuf)
-                },
-                clock = clock,
-                surfaces = when (config.serverMode) {
-                    RegistryServerMode.PUBLIC_API -> setOf(EnforcementRouteSurface.REPORTS_AND_APPEALS)
-                    RegistryServerMode.RELEASE_ACTIONS -> setOf(EnforcementRouteSurface.RELEASE_ACTIONS)
-                    RegistryServerMode.SECURITY_ACTIONS -> setOf(EnforcementRouteSurface.SECURITY_ACTIONS)
-                },
-            )
             return RegistryResources(
                 config,
                 repository,

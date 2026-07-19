@@ -30,7 +30,7 @@ data class OfflineBootstrapConfig(
                 targetsPublicKeys = csv("REGISTRY_OFFLINE_TARGETS_PUBLIC_KEYS_HEX").map(String::hexToBytes),
                 targetsSigningKeysPkcs8Base64 = csv("REGISTRY_OFFLINE_TARGETS_SIGNING_KEYS_PKCS8_BASE64"),
                 onlineKeys = TufOnlineKeys(public(TufRole.RELEASES), public(TufRole.SECURITY), public(TufRole.SNAPSHOT), public(TufRole.TIMESTAMP)),
-            ).also { require(it.environment == "development") { "Offline bootstrap is development-only" } }
+            ).also { requireOfflineRepositoryIdentity(it.environment, it.repositoryId) }
         }
     }
 }
@@ -52,7 +52,7 @@ data class OfflineTargetsRenewalConfig(
                 repositoryId = env["REGISTRY_REPOSITORY_ID"] ?: "seen-dev-registry-v1",
                 targetsSigningKeysPkcs8Base64 = csv("REGISTRY_OFFLINE_TARGETS_SIGNING_KEYS_PKCS8_BASE64"),
                 onlineKeys = TufOnlineKeys(public(TufRole.RELEASES), public(TufRole.SECURITY), public(TufRole.SNAPSHOT), public(TufRole.TIMESTAMP)),
-            ).also { require(it.environment == "development") { "Offline targets renewal is development-only" } }
+            ).also { requireOfflineRepositoryIdentity(it.environment, it.repositoryId) }
         }
     }
 }
@@ -79,7 +79,7 @@ data class OfflineTargetsRotationConfig(
                     public(TufRole.SNAPSHOT),
                     public(TufRole.TIMESTAMP),
                 ),
-            ).also { require(it.environment == "development") { "Offline targets rotation is development-only" } }
+            ).also { requireOfflineRepositoryIdentity(it.environment, it.repositoryId) }
         }
     }
 }
@@ -100,8 +100,19 @@ data class OfflineRootRotationConfig(
                 currentRootSigningKeysPkcs8Base64 = csv("REGISTRY_OFFLINE_ROOT_SIGNING_KEYS_PKCS8_BASE64"),
                 nextRootPublicKeys = csv("REGISTRY_OFFLINE_NEXT_ROOT_PUBLIC_KEYS_HEX").map(String::hexToBytes),
                 nextRootSigningKeysPkcs8Base64 = csv("REGISTRY_OFFLINE_NEXT_ROOT_SIGNING_KEYS_PKCS8_BASE64"),
-            ).also { require(it.environment == "development") { "Offline root rotation is development-only" } }
+            ).also { requireOfflineRepositoryIdentity(it.environment, it.repositoryId) }
         }
+    }
+}
+
+private fun requireOfflineRepositoryIdentity(environment: String, repositoryId: String) {
+    val expectedRepository = when (environment) {
+        "development" -> "seen-dev-registry-v1"
+        "production" -> "seen-prod-registry-v1"
+        else -> throw IllegalArgumentException("Offline signing environment must be development or production")
+    }
+    require(repositoryId == expectedRepository) {
+        "Offline signing repository ID does not match its environment"
     }
 }
 

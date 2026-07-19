@@ -26,23 +26,30 @@ locals {
     }
   }
 
-  application_services = {
+  selected_signer_services = {
+    for role in local.selected_signer_roles : role => local.signer_services[role]
+  }
+
+  api_service = {
     api = {
       name              = "${var.name_prefix}-api-v2"
       identity          = "api"
-      argument          = "serve-public-api"
-      server_mode       = "public-api"
+      argument          = local.read_only_api_enabled ? "serve-read-only-public-api" : "serve-public-api"
+      server_mode       = local.read_only_api_enabled ? "read-only-public-api" : "public-api"
       active_roles      = toset([])
       minimum_instances = 1
       maximum_instances = 3
       concurrency       = 2
       memory            = "2Gi"
-      environment       = local.api_environment
-      secrets = {
+      environment       = local.read_only_api_enabled ? local.read_only_api_environment : local.writer_api_environment
+      secrets = local.read_only_api_enabled ? tomap({}) : tomap({
         REGISTRY_WRITER_TOKEN           = "publisher_token"
         REGISTRY_TRUST_AND_SAFETY_TOKEN = "trust_and_safety_token"
-      }
+      })
     }
+  }
+
+  action_services = {
     release_actions = {
       name              = "${var.name_prefix}-release-actions-v2"
       identity          = "release_actions"
@@ -74,18 +81,29 @@ locals {
       }
     }
   }
+
+  application_services = merge(
+    local.api_enabled ? local.api_service : {},
+    var.workloads_enabled ? local.action_services : {},
+  )
 }
 
 resource "google_cloud_run_v2_service" "signer" {
-  for_each = var.enabled && var.workloads_enabled ? local.signer_services : {}
+  for_each = var.enabled ? local.selected_signer_services : {}
 
   project  = var.project_id
   location = var.region
   name     = each.value.name
   # Every authorized caller sends all egress through this stack's Direct VPC
   # network, so signer endpoints never need internet ingress.
-  ingress              = "INGRESS_TRAFFIC_INTERNAL_ONLY"
-  deletion_protection  = true
+  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  # Production runtime definitions are deliberately reversible through the
+  # complete saved-plan gate so refresh authority can be removed before a
+  # later isolated ceremony. Durable keys/data remain separately protected.
+  deletion_protection = (
+    var.environment != "prod" &&
+    (var.workloads_enabled || var.refresh_jobs_enabled)
+  )
   invoker_iam_disabled = false
   custom_audiences     = [each.value.audience]
   labels               = merge(local.common_labels, { component = "tuf-signer", tuf_role = each.key })
@@ -206,7 +224,7 @@ resource "google_cloud_run_v2_service" "signer" {
 }
 
 locals {
-  signer_target_environment = var.enabled && var.workloads_enabled ? merge([
+  signer_target_environment = var.enabled && local.signers_enabled ? merge([
     for role, service in google_cloud_run_v2_service.signer : {
       "REGISTRY_TUF_${upper(role)}_SIGNER_URL"      = "${service.uri}/sign"
       "REGISTRY_TUF_${upper(role)}_SIGNER_AUDIENCE" = local.signer_services[role].audience
@@ -215,13 +233,13 @@ locals {
 }
 
 resource "google_cloud_run_v2_service" "application" {
-  for_each = var.enabled && var.workloads_enabled ? local.application_services : {}
+  for_each = var.enabled ? local.application_services : {}
 
   project              = var.project_id
   location             = var.region
   name                 = each.value.name
   ingress              = var.edge_cutover_enabled ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : var.private_service_ingress
-  deletion_protection  = true
+  deletion_protection  = var.environment != "prod"
   invoker_iam_disabled = var.edge_cutover_enabled
   default_uri_disabled = var.edge_cutover_enabled
   labels               = merge(local.common_labels, { component = replace(each.key, "_", "-") })
@@ -326,6 +344,7 @@ resource "google_cloud_run_v2_service" "application" {
   depends_on = [
     google_cloud_run_v2_service.signer,
     google_compute_router_nat.registry,
+    google_project_iam_member.firestore_reader,
     google_project_iam_member.firestore_user,
     google_secret_manager_secret_iam_member.runtime,
     google_storage_bucket_iam_member.metadata_reader,
@@ -333,7 +352,7 @@ resource "google_cloud_run_v2_service" "application" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "portfolio_gateway" {
-  for_each = var.enabled && var.workloads_enabled && !var.edge_cutover_enabled && var.portfolio_gateway_service_account != null ? google_cloud_run_v2_service.application : {}
+  for_each = var.enabled && local.api_enabled && !var.edge_cutover_enabled && var.portfolio_gateway_service_account != null ? google_cloud_run_v2_service.application : {}
 
   project  = var.project_id
   location = var.region

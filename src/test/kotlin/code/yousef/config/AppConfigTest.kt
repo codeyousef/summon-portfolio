@@ -18,23 +18,61 @@ class AppConfigTest {
     }
 
     @Test
-    fun `registry routing requires host and all three isolated origins`() {
+    fun `registry routing requires the public host and API origin together`() {
         val partialConfigurations = listOf(
             mapOf("SEEN_REGISTRY_UPSTREAM_URL" to API_URL),
+            mapOf("SEEN_REGISTRY_PUBLIC_HOST" to "seen.dev.yousef.codes"),
             mapOf(
-                "SEEN_REGISTRY_PUBLIC_HOST" to "seen.dev.yousef.codes",
-                "SEEN_REGISTRY_UPSTREAM_URL" to API_URL,
                 "SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL" to RELEASE_URL,
+                "SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL" to SECURITY_URL,
             ),
-            mapOf("SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL" to SECURITY_URL),
         )
 
         partialConfigurations.forEach { registryEnvironment ->
             val error = assertFailsWith<IllegalArgumentException> {
                 loadAppConfig(mapOf("USE_LOCAL_STORE" to "true") + registryEnvironment)
             }
-            assertTrue(error.message.orEmpty().contains("all three isolated upstream URLs"))
+            assertTrue(error.message.orEmpty().contains("public host and API upstream URL"))
         }
+    }
+
+    @Test
+    fun `registry action routing requires both isolated action origins`() {
+        val partialConfigurations = listOf(
+            mapOf(
+                "SEEN_REGISTRY_PUBLIC_HOST" to "seen.dev.yousef.codes",
+                "SEEN_REGISTRY_UPSTREAM_URL" to API_URL,
+                "SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL" to RELEASE_URL,
+            ),
+            mapOf(
+                "SEEN_REGISTRY_PUBLIC_HOST" to "seen.dev.yousef.codes",
+                "SEEN_REGISTRY_UPSTREAM_URL" to API_URL,
+                "SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL" to SECURITY_URL,
+            ),
+        )
+
+        partialConfigurations.forEach { registryEnvironment ->
+            val error = assertFailsWith<IllegalArgumentException> {
+                loadAppConfig(mapOf("USE_LOCAL_STORE" to "true") + registryEnvironment)
+            }
+            assertTrue(error.message.orEmpty().contains("both isolated action upstream URLs or neither"))
+        }
+    }
+
+    @Test
+    fun `accepts API-only registry routing configuration`() {
+        val config = loadAppConfig(
+            mapOf(
+                "USE_LOCAL_STORE" to "true",
+                "SEEN_REGISTRY_PUBLIC_HOST" to " seen.yousef.codes ",
+                "SEEN_REGISTRY_UPSTREAM_URL" to API_URL,
+            ),
+        )
+
+        assertEquals("seen.yousef.codes", config.registryPublicHost)
+        assertEquals(API_URL, config.registryUpstreamUrl)
+        assertNull(config.registryReleaseActionsUpstreamUrl)
+        assertNull(config.registrySecurityActionsUpstreamUrl)
     }
 
     @Test

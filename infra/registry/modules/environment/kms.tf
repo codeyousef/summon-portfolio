@@ -32,7 +32,7 @@ resource "google_kms_crypto_key" "online" {
 }
 
 resource "google_kms_crypto_key_iam_member" "signer" {
-  for_each = var.enabled && var.workloads_enabled ? local.roles : toset([])
+  for_each = var.enabled ? local.selected_signer_roles : toset([])
 
   crypto_key_id = google_kms_crypto_key.online[each.value].id
   role          = "projects/${var.project_id}/roles/${google_project_iam_custom_role.kms_exact_signer[0].role_id}"

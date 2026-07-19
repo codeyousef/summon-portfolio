@@ -70,18 +70,23 @@ locals {
   }
 
   long_lived_jobs = merge(
-    local.base_long_lived_jobs,
+    var.workloads_enabled ? local.base_long_lived_jobs : {},
+    !var.workloads_enabled && var.root_verifier_job_enabled ? {
+      root_verifier = local.base_long_lived_jobs.root_verifier
+    } : {},
     var.refresh_jobs_enabled ? local.refresh_jobs : {},
   )
 }
 
 resource "google_cloud_run_v2_job" "long_lived" {
-  for_each = var.enabled && var.workloads_enabled ? local.long_lived_jobs : {}
+  for_each = var.enabled ? local.long_lived_jobs : {}
 
-  project             = var.project_id
-  location            = var.region
-  name                = each.value.name
-  deletion_protection = true
+  project  = var.project_id
+  location = var.region
+  name     = each.value.name
+  # Production jobs are selector-managed, stateless definitions. Keeping them
+  # removable is required to revoke refresh authority before a ceremony.
+  deletion_protection = var.environment != "prod"
   labels              = merge(local.common_labels, { component = replace(each.key, "_", "-") })
 
   template {
@@ -227,7 +232,7 @@ locals {
 }
 
 resource "google_cloud_run_v2_job" "ceremony" {
-  for_each = var.enabled && var.workloads_enabled ? local.selected_ceremony_jobs : {}
+  for_each = var.enabled ? local.selected_ceremony_jobs : {}
 
   project             = var.project_id
   location            = var.region

@@ -161,6 +161,10 @@ jobs:
           RUNTIME: ${{ vars.GCP_PORTFOLIO_PROD_RUNTIME_SERVICE_ACCOUNT }}
           IMAGE_URI: ${{ needs.publish-image.outputs.image_uri }}
           TARGET_SERVICE: ${{ needs.publish-image.outputs.service }}
+          REGISTRY_PUBLIC_HOST: ${{ vars.SEEN_REGISTRY_PUBLIC_HOST }}
+          REGISTRY_UPSTREAM_URL: ${{ vars.SEEN_REGISTRY_UPSTREAM_URL }}
+          REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL: ${{ vars.SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL }}
+          REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL: ${{ vars.SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -174,6 +178,11 @@ jobs:
           test "${DEPLOYER}" = "portfolio-prod-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
           test "${RUNTIME}" = "portfolio-prod-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
           test "${TARGET_SERVICE}" = "${SERVICE}"
+          test "${REGISTRY_PUBLIC_HOST}" = "seen.yousef.codes"
+          [[ "${REGISTRY_UPSTREAM_URL}" =~ ^https://seen-registry-prod-api-v2-[a-z0-9-]+(\.[a-z0-9-]+)*\.run\.app/?$ ]]
+          test "${REGISTRY_UPSTREAM_URL%/}" != "https://${REGISTRY_PUBLIC_HOST}"
+          test -z "${REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL}"
+          test -z "${REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL}"
 
       - name: Authenticate scoped Cloud Run deployer
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
@@ -247,6 +256,9 @@ jobs:
           echo "served_traffic=${served_traffic}" >> "${GITHUB_OUTPUT}"
 
       - name: Deploy immutable image after explicit enablement
+        env:
+          REGISTRY_PUBLIC_HOST: ${{ vars.SEEN_REGISTRY_PUBLIC_HOST }}
+          REGISTRY_UPSTREAM_URL: ${{ vars.SEEN_REGISTRY_UPSTREAM_URL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -270,7 +282,7 @@ jobs:
             --image "${{ needs.publish-image.outputs.image_uri }}" \
             --region "${GCP_REGION}" \
             --service-account "${{ vars.GCP_PORTFOLIO_PROD_RUNTIME_SERVICE_ACCOUNT }}" \
-            --update-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${SERVICE}" \
+            --set-env-vars "GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},PHOTOGRAPHY_UPLOAD_BUCKET=${PHOTOGRAPHY_UPLOAD_BUCKET},PHOTOGRAPHY_UPLOAD_PREFIX=photography/${SERVICE},SEEN_REGISTRY_PUBLIC_HOST=${REGISTRY_PUBLIC_HOST},SEEN_REGISTRY_UPSTREAM_URL=${REGISTRY_UPSTREAM_URL}" \
             --remove-secrets "NEXT_PUBLIC_POSTHOG_KEY,NEXT_PUBLIC_POSTHOG_HOST" \
             --port 8080 \
             --quiet \
@@ -286,6 +298,8 @@ jobs:
         id: candidate
         env:
           PREVIOUS_TRAFFIC: ${{ steps.before.outputs.served_traffic }}
+          REGISTRY_PUBLIC_HOST: ${{ vars.SEEN_REGISTRY_PUBLIC_HOST }}
+          REGISTRY_UPSTREAM_URL: ${{ vars.SEEN_REGISTRY_UPSTREAM_URL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -344,15 +358,23 @@ jobs:
           jq -e --arg value "photography/${SERVICE}" \
             '.spec.containers[0].env | any(.name == "PHOTOGRAPHY_UPLOAD_PREFIX" and .value == $value)' \
             <<<"${revision_json}" >/dev/null
+          jq -e --arg value "${REGISTRY_PUBLIC_HOST}" \
+            '.spec.containers[0].env | any(.name == "SEEN_REGISTRY_PUBLIC_HOST" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
+          jq -e --arg value "${REGISTRY_UPSTREAM_URL}" \
+            '.spec.containers[0].env | any(.name == "SEEN_REGISTRY_UPSTREAM_URL" and .value == $value)' \
+            <<<"${revision_json}" >/dev/null
           jq -e '
-            .spec.containers[0].env | all(
-              .name != "SEEN_REGISTRY_PUBLIC_HOST" and
-              .name != "SEEN_REGISTRY_UPSTREAM_URL" and
-              .name != "SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL" and
-              .name != "SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL" and
-              .name != "NEXT_PUBLIC_POSTHOG_KEY" and
-              .name != "NEXT_PUBLIC_POSTHOG_HOST"
-            )
+            .spec.containers[0].env
+              | map(.name)
+              | sort
+              == [
+                "GOOGLE_CLOUD_PROJECT",
+                "PHOTOGRAPHY_UPLOAD_BUCKET",
+                "PHOTOGRAPHY_UPLOAD_PREFIX",
+                "SEEN_REGISTRY_PUBLIC_HOST",
+                "SEEN_REGISTRY_UPSTREAM_URL"
+              ]
           ' <<<"${revision_json}" >/dev/null
           jq -e '.status.conditions | any(.type == "Ready" and .status == "True")' \
             <<<"${revision_json}" >/dev/null
@@ -393,11 +415,13 @@ jobs:
         env:
           CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
           PREVIOUS_TRAFFIC: ${{ steps.before.outputs.served_traffic }}
+          REGISTRY_PUBLIC_HOST: ${{ vars.SEEN_REGISTRY_PUBLIC_HOST }}
         shell: bash
         run: |
           set -euo pipefail
           [[ "${CANDIDATE_REVISION}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]
           test "${SERVICE}" = "portfolio"
+          test "${REGISTRY_PUBLIC_HOST}" = "seen.yousef.codes"
           jq -e '
             length > 0 and
             (map(.percent) | add) == 100 and
@@ -516,6 +540,9 @@ jobs:
             "https://aether.yousef.codes/"
             "https://seen.yousef.codes/"
             "https://seen.yousef.codes/playground"
+            "https://${REGISTRY_PUBLIC_HOST}/packages"
+            "https://${REGISTRY_PUBLIC_HOST}/packages/api/v1/packages"
+            "https://${REGISTRY_PUBLIC_HOST}/packages/api/v1/metadata/timestamp.json"
           )
           for smoke_url in "${smoke_urls[@]}"; do
             echo "Probing ${smoke_url}"
@@ -523,6 +550,54 @@ jobs:
               --retry 4 --retry-all-errors --retry-delay 2 \
               --retry-max-time 30 --connect-timeout 5 --max-time 10 "${smoke_url}" >/dev/null
             echo "Verified ${smoke_url}" >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+          seen_landing_html="$(curl --fail --silent --show-error \
+            --retry 4 --retry-all-errors --retry-delay 2 \
+            --retry-max-time 30 --connect-timeout 5 --max-time 10 \
+            "https://${REGISTRY_PUBLIC_HOST}/")"
+          grep --fixed-strings 'href="/packages"' <<<"${seen_landing_html}" >/dev/null
+          echo "Verified the Seen landing page links to the production package catalog." >> "${GITHUB_STEP_SUMMARY}"
+
+          registry_packages_json="$(curl --fail --silent --show-error \
+            --retry 4 --retry-all-errors --retry-delay 2 \
+            --retry-max-time 30 --connect-timeout 5 --max-time 10 \
+            "https://${REGISTRY_PUBLIC_HOST}/packages/api/v1/packages")"
+          jq -e '(.items | type) == "array"' <<<"${registry_packages_json}" >/dev/null
+          echo "Verified the production registry API returned a package page." >> "${GITHUB_STEP_SUMMARY}"
+
+          registry_timestamp_json="$(curl --fail --silent --show-error \
+            --retry 4 --retry-all-errors --retry-delay 2 \
+            --retry-max-time 30 --connect-timeout 5 --max-time 10 \
+            "https://${REGISTRY_PUBLIC_HOST}/packages/api/v1/metadata/timestamp.json")"
+          jq -e '
+            .signed._type == "timestamp" and
+            .signed.environment == "production" and
+            .signed.repository_id == "seen-prod-registry-v1" and
+            (.signed.version | type == "number") and
+            (.signatures | type == "array" and length > 0)
+          ' <<<"${registry_timestamp_json}" >/dev/null
+          echo "Verified signed production timestamp metadata." >> "${GITHUB_STEP_SUMMARY}"
+
+          mutation_probes=(
+            "POST /packages/api/v1/packages"
+            "PUT /packages/api/v1/uploads/upl_0123456789abcdef/archive"
+            "POST /packages/api/v1/packages/seen/demo/releases/1.0.0/actions/yank"
+            "POST /packages/api/v1/packages/seen/demo/releases/1.0.0/actions/security-quarantine"
+          )
+          for mutation_probe in "${mutation_probes[@]}"; do
+            method="${mutation_probe%% *}"
+            path="${mutation_probe#* }"
+            status="$(curl --silent --show-error \
+              --connect-timeout 5 --max-time 10 \
+              --request "${method}" \
+              --header 'Content-Type: application/json' \
+              --data '{}' \
+              --output /dev/null \
+              --write-out '%{http_code}' \
+              "https://${REGISTRY_PUBLIC_HOST}${path}")"
+            test "${status}" = "404"
+            echo "Verified ${method} ${path} remains unavailable." >> "${GITHUB_STEP_SUMMARY}"
           done
 
           photography_html="$(curl --fail --silent --show-error \

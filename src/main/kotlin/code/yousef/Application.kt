@@ -322,8 +322,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         RegistryGatewayMiddleware(
             publicHost = requireNotNull(appConfig.registryPublicHost),
             upstreamUrl = publicUpstream,
-            releaseActionsUpstreamUrl = requireNotNull(appConfig.registryReleaseActionsUpstreamUrl),
-            securityActionsUpstreamUrl = requireNotNull(appConfig.registrySecurityActionsUpstreamUrl)
+            releaseActionsUpstreamUrl = appConfig.registryReleaseActionsUpstreamUrl,
+            securityActionsUpstreamUrl = appConfig.registrySecurityActionsUpstreamUrl
         )
     }
 

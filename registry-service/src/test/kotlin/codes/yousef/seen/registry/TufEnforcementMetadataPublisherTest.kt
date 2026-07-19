@@ -229,6 +229,55 @@ class TufEnforcementMetadataPublisherTest {
     }
 
     @Test
+    fun `read only verifier retains quarantined state without exposing it through the catalog`() {
+        val fixture = fixture()
+        val reviewed = fixture.addReviewed(8, "available")
+        fixture.tuf.publish(emptyList())
+        val metadata = TufEnforcementMetadataPublisher(fixture.repository, fixture.tuf)
+        val enforcement = EnforcementService(fixture.repository, "development", fixture.clock)
+        val request = SecurityQuarantineRequest("Immediate investigation", "critical")
+        val security = EnforcementPrincipal("prn_security_00000008", setOf(EnforcementRoles.SECURITY))
+
+        enforcement.securityQuarantineRelease(
+            reviewed.release.record.`package`,
+            reviewed.release.record.version,
+            request,
+            security,
+        ) { incidentId -> metadata.publishSecurityQuarantine(reviewed.subject, request, incidentId) }
+
+        val publicCatalog = ReadOnlyRegistryRepository(fixture.repository)
+        assertNull(publicCatalog.getRelease(reviewed.release.record.`package`, reviewed.release.record.version))
+        assertTrue(publicCatalog.listReleases(reviewed.release.record.`package`).isEmpty())
+
+        val verificationRepository = TufVerificationRegistryRepository(fixture.repository)
+        assertEquals(
+            "security-quarantined",
+            verificationRepository.getRelease(
+                reviewed.release.record.`package`,
+                reviewed.release.record.version,
+            )!!.record.state.availability,
+        )
+        val keys = fixture.online.publicKeys()
+        val verifier = TufPublisher(
+            verificationRepository,
+            ReadOnlyRegistryObjectStorage(fixture.storage),
+            TufOnlineSigners(
+                PublicKeyOnlyTufSigner(keys.releases),
+                PublicKeyOnlyTufSigner(keys.security),
+                PublicKeyOnlyTufSigner(keys.snapshot),
+                PublicKeyOnlyTufSigner(keys.timestamp),
+            ),
+            "development",
+            REPOSITORY_ID,
+            ORIGIN,
+            fixture.clock,
+        )
+
+        assertTrue(verifier.verifyFreshTransaction() > 0)
+        assertFailsWith<IllegalStateException> { verificationRepository.nextMetadataVersion() }
+    }
+
+    @Test
     fun `committed state defeats stale snapshots while exact activation draft is admitted`() {
         val fixture = fixture()
         val committed = fixture.addReviewed(5, "yanked")

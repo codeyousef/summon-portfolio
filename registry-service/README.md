@@ -1,12 +1,14 @@
-# Seen development registry service
+# Seen registry service
 
-An isolated Kotlin/JVM service image for the staged Seen package registry. Its
-execution modes are deployed as separate public API, review worker,
+An isolated Kotlin/JVM service image for the staged Seen package registry. The
+development environment can deploy separate public API, review worker,
 operation-specific coordinator, ephemeral importer, and private role-locked
-signer workloads. It uses Aether for HTTP, Summon for the public catalog,
-Firestore for records, and GCS for quarantine/public objects and signed
-metadata. Only a role-locked signer workload can open one online KMS key
-version; local Ed25519 keys are development-test only.
+signer workloads. Production initially deploys only the credential-free
+read-only public API plus separately gated trust-maintenance jobs. The service
+uses Aether for HTTP, Summon for the public catalog, Firestore for records, and
+GCS for quarantine/public objects and signed metadata. Only a role-locked
+signer workload can open one online KMS key version; local Ed25519 keys are
+development-test only.
 
 The `opaque-dev` writer mode is deliberately temporary and internal-only. It is
 rejected outside `development`; `REGISTRY_WRITERS_ENABLED` defaults to `false`.
@@ -27,6 +29,27 @@ validated at startup. The service request body limit is 25 MiB plus one byte so
 oversized archive uploads are rejected before materialization.
 Release upload reservations last 25 hours so the contract's full 24-hour
 byte-exact idempotency replay window always returns usable upload instructions.
+
+## Production read-only mode
+
+`serve-read-only-public-api` is accepted only with
+`REGISTRY_ENVIRONMENT=production`. The managed production root supplies the
+isolated repository ID `seen-prod-registry-v1` and origin
+`https://seen.yousef.codes/packages`. The mode rejects publisher,
+trust-and-safety, security-action, quarantine, signer URL, private-key, and KMS
+key-version configuration at startup.
+
+This mode exposes only health, catalog, package/release/source-proof, download,
+blob, and signed-metadata reads. The repository layer filters out private and
+security-quarantined releases; only public available or yanked releases are
+readable. Package creation, release reservation, archive upload/completion,
+yank/unyank, report/appeal review, quarantine, and reinstatement routes are not
+installed. The runtime receives read-only Firestore, public-object, and
+metadata-object authority and has no signer invocation or metadata write path.
+
+Production infrastructure is inert by default and retains no writer, action,
+or schedule selector. Follow the phased saved-plan, trust-ceremony, gateway,
+and verification gates in [registry infrastructure](../infra/registry/README.md#production-read-only-rollout).
 
 ## Development owner bootstrap
 
@@ -69,8 +92,9 @@ closed instead of escalating its own permissions.
 The complete public ceremony, custody, rotation, recovery, audit, and drill
 procedure is in [Signing operations](docs/signing-operations.md).
 
-`describe-signing-policy` prints the machine-checkable deployment policy
-without loading runtime configuration. Root is offline 2-of-3, targets is
+`describe-signing-policy` prints the machine-checkable deployment policy for
+`REGISTRY_ENVIRONMENT` without loading any secret or private-key configuration.
+Root is offline 2-of-3, targets is
 offline 2-of-2, and releases/security/snapshot/timestamp each use a distinct
 private signer service, service account, and online key.
 

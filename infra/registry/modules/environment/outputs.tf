@@ -17,35 +17,96 @@ output "online_key_versions" {
 }
 
 output "application_service_uris" {
-  value = var.enabled && var.workloads_enabled ? {
+  value = var.enabled ? {
     for key, service in google_cloud_run_v2_service.application : key => service.uri
   } : {}
 }
 
 output "signer_service_uris" {
-  value = var.enabled && var.workloads_enabled ? {
+  value = var.enabled && local.signers_enabled ? {
     for key, service in google_cloud_run_v2_service.signer : key => service.uri
   } : {}
 }
 
+output "enabled_services" {
+  description = "Service APIs enabled by the foundation; exposed for deployment-contract tests."
+  value       = var.enabled ? toset(keys(google_project_service.required)) : toset([])
+}
+
+output "signer_deletion_protection" {
+  description = "Deletion-protection state for selected signers; exposed for ceremony cleanup tests."
+  value = var.enabled ? {
+    for key, service in google_cloud_run_v2_service.signer : key => service.deletion_protection
+  } : {}
+}
+
+output "application_deletion_protection" {
+  description = "Deletion-protection state for selected application services; exposed for lifecycle tests."
+  value = var.enabled ? {
+    for key, service in google_cloud_run_v2_service.application : key => service.deletion_protection
+  } : {}
+}
+
+output "long_lived_job_deletion_protection" {
+  description = "Deletion-protection state for selected long-lived jobs; exposed for lifecycle tests."
+  value = var.enabled ? {
+    for key, job in google_cloud_run_v2_job.long_lived : key => job.deletion_protection
+  } : {}
+}
+
+output "cloudkms_audit_log_types" {
+  description = "Cloud KMS audit-log types enabled for signing-alert coverage."
+  value = var.enabled && var.monitoring_enabled ? toset([
+    for config in google_project_iam_audit_config.cloudkms_data_read[0].audit_log_config : config.log_type
+  ]) : toset([])
+}
+
+output "kms_signing_metric_filters" {
+  description = "Unexpected-signing metric filters keyed by TUF role; exposed for monitoring-contract tests."
+  value = var.enabled && var.monitoring_enabled ? {
+    for role in local.roles : role => google_logging_metric.registry_alert["unexpected_kms_signing_${role}"].filter
+  } : {}
+}
+
+output "operational_event_metric_filters" {
+  description = "Runtime event filters keyed by monitored operational event."
+  value = var.enabled && var.monitoring_enabled ? {
+    signer_rejection = google_logging_metric.registry_alert["signer_authorization_denied"].filter
+    service_expiry   = google_logging_metric.registry_alert["metadata_expiry_breach_service"].filter
+    job_expiry       = google_logging_metric.registry_alert["metadata_expiry_breach_job"].filter
+  } : {}
+}
+
 output "gateway_environment" {
-  description = "Exact public host and three independently routable private origins for the portfolio gateway."
-  value = var.enabled && var.workloads_enabled && !var.edge_cutover_enabled ? {
-    SEEN_REGISTRY_PUBLIC_HOST                   = var.uptime_host
-    SEEN_REGISTRY_UPSTREAM_URL                  = google_cloud_run_v2_service.application["api"].uri
-    SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL  = google_cloud_run_v2_service.application["release_actions"].uri
-    SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL = google_cloud_run_v2_service.application["security_actions"].uri
+  description = "Exact public host and selected independently routable private origins for the portfolio gateway."
+  value = var.enabled && local.api_enabled && !var.edge_cutover_enabled ? merge(
+    {
+      SEEN_REGISTRY_PUBLIC_HOST  = var.uptime_host
+      SEEN_REGISTRY_UPSTREAM_URL = google_cloud_run_v2_service.application["api"].uri
+    },
+    var.workloads_enabled ? {
+      SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL  = google_cloud_run_v2_service.application["release_actions"].uri
+      SEEN_REGISTRY_SECURITY_ACTIONS_UPSTREAM_URL = google_cloud_run_v2_service.application["security_actions"].uri
+    } : {},
+  ) : {}
+}
+
+output "read_only_gateway_environment" {
+  description = "Credential-free production catalog gateway contract. Action upstreams are intentionally absent."
+  value = var.enabled && local.read_only_api_enabled ? {
+    SEEN_REGISTRY_PUBLIC_HOST  = var.uptime_host
+    SEEN_REGISTRY_UPSTREAM_URL = google_cloud_run_v2_service.application["api"].uri
   } : {}
 }
 
 output "long_lived_job_names" {
-  value = var.enabled && var.workloads_enabled ? {
+  value = var.enabled ? {
     for key, job in google_cloud_run_v2_job.long_lived : key => job.name
   } : {}
 }
 
 output "ceremony_job_names" {
-  value = var.enabled && var.workloads_enabled && length(var.ceremony_operations) > 0 ? {
+  value = var.enabled && length(var.ceremony_operations) > 0 ? {
     for key, job in google_cloud_run_v2_job.ceremony : key => job.name
   } : {}
 }
