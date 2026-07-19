@@ -7,6 +7,7 @@ enable_organization_guardrails           = false
 organization_guardrail_effective         = false
 enable_organization_policy_admin_lease   = false
 github_infrastructure_environments_reviewed = false
+github_operations_environments_reviewed     = false
 enable_production_project_bootstrap      = false
 enable_project_policy_admin_lease        = false
 enable_temporary_human_state_migration_access = false

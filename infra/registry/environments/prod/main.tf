@@ -163,6 +163,8 @@ module "registry" {
   externally_managed_services               = local.bootstrap_owned_services
   infrastructure_executor_service_account   = var.iac_executor_service_account
   infrastructure_executor_act_as_identities = local.infrastructure_executor_act_as_identities
+  job_operations_service_account            = var.job_operations_service_account
+  job_operations_viewer_role                = var.job_operations_viewer_role
 
   # Production launch surfaces are separately gated and remain inert by
   # default. The writer stack, schedules, unpause, and edge are not exposed by

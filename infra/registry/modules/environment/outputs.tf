@@ -111,6 +111,28 @@ output "ceremony_job_names" {
   } : {}
 }
 
+output "job_operations_authorizations" {
+  description = "Exact production jobs on which the protected operations identity receives invocation and one-permission preflight-view authority."
+  value = merge(
+    {
+      for key, binding in google_cloud_run_v2_job_iam_member.operations_long_lived : key => {
+        job         = binding.name
+        member      = binding.member
+        role        = binding.role
+        viewer_role = google_cloud_run_v2_job_iam_member.operations_long_lived_viewer[key].role
+      }
+    },
+    {
+      for key, binding in google_cloud_run_v2_job_iam_member.operations_ceremony : key => {
+        job         = binding.name
+        member      = binding.member
+        role        = binding.role
+        viewer_role = google_cloud_run_v2_job_iam_member.operations_ceremony_viewer[key].role
+      }
+    },
+  )
+}
+
 output "network" {
   value = var.enabled ? try({
     network    = google_compute_network.registry[0].name

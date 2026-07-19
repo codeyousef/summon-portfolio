@@ -41,3 +41,12 @@
 - Treat temporary plan-reader IAM as an approval-scoped lease. Remove its
   binding, delete its custom role, and verify both removals before reporting
   completion.
+
+## Production deployment events
+
+- When merging to `master` must trigger downstream production workflows, use a
+  user-authenticated Git or GitHub web merge path. In this repository,
+  app/connector merges have suppressed downstream workflow events.
+- After the merge, verify that `master` points to the exact reviewed merge SHA
+  and that the expected workflow run was created for that SHA before reporting
+  the production-triggering merge complete.

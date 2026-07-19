@@ -128,9 +128,20 @@ operation cannot be cancelled by a newer dispatch.
 
 #### Protected GitHub environments and encrypted review
 
-Create both `seen-registry-production-plan` and
-`seen-registry-production-apply` before setting
-`github_infrastructure_environments_reviewed=true`. Each environment must:
+Create all four protected environments before setting either review gate:
+
+- `seen-registry-production-plan`;
+- `seen-registry-production-apply`;
+- `seen-registry-production-materials`;
+- `seen-registry-production-jobs`.
+
+Set `github_infrastructure_environments_reviewed=true` only after the plan and
+apply environments pass these checks. Separately set
+`github_operations_environments_reviewed=true` only after the materials and
+jobs environments pass them. Keeping the gates separate prevents an older
+infrastructure-only attestation from activating operations federation.
+
+Each environment must:
 
 - allow deployments only from `master`;
 - require a reviewer who is not the workflow initiator;
@@ -138,8 +149,8 @@ Create both `seen-registry-production-plan` and
 - disable administrator bypass.
 
 Do not record the attestation until the repository has a second eligible human
-reviewer and both environments have been tested to fail closed. Configure these
-environment-scoped values exactly:
+reviewer and all four environments have been tested to fail closed. Configure
+these environment-scoped values exactly:
 
 `seen-registry-production-plan` variables:
 
@@ -172,6 +183,33 @@ environment-scoped values exactly:
 - `SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_B64`;
 - `SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_PASSPHRASE`.
 
+`seen-registry-production-materials` variables:
+
+- `GCP_REGISTRY_PROD_OPERATIONS_WORKLOAD_IDENTITY_PROVIDER`: the full
+  `operations_workload_identity_providers["materials"]` output, ending in
+  `/workloadIdentityPools/seen-registry-prod-infra/providers/material-ops`;
+- `GCP_REGISTRY_PROD_OPERATIONS_SERVICE_ACCOUNT`:
+  `seen-registry-prod-materials@seen-registry-prod-476219.iam.gserviceaccount.com`.
+
+`seen-registry-production-materials` secrets:
+
+- `SEEN_REGISTRY_PROD_BOOTSTRAP_ROOT_ENVELOPE_PAYLOAD_B64`;
+- `SEEN_REGISTRY_PROD_BOOTSTRAP_TARGETS_ENVELOPE_PAYLOAD_B64`;
+- `SEEN_REGISTRY_PROD_TARGETS_RENEWAL_ENVELOPE_PAYLOAD_B64`;
+- `SEEN_REGISTRY_PROD_TARGETS_RELEASES_ROTATION_ENVELOPE_PAYLOAD_B64`;
+- `SEEN_REGISTRY_PROD_TARGETS_SECURITY_ROTATION_ENVELOPE_PAYLOAD_B64`;
+- `SEEN_REGISTRY_PROD_ROOT_ROTATION_ENVELOPE_PAYLOAD_B64`.
+
+`seen-registry-production-jobs` variables:
+
+- `GCP_REGISTRY_PROD_OPERATIONS_WORKLOAD_IDENTITY_PROVIDER`: the full
+  `operations_workload_identity_providers["jobs"]` output, ending in
+  `/workloadIdentityPools/seen-registry-prod-infra/providers/job-ops`;
+- `GCP_REGISTRY_PROD_OPERATIONS_SERVICE_ACCOUNT`:
+  `seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com`.
+
+The jobs environment has no payload secrets.
+
 Generate a dedicated passphrase-protected RSA OpenPGP encryption key on an
 offline host. Export only its public key for the plan environment. Store the
 base64-encoded private-key export and its passphrase only in the apply
@@ -201,30 +239,34 @@ fingerprint.
 All bootstrap gates start false. Complete each numbered item with a separate
 full saved plan where it changes managed state:
 
-1. Create and protect both GitHub environments, prepare the offline encryption
-   key, and obtain the one-time Billing Account IAM Admin capability (or an
-   equivalent exact `setIamPolicy` capability) on the selected billing account.
+1. Create and protect all four GitHub environments, prepare the offline
+   encryption key, and obtain the one-time Billing Account IAM Admin capability
+   (or an equivalent exact `setIamPolicy` capability) on the selected billing
+   account.
    The latter is an external prerequisite for installing the two exact-account
-   `seenRegistryBillingRefresh` read bindings; neither WIF identity receives
-   billing-policy mutation permission. Remove a temporary external billing
-   privilege after those bindings are verified. The direct-human bootstrap also
-   requires separately approved, time-bounded authority to create the project,
+   `seenRegistryBillingRefresh` read bindings; neither infrastructure WIF
+   identity receives billing-policy mutation permission. Remove a temporary
+   external billing privilege after those bindings are verified. The
+   direct-human bootstrap also requires separately approved, time-bounded
+   authority to create the project,
    define organization custom roles, update organization IAM, enable the two
    control-project APIs, and update IAM on the exact control project. These are
-   external bootstrap prerequisites, not standing grants created for either
-   WIF identity; remove any temporary assignments and verify their absence after
-   the corresponding bootstrap phase.
+   external bootstrap prerequisites, not standing grants created for an
+   infrastructure WIF identity; remove any temporary assignments and verify
+   their absence after the corresponding bootstrap phase.
 2. Copy `environments/prod-bootstrap/backend.hcl.example` to the ignored
    backend file. The initial backend is the mode-0600 local path
    `.state/terraform.tfstate`. It contains infrastructure configuration
    metadata, but no secret payload versions or private signing material. Never
    place it in the development bucket.
 3. Apply only `enable_control_project_apis=true` first. It enables only
-   Organization Policy and Cloud Billing in `portfolio-476219`. The organization
-   already owns `compute.skipDefaultNetworkCreation`; before any apply that
-   includes the guardrail resource, import that exact policy into
-   `google_org_policy_policy.skip_default_network[0]`. Review the import and
-   post-import plan as a state mutation; never replace the existing policy.
+   Organization Policy and Cloud Billing in `portfolio-476219`. Inspect the
+   organization for a stored `compute.skipDefaultNetworkCreation` policy before
+   planning the guardrail. If one exists, import that exact policy into
+   `google_org_policy_policy.skip_default_network[0]` and review both the import
+   and post-import plan as state mutations. If no stored policy exists, review
+   creation of the enforced policy in the complete saved plan. Never assume a
+   prior policy exists or try to import an absent policy.
 4. Apply `enable_organization_guardrails=true` with the temporary organization
    Policy Admin lease. Wait for propagation, independently verify the effective
    no-default-network policy, and only then set
@@ -236,8 +278,8 @@ full saved plan where it changes managed state:
    the OIDC handoff false; enable only the temporary project Policy Admin lease
    and exact human state-migration access required for the reviewed phases. This
    creates the isolated project, eight bootstrap-owned APIs, two state buckets,
-   the monitoring channel, protected plan/apply identities and providers, and
-   their bounded custom roles.
+   the monitoring channel, the four protected plan, apply, materials, and jobs
+   identities and providers, and their bounded custom roles.
 6. Immediately audit direct project Owner and Editor bindings. Confirm the only
    automatically added bootstrap Owner is `user:yousef@felidai.com`. In its own
    plan set `project_creator_owner_member="user:yousef@felidai.com"` and
@@ -356,33 +398,69 @@ ordinary plan may detect that drift, but its apply identity intentionally cannot
 remediate it. Stop and use a separately approved privileged path; do not expand
 the ordinary production identity to make the plan apply.
 
-#### Residual protected-operations gate
+#### Protected production operations
 
-This infrastructure change does not create or authorize a post-handoff
-operations principal or workflow. Neither infrastructure identity has
-`cloudkms.cryptoKeyVersions.create`, `secretmanager.versions.add`, or
-`run.jobs.run`. Consequently, the current workflow can provision a reviewed job
-definition and its transient runtime authority, but it cannot create the
-concrete online signing versions, add offline-envelope payload versions, or
-invoke ceremony, verifier, or refresh jobs.
+The `operate-seen-registry-production.yml` workflow is the post-handoff path for
+bounded material and job operations. It is manual `workflow_dispatch` only,
+runs only from the exact `master` workflow commit, requires
+`OPERATE_SEEN_REGISTRY_PRODUCTION`, and serializes all production operations
+without cancelling an in-progress dispatch. Each dispatch selects exactly one
+of these operation classes:
 
-Before Owner removal, those KMS and secret-version prerequisites may be created
-only through a separately approved direct-human ceremony that names every key,
-secret, version, and payload source. If that ceremony is not completed before
-handoff, a separately approved protected operations identity/path with exact
-resource and job scope is required afterward. In either case, an exact
-post-handoff `run.jobs.run` path is still required before any job can execute.
-Do not add these permissions to the plan or infrastructure apply identities and
-do not treat this infrastructure PR as approval for any of those cloud
-operations. Production runtime activation remains blocked until that follow-up
-path is implemented, reviewed, and tested to fail closed.
+- create the next reviewed version on one of the four exact online signing
+  keys;
+- add the next reviewed payload version to one of the six exact envelope
+  secrets;
+- execute one of the nine allowlisted ceremony, verifier, or refresh jobs with
+  its exact immutable image, runtime identity, arguments, one task, and zero
+  retries.
+
+Materials dispatches require the exact positive next version. Secret-version
+dispatches additionally require the SHA-256 of the exact decoded Secret Manager
+payload bytes. Job dispatches require the exact immutable Artifact Registry
+image URI and reject material-version inputs. The materials identity has only
+bounded KMS-version creation/inspection and Secret Manager version-addition
+authority; it cannot sign or read secret payloads. The job identity can inspect
+and run only the currently selected exact jobs. Neither operations identity has
+infrastructure plan/apply, state, organization, billing, or control-project
+authority, and neither infrastructure identity receives material or job
+operations authority.
+
+Every `*_PAYLOAD_B64` GitHub secret is base64 of the exact bytes to store in
+Secret Manager. For the initial bootstrap root and targets envelopes, the bytes
+stored in Secret Manager are themselves base64 text, so the GitHub secret
+base64-encodes that text and therefore double-encodes the source envelope. For
+targets renewal, targets role rotations, and root rotation, the bytes stored in
+Secret Manager are raw envelope JSON, so the GitHub secret is one base64
+encoding of that raw JSON. Compute `expected_payload_sha256` over the bytes
+obtained after decoding the GitHub secret once, never over the GitHub secret
+text or a differently encoded source file.
+
+This path creates no schedule and grants no standing runtime job authority for
+an unselected job. A reviewed infrastructure apply must first provision the
+selected job and its resource-level authorization; after successful execution,
+another complete saved-plan apply removes transient ceremony jobs and authority.
+Creating the identities, configuring the protected environments, or merging the
+workflow is not approval to create a key version, add payload bytes, or run a
+job. Each external operation still requires its own protected-environment
+review and exact dispatch inputs.
+
+Manual operation must provide the same freshness outcome that an automated
+production cadence would provide. Releases metadata has a seven-day maximum
+lifetime, security and timestamp metadata have six-hour maximum lifetimes, and
+snapshot metadata has a one-day maximum lifetime. Complete and verify the
+release and security refreshes with alert headroom before any dependent role
+expires. A successful one-time bootstrap or refresh is not durable production
+readiness: if the manual cadence cannot be maintained, the registry must remain
+fail closed until a separately reviewed scheduled path provides equivalent
+freshness.
 
 #### Runtime rollout order
 
 Stop if any reviewed plan includes a writer/action service, schedule, edge
 resource, broad signer authority, mutable image reference, development project
 reference, or unexpected destroy/replace action. After the Owner-removal,
-WIF-handoff, and residual protected-operations gates are verified, enable
+WIF-handoff, and protected-operations gates are verified, enable
 production in this order:
 
 1. If the image publisher was pre-provisioned, protect

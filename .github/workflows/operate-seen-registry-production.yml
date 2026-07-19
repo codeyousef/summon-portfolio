@@ -1,0 +1,295 @@
+name: Operate Seen registry production
+run-name: "prod registry ${{ inputs.operation }} | version=${{ inputs.expected_next_version }} | payload=${{ inputs.expected_payload_sha256 }} | image=${{ inputs.expected_image_uri }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Exact protected production operation
+        required: true
+        type: choice
+        options:
+          - create_releases_key_version
+          - create_security_key_version
+          - create_snapshot_key_version
+          - create_timestamp_key_version
+          - add_bootstrap_root_envelope
+          - add_bootstrap_targets_envelope
+          - add_targets_renewal_envelope
+          - add_targets_releases_rotation_envelope
+          - add_targets_security_rotation_envelope
+          - add_root_rotation_envelope
+          - run_offline_bootstrap
+          - run_online_bootstrap
+          - run_root_verifier
+          - run_release_refresh
+          - run_security_refresh
+          - run_targets_renewal
+          - run_targets_releases_rotation
+          - run_targets_security_rotation
+          - run_root_import
+      expected_next_version:
+        description: Exact positive next KMS or Secret Manager version; empty for job operations
+        required: false
+        type: string
+      expected_payload_sha256:
+        description: SHA-256 of exact decoded Secret Manager payload bytes; empty otherwise
+        required: false
+        type: string
+      expected_image_uri:
+        description: Exact immutable registry image URI for job operations; empty for material operations
+        required: false
+        type: string
+      confirmation:
+        description: Enter OPERATE_SEEN_REGISTRY_PRODUCTION
+        required: true
+        type: string
+
+concurrency:
+  group: seen-registry-production-control
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  GCLOUD_VERSION: 570.0.0
+  PROD_PROJECT_ID: seen-registry-prod-476219
+  OPERATIONS_POOL_ID: seen-registry-prod-infra
+  OPERATIONS_WORKFLOW_REF: codeyousef/summon-portfolio/.github/workflows/operate-seen-registry-production.yml@refs/heads/master
+
+jobs:
+  classify:
+    name: Validate operation class
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      operation-class: ${{ steps.classify.outputs.operation-class }}
+    env:
+      OPERATION: ${{ inputs.operation }}
+      EXPECTED_NEXT_VERSION: ${{ inputs.expected_next_version }}
+      EXPECTED_PAYLOAD_SHA256: ${{ inputs.expected_payload_sha256 }}
+      EXPECTED_IMAGE_URI: ${{ inputs.expected_image_uri }}
+      OPERATION_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Reject ambiguous operation inputs
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${OPERATION_CONFIRMATION}" = "OPERATE_SEEN_REGISTRY_PRODUCTION"
+          case "${OPERATION}" in
+            create_releases_key_version|create_security_key_version|create_snapshot_key_version|create_timestamp_key_version)
+              [[ "${EXPECTED_NEXT_VERSION}" =~ ^[1-9][0-9]*$ ]]
+              test -z "${EXPECTED_PAYLOAD_SHA256}"
+              test -z "${EXPECTED_IMAGE_URI}"
+              operation_class=materials
+              ;;
+            add_bootstrap_root_envelope|add_bootstrap_targets_envelope|add_targets_renewal_envelope|add_targets_releases_rotation_envelope|add_targets_security_rotation_envelope|add_root_rotation_envelope)
+              [[ "${EXPECTED_NEXT_VERSION}" =~ ^[1-9][0-9]*$ ]]
+              [[ "${EXPECTED_PAYLOAD_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+              test -z "${EXPECTED_IMAGE_URI}"
+              operation_class=materials
+              ;;
+            run_offline_bootstrap|run_online_bootstrap|run_root_verifier|run_release_refresh|run_security_refresh|run_targets_renewal|run_targets_releases_rotation|run_targets_security_rotation|run_root_import)
+              test -z "${EXPECTED_NEXT_VERSION}"
+              test -z "${EXPECTED_PAYLOAD_SHA256}"
+              [[ "${EXPECTED_IMAGE_URI}" =~ ^us-central1-docker\.pkg\.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:[0-9a-f]{64}$ ]]
+              operation_class=jobs
+              ;;
+            *)
+              echo "Unsupported production registry operation." >&2
+              exit 1
+              ;;
+          esac
+          echo "operation-class=${operation_class}" >> "${GITHUB_OUTPUT}"
+          {
+            printf '### Exact protected production operation\n\n'
+            printf -- '- Operation: `%s`\n' "${OPERATION}"
+            printf -- '- Expected next version: `%s`\n' "${EXPECTED_NEXT_VERSION:-not-applicable}"
+            printf -- '- Expected payload SHA-256: `%s`\n' "${EXPECTED_PAYLOAD_SHA256:-not-applicable}"
+            printf -- '- Expected image: `%s`\n' "${EXPECTED_IMAGE_URI:-not-applicable}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  materials:
+    name: Perform exact material-version operation
+    if: needs.classify.outputs.operation-class == 'materials'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: seen-registry-production-materials
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      OPERATION: ${{ inputs.operation }}
+      EXPECTED_NEXT_VERSION: ${{ inputs.expected_next_version }}
+      EXPECTED_PAYLOAD_SHA256: ${{ inputs.expected_payload_sha256 }}
+      EXPECTED_IMAGE_URI: ${{ inputs.expected_image_uri }}
+      OPERATION_CONFIRMATION: ${{ inputs.confirmation }}
+      EXPECTED_OPERATOR_SERVICE_ACCOUNT: ${{ vars.GCP_REGISTRY_PROD_OPERATIONS_SERVICE_ACCOUNT }}
+      WIF_PROVIDER: ${{ vars.GCP_REGISTRY_PROD_OPERATIONS_WORKLOAD_IDENTITY_PROVIDER }}
+    steps:
+      - name: Validate immutable materials contract
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          REPOSITORY_OWNER_ID: ${{ github.repository_owner_id }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "${EVENT_NAME}" = "workflow_dispatch"
+          test "${GIT_REF}" = "refs/heads/master"
+          test "${REPOSITORY}" = "codeyousef/summon-portfolio"
+          test "${REPOSITORY_ID}" = "1091564909"
+          test "${REPOSITORY_OWNER_ID}" = "10247142"
+          test "${WORKFLOW_REF}" = "${OPERATIONS_WORKFLOW_REF}"
+          test "${WORKFLOW_SHA}" = "${COMMIT_SHA}"
+          test "${OPERATION_CONFIRMATION}" = "OPERATE_SEEN_REGISTRY_PRODUCTION"
+          expected_provider_regex="^projects/[1-9][0-9]*/locations/global/workloadIdentityPools/${OPERATIONS_POOL_ID}/providers/material-ops$"
+          [[ "${WIF_PROVIDER}" =~ ${expected_provider_regex} ]]
+          test "${EXPECTED_OPERATOR_SERVICE_ACCOUNT}" = "seen-registry-prod-materials@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+          case "${OPERATION}" in
+            create_releases_key_version|create_security_key_version|create_snapshot_key_version|create_timestamp_key_version|add_bootstrap_root_envelope|add_bootstrap_targets_envelope|add_targets_renewal_envelope|add_targets_releases_rotation_envelope|add_targets_security_rotation_envelope|add_root_rotation_envelope) ;;
+            *) echo "The materials environment rejects this operation." >&2; exit 1 ;;
+          esac
+
+      - name: Check out the exact operations commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Authenticate exact materials identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.EXPECTED_OPERATOR_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.PROD_PROJECT_ID }}
+          version: ${{ env.GCLOUD_VERSION }}
+
+      - name: Create exact KMS key version
+        if: startsWith(inputs.operation, 'create_')
+        shell: bash
+        run: bash scripts/operate-seen-registry-production.sh
+
+      - name: Add bootstrap root envelope version
+        if: inputs.operation == 'add_bootstrap_root_envelope'
+        shell: bash
+        env:
+          MATERIAL_PAYLOAD_B64: ${{ secrets.SEEN_REGISTRY_PROD_BOOTSTRAP_ROOT_ENVELOPE_PAYLOAD_B64 }}
+        run: bash scripts/operate-seen-registry-production.sh
+
+      - name: Add bootstrap targets envelope version
+        if: inputs.operation == 'add_bootstrap_targets_envelope'
+        shell: bash
+        env:
+          MATERIAL_PAYLOAD_B64: ${{ secrets.SEEN_REGISTRY_PROD_BOOTSTRAP_TARGETS_ENVELOPE_PAYLOAD_B64 }}
+        run: bash scripts/operate-seen-registry-production.sh
+
+      - name: Add targets renewal envelope version
+        if: inputs.operation == 'add_targets_renewal_envelope'
+        shell: bash
+        env:
+          MATERIAL_PAYLOAD_B64: ${{ secrets.SEEN_REGISTRY_PROD_TARGETS_RENEWAL_ENVELOPE_PAYLOAD_B64 }}
+        run: bash scripts/operate-seen-registry-production.sh
+
+      - name: Add releases rotation envelope version
+        if: inputs.operation == 'add_targets_releases_rotation_envelope'
+        shell: bash
+        env:
+          MATERIAL_PAYLOAD_B64: ${{ secrets.SEEN_REGISTRY_PROD_TARGETS_RELEASES_ROTATION_ENVELOPE_PAYLOAD_B64 }}
+        run: bash scripts/operate-seen-registry-production.sh
+
+      - name: Add security rotation envelope version
+        if: inputs.operation == 'add_targets_security_rotation_envelope'
+        shell: bash
+        env:
+          MATERIAL_PAYLOAD_B64: ${{ secrets.SEEN_REGISTRY_PROD_TARGETS_SECURITY_ROTATION_ENVELOPE_PAYLOAD_B64 }}
+        run: bash scripts/operate-seen-registry-production.sh
+
+      - name: Add root rotation envelope version
+        if: inputs.operation == 'add_root_rotation_envelope'
+        shell: bash
+        env:
+          MATERIAL_PAYLOAD_B64: ${{ secrets.SEEN_REGISTRY_PROD_ROOT_ROTATION_ENVELOPE_PAYLOAD_B64 }}
+        run: bash scripts/operate-seen-registry-production.sh
+
+  jobs:
+    name: Execute exact selected production job
+    if: needs.classify.outputs.operation-class == 'jobs'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: seen-registry-production-jobs
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      OPERATION: ${{ inputs.operation }}
+      EXPECTED_NEXT_VERSION: ${{ inputs.expected_next_version }}
+      EXPECTED_PAYLOAD_SHA256: ${{ inputs.expected_payload_sha256 }}
+      EXPECTED_IMAGE_URI: ${{ inputs.expected_image_uri }}
+      OPERATION_CONFIRMATION: ${{ inputs.confirmation }}
+      EXPECTED_OPERATOR_SERVICE_ACCOUNT: ${{ vars.GCP_REGISTRY_PROD_OPERATIONS_SERVICE_ACCOUNT }}
+      WIF_PROVIDER: ${{ vars.GCP_REGISTRY_PROD_OPERATIONS_WORKLOAD_IDENTITY_PROVIDER }}
+    steps:
+      - name: Validate immutable job contract
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          REPOSITORY_OWNER_ID: ${{ github.repository_owner_id }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "${EVENT_NAME}" = "workflow_dispatch"
+          test "${GIT_REF}" = "refs/heads/master"
+          test "${REPOSITORY}" = "codeyousef/summon-portfolio"
+          test "${REPOSITORY_ID}" = "1091564909"
+          test "${REPOSITORY_OWNER_ID}" = "10247142"
+          test "${WORKFLOW_REF}" = "${OPERATIONS_WORKFLOW_REF}"
+          test "${WORKFLOW_SHA}" = "${COMMIT_SHA}"
+          test "${OPERATION_CONFIRMATION}" = "OPERATE_SEEN_REGISTRY_PRODUCTION"
+          expected_provider_regex="^projects/[1-9][0-9]*/locations/global/workloadIdentityPools/${OPERATIONS_POOL_ID}/providers/job-ops$"
+          [[ "${WIF_PROVIDER}" =~ ${expected_provider_regex} ]]
+          test "${EXPECTED_OPERATOR_SERVICE_ACCOUNT}" = "seen-registry-prod-job-runner@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+          case "${OPERATION}" in
+            run_offline_bootstrap|run_online_bootstrap|run_root_verifier|run_release_refresh|run_security_refresh|run_targets_renewal|run_targets_releases_rotation|run_targets_security_rotation|run_root_import) ;;
+            *) echo "The job environment rejects this operation." >&2; exit 1 ;;
+          esac
+
+      - name: Check out the exact operations commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Authenticate exact job-runner identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.EXPECTED_OPERATOR_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.PROD_PROJECT_ID }}
+          version: ${{ env.GCLOUD_VERSION }}
+
+      - name: Execute and verify exact job
+        shell: bash
+        run: bash scripts/operate-seen-registry-production.sh

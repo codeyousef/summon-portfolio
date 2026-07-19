@@ -61,6 +61,8 @@ run "bootstrap_is_inert_by_default" {
       output.production_notification_channel_id == null &&
       output.infrastructure_plan_service_account == null &&
       output.project_executor_service_account == null &&
+      output.materials_operations_service_account == null &&
+      output.job_operations_service_account == null &&
       output.infrastructure_workload_identity_pool == null &&
       output.active_bootstrap_identity == null &&
       length(output.enabled_control_project_services) == 0 &&
@@ -69,10 +71,59 @@ run "bootstrap_is_inert_by_default" {
       length(google_storage_bucket_iam_policy.state) == 0 &&
       length(google_service_account.infrastructure) == 0 &&
       length(google_iam_workload_identity_pool_provider.infrastructure) == 0 &&
+      length(output.infrastructure_workload_identity_providers) == 0 &&
+      length(output.operations_workload_identity_providers) == 0 &&
+      !var.github_infrastructure_environments_reviewed &&
+      !var.github_operations_environments_reviewed &&
       !output.portfolio_gateway_exception_enabled
     )
     error_message = "Every production bootstrap surface must remain inert by default."
   }
+}
+
+run "infrastructure_review_does_not_substitute_for_operations_review" {
+  command = plan
+
+  variables {
+    github_infrastructure_environments_reviewed = true
+    project_id                                  = "seen-registry-prod-476219"
+    organization_id                             = "567958019562"
+    billing_account_id                          = "ABCDEF-123456-ABCDEF"
+    bootstrap_operator_members                  = ["user:yousef@felidai.com"]
+    notification_email                          = "yousef@felidai.com"
+  }
+
+  assert {
+    condition = (
+      var.github_infrastructure_environments_reviewed &&
+      !var.github_operations_environments_reviewed &&
+      length(google_service_account.infrastructure) == 0 &&
+      length(google_iam_workload_identity_pool_provider.infrastructure) == 0 &&
+      length(google_service_account_iam_member.infrastructure_oidc) == 0 &&
+      length(google_project_iam_member.material_key_versions) == 0 &&
+      length(google_project_iam_member.material_secret_versions) == 0
+    )
+    error_message = "An infrastructure-only review must leave every operations identity, provider, trust, and material grant inert."
+  }
+}
+
+run "project_bootstrap_rejects_missing_operations_review" {
+  command = plan
+
+  variables {
+    enable_control_project_apis                 = true
+    enable_organization_guardrails              = true
+    organization_guardrail_effective            = true
+    github_infrastructure_environments_reviewed = true
+    enable_production_project_bootstrap         = true
+    project_id                                  = "seen-registry-prod-476219"
+    organization_id                             = "567958019562"
+    billing_account_id                          = "ABCDEF-123456-ABCDEF"
+    bootstrap_operator_members                  = ["user:yousef@felidai.com"]
+    notification_email                          = "yousef@felidai.com"
+  }
+
+  expect_failures = [var.enable_production_project_bootstrap]
 }
 
 run "control_project_apis_are_a_separate_first_phase" {
@@ -133,6 +184,7 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
     enable_organization_guardrails              = true
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     enable_project_policy_admin_lease           = true
     project_id                                  = "seen-registry-prod-476219"
@@ -178,43 +230,54 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
 
   assert {
     condition = (
-      toset(keys(google_service_account.infrastructure)) == toset(["plan", "apply"]) &&
+      toset(keys(google_service_account.infrastructure)) == toset(["plan", "apply", "materials", "jobs"]) &&
       google_service_account.infrastructure["plan"].account_id == "seen-registry-prod-plan" &&
       google_service_account.infrastructure["apply"].account_id == "seen-registry-prod-iac" &&
+      google_service_account.infrastructure["materials"].account_id == "seen-registry-prod-materials" &&
+      google_service_account.infrastructure["jobs"].account_id == "seen-registry-prod-job-runner" &&
       google_iam_workload_identity_pool.infrastructure[0].workload_identity_pool_id == "seen-registry-prod-infra" &&
       google_iam_workload_identity_pool.infrastructure[0].disabled == false &&
-      toset(keys(google_iam_workload_identity_pool_provider.infrastructure)) == toset(["plan", "apply"]) &&
+      toset(keys(google_iam_workload_identity_pool_provider.infrastructure)) == toset(["plan", "apply", "materials", "jobs"]) &&
       google_iam_workload_identity_pool_provider.infrastructure["plan"].workload_identity_pool_provider_id == "infra-plan" &&
-      google_iam_workload_identity_pool_provider.infrastructure["apply"].workload_identity_pool_provider_id == "infra-apply"
+      google_iam_workload_identity_pool_provider.infrastructure["apply"].workload_identity_pool_provider_id == "infra-apply" &&
+      google_iam_workload_identity_pool_provider.infrastructure["materials"].workload_identity_pool_provider_id == "material-ops" &&
+      google_iam_workload_identity_pool_provider.infrastructure["jobs"].workload_identity_pool_provider_id == "job-ops" &&
+      toset(keys(output.infrastructure_workload_identity_providers)) == toset(["plan", "apply"]) &&
+      toset(keys(output.operations_workload_identity_providers)) == toset(["materials", "jobs"]) &&
+      output.job_operations_viewer_role == "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
     )
-    error_message = "Bootstrap must create exact separate plan/apply service accounts and providers in one dedicated pool."
+    error_message = "Bootstrap must create exact separate plan/apply/materials/jobs service accounts and providers in one dedicated pool."
   }
 
   assert {
     condition = alltrue([
       for identity, provider in google_iam_workload_identity_pool_provider.infrastructure :
       provider.oidc[0].issuer_uri == "https://token.actions.githubusercontent.com" &&
-      provider.attribute_mapping["google.subject"] == "'repo:codeyousef/summon-portfolio:environment:seen-registry-production-${identity}'" &&
-      provider.attribute_mapping["attribute.repository"] == "assertion.repository" &&
-      provider.attribute_mapping["attribute.repository_id"] == "assertion.repository_id" &&
-      provider.attribute_mapping["attribute.repository_owner_id"] == "assertion.repository_owner_id" &&
-      provider.attribute_mapping["attribute.ref"] == "assertion.ref" &&
-      provider.attribute_mapping["attribute.ref_type"] == "assertion.ref_type" &&
-      provider.attribute_mapping["attribute.workflow_ref"] == "assertion.workflow_ref" &&
-      provider.attribute_mapping["attribute.event_name"] == "assertion.event_name" &&
-      provider.attribute_mapping["attribute.environment"] == "assertion.environment" &&
-      provider.attribute_mapping["attribute.workflow_sha"] == "assertion.workflow_sha" &&
-      provider.attribute_mapping["attribute.sha"] == "assertion.sha" &&
-      strcontains(provider.attribute_condition, "assertion.sub == 'repo:codeyousef/summon-portfolio:environment:seen-registry-production-${identity}'") &&
-      strcontains(provider.attribute_condition, "assertion.repository == 'codeyousef/summon-portfolio'") &&
-      strcontains(provider.attribute_condition, "assertion.repository_id == '1091564909'") &&
-      strcontains(provider.attribute_condition, "assertion.repository_owner_id == '10247142'") &&
-      strcontains(provider.attribute_condition, "assertion.ref == 'refs/heads/master'") &&
-      strcontains(provider.attribute_condition, "assertion.ref_type == 'branch'") &&
-      strcontains(provider.attribute_condition, "assertion.workflow_ref == 'codeyousef/summon-portfolio/.github/workflows/deploy-seen-registry-infrastructure.yml@refs/heads/master'") &&
-      strcontains(provider.attribute_condition, "assertion.event_name == 'workflow_dispatch'") &&
-      strcontains(provider.attribute_condition, "assertion.environment == 'seen-registry-production-${identity}'") &&
-      strcontains(provider.attribute_condition, "assertion.workflow_sha == assertion.sha")
+      provider.attribute_mapping == tomap({
+        "google.subject"                = "'repo:codeyousef/summon-portfolio:environment:seen-registry-production-${identity}'"
+        "attribute.environment"         = "assertion.environment"
+        "attribute.event_name"          = "assertion.event_name"
+        "attribute.ref"                 = "assertion.ref"
+        "attribute.ref_type"            = "assertion.ref_type"
+        "attribute.repository"          = "assertion.repository"
+        "attribute.repository_id"       = "assertion.repository_id"
+        "attribute.repository_owner_id" = "assertion.repository_owner_id"
+        "attribute.sha"                 = "assertion.sha"
+        "attribute.workflow_ref"        = "assertion.workflow_ref"
+        "attribute.workflow_sha"        = "assertion.workflow_sha"
+      }) &&
+      provider.attribute_condition == join(" && ", [
+        "assertion.sub == 'repo:codeyousef/summon-portfolio:environment:seen-registry-production-${identity}'",
+        "assertion.repository == 'codeyousef/summon-portfolio'",
+        "assertion.repository_id == '1091564909'",
+        "assertion.repository_owner_id == '10247142'",
+        "assertion.ref == 'refs/heads/master'",
+        "assertion.ref_type == 'branch'",
+        "assertion.workflow_ref == '${contains(["materials", "jobs"], identity) ? "codeyousef/summon-portfolio/.github/workflows/operate-seen-registry-production.yml@refs/heads/master" : "codeyousef/summon-portfolio/.github/workflows/deploy-seen-registry-infrastructure.yml@refs/heads/master"}'",
+        "assertion.event_name == 'workflow_dispatch'",
+        "assertion.environment == 'seen-registry-production-${identity}'",
+        "assertion.workflow_sha == assertion.sha",
+      ])
     ])
     error_message = "Each OIDC provider must map and condition every immutable repository, workflow, branch, environment, event, and commit claim."
   }
@@ -244,6 +307,7 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
       !contains(local.infrastructure_apply_permissions, "secretmanager.versions.access") &&
       !contains(local.infrastructure_apply_permissions, "storage.objects.create") &&
       !contains(local.infrastructure_apply_permissions, "run.routes.invoke") &&
+      !contains(local.infrastructure_apply_permissions, "run.jobs.setIamPolicy") &&
       !contains(local.infrastructure_apply_permissions, "cloudkms.cryptoKeyVersions.destroy") &&
       !contains(local.infrastructure_apply_permissions, "cloudkms.cryptoKeyVersions.useToSign") &&
       !contains(local.infrastructure_apply_permissions, "artifactregistry.repositories.setIamPolicy") &&
@@ -267,7 +331,7 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
         for name, role in google_project_iam_custom_role.resource_iam_setter :
         length(role.permissions) == 1 && role.permissions == toset([local.resource_iam_setter_roles[name].permission])
       ]) &&
-      toset(keys(google_project_iam_custom_role.resource_iam_setter)) == toset(["kms", "run_service", "secret", "storage"])
+      toset(keys(google_project_iam_custom_role.resource_iam_setter)) == toset(["kms", "run_job", "run_service", "secret", "storage"])
     )
     error_message = "CI identities must use least-privilege custom roles, exact monitoring reads, and a constrained IAM mutation condition without a broad monitoring viewer grant."
   }
@@ -292,25 +356,30 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
         "resourcemanager.projects.get",
         "resourcemanager.projects.getIamPolicy",
       ]) &&
+      length(google_organization_iam_member.infrastructure_read) == 4 &&
+      toset([for binding in values(google_organization_iam_member.infrastructure_read) : binding.member]) == toset([
+        "serviceAccount:seen-registry-prod-plan@seen-registry-prod-476219.iam.gserviceaccount.com",
+        "serviceAccount:seen-registry-prod-iac@seen-registry-prod-476219.iam.gserviceaccount.com",
+      ]) &&
       toset(keys(google_billing_account_iam_member.infrastructure_read)) == toset(["plan", "apply"]) &&
       alltrue([
         for binding in values(google_billing_account_iam_member.infrastructure_read) :
         binding.billing_account_id == "ABCDEF-123456-ABCDEF" &&
-        binding.role == "organizations/567958019562/roles/seenRegistryBillingRefresh" &&
-        startswith(binding.member, "serviceAccount:seen-registry-prod-")
+        binding.role == "organizations/567958019562/roles/seenRegistryBillingRefresh"
       ]) &&
+      toset([for binding in values(google_billing_account_iam_member.infrastructure_read) : binding.member]) == toset([
+        "serviceAccount:seen-registry-prod-plan@seen-registry-prod-476219.iam.gserviceaccount.com",
+        "serviceAccount:seen-registry-prod-iac@seen-registry-prod-476219.iam.gserviceaccount.com",
+      ]) &&
+      length(google_project_iam_member.infrastructure_control_project) == 6 &&
       toset([for binding in values(google_project_iam_member.infrastructure_control_project) : binding.role]) == toset([
         "organizations/567958019562/roles/seenRegistryControlProjectRefresh",
         "roles/serviceusage.serviceUsageConsumer",
         "roles/serviceusage.serviceUsageViewer",
       ]) &&
-      alltrue([
-        for binding in values(google_organization_iam_member.infrastructure_read) :
-        startswith(binding.member, "serviceAccount:seen-registry-prod-")
-      ]) &&
-      alltrue([
-        for binding in values(google_project_iam_member.infrastructure_control_project) :
-        startswith(binding.member, "serviceAccount:seen-registry-prod-")
+      toset([for binding in values(google_project_iam_member.infrastructure_control_project) : binding.member]) == toset([
+        "serviceAccount:seen-registry-prod-plan@seen-registry-prod-476219.iam.gserviceaccount.com",
+        "serviceAccount:seen-registry-prod-iac@seen-registry-prod-476219.iam.gserviceaccount.com",
       ])
     )
     error_message = "Both CI identities need only read-only organization refresh, exact control-project metadata/IAM refresh, and control-project Service Usage read/use access."
@@ -357,6 +426,16 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
             for member in binding.members : !startswith(member, "user:")
           ]
         ])) &&
+        toset(one([for binding in policy.binding : binding if endswith(binding.role, "/seenRegistryStateReader")]).members) == toset([
+          "serviceAccount:seen-registry-prod-plan@seen-registry-prod-476219.iam.gserviceaccount.com",
+          "serviceAccount:seen-registry-prod-iac@seen-registry-prod-476219.iam.gserviceaccount.com",
+        ]) &&
+        toset(one([for binding in policy.binding : binding if endswith(binding.role, "/seenRegistryStateLocker")]).members) == toset([
+          "serviceAccount:seen-registry-prod-plan@seen-registry-prod-476219.iam.gserviceaccount.com",
+        ]) &&
+        toset(one([for binding in policy.binding : binding if endswith(binding.role, "/seenRegistryStateWriter")]).members) == toset([
+          "serviceAccount:seen-registry-prod-iac@seen-registry-prod-476219.iam.gserviceaccount.com",
+        ]) &&
         alltrue([
           for binding in policy.binding :
           !startswith(binding.role, "roles/storage.legacy") && binding.role != "roles/storage.objectAdmin"
@@ -382,6 +461,8 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
     condition = (
       toset(jsondecode(google_org_policy_policy.managed_allowed_policy_members[0].spec[0].rules[0].parameters).allowedMemberSubjects) == toset([
         "principal://iam.googleapis.com/projects/123456789012/locations/global/workloadIdentityPools/seen-registry-prod-infra/subject/repo:codeyousef/summon-portfolio:environment:seen-registry-production-apply",
+        "principal://iam.googleapis.com/projects/123456789012/locations/global/workloadIdentityPools/seen-registry-prod-infra/subject/repo:codeyousef/summon-portfolio:environment:seen-registry-production-jobs",
+        "principal://iam.googleapis.com/projects/123456789012/locations/global/workloadIdentityPools/seen-registry-prod-infra/subject/repo:codeyousef/summon-portfolio:environment:seen-registry-production-materials",
         "principal://iam.googleapis.com/projects/123456789012/locations/global/workloadIdentityPools/seen-registry-prod-infra/subject/repo:codeyousef/summon-portfolio:environment:seen-registry-production-plan",
         "serviceAccount:portfolio-prod-runtime@portfolio-476219.iam.gserviceaccount.com",
         "user:yousef@felidai.com",
@@ -414,6 +495,7 @@ run "temporary_human_state_access_covers_both_exact_roots" {
     enable_organization_guardrails                = true
     organization_guardrail_effective              = true
     github_infrastructure_environments_reviewed   = true
+    github_operations_environments_reviewed       = true
     enable_production_project_bootstrap           = true
     enable_temporary_human_state_migration_access = true
     project_id                                    = "seen-registry-prod-476219"
@@ -447,6 +529,7 @@ run "production_foundation_installs_exact_resource_policy_setters" {
     enable_organization_guardrails                            = true
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
+    github_operations_environments_reviewed                   = true
     enable_production_project_bootstrap                       = true
     production_foundation_applied                             = true
     production_image_publisher_foundation_applied             = true
@@ -469,18 +552,86 @@ run "production_foundation_installs_exact_resource_policy_setters" {
       output.portfolio_gateway_exception_effective &&
       length(google_organization_iam_member.policy_admin_lease) == 0 &&
       length(google_project_iam_member.policy_admin_lease) == 0 &&
-      toset(keys(google_service_account_iam_member.infrastructure_oidc)) == toset(["plan", "apply"]) &&
+      toset(keys(google_service_account_iam_member.infrastructure_oidc)) == toset(["plan", "apply", "materials", "jobs"]) &&
       alltrue([
         for identity, binding in google_service_account_iam_member.infrastructure_oidc :
         binding.role == "roles/iam.workloadIdentityUser" &&
         binding.member == "principal://iam.googleapis.com/projects/123456789012/locations/global/workloadIdentityPools/seen-registry-prod-infra/subject/repo:codeyousef/summon-portfolio:environment:seen-registry-production-${identity}"
       ]) &&
-      toset(keys(google_project_iam_custom_role.resource_iam_setter)) == toset(["kms", "run_service", "secret", "storage"]) &&
-      !strcontains(file("${path.root}/main.tf"), "run.jobs.setIamPolicy") &&
+      toset(keys(google_project_iam_custom_role.resource_iam_setter)) == toset(["kms", "run_job", "run_service", "secret", "storage"]) &&
+      google_project_iam_custom_role.resource_iam_setter["run_job"].permissions == toset(["run.jobs.setIamPolicy"]) &&
       !strcontains(file("${path.root}/main.tf"), "artifactregistry.repositories.setIamPolicy") &&
       !strcontains(file("${path.root}/main.tf"), "iam.serviceAccounts.setIamPolicy")
     )
     error_message = "Artifact Registry and service-account IAM must be fully pre-provisioned before handoff and expose no steady setter permission."
+  }
+
+  assert {
+    condition = (
+      google_project_iam_custom_role.material_key_versions[0].permissions == toset([
+        "cloudkms.cryptoKeyVersions.create",
+        "cloudkms.cryptoKeyVersions.get",
+        "cloudkms.cryptoKeyVersions.list",
+      ]) &&
+      google_project_iam_custom_role.material_secret_versions[0].permissions == toset([
+        "secretmanager.secrets.get",
+        "secretmanager.versions.add",
+        "secretmanager.versions.get",
+        "secretmanager.versions.list",
+      ]) &&
+      google_project_iam_custom_role.job_operations_viewer[0].permissions == toset(["run.jobs.get"]) &&
+      output.job_operations_viewer_role == "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer" &&
+      toset(keys(google_project_iam_member.material_key_versions)) == local.production_kms_keys &&
+      toset(keys(google_project_iam_member.material_secret_versions)) == local.production_ceremony_secret_names &&
+      alltrue([
+        for key, binding in google_project_iam_member.material_key_versions :
+        binding.role == local.material_role_names.key_versions &&
+        binding.member == "serviceAccount:${local.operations_identities.materials.email}" &&
+        binding.condition[0].title == "limit_material_versions_${replace(key, "-", "_")}" &&
+        binding.condition[0].expression == "(resource.type == 'cloudkms.googleapis.com/CryptoKey' && resource.name == 'projects/seen-registry-prod-476219/locations/us-central1/keyRings/seen-registry-prod/cryptoKeys/${key}') || (resource.type == 'cloudkms.googleapis.com/CryptoKeyVersion' && resource.name.startsWith('projects/seen-registry-prod-476219/locations/us-central1/keyRings/seen-registry-prod/cryptoKeys/${key}/cryptoKeyVersions/'))"
+      ]) &&
+      alltrue([
+        for secret, binding in google_project_iam_member.material_secret_versions :
+        binding.role == local.material_role_names.secret_versions &&
+        binding.member == "serviceAccount:${local.operations_identities.materials.email}" &&
+        binding.condition[0].title == "limit_material_versions_${replace(secret, "-", "_")}" &&
+        binding.condition[0].expression == "(resource.type == 'secretmanager.googleapis.com/Secret' && resource.name == 'projects/123456789012/secrets/${secret}') || (resource.type == 'secretmanager.googleapis.com/SecretVersion' && resource.name.startsWith('projects/123456789012/secrets/${secret}/versions/'))"
+      ]) &&
+      !contains(google_project_iam_custom_role.material_key_versions[0].permissions, "cloudkms.cryptoKeyVersions.useToSign") &&
+      !contains(google_project_iam_custom_role.material_key_versions[0].permissions, "cloudkms.cryptoKeyVersions.destroy") &&
+      !contains(google_project_iam_custom_role.material_secret_versions[0].permissions, "secretmanager.versions.access") &&
+      !contains(google_project_iam_custom_role.material_secret_versions[0].permissions, "secretmanager.versions.destroy")
+    )
+    error_message = "Materials operations must be limited to creating/verifying versions on four exact keys and six exact envelope secrets, without signing or payload-read authority."
+  }
+
+  assert {
+    condition = (
+      google_project_iam_member.infrastructure_plan[0].member == "serviceAccount:${local.infrastructure_identities.plan.email}" &&
+      google_project_iam_member.infrastructure_apply[0].member == "serviceAccount:${local.infrastructure_identities.apply.email}" &&
+      google_project_iam_member.infrastructure_project_iam[0].member == "serviceAccount:${local.infrastructure_identities.apply.email}" &&
+      alltrue([
+        for binding in values(google_project_iam_member.infrastructure_kms_policy_setter) :
+        binding.member == "serviceAccount:${local.infrastructure_identities.apply.email}"
+      ]) &&
+      alltrue([
+        for binding in values(google_project_iam_member.infrastructure_secret_policy_setter) :
+        binding.member == "serviceAccount:${local.infrastructure_identities.apply.email}"
+      ]) &&
+      alltrue([
+        for binding in values(google_project_iam_member.infrastructure_registry_storage_policy_setter) :
+        binding.member == "serviceAccount:${local.infrastructure_identities.apply.email}"
+      ]) &&
+      alltrue([
+        for binding in values(google_project_iam_member.infrastructure_state_storage_policy_setter) :
+        binding.member == "serviceAccount:${local.infrastructure_identities.apply.email}"
+      ]) &&
+      alltrue([
+        for binding in values(google_project_iam_member.infrastructure_run_policy_setter) :
+        binding.member == "serviceAccount:${local.infrastructure_identities.apply.email}"
+      ])
+    )
+    error_message = "Infrastructure roles must remain exclusive to the plan/apply identities and must never be inherited by either operations identity."
   }
 
   assert {
@@ -547,17 +698,18 @@ run "production_foundation_installs_exact_resource_policy_setters" {
 
   assert {
     condition = (
-      toset(keys(google_project_iam_member.infrastructure_run_policy_setter)) == toset(["service"]) &&
+      toset(keys(google_project_iam_member.infrastructure_run_policy_setter)) == toset(["job", "service"]) &&
+      google_project_iam_member.infrastructure_run_policy_setter["job"].role == "projects/seen-registry-prod-476219/roles/seenRegistryRunJobIamApply" &&
       google_project_iam_member.infrastructure_run_policy_setter["service"].role == "projects/seen-registry-prod-476219/roles/seenRegistryRunServiceIamApply" &&
+      google_project_iam_member.infrastructure_run_policy_setter["service"].condition[0].expression == "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker'])" &&
+      google_project_iam_member.infrastructure_run_policy_setter["job"].condition[0].expression == "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker', 'projects/seen-registry-prod-476219/roles/seenRegistryJobViewer'])" &&
       alltrue([
         for binding in values(google_project_iam_member.infrastructure_run_policy_setter) :
-        binding.condition[0].expression == local.run_modified_roles_condition &&
-        strcontains(binding.condition[0].expression, "size() > 0") &&
         !strcontains(binding.condition[0].expression, "resource.name") &&
         !strcontains(binding.condition[0].expression, "resource.type")
       ])
     )
-    error_message = "Run IAM mutation must use one-permission project roles constrained only to invoker changes because Cloud Run does not expose resource name/type attributes to inherited conditions."
+    error_message = "Run IAM mutation must use exact one-permission setters and permit only service invoker or job invoker plus the one-permission viewer role."
   }
 }
 
@@ -569,6 +721,7 @@ run "owner_adoption_contract_is_exact_and_human_only" {
     enable_organization_guardrails              = true
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
@@ -598,6 +751,7 @@ run "owner_removal_is_a_separate_human_phase" {
     enable_organization_guardrails                            = true
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
+    github_operations_environments_reviewed                   = true
     enable_production_project_bootstrap                       = true
     production_foundation_applied                             = true
     automatic_default_service_account_grants_policy_effective = true
@@ -637,6 +791,7 @@ run "steady_handoff_has_no_human_grants_or_identity_lookup" {
     enable_organization_guardrails                            = true
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
+    github_operations_environments_reviewed                   = true
     enable_production_project_bootstrap                       = true
     production_foundation_applied                             = true
     automatic_default_service_account_grants_policy_effective = true
@@ -686,6 +841,7 @@ run "gateway_exception_is_created_in_separate_human_policy_phase" {
     enable_organization_guardrails              = true
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     enable_project_policy_admin_lease           = true
     enable_portfolio_gateway_exception          = true
@@ -756,6 +912,7 @@ run "rejects_handoff_before_owner_removal" {
     enable_organization_guardrails              = true
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     project_executor_handoff_complete           = true
     project_id                                  = "seen-registry-prod-476219"
@@ -776,6 +933,7 @@ run "combined_owner_phase_contract_is_rejected_before_import" {
     enable_organization_guardrails              = true
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
@@ -801,6 +959,7 @@ run "rejects_owner_removal_with_project_policy_admin_lease" {
     enable_organization_guardrails                            = true
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
+    github_operations_environments_reviewed                   = true
     enable_production_project_bootstrap                       = true
     enable_project_policy_admin_lease                         = true
     enable_temporary_human_state_migration_access             = true
@@ -831,6 +990,7 @@ run "rejects_owner_removal_with_organization_policy_admin_lease" {
     organization_guardrail_effective                          = true
     enable_organization_policy_admin_lease                    = true
     github_infrastructure_environments_reviewed               = true
+    github_operations_environments_reviewed                   = true
     enable_production_project_bootstrap                       = true
     enable_temporary_human_state_migration_access             = true
     managed_member_policy_effective                           = true
@@ -862,6 +1022,7 @@ run "rejects_project_creation_before_guardrail_effective" {
     enable_control_project_apis                 = true
     enable_organization_guardrails              = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
@@ -882,6 +1043,7 @@ run "rejects_project_bootstrap_with_organization_policy_admin_lease" {
     organization_guardrail_effective            = true
     enable_organization_policy_admin_lease      = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
@@ -901,6 +1063,7 @@ run "rejects_foundation_before_default_service_account_policy_effective" {
     enable_organization_guardrails              = true
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
     enable_production_project_bootstrap         = true
     managed_member_policy_effective             = true
     enable_portfolio_gateway_exception          = true

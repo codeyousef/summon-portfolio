@@ -22,7 +22,7 @@ run "read_only_api_has_no_writer_surfaces" {
     github_ci_enabled                       = true
     notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
     portfolio_gateway_service_account       = "portfolio-prod-runtime@portfolio-476219.iam.gserviceaccount.com"
-    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     online_public_keys_hex = {
       releases  = "1111111111111111111111111111111111111111111111111111111111111111"
       security  = "2222222222222222222222222222222222222222222222222222222222222222"
@@ -52,6 +52,18 @@ run "read_only_api_has_no_writer_surfaces" {
   assert {
     condition     = toset(keys(output.long_lived_job_names)) == toset(["root_verifier"])
     error_message = "Only the explicitly selected read-only root verifier may accompany the API."
+  }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      root_verifier = {
+        job         = "seen-registry-prod-root-verify-v2"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "The protected job runner must receive invoker only on the selected root verifier."
   }
 
   assert {
@@ -137,8 +149,8 @@ run "refresh_jobs_are_narrow_and_schedule_free" {
     enable_production_refresh_jobs          = true
     signer_jwks_all_apis_enabled            = true
     notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
-    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"
@@ -178,6 +190,24 @@ run "refresh_jobs_are_narrow_and_schedule_free" {
   }
 
   assert {
+    condition = output.job_operations_authorizations == {
+      release_refresh = {
+        job         = "seen-registry-prod-release-refresh-v2"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+      security_refresh = {
+        job         = "seen-registry-prod-security-refresh-v2"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Refresh selection must grant only the two exact job-level invoker bindings."
+  }
+
+  assert {
     condition     = length(output.ceremony_job_names) == 0
     error_message = "Refresh selection must not imply ceremony authority."
   }
@@ -193,7 +223,7 @@ run "offline_bootstrap_is_one_use_and_signer_free" {
     bootstrap_creator_owner_removed         = true
     notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
     production_ceremony_operations          = ["offline_bootstrap_importer"]
-    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     online_public_keys_hex = {
       releases  = "1111111111111111111111111111111111111111111111111111111111111111"
       security  = "2222222222222222222222222222222222222222222222222222222222222222"
@@ -215,6 +245,18 @@ run "offline_bootstrap_is_one_use_and_signer_free" {
     condition     = toset(keys(output.ceremony_job_names)) == toset(["offline_bootstrap_importer"])
     error_message = "Offline bootstrap must create only its one selected ephemeral job."
   }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      offline_bootstrap_importer = {
+        job         = "seen-registry-prod-offline-bootstrap"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Offline bootstrap must authorize only its selected ephemeral job."
+  }
 }
 
 run "online_bootstrap_has_only_bootstrap_signing_authority" {
@@ -228,8 +270,8 @@ run "online_bootstrap_has_only_bootstrap_signing_authority" {
     notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
     production_ceremony_operations          = ["online_bootstrap"]
     signer_jwks_all_apis_enabled            = true
-    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"
@@ -264,6 +306,18 @@ run "online_bootstrap_has_only_bootstrap_signing_authority" {
     condition     = toset(keys(output.ceremony_job_names)) == toset(["online_bootstrap"])
     error_message = "Online bootstrap must create only its one selected ephemeral coordinator."
   }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      online_bootstrap = {
+        job         = "seen-registry-prod-online-bootstrap"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Online bootstrap must authorize only its selected ephemeral coordinator."
+  }
 }
 
 run "targets_renewal_grants_only_required_signers" {
@@ -277,8 +331,8 @@ run "targets_renewal_grants_only_required_signers" {
     notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
     production_ceremony_operations          = ["targets_renewal"]
     signer_jwks_all_apis_enabled            = true
-    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       snapshot  = "3"
@@ -314,6 +368,154 @@ run "targets_renewal_grants_only_required_signers" {
     condition     = toset(keys(output.ceremony_job_names)) == toset(["targets_renewal"])
     error_message = "Targets renewal must create only its one selected ephemeral coordinator."
   }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      targets_renewal = {
+        job         = "seen-registry-prod-targets-renewal"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Targets renewal must authorize only its selected ephemeral coordinator."
+  }
+}
+
+run "targets_releases_rotation_authorizes_only_its_exact_job" {
+  command = plan
+
+  variables {
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    production_ceremony_operations          = ["targets_releases_rotation"]
+    signer_jwks_all_apis_enabled            = true
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
+    online_key_version_numbers = {
+      releases  = "1"
+      snapshot  = "3"
+      timestamp = "4"
+    }
+    online_public_keys_hex = {
+      releases  = "1111111111111111111111111111111111111111111111111111111111111111"
+      security  = "2222222222222222222222222222222222222222222222222222222222222222"
+      snapshot  = "3333333333333333333333333333333333333333333333333333333333333333"
+      timestamp = "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+    secret_versions = {
+      targets_releases_rotation_envelope = "1"
+    }
+  }
+
+  assert {
+    condition     = toset(keys(output.signer_service_uris)) == toset(["releases", "snapshot", "timestamp"])
+    error_message = "Releases rotation must select only the releases, snapshot, and timestamp signers."
+  }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      targets_releases_rotation = {
+        job         = "seen-registry-prod-targets-release-rotate"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Releases rotation must authorize only its exact ephemeral job with invoker and one-permission viewer roles."
+  }
+}
+
+run "targets_security_rotation_authorizes_only_its_exact_job" {
+  command = plan
+
+  variables {
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    production_ceremony_operations          = ["targets_security_rotation"]
+    signer_jwks_all_apis_enabled            = true
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
+    online_key_version_numbers = {
+      security  = "2"
+      snapshot  = "3"
+      timestamp = "4"
+    }
+    online_public_keys_hex = {
+      releases  = "1111111111111111111111111111111111111111111111111111111111111111"
+      security  = "2222222222222222222222222222222222222222222222222222222222222222"
+      snapshot  = "3333333333333333333333333333333333333333333333333333333333333333"
+      timestamp = "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+    secret_versions = {
+      targets_security_rotation_envelope = "1"
+    }
+  }
+
+  assert {
+    condition     = toset(keys(output.signer_service_uris)) == toset(["security", "snapshot", "timestamp"])
+    error_message = "Security rotation must select only the security, snapshot, and timestamp signers."
+  }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      targets_security_rotation = {
+        job         = "seen-registry-prod-targets-security-rotate"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Security rotation must authorize only its exact ephemeral job with invoker and one-permission viewer roles."
+  }
+}
+
+run "root_import_authorizes_only_its_exact_job" {
+  command = plan
+
+  variables {
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    production_ceremony_operations          = ["root_importer"]
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    online_public_keys_hex = {
+      releases  = "1111111111111111111111111111111111111111111111111111111111111111"
+      security  = "2222222222222222222222222222222222222222222222222222222222222222"
+      snapshot  = "3333333333333333333333333333333333333333333333333333333333333333"
+      timestamp = "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+    secret_versions = {
+      root_rotation_envelope = "1"
+    }
+  }
+
+  assert {
+    condition     = length(output.signer_service_uris) == 0
+    error_message = "Root import must not select an online signer."
+  }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      root_importer = {
+        job         = "seen-registry-prod-root-import"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Root import must authorize only its exact ephemeral job with invoker and one-permission viewer roles."
+  }
 }
 
 run "ceremony_rejects_unrelated_refresh_authority" {
@@ -328,8 +530,8 @@ run "ceremony_rejects_unrelated_refresh_authority" {
     notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
     production_ceremony_operations          = ["targets_renewal"]
     signer_jwks_all_apis_enabled            = true
-    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"

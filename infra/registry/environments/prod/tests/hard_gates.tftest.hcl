@@ -40,7 +40,7 @@ run "rejects_runtime_before_creator_owner_cleanup" {
     enable_production_foundation            = true
     enable_production_root_verifier         = true
     notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
-    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     online_public_keys_hex = {
       releases  = "1111111111111111111111111111111111111111111111111111111111111111"
       security  = "2222222222222222222222222222222222222222222222222222222222222222"
@@ -128,6 +128,39 @@ run "rejects_wrong_infrastructure_executor" {
   }
 
   expect_failures = [var.iac_executor_service_account]
+}
+
+run "rejects_custom_job_operations_identity" {
+  command = plan
+
+  variables {
+    project_id                     = "seen-registry-prod-476219"
+    job_operations_service_account = "other@seen-registry-prod-476219.iam.gserviceaccount.com"
+  }
+
+  expect_failures = [var.job_operations_service_account]
+}
+
+run "rejects_cross_project_job_operations_identity" {
+  command = plan
+
+  variables {
+    project_id                     = "seen-registry-prod-476219"
+    job_operations_service_account = "seen-registry-prod-job-runner@other-project.iam.gserviceaccount.com"
+  }
+
+  expect_failures = [var.job_operations_service_account]
+}
+
+run "rejects_custom_job_operations_viewer_role" {
+  command = plan
+
+  variables {
+    project_id                 = "seen-registry-prod-476219"
+    job_operations_viewer_role = "projects/seen-registry-prod-476219/roles/customJobViewer"
+  }
+
+  expect_failures = [var.job_operations_viewer_role]
 }
 
 run "production_executor_act_as_scope_is_exact" {

@@ -76,6 +76,11 @@ locals {
     } : {},
     var.refresh_jobs_enabled ? local.refresh_jobs : {},
   )
+
+  operations_long_lived_jobs = var.environment == "prod" && var.job_operations_service_account != null ? {
+    for key, job in local.long_lived_jobs : key => job
+    if contains(["root_verifier", "release_refresh", "security_refresh"], key)
+  } : {}
 }
 
 resource "google_cloud_run_v2_job" "long_lived" {
@@ -164,6 +169,26 @@ resource "google_cloud_run_v2_job" "long_lived" {
   ]
 }
 
+resource "google_cloud_run_v2_job_iam_member" "operations_long_lived" {
+  for_each = var.enabled ? local.operations_long_lived_jobs : {}
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.long_lived[each.key].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.job_operations_service_account}"
+}
+
+resource "google_cloud_run_v2_job_iam_member" "operations_long_lived_viewer" {
+  for_each = var.enabled ? local.operations_long_lived_jobs : {}
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.long_lived[each.key].name
+  role     = var.job_operations_viewer_role
+  member   = "serviceAccount:${var.job_operations_service_account}"
+}
+
 locals {
   ceremony_jobs = {
     offline_bootstrap_importer = {
@@ -223,6 +248,8 @@ locals {
     for key, job in local.ceremony_jobs : key => job
     if contains(var.ceremony_operations, key)
   }
+
+  operations_ceremony_jobs = var.environment == "prod" && var.job_operations_service_account != null ? local.selected_ceremony_jobs : {}
 
   ceremony_required_secret_keys = toset(flatten([
     for job in values(local.selected_ceremony_jobs) : concat(
@@ -334,4 +361,24 @@ resource "google_cloud_run_v2_job" "ceremony" {
     google_storage_bucket_iam_member.metadata_creator,
     google_storage_bucket_iam_member.timestamp_pointer_replacer,
   ]
+}
+
+resource "google_cloud_run_v2_job_iam_member" "operations_ceremony" {
+  for_each = var.enabled ? local.operations_ceremony_jobs : {}
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.ceremony[each.key].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.job_operations_service_account}"
+}
+
+resource "google_cloud_run_v2_job_iam_member" "operations_ceremony_viewer" {
+  for_each = var.enabled ? local.operations_ceremony_jobs : {}
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.ceremony[each.key].name
+  role     = var.job_operations_viewer_role
+  member   = "serviceAccount:${var.job_operations_service_account}"
 }

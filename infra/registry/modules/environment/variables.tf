@@ -417,6 +417,59 @@ variable "infrastructure_executor_service_account" {
   }
 }
 
+variable "job_operations_service_account" {
+  description = "Optional protected operations identity. In production it receives only roles/run.invoker and the exact one-permission viewer role on each currently selected verifier, refresh, or ceremony job."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.job_operations_service_account == null || (
+      can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]@", var.job_operations_service_account)) &&
+      endswith(var.job_operations_service_account, "@${var.project_id}.iam.gserviceaccount.com")
+    )
+    error_message = "job_operations_service_account must be a service-account email in this registry project."
+  }
+
+  validation {
+    condition = var.job_operations_service_account == null || (
+      var.job_operations_service_account != var.infrastructure_executor_service_account &&
+      !contains(
+        [for account_id in values(var.service_account_ids) : "${account_id}@${var.project_id}.iam.gserviceaccount.com"],
+        var.job_operations_service_account,
+      )
+    )
+    error_message = "The job operations identity must remain distinct from the infrastructure executor and every registry runtime service account."
+  }
+
+  validation {
+    condition = var.environment != "prod" || !var.enabled || !(
+      var.root_verifier_job_enabled ||
+      var.refresh_jobs_enabled ||
+      length(var.ceremony_operations) > 0
+    ) || var.job_operations_service_account != null
+    error_message = "Selected production verifier, refresh, and ceremony jobs require the reviewed job operations service account."
+  }
+}
+
+variable "job_operations_viewer_role" {
+  description = "Optional exact same-project custom role containing only run.jobs.get for protected preflight validation. It must be paired with the job operations identity."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      var.job_operations_service_account == null &&
+      var.job_operations_viewer_role == null
+      ) || (
+      var.job_operations_service_account != null &&
+      var.job_operations_viewer_role == "projects/${var.project_id}/roles/seenRegistryJobViewer"
+    )
+    error_message = "job_operations_viewer_role must be null with no operations identity, or the exact same-project seenRegistryJobViewer role when that identity is configured."
+  }
+}
+
 variable "infrastructure_executor_act_as_identities" {
   description = "Exact logical runtime identity keys on which the infrastructure executor receives serviceAccountUser. Must be explicit, finite, and cover every selected deployable workload."
   type        = set(string)

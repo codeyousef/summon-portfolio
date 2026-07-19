@@ -16,7 +16,13 @@ variable "enable_control_project_apis" {
 }
 
 variable "github_infrastructure_environments_reviewed" {
-  description = "Manual attestation that the seen-registry-production-plan and seen-registry-production-apply GitHub environments both require reviewers, prevent self-review and administrator bypass, and allow only master. Must be true before project creation."
+  description = "Manual attestation that seen-registry-production-plan and seen-registry-production-apply require independent reviewers, prevent self-review and administrator bypass, and allow only master. Must be true before project creation."
+  type        = bool
+  default     = false
+}
+
+variable "github_operations_environments_reviewed" {
+  description = "Manual attestation that seen-registry-production-materials and seen-registry-production-jobs require independent reviewers, prevent self-review and administrator bypass, and allow only master. Kept separate so an older infrastructure-only attestation cannot activate operations federation."
   type        = bool
   default     = false
 }
@@ -66,7 +72,8 @@ variable "enable_production_project_bootstrap" {
     condition = !var.enable_production_project_bootstrap || (
       var.enable_organization_guardrails &&
       var.organization_guardrail_effective &&
-      var.github_infrastructure_environments_reviewed
+      var.github_infrastructure_environments_reviewed &&
+      var.github_operations_environments_reviewed
     )
     error_message = "Production project bootstrap requires the separately verified effective organization guardrail and reviewed protected GitHub environments; the project resource separately blocks a remaining organization Policy Admin lease."
   }
@@ -106,8 +113,12 @@ variable "project_executor_handoff_complete" {
   default     = false
 
   validation {
-    condition     = !var.project_executor_handoff_complete || var.enable_production_project_bootstrap
-    error_message = "CI handoff requires the production bootstrap foundation."
+    condition = !var.project_executor_handoff_complete || (
+      var.enable_production_project_bootstrap &&
+      var.github_infrastructure_environments_reviewed &&
+      var.github_operations_environments_reviewed
+    )
+    error_message = "CI handoff requires the production bootstrap foundation and separately reviewed infrastructure and operations environments."
   }
 }
 

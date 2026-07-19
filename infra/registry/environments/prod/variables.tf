@@ -107,8 +107,8 @@ variable "container_image" {
   nullable    = true
 
   validation {
-    condition     = var.container_image == null || can(regex("@sha256:[0-9a-f]{64}$", var.container_image))
-    error_message = "container_image must be null or an immutable sha256 image URI."
+    condition     = var.container_image == null || can(regex("^us-central1-docker\\.pkg\\.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:[0-9a-f]{64}$", var.container_image))
+    error_message = "container_image must be null or the exact reviewed production registry image repository with an immutable sha256 digest."
   }
 }
 
@@ -119,8 +119,8 @@ variable "signer_container_image" {
   nullable    = true
 
   validation {
-    condition     = var.signer_container_image == null || can(regex("@sha256:[0-9a-f]{64}$", var.signer_container_image))
-    error_message = "signer_container_image must be null or an immutable sha256 image URI."
+    condition     = var.signer_container_image == null || can(regex("^us-central1-docker\\.pkg\\.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:[0-9a-f]{64}$", var.signer_container_image))
+    error_message = "signer_container_image must be null or the exact reviewed production registry image repository with an immutable sha256 digest."
   }
 }
 
@@ -220,6 +220,28 @@ variable "iac_executor_service_account" {
   validation {
     condition     = var.iac_executor_service_account == "seen-registry-prod-iac@seen-registry-prod-476219.iam.gserviceaccount.com"
     error_message = "iac_executor_service_account must be the reviewed production infrastructure executor."
+  }
+}
+
+variable "job_operations_service_account" {
+  description = "Exact bootstrap-created protected identity authorized only to invoke currently selected production jobs."
+  type        = string
+  default     = "seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+
+  validation {
+    condition     = var.job_operations_service_account == "seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+    error_message = "job_operations_service_account must be the reviewed production job operations identity."
+  }
+}
+
+variable "job_operations_viewer_role" {
+  description = "Exact bootstrap-created one-permission custom role used to validate a selected job before protected execution."
+  type        = string
+  default     = "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+
+  validation {
+    condition     = var.job_operations_viewer_role == "projects/seen-registry-prod-476219/roles/seenRegistryJobViewer"
+    error_message = "job_operations_viewer_role must be the reviewed production one-permission job viewer role."
   }
 }
 

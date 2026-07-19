@@ -42,6 +42,14 @@ output "project_executor_service_account" {
   value = var.enable_production_project_bootstrap ? google_service_account.infrastructure["apply"].email : null
 }
 
+output "materials_operations_service_account" {
+  value = var.enable_production_project_bootstrap ? google_service_account.infrastructure["materials"].email : null
+}
+
+output "job_operations_service_account" {
+  value = var.enable_production_project_bootstrap ? google_service_account.infrastructure["jobs"].email : null
+}
+
 output "infrastructure_workload_identity_pool" {
   value = var.enable_production_project_bootstrap ? google_iam_workload_identity_pool.infrastructure[0].name : null
 }
@@ -49,7 +57,14 @@ output "infrastructure_workload_identity_pool" {
 output "infrastructure_workload_identity_providers" {
   value = var.enable_production_project_bootstrap ? {
     for identity, provider in google_iam_workload_identity_pool_provider.infrastructure :
-    identity => provider.name
+    identity => provider.name if contains(keys(local.infrastructure_identities), identity)
+  } : {}
+}
+
+output "operations_workload_identity_providers" {
+  value = var.enable_production_project_bootstrap ? {
+    for identity, provider in google_iam_workload_identity_pool_provider.infrastructure :
+    identity => provider.name if contains(keys(local.operations_identities), identity)
   } : {}
 }
 
@@ -60,6 +75,14 @@ output "infrastructure_custom_roles" {
     project_iam          = local.infrastructure_role_names.project_iam
     resource_iam_setters = local.resource_iam_setter_role_names
   } : null
+}
+
+output "materials_operations_custom_roles" {
+  value = var.enable_production_project_bootstrap ? local.material_role_names : null
+}
+
+output "job_operations_viewer_role" {
+  value = var.enable_production_project_bootstrap ? local.job_operations_viewer_role_name : null
 }
 
 output "organization_bootstrap_refresh_role" {

@@ -75,6 +75,8 @@ variables {
 
   read_only_api_enabled                   = true
   infrastructure_executor_service_account = "seen-registry-prod-iac@seen-registry-prod-placeholder.iam.gserviceaccount.com"
+  job_operations_service_account          = "seen-registry-prod-job-runner@seen-registry-prod-placeholder.iam.gserviceaccount.com"
+  job_operations_viewer_role              = "projects/seen-registry-prod-placeholder/roles/seenRegistryJobViewer"
   infrastructure_executor_act_as_identities = [
     "api",
     "root_verifier",
@@ -93,7 +95,7 @@ variables {
   ]
   portfolio_gateway_service_account = "portfolio@portfolio-476219.iam.gserviceaccount.com"
   notification_channel_ids          = ["projects/seen-registry-prod-placeholder/notificationChannels/1"]
-  container_image                   = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  container_image                   = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 }
 
 run "valid_read_only_contract_plans" {
@@ -122,6 +124,17 @@ run "valid_read_only_contract_plans" {
       google_artifact_registry_repository_iam_member.infrastructure_executor_reader[0].member == "serviceAccount:seen-registry-prod-iac@seen-registry-prod-placeholder.iam.gserviceaccount.com"
     )
     error_message = "The production executor must receive read-only access to exactly the deployment image repository."
+  }
+
+  assert {
+    condition = (
+      length(output.job_operations_authorizations) == 0 &&
+      length(google_cloud_run_v2_job_iam_member.operations_long_lived) == 0 &&
+      length(google_cloud_run_v2_job_iam_member.operations_long_lived_viewer) == 0 &&
+      length(google_cloud_run_v2_job_iam_member.operations_ceremony) == 0 &&
+      length(google_cloud_run_v2_job_iam_member.operations_ceremony_viewer) == 0
+    )
+    error_message = "Selecting only the public API must not grant the protected operations identity any job authority."
   }
 
   assert {
@@ -201,7 +214,7 @@ run "production_writer_shape_is_rejected" {
     read_only_api_enabled        = false
     workloads_enabled            = true
     signer_jwks_all_apis_enabled = true
-    signer_container_image       = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-signer@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    signer_container_image       = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     trusted_root_v1_sha256       = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"
@@ -294,7 +307,7 @@ run "executor_act_as_is_preprovisioned_before_refresh_selection" {
     read_only_api_enabled        = false
     refresh_jobs_enabled         = true
     signer_jwks_all_apis_enabled = true
-    signer_container_image       = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-signer@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    signer_container_image       = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     trusted_root_v1_sha256       = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"
@@ -308,6 +321,78 @@ run "executor_act_as_is_preprovisioned_before_refresh_selection" {
     condition     = toset(keys(google_service_account_iam_member.infrastructure_executor_act_as)) == toset(var.infrastructure_executor_act_as_identities)
     error_message = "Refresh selection must reuse the finite actAs bindings pre-provisioned during foundation."
   }
+
+  assert {
+    condition = output.job_operations_authorizations == {
+      release_refresh = {
+        job         = "seen-registry-prod-release-refresh-v2"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-placeholder.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-placeholder/roles/seenRegistryJobViewer"
+      }
+      security_refresh = {
+        job         = "seen-registry-prod-security-refresh-v2"
+        member      = "serviceAccount:seen-registry-prod-job-runner@seen-registry-prod-placeholder.iam.gserviceaccount.com"
+        role        = "roles/run.invoker"
+        viewer_role = "projects/seen-registry-prod-placeholder/roles/seenRegistryJobViewer"
+      }
+    }
+    error_message = "Refresh selection must authorize the protected job runner on exactly the two selected refresh jobs."
+  }
+}
+
+run "selected_production_jobs_require_the_job_runner" {
+  command = plan
+
+  variables {
+    read_only_api_enabled          = false
+    root_verifier_job_enabled      = true
+    job_operations_service_account = null
+    job_operations_viewer_role     = null
+    trusted_root_v1_sha256         = "5555555555555555555555555555555555555555555555555555555555555555"
+  }
+
+  expect_failures = [var.job_operations_service_account]
+}
+
+run "job_runner_must_be_distinct_from_runtime" {
+  command = plan
+
+  variables {
+    job_operations_service_account = "seen-registry-prod@seen-registry-prod-placeholder.iam.gserviceaccount.com"
+  }
+
+  expect_failures = [var.job_operations_service_account]
+}
+
+run "job_runner_must_be_in_registry_project" {
+  command = plan
+
+  variables {
+    job_operations_service_account = "seen-registry-prod-job-runner@other-project.iam.gserviceaccount.com"
+  }
+
+  expect_failures = [var.job_operations_service_account]
+}
+
+run "job_runner_must_be_distinct_from_infrastructure_executor" {
+  command = plan
+
+  variables {
+    job_operations_service_account = "seen-registry-prod-iac@seen-registry-prod-placeholder.iam.gserviceaccount.com"
+  }
+
+  expect_failures = [var.job_operations_service_account]
+}
+
+run "job_viewer_role_must_be_the_exact_same_project_custom_role" {
+  command = plan
+
+  variables {
+    job_operations_viewer_role = "projects/seen-registry-prod-placeholder/roles/customJobViewer"
+  }
+
+  expect_failures = [var.job_operations_viewer_role]
 }
 
 run "executor_act_as_remains_finite_for_development_writer_shape" {
@@ -319,7 +404,7 @@ run "executor_act_as_remains_finite_for_development_writer_shape" {
     read_only_api_enabled        = false
     workloads_enabled            = true
     signer_jwks_all_apis_enabled = true
-    signer_container_image       = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-signer@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    signer_container_image       = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     trusted_root_v1_sha256       = "5555555555555555555555555555555555555555555555555555555555555555"
     infrastructure_executor_act_as_identities = [
       "api",
@@ -361,6 +446,16 @@ run "executor_act_as_remains_finite_for_development_writer_shape" {
   assert {
     condition     = toset(keys(google_service_account_iam_member.infrastructure_executor_act_as)) == toset(keys(local.service_account_ids))
     error_message = "Executor actAs must remain bounded to the module's finite named runtime accounts."
+  }
+
+  assert {
+    condition = (
+      length(google_cloud_run_v2_job_iam_member.operations_long_lived) == 0 &&
+      length(google_cloud_run_v2_job_iam_member.operations_long_lived_viewer) == 0 &&
+      length(google_cloud_run_v2_job_iam_member.operations_ceremony) == 0 &&
+      length(google_cloud_run_v2_job_iam_member.operations_ceremony_viewer) == 0
+    )
+    error_message = "Development workloads must never inherit the production protected job-operations binding."
   }
 }
 

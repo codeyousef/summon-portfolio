@@ -33,7 +33,8 @@ run "production_is_inert_by_default" {
       length(output.read_only_gateway_environment) == 0 &&
       length(output.signer_service_uris) == 0 &&
       length(output.long_lived_job_names) == 0 &&
-      length(output.ceremony_job_names) == 0
+      length(output.ceremony_job_names) == 0 &&
+      length(output.job_operations_authorizations) == 0
     )
     error_message = "The inert production root must not create API, signer, refresh, or ceremony resources."
   }
@@ -56,6 +57,11 @@ run "production_is_inert_by_default" {
   assert {
     condition     = var.iac_executor_service_account == "seen-registry-prod-iac@seen-registry-prod-476219.iam.gserviceaccount.com"
     error_message = "The production module must grant narrow infrastructure access only to the bootstrap-created apply identity."
+  }
+
+  assert {
+    condition     = var.job_operations_service_account == "seen-registry-prod-job-runner@seen-registry-prod-476219.iam.gserviceaccount.com"
+    error_message = "The production module must pin the bootstrap-created protected job operations identity."
   }
 
   assert {
