@@ -284,21 +284,46 @@ full saved plan where it changes managed state:
    no-default-network policy, and only then set
    `organization_guardrail_effective=true`. Remove the organization Policy Admin
    lease in another complete plan while retaining the policy.
-5. With the reviewed GitHub-environment attestation true, apply
-   `enable_production_project_bootstrap=true` using direct ADC as
-   `yousef@felidai.com`. Keep Owner adoption/removal, the gateway exception, and
-   the OIDC handoff false; enable only the temporary project Policy Admin lease
-   and exact human state-migration access required for the reviewed phases. This
-   creates the isolated project, eight bootstrap-owned APIs, two state buckets,
-   the monitoring channel, the four protected plan, apply, materials, and jobs
-   identities and providers, and their bounded custom roles.
-6. Immediately audit direct project Owner and Editor bindings. Confirm the only
-   automatically added bootstrap Owner is `user:yousef@felidai.com`. In its own
-   plan set `project_creator_owner_member="user:yousef@felidai.com"` and
+5. With the reviewed GitHub-environment attestation true, use direct ADC as
+   `yousef@felidai.com` and apply a complete saved plan with only
+   `enable_production_project_creation=true`. Keep
+   `enable_production_project_bootstrap=false` and every later project gate
+   false. The only new resource in this phase must be the isolated
+   `google_project.production[0]`; do not use `-target`. After apply, keep
+   `enable_production_project_creation=true` for every later phase so the
+   project remains managed and cannot be planned for destruction.
+
+   Verify the exact project ID and numeric project number against both the
+   OpenTofu outputs and an authoritative cloud read. Audit direct project IAM
+   at the same time: the direct `roles/owner` membership must be exactly the
+   expected creator `user:yousef@felidai.com`, and no direct `roles/editor`
+   member may exist. Stop on any mismatch. Set
+   `production_project_creation_verified=true` only after all four facts have
+   been verified: project ID, project number, sole expected creator Owner, and
+   no Editor.
+6. In a second complete saved-plan phase, keep
+   `enable_production_project_creation=true`, set
+   `production_project_creation_verified=true`, and set
+   `enable_production_project_bootstrap=true`. Keep Owner adoption/removal, the
+   gateway exception, and the OIDC handoff false; enable only the temporary
+   project Policy Admin lease and human state-migration access required
+   for the reviewed phases. The project must be a no-op in this plan. Every
+   authorization member, principal, role, policy, and condition expression must
+   be concrete and inspectable; stop if any such expression is unknown. This
+   separation lets the project number settle into state before the
+   authorization-bearing bootstrap plan is reviewed. The phase creates the
+   eight bootstrap-owned APIs, two state buckets, monitoring channel, four
+   protected plan, apply, materials, and jobs identities and providers, and
+   their bounded custom roles. The verification attestation also enables a
+   fail-closed live lookup of the exact project, organization, billing account,
+   and numeric project number. A combined first-ever creation/bootstrap plan
+   therefore fails before apply because that lookup cannot find the project.
+7. In its own plan, adopt the already audited creator Owner by setting
+   `project_creator_owner_member="user:yousef@felidai.com"` and
    `adopt_project_creator_owner=true`. Accept only import of that already
    existing binding with no IAM addition, then verify it is in state. OpenTofu
    must never create an Owner grant.
-7. Migrate the bootstrap state immediately after its destination is verified.
+8. Migrate the bootstrap state immediately after its destination is verified.
    The two independent backends are:
 
    - bootstrap: bucket
@@ -318,7 +343,7 @@ full saved plan where it changes managed state:
    state. The production root uses its separate bucket from its first plan. The
    protected workflow refuses bootstrap planning while the tracked backend is
    still local.
-8. Wait for and inspect the effective
+9. Wait for and inspect the effective
    `iam.managed.allowedPolicyMembers` and
    `iam.automaticIamGrantsForDefaultServiceAccounts` policies. The managed
    policy permanently includes the exact human operator as an allowed subject
@@ -327,7 +352,7 @@ full saved plan where it changes managed state:
    `automatic_default_service_account_grants_policy_effective=true` only after
    the effective policies match the reviewed configuration. Do not enable
    Compute before the automatic-default-service-account policy is effective.
-9. Under the temporary project Policy Admin lease, apply
+10. Under the temporary project Policy Admin lease, apply
    `enable_portfolio_gateway_exception=true` only after the managed-member policy
    is effective. Wait for propagation and independently verify the effective
    legacy-domain exception before setting
@@ -336,11 +361,11 @@ full saved plan where it changes managed state:
    being rejected by the inherited legacy restriction. Retain both protected
    policies, then remove the project Policy Admin lease. Both organization and
    project Policy Admin leases must now be false.
-10. Complete the email verification and refresh until
+11. Complete the email verification and refresh until
     `production_notification_channel_verification_status` is exactly `VERIFIED`.
     The production root rejects a channel that is not the exact same-project,
     enabled, verified bootstrap channel.
-11. Apply the direct-human production foundation from the dedicated production
+12. Apply the direct-human production foundation from the dedicated production
     backend. Set `bootstrap_production_policies_effective=true` only after the
     inherited no-default-network policy, automatic-default-service-account
     policy, managed-member policy, and gateway exception are all verified
@@ -364,7 +389,7 @@ full saved plan where it changes managed state:
     The foundation creates KMS key and Secret Manager containers only. It does
     not create a KMS key version, add a secret payload version, or execute a
     Cloud Run job.
-12. Remove the creator Owner in its own direct-human saved plan. Keep exact human
+13. Remove the creator Owner in its own direct-human saved plan. Keep exact human
     state access to both roots, keep both Policy Admin leases false, and require
     the effective gateway exception and completed foundation attestations. Set
     `adopt_project_creator_owner=false`, keep the exact member long enough to

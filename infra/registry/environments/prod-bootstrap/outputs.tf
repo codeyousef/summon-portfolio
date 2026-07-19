@@ -11,11 +11,15 @@ output "enabled_control_project_services" {
 }
 
 output "production_project_id" {
-  value = var.enable_production_project_bootstrap ? google_project.production[0].project_id : null
+  value = var.enable_production_project_creation ? google_project.production[0].project_id : null
 }
 
 output "production_project_number" {
-  value = var.enable_production_project_bootstrap ? google_project.production[0].number : null
+  value = var.enable_production_project_creation ? google_project.production[0].number : null
+}
+
+output "production_project_creation_verified" {
+  value = var.production_project_creation_verified
 }
 
 output "production_state_backend" {

@@ -15,6 +15,15 @@ override_data {
   }
 }
 
+override_data {
+  target = data.google_project.production_verified
+  values = {
+    number          = "123456789012"
+    org_id          = "567958019562"
+    billing_account = "ABCDEF-123456-ABCDEF"
+  }
+}
+
 override_resource {
   target = google_project.production
   values = {
@@ -71,6 +80,10 @@ run "bootstrap_is_inert_by_default" {
       output.active_bootstrap_identity == null &&
       length(output.enabled_control_project_services) == 0 &&
       length(output.enabled_bootstrap_services) == 0 &&
+      !var.enable_production_project_creation &&
+      !var.production_project_creation_verified &&
+      !var.enable_production_project_bootstrap &&
+      length(data.google_project.production_verified) == 0 &&
       length(google_storage_bucket.state) == 0 &&
       length(google_storage_bucket_iam_policy.state) == 0 &&
       length(google_service_account.infrastructure) == 0 &&
@@ -111,7 +124,7 @@ run "infrastructure_review_does_not_substitute_for_operations_review" {
   }
 }
 
-run "project_bootstrap_rejects_missing_operations_review" {
+run "project_creation_rejects_missing_operations_review" {
   command = plan
 
   variables {
@@ -119,7 +132,154 @@ run "project_bootstrap_rejects_missing_operations_review" {
     enable_organization_guardrails              = true
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
+    enable_production_project_creation          = true
+    project_id                                  = "seen-registry-prod-476219"
+    organization_id                             = "567958019562"
+    billing_account_id                          = "ABCDEF-123456-ABCDEF"
+    bootstrap_operator_members                  = ["user:yousef@felidai.com"]
+    notification_email                          = "yousef@felidai.com"
+  }
+
+  expect_failures = [var.enable_production_project_creation]
+}
+
+run "project_creation_is_an_exact_separate_phase" {
+  command = plan
+
+  variables {
+    enable_control_project_apis                 = true
+    enable_organization_guardrails              = true
+    organization_guardrail_effective            = true
+    github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
+    production_project_creation_verified        = false
+    project_id                                  = "seen-registry-prod-476219"
+    organization_id                             = "567958019562"
+    billing_account_id                          = "ABCDEF-123456-ABCDEF"
+    bootstrap_operator_members                  = ["user:yousef@felidai.com"]
+    notification_email                          = "yousef@felidai.com"
+  }
+
+  assert {
+    condition = (
+      length(google_project.production) == 1 &&
+      google_project.production[0].project_id == "seen-registry-prod-476219" &&
+      google_project.production[0].name == "Seen Registry Production" &&
+      google_project.production[0].org_id == "567958019562" &&
+      google_project.production[0].billing_account == "ABCDEF-123456-ABCDEF" &&
+      google_project.production[0].auto_create_network == false &&
+      google_project.production[0].deletion_policy == "PREVENT" &&
+      google_project.production[0].labels == tomap({
+        application = "seen-registry"
+        environment = "prod"
+        managed_by  = "opentofu"
+        purpose     = "package-registry"
+      }) &&
+      output.production_project_id == "seen-registry-prod-476219" &&
+      output.production_project_number == "123456789012" &&
+      output.enabled_control_project_services == toset([
+        "cloudbilling.googleapis.com",
+        "orgpolicy.googleapis.com",
+      ]) &&
+      output.active_bootstrap_identity == "yousef@felidai.com"
+    )
+    error_message = "Project creation must create exactly the isolated, protected Seen Registry production project under the reviewed human identity."
+  }
+
+  assert {
+    condition = (
+      !var.production_project_creation_verified &&
+      length(data.google_project.production_verified) == 0 &&
+      length(google_organization_iam_member.policy_admin_lease) == 0 &&
+      length(google_project_service.bootstrap) == 0 &&
+      length(google_project_iam_member.policy_admin_lease) == 0 &&
+      length(google_org_policy_policy.automatic_default_service_account_grants) == 0 &&
+      length(google_service_account.infrastructure) == 0 &&
+      length(google_iam_workload_identity_pool.infrastructure) == 0 &&
+      length(google_iam_workload_identity_pool_provider.infrastructure) == 0 &&
+      length(google_service_account_iam_member.infrastructure_oidc) == 0 &&
+      length(google_project_iam_custom_role.infrastructure_plan) == 0 &&
+      length(google_project_iam_custom_role.infrastructure_apply) == 0 &&
+      length(google_project_iam_custom_role.project_iam_apply) == 0 &&
+      length(google_project_iam_custom_role.resource_iam_setter) == 0 &&
+      length(google_project_iam_custom_role.material_key_versions) == 0 &&
+      length(google_project_iam_custom_role.material_secret_versions) == 0 &&
+      length(google_project_iam_custom_role.job_operations_viewer) == 0 &&
+      length(google_project_iam_custom_role.state_reader) == 0 &&
+      length(google_project_iam_custom_role.state_locker) == 0 &&
+      length(google_project_iam_custom_role.state_writer) == 0 &&
+      length(google_project_iam_member.infrastructure_plan) == 0 &&
+      length(google_project_iam_member.infrastructure_apply) == 0 &&
+      length(google_project_iam_member.material_key_versions) == 0 &&
+      length(google_project_iam_member.material_secret_versions) == 0 &&
+      length(google_project_iam_member.infrastructure_project_iam) == 0 &&
+      length(google_project_iam_member.infrastructure_kms_policy_setter) == 0 &&
+      length(google_project_iam_member.infrastructure_secret_policy_setter) == 0 &&
+      length(google_project_iam_member.infrastructure_registry_storage_policy_setter) == 0 &&
+      length(google_project_iam_member.infrastructure_state_storage_policy_setter) == 0 &&
+      length(google_project_iam_member.infrastructure_run_policy_setter) == 0 &&
+      length(google_organization_iam_custom_role.bootstrap_refresh) == 0 &&
+      length(google_organization_iam_custom_role.billing_refresh) == 0 &&
+      length(google_organization_iam_custom_role.control_project_refresh) == 0 &&
+      length(google_organization_iam_member.infrastructure_read) == 0 &&
+      length(google_billing_account_iam_member.infrastructure_read) == 0 &&
+      length(google_project_iam_member.infrastructure_control_project) == 0 &&
+      length(google_project_iam_member.project_creator_owner) == 0 &&
+      length(google_org_policy_policy.managed_allowed_policy_members) == 0 &&
+      length(google_org_policy_policy.legacy_domain_restriction_override) == 0 &&
+      length(google_storage_bucket.state) == 0 &&
+      length(data.google_iam_policy.state) == 0 &&
+      length(google_storage_bucket_iam_policy.state) == 0 &&
+      length(google_project_iam_audit_config.storage) == 0 &&
+      length(google_monitoring_notification_channel.operations) == 0 &&
+      length(output.enabled_bootstrap_services) == 0 &&
+      output.production_state_backend == null &&
+      output.bootstrap_state_backend == null &&
+      output.production_notification_channel_id == null &&
+      output.infrastructure_plan_service_account == null &&
+      output.project_executor_service_account == null &&
+      output.materials_operations_service_account == null &&
+      output.job_operations_service_account == null &&
+      output.infrastructure_workload_identity_pool == null &&
+      length(output.infrastructure_workload_identity_providers) == 0 &&
+      length(output.operations_workload_identity_providers) == 0 &&
+      output.infrastructure_custom_roles == null &&
+      output.materials_operations_custom_roles == null &&
+      output.job_operations_viewer_role == null &&
+      output.organization_bootstrap_refresh_role == null &&
+      output.billing_account_refresh_role == null &&
+      output.control_project_refresh_role == null &&
+      output.automatic_default_service_account_grants_policy == null &&
+      !var.enable_project_policy_admin_lease &&
+      !var.enable_temporary_human_state_migration_access &&
+      !var.adopt_project_creator_owner &&
+      !var.approve_project_creator_owner_removal &&
+      !var.project_creator_owner_removed &&
+      !var.enable_portfolio_gateway_exception &&
+      !var.portfolio_gateway_exception_effective &&
+      !var.managed_member_policy_effective &&
+      !var.automatic_default_service_account_grants_policy_effective &&
+      !var.production_foundation_applied &&
+      !var.production_image_publisher_foundation_applied &&
+      !var.project_executor_handoff_complete
+    )
+    error_message = "Project creation must leave every project-configuration resource and later phase gate inactive until creation is separately verified."
+  }
+}
+
+run "full_bootstrap_rejects_unverified_project_creation" {
+  command = plan
+
+  variables {
+    enable_control_project_apis                 = true
+    enable_organization_guardrails              = true
+    organization_guardrail_effective            = true
+    github_infrastructure_environments_reviewed = true
+    github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
     enable_production_project_bootstrap         = true
+    production_project_creation_verified        = false
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
     billing_account_id                          = "ABCDEF-123456-ABCDEF"
@@ -189,7 +349,9 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
     enable_production_project_bootstrap         = true
+    production_project_creation_verified        = true
     enable_project_policy_admin_lease           = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
@@ -207,6 +369,11 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
       google_project.production[0].deletion_policy == "PREVENT" &&
       output.organization_guardrail_effective &&
       output.active_bootstrap_identity == "yousef@felidai.com" &&
+      length(data.google_project.production_verified) == 1 &&
+      data.google_project.production_verified[0].project_id == "seen-registry-prod-476219" &&
+      data.google_project.production_verified[0].number == "123456789012" &&
+      data.google_project.production_verified[0].org_id == "567958019562" &&
+      data.google_project.production_verified[0].billing_account == "ABCDEF-123456-ABCDEF" &&
       strcontains(file("${path.root}/versions.tf"), "provider \"google\" {\n  alias                 = \"bootstrap_identity\"\n  user_project_override = false\n}") &&
       strcontains(file("${path.root}/main.tf"), "provider = google.bootstrap_identity") &&
       length(google_project_iam_member.project_creator_owner) == 0
@@ -502,7 +669,9 @@ run "temporary_human_state_access_covers_both_exact_roots" {
     organization_guardrail_effective              = true
     github_infrastructure_environments_reviewed   = true
     github_operations_environments_reviewed       = true
+    enable_production_project_creation            = true
     enable_production_project_bootstrap           = true
+    production_project_creation_verified          = true
     enable_temporary_human_state_migration_access = true
     project_id                                    = "seen-registry-prod-476219"
     organization_id                               = "567958019562"
@@ -536,7 +705,9 @@ run "next_project_bootstrap_phase_is_exact" {
     organization_guardrail_effective              = true
     github_infrastructure_environments_reviewed   = true
     github_operations_environments_reviewed       = true
+    enable_production_project_creation            = true
     enable_production_project_bootstrap           = true
+    production_project_creation_verified          = true
     enable_project_policy_admin_lease             = true
     enable_temporary_human_state_migration_access = true
     project_id                                    = "seen-registry-prod-476219"
@@ -600,7 +771,9 @@ run "production_foundation_installs_exact_resource_policy_setters" {
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
     github_operations_environments_reviewed                   = true
+    enable_production_project_creation                        = true
     enable_production_project_bootstrap                       = true
+    production_project_creation_verified                      = true
     production_foundation_applied                             = true
     production_image_publisher_foundation_applied             = true
     managed_member_policy_effective                           = true
@@ -792,7 +965,9 @@ run "owner_adoption_contract_is_exact_and_human_only" {
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
     enable_production_project_bootstrap         = true
+    production_project_creation_verified        = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
     billing_account_id                          = "ABCDEF-123456-ABCDEF"
@@ -822,7 +997,9 @@ run "owner_removal_is_a_separate_human_phase" {
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
     github_operations_environments_reviewed                   = true
+    enable_production_project_creation                        = true
     enable_production_project_bootstrap                       = true
+    production_project_creation_verified                      = true
     production_foundation_applied                             = true
     automatic_default_service_account_grants_policy_effective = true
     enable_temporary_human_state_migration_access             = true
@@ -862,7 +1039,9 @@ run "steady_handoff_has_no_human_grants_or_identity_lookup" {
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
     github_operations_environments_reviewed                   = true
+    enable_production_project_creation                        = true
     enable_production_project_bootstrap                       = true
+    production_project_creation_verified                      = true
     production_foundation_applied                             = true
     automatic_default_service_account_grants_policy_effective = true
     managed_member_policy_effective                           = true
@@ -912,7 +1091,9 @@ run "gateway_exception_is_created_in_separate_human_policy_phase" {
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
     enable_production_project_bootstrap         = true
+    production_project_creation_verified        = true
     enable_project_policy_admin_lease           = true
     enable_portfolio_gateway_exception          = true
     managed_member_policy_effective             = true
@@ -960,18 +1141,18 @@ run "rejects_project_creation_before_github_environment_review" {
   command = plan
 
   variables {
-    enable_control_project_apis         = true
-    enable_organization_guardrails      = true
-    organization_guardrail_effective    = true
-    enable_production_project_bootstrap = true
-    project_id                          = "seen-registry-prod-476219"
-    organization_id                     = "567958019562"
-    billing_account_id                  = "ABCDEF-123456-ABCDEF"
-    bootstrap_operator_members          = ["user:yousef@felidai.com"]
-    notification_email                  = "yousef@felidai.com"
+    enable_control_project_apis        = true
+    enable_organization_guardrails     = true
+    organization_guardrail_effective   = true
+    enable_production_project_creation = true
+    project_id                         = "seen-registry-prod-476219"
+    organization_id                    = "567958019562"
+    billing_account_id                 = "ABCDEF-123456-ABCDEF"
+    bootstrap_operator_members         = ["user:yousef@felidai.com"]
+    notification_email                 = "yousef@felidai.com"
   }
 
-  expect_failures = [var.enable_production_project_bootstrap]
+  expect_failures = [var.enable_production_project_creation]
 }
 
 run "rejects_handoff_before_owner_removal" {
@@ -983,7 +1164,9 @@ run "rejects_handoff_before_owner_removal" {
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
     enable_production_project_bootstrap         = true
+    production_project_creation_verified        = true
     project_executor_handoff_complete           = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
@@ -1004,7 +1187,9 @@ run "combined_owner_phase_contract_is_rejected_before_import" {
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
     enable_production_project_bootstrap         = true
+    production_project_creation_verified        = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
     billing_account_id                          = "ABCDEF-123456-ABCDEF"
@@ -1030,7 +1215,9 @@ run "rejects_owner_removal_with_project_policy_admin_lease" {
     organization_guardrail_effective                          = true
     github_infrastructure_environments_reviewed               = true
     github_operations_environments_reviewed                   = true
+    enable_production_project_creation                        = true
     enable_production_project_bootstrap                       = true
+    production_project_creation_verified                      = true
     enable_project_policy_admin_lease                         = true
     enable_temporary_human_state_migration_access             = true
     managed_member_policy_effective                           = true
@@ -1061,7 +1248,9 @@ run "rejects_owner_removal_with_organization_policy_admin_lease" {
     enable_organization_policy_admin_lease                    = true
     github_infrastructure_environments_reviewed               = true
     github_operations_environments_reviewed                   = true
+    enable_production_project_creation                        = true
     enable_production_project_bootstrap                       = true
+    production_project_creation_verified                      = true
     enable_temporary_human_state_migration_access             = true
     managed_member_policy_effective                           = true
     automatic_default_service_account_grants_policy_effective = true
@@ -1093,7 +1282,7 @@ run "rejects_project_creation_before_guardrail_effective" {
     enable_organization_guardrails              = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
-    enable_production_project_bootstrap         = true
+    enable_production_project_creation          = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
     billing_account_id                          = "ABCDEF-123456-ABCDEF"
@@ -1101,10 +1290,10 @@ run "rejects_project_creation_before_guardrail_effective" {
     notification_email                          = "yousef@felidai.com"
   }
 
-  expect_failures = [var.enable_production_project_bootstrap]
+  expect_failures = [var.enable_production_project_creation]
 }
 
-run "rejects_project_bootstrap_with_organization_policy_admin_lease" {
+run "rejects_project_creation_with_organization_policy_admin_lease" {
   command = plan
 
   variables {
@@ -1114,7 +1303,7 @@ run "rejects_project_bootstrap_with_organization_policy_admin_lease" {
     enable_organization_policy_admin_lease      = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
-    enable_production_project_bootstrap         = true
+    enable_production_project_creation          = true
     project_id                                  = "seen-registry-prod-476219"
     organization_id                             = "567958019562"
     billing_account_id                          = "ABCDEF-123456-ABCDEF"
@@ -1134,7 +1323,9 @@ run "rejects_foundation_before_default_service_account_policy_effective" {
     organization_guardrail_effective            = true
     github_infrastructure_environments_reviewed = true
     github_operations_environments_reviewed     = true
+    enable_production_project_creation          = true
     enable_production_project_bootstrap         = true
+    production_project_creation_verified        = true
     managed_member_policy_effective             = true
     enable_portfolio_gateway_exception          = true
     portfolio_gateway_exception_effective       = true
