@@ -291,7 +291,7 @@ jobs:
             echo "- Plan SHA-256: \`${PLAN_SHA256}\`"
             echo "- Review SHA-256: \`${REVIEW_SHA256}\`"
             echo
-            echo "The saved plan and review are encrypted. A designated reviewer must decrypt the bundle offline and inspect \`review.txt\` before approving the protected apply environment."
+            echo "The saved plan and review are encrypted. The approving operator must decrypt the bundle offline and inspect \`review.txt\` before approving the protected apply environment."
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Remove sensitive plan material

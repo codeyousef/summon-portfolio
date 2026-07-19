@@ -32,6 +32,12 @@
 - Keep production planning and applying on separate protected OIDC identities,
   and never expose a saved plan or rendered plan through public logs or a
   plaintext artifact.
+- This repository has one human production operator. Protected production
+  environments must require that operator's explicit approval, permit the
+  workflow initiator to provide it, allow only `master`, and keep administrator
+  bypass disabled. Do not describe this as independent or two-person review.
+  Planning and applying remain separate approvals, even when the same operator
+  performs both.
 - Treat protected review of the exact saved plan as the production apply
   security boundary. The apply identity has no direct standing data or signing
   role, but approved infrastructure changes can bind allowlisted runtime roles

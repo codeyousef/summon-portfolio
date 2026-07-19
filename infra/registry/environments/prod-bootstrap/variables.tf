@@ -16,13 +16,13 @@ variable "enable_control_project_apis" {
 }
 
 variable "github_infrastructure_environments_reviewed" {
-  description = "Manual attestation that seen-registry-production-plan and seen-registry-production-apply require independent reviewers, prevent self-review and administrator bypass, and allow only master. Must be true before project creation."
+  description = "Manual attestation that seen-registry-production-plan and seen-registry-production-apply require explicit approval by the sole repository operator, permit that operator to approve their own deployment, disable administrator bypass, and allow only master. Must be true before project creation."
   type        = bool
   default     = false
 }
 
 variable "github_operations_environments_reviewed" {
-  description = "Manual attestation that seen-registry-production-materials and seen-registry-production-jobs require independent reviewers, prevent self-review and administrator bypass, and allow only master. Kept separate so an older infrastructure-only attestation cannot activate operations federation."
+  description = "Manual attestation that seen-registry-production-materials and seen-registry-production-jobs require explicit approval by the sole repository operator, permit that operator to approve their own deployment, disable administrator bypass, and allow only master. Kept separate so an older infrastructure-only attestation cannot activate operations federation."
   type        = bool
   default     = false
 }
