@@ -1,17 +1,28 @@
 mock_provider "google" {}
 
+override_data {
+  target = data.google_monitoring_notification_channel.operations
+  values = {
+    name                = "projects/seen-registry-prod-476219/notificationChannels/1"
+    enabled             = true
+    verification_status = "VERIFIED"
+  }
+}
+
 run "read_only_api_has_no_writer_surfaces" {
   command = plan
 
   variables {
-    project_id                        = "seen-registry-prod-placeholder"
-    enable_production_foundation      = true
-    enable_production_read_only_api   = true
-    enable_production_root_verifier   = true
-    github_ci_enabled                 = true
-    notification_channel_ids          = ["projects/seen-registry-prod-placeholder/notificationChannels/1"]
-    portfolio_gateway_service_account = "portfolio@portfolio-476219.iam.gserviceaccount.com"
-    container_image                   = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    enable_production_read_only_api         = true
+    enable_production_root_verifier         = true
+    github_ci_enabled                       = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    portfolio_gateway_service_account       = "portfolio-prod-runtime@portfolio-476219.iam.gserviceaccount.com"
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     online_public_keys_hex = {
       releases  = "1111111111111111111111111111111111111111111111111111111111111111"
       security  = "2222222222222222222222222222222222222222222222222222222222222222"
@@ -62,8 +73,34 @@ run "read_only_api_has_no_writer_surfaces" {
   }
 
   assert {
-    condition     = contains(module.registry.enabled_services, "sts.googleapis.com")
-    error_message = "GitHub workload identity federation requires the Security Token Service API."
+    condition = local.bootstrap_owned_services == toset([
+      "cloudresourcemanager.googleapis.com",
+      "iam.googleapis.com",
+      "iamcredentials.googleapis.com",
+      "monitoring.googleapis.com",
+      "orgpolicy.googleapis.com",
+      "serviceusage.googleapis.com",
+      "storage.googleapis.com",
+      "sts.googleapis.com",
+    ])
+    error_message = "Production must leave exactly the reviewed resource-manager, IAM, monitoring, organization-policy, service-usage, storage, and STS APIs under bootstrap ownership."
+  }
+
+  assert {
+    condition = module.registry.enabled_services == toset([
+      "artifactregistry.googleapis.com",
+      "billingbudgets.googleapis.com",
+      "certificatemanager.googleapis.com",
+      "cloudkms.googleapis.com",
+      "cloudscheduler.googleapis.com",
+      "compute.googleapis.com",
+      "dns.googleapis.com",
+      "firestore.googleapis.com",
+      "logging.googleapis.com",
+      "run.googleapis.com",
+      "secretmanager.googleapis.com",
+    ])
+    error_message = "The production child root must own exactly its non-bootstrap service API set."
   }
 
   assert {
@@ -93,14 +130,16 @@ run "refresh_jobs_are_narrow_and_schedule_free" {
   command = plan
 
   variables {
-    project_id                     = "seen-registry-prod-placeholder"
-    enable_production_foundation   = true
-    enable_production_refresh_jobs = true
-    signer_jwks_all_apis_enabled   = true
-    notification_channel_ids       = ["projects/seen-registry-prod-placeholder/notificationChannels/1"]
-    container_image                = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image         = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    trusted_root_v1_sha256         = "5555555555555555555555555555555555555555555555555555555555555555"
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    enable_production_refresh_jobs          = true
+    signer_jwks_all_apis_enabled            = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"
       security  = "2"
@@ -148,11 +187,13 @@ run "offline_bootstrap_is_one_use_and_signer_free" {
   command = plan
 
   variables {
-    project_id                     = "seen-registry-prod-placeholder"
-    enable_production_foundation   = true
-    notification_channel_ids       = ["projects/seen-registry-prod-placeholder/notificationChannels/1"]
-    production_ceremony_operations = ["offline_bootstrap_importer"]
-    container_image                = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    production_ceremony_operations          = ["offline_bootstrap_importer"]
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     online_public_keys_hex = {
       releases  = "1111111111111111111111111111111111111111111111111111111111111111"
       security  = "2222222222222222222222222222222222222222222222222222222222222222"
@@ -180,14 +221,16 @@ run "online_bootstrap_has_only_bootstrap_signing_authority" {
   command = plan
 
   variables {
-    project_id                     = "seen-registry-prod-placeholder"
-    enable_production_foundation   = true
-    notification_channel_ids       = ["projects/seen-registry-prod-placeholder/notificationChannels/1"]
-    production_ceremony_operations = ["online_bootstrap"]
-    signer_jwks_all_apis_enabled   = true
-    container_image                = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image         = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    trusted_root_v1_sha256         = "5555555555555555555555555555555555555555555555555555555555555555"
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    production_ceremony_operations          = ["online_bootstrap"]
+    signer_jwks_all_apis_enabled            = true
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"
       security  = "2"
@@ -227,14 +270,16 @@ run "targets_renewal_grants_only_required_signers" {
   command = plan
 
   variables {
-    project_id                     = "seen-registry-prod-placeholder"
-    enable_production_foundation   = true
-    notification_channel_ids       = ["projects/seen-registry-prod-placeholder/notificationChannels/1"]
-    production_ceremony_operations = ["targets_renewal"]
-    signer_jwks_all_apis_enabled   = true
-    container_image                = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image         = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    trusted_root_v1_sha256         = "5555555555555555555555555555555555555555555555555555555555555555"
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    production_ceremony_operations          = ["targets_renewal"]
+    signer_jwks_all_apis_enabled            = true
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       snapshot  = "3"
       timestamp = "4"
@@ -275,15 +320,17 @@ run "ceremony_rejects_unrelated_refresh_authority" {
   command = plan
 
   variables {
-    project_id                     = "seen-registry-prod-placeholder"
-    enable_production_foundation   = true
-    enable_production_refresh_jobs = true
-    notification_channel_ids       = ["projects/seen-registry-prod-placeholder/notificationChannels/1"]
-    production_ceremony_operations = ["targets_renewal"]
-    signer_jwks_all_apis_enabled   = true
-    container_image                = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image         = "us-central1-docker.pkg.dev/seen-registry-prod-placeholder/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    trusted_root_v1_sha256         = "5555555555555555555555555555555555555555555555555555555555555555"
+    project_id                              = "seen-registry-prod-476219"
+    bootstrap_production_policies_effective = true
+    enable_production_foundation            = true
+    bootstrap_creator_owner_removed         = true
+    enable_production_refresh_jobs          = true
+    notification_channel_ids                = ["projects/seen-registry-prod-476219/notificationChannels/1"]
+    production_ceremony_operations          = ["targets_renewal"]
+    signer_jwks_all_apis_enabled            = true
+    container_image                         = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image                  = "us-central1-docker.pkg.dev/seen-registry-prod-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    trusted_root_v1_sha256                  = "5555555555555555555555555555555555555555555555555555555555555555"
     online_key_version_numbers = {
       releases  = "1"
       security  = "2"
@@ -301,5 +348,5 @@ run "ceremony_rejects_unrelated_refresh_authority" {
     }
   }
 
-  expect_failures = [check.production_ceremony_isolation]
+  expect_failures = [var.production_ceremony_operations]
 }

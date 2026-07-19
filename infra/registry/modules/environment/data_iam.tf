@@ -98,6 +98,18 @@ resource "google_project_iam_member" "firestore_user" {
       "resource.name.startsWith('projects/${var.project_id}/databases/${var.firestore_database}/')",
     ])
   }
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Firestore writer IAM must preserve ceremony isolation and leave every unselected ceremony identity unauthorized."
+    }
+
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "The read-only API identity must never receive Firestore writer authority."
+    }
+  }
 }
 
 resource "google_project_iam_member" "firestore_reader" {
@@ -115,6 +127,18 @@ resource "google_project_iam_member" "firestore_reader" {
       "resource.name.startsWith('projects/${var.project_id}/databases/${var.firestore_database}/')",
     ])
   }
+
+  lifecycle {
+    precondition {
+      condition     = local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Firestore reader IAM must leave every unselected ceremony identity unauthorized."
+    }
+
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "The read-only API must retain only its database-scoped Firestore reader authority."
+    }
+  }
 }
 
 resource "google_storage_bucket_iam_member" "metadata_reader" {
@@ -128,6 +152,18 @@ resource "google_storage_bucket_iam_member" "metadata_reader" {
     title       = "metadata_read_${replace(each.value, "_", "-")}"
     description = "Reads only the environment metadata prefix. Object listing is intentionally not granted."
     expression  = "resource.type == 'storage.googleapis.com/Object' && resource.name.startsWith('${local.metadata_object_prefix}')"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Metadata reader IAM must preserve bootstrap isolation and leave every unselected ceremony identity unauthorized."
+    }
+
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "The read-only API must retain only metadata-prefix read authority."
+    }
   }
 }
 
@@ -149,6 +185,18 @@ resource "google_storage_bucket_iam_member" "metadata_creator" {
       "(${join(" || ", [for suffix in each.value : "resource.name.endsWith('${suffix}')"])})",
     ])
   }
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Metadata creator IAM must preserve bootstrap isolation and leave every unselected ceremony identity unauthorized."
+    }
+
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "The read-only API identity must never receive metadata creation authority."
+    }
+  }
 }
 
 resource "google_storage_bucket_iam_member" "bootstrap_root_pointer_create" {
@@ -162,6 +210,13 @@ resource "google_storage_bucket_iam_member" "bootstrap_root_pointer_create" {
     title       = "bootstrap_initial_root_pointer"
     description = "Bootstrap may create root.json once; create-only permission cannot replace it."
     expression  = "resource.type == 'storage.googleapis.com/Object' && resource.name == '${local.root_pointer_object_name}'"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Initial root-pointer authority must remain exclusive to the selected offline bootstrap importer."
+    }
   }
 }
 
@@ -179,6 +234,13 @@ resource "google_storage_bucket_iam_member" "bootstrap_metadata_creator" {
     title       = "bootstrap_${replace(each.key, "_", "-")}"
     description = "Bootstrap authority is restricted to one exact version-one immutable metadata object."
     expression  = "resource.type == 'storage.googleapis.com/Object' && resource.name == '${local.metadata_object_prefix}${each.value.filename}'"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Bootstrap metadata authority must preserve the offline/online split and exclude every unselected ceremony identity."
+    }
   }
 }
 
@@ -207,6 +269,13 @@ resource "google_storage_bucket_iam_member" "root_pointer_replacer" {
     title       = "root_pointer_import"
     description = "Only the ephemeral offline-authorized root importer may generation-CAS root.json."
     expression  = "resource.type == 'storage.googleapis.com/Object' && resource.name == '${local.root_pointer_object_name}'"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Root-pointer replacement authority must remain exclusive to the selected root importer."
+    }
   }
 }
 
@@ -263,6 +332,13 @@ resource "google_storage_bucket_iam_member" "api_public_reader" {
     title       = "api_public_blob_read"
     description = "API reads immutable content-addressed blobs for the authenticated private origin."
     expression  = "resource.type == 'storage.googleapis.com/Object' && resource.name.startsWith('${local.public_object_prefix}')"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "The read-only API must retain only immutable public-blob read authority."
+    }
   }
 }
 

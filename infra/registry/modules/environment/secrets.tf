@@ -131,4 +131,16 @@ resource "google_secret_manager_secret_iam_member" "runtime" {
     description = "Rejects latest and every unreviewed secret version."
     expression  = "resource.name == 'projects/${data.google_project.current[0].number}/secrets/${google_secret_manager_secret.registry[each.value.secret].secret_id}/versions/${each.value.version}'"
   }
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Secret-version access must preserve bootstrap isolation and leave every unselected ceremony identity unauthorized."
+    }
+
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "The read-only API identity must never receive Secret Manager access."
+    }
+  }
 }

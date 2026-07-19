@@ -1,0 +1,543 @@
+name: Seen registry production infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      root:
+        description: Production OpenTofu root to plan
+        required: true
+        type: choice
+        options:
+          - prod
+          - prod-bootstrap
+      apply:
+        description: Apply the exact saved plan after protected-environment review
+        required: true
+        default: false
+        type: boolean
+      apply_confirmation:
+        description: Enter APPLY_SAVED_PLAN when apply is enabled
+        required: false
+        type: string
+
+concurrency:
+  group: seen-registry-production-infrastructure
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TOFU_VERSION: 1.12.4
+  PROD_PROJECT_ID: seen-registry-prod-476219
+  INFRA_WORKFLOW_REF: codeyousef/summon-portfolio/.github/workflows/deploy-seen-registry-infrastructure.yml@refs/heads/master
+  INFRA_POOL_ID: seen-registry-prod-infra
+
+jobs:
+  plan:
+    name: Create immutable production plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: seen-registry-production-plan
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+      bundle-sha256: ${{ steps.encrypt.outputs.bundle-sha256 }}
+      plan-sha256: ${{ steps.plan.outputs.plan-sha256 }}
+      review-sha256: ${{ steps.plan.outputs.review-sha256 }}
+      root: ${{ steps.contract.outputs.root }}
+    env:
+      ROOT_INPUT: ${{ inputs.root }}
+      ARTIFACT_KEY_FINGERPRINT: ${{ vars.SEEN_REGISTRY_PROD_PLAN_ARTIFACT_KEY_FINGERPRINT }}
+      WIF_PROVIDER: ${{ vars.GCP_REGISTRY_PROD_INFRA_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ vars.GCP_REGISTRY_PROD_INFRA_SERVICE_ACCOUNT }}
+    steps:
+      - name: Validate immutable workflow contract
+        id: contract
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          REPOSITORY_OWNER_ID: ${{ github.repository_owner_id }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "${EVENT_NAME}" = "workflow_dispatch"
+          test "${GIT_REF}" = "refs/heads/master"
+          test "${REPOSITORY}" = "codeyousef/summon-portfolio"
+          test "${REPOSITORY_ID}" = "1091564909"
+          test "${REPOSITORY_OWNER_ID}" = "10247142"
+          test "${WORKFLOW_REF}" = "${INFRA_WORKFLOW_REF}"
+          test "${WORKFLOW_SHA}" = "${COMMIT_SHA}"
+          case "${ROOT_INPUT}" in
+            prod|prod-bootstrap) ;;
+            *) echo "Unsupported production root" >&2; exit 1 ;;
+          esac
+          expected_provider_regex="^projects/[1-9][0-9]*/locations/global/workloadIdentityPools/${INFRA_POOL_ID}/providers/infra-plan$"
+          [[ "${WIF_PROVIDER}" =~ ${expected_provider_regex} ]]
+          test "${WIF_SERVICE_ACCOUNT}" = "seen-registry-prod-plan@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+          echo "root=${ROOT_INPUT}" >> "${GITHUB_OUTPUT}"
+          echo "TF_ROOT=infra/registry/environments/${ROOT_INPUT}" >> "${GITHUB_ENV}"
+          echo "PLAN_DIR=${RUNNER_TEMP}/seen-registry-production-plan" >> "${GITHUB_ENV}"
+
+      - name: Check out the exact workflow commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Refuse bootstrap plans before remote-state migration
+        if: inputs.root == 'prod-bootstrap'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -Eq '^[[:space:]]*backend[[:space:]]+"gcs"[[:space:]]*\{' "${TF_ROOT}/versions.tf"; then
+            echo "prod-bootstrap remains on its one-use local backend; migrate it in a separately reviewed commit before CI planning" >&2
+            exit 1
+          fi
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Authenticate the read-only planner
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Prepare dedicated backend
+        id: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "${PLAN_DIR}"
+          case "${ROOT_INPUT}" in
+            prod)
+              backend_bucket="${PROD_PROJECT_ID}-prod-tofu-state"
+              backend_prefix="seen-registry/prod"
+              ;;
+            prod-bootstrap)
+              backend_bucket="${PROD_PROJECT_ID}-bootstrap-tofu-state"
+              backend_prefix="seen-registry/bootstrap/prod"
+              ;;
+          esac
+          {
+            printf 'bucket = "%s"\n' "${backend_bucket}"
+            printf 'prefix = "%s"\n' "${backend_prefix}"
+          } > "${PLAN_DIR}/backend.hcl"
+          echo "BACKEND_BUCKET=${backend_bucket}" >> "${GITHUB_ENV}"
+          echo "BACKEND_PREFIX=${backend_prefix}" >> "${GITHUB_ENV}"
+
+      - name: Decode production root inputs
+        if: inputs.root == 'prod'
+        shell: bash
+        env:
+          TFVARS_B64: ${{ secrets.SEEN_REGISTRY_PROD_TFVARS_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "${TFVARS_B64}" || { echo "SEEN_REGISTRY_PROD_TFVARS_B64 is not configured" >&2; exit 1; }
+          printf '%s' "${TFVARS_B64}" | base64 --decode > "${PLAN_DIR}/terraform.tfvars"
+          test -s "${PLAN_DIR}/terraform.tfvars"
+
+      - name: Decode production bootstrap inputs
+        if: inputs.root == 'prod-bootstrap'
+        shell: bash
+        env:
+          TFVARS_B64: ${{ secrets.SEEN_REGISTRY_PROD_BOOTSTRAP_TFVARS_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "${TFVARS_B64}" || { echo "SEEN_REGISTRY_PROD_BOOTSTRAP_TFVARS_B64 is not configured" >&2; exit 1; }
+          printf '%s' "${TFVARS_B64}" | base64 --decode > "${PLAN_DIR}/terraform.tfvars"
+          test -s "${PLAN_DIR}/terraform.tfvars"
+
+      - name: Create saved plan and review record
+        id: plan
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          REPOSITORY_OWNER_ID: ${{ github.repository_owner_id }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          tofu -chdir="${TF_ROOT}" init -input=false -reconfigure -backend-config="${PLAN_DIR}/backend.hcl"
+          tofu -chdir="${TF_ROOT}" validate
+          if ! tofu -chdir="${TF_ROOT}" plan -input=false -lock-timeout=5m -no-color -var-file="${PLAN_DIR}/terraform.tfvars" -out="${PLAN_DIR}/plan.tfplan" > "${PLAN_DIR}/plan.log" 2>&1; then
+            echo "The production plan failed; reproduce it in an approved private environment because plan diagnostics may contain sensitive values." >&2
+            exit 1
+          fi
+          rm -f "${PLAN_DIR}/plan.log"
+          tofu -chdir="${TF_ROOT}" show -no-color "${PLAN_DIR}/plan.tfplan" > "${PLAN_DIR}/review.txt"
+          plan_sha256="$(sha256sum "${PLAN_DIR}/plan.tfplan" | awk '{print $1}')"
+          review_sha256="$(sha256sum "${PLAN_DIR}/review.txt" | awk '{print $1}')"
+          jq_args=(
+            --arg repository "${REPOSITORY}"
+            --arg repository_id "${REPOSITORY_ID}"
+            --arg repository_owner_id "${REPOSITORY_OWNER_ID}"
+            --arg commit_sha "${COMMIT_SHA}"
+            --arg git_ref "${GIT_REF}"
+            --arg event_name "${EVENT_NAME}"
+            --arg workflow_ref "${WORKFLOW_REF}"
+            --arg workflow_sha "${WORKFLOW_SHA}"
+            --arg run_id "${RUN_ID}"
+            --arg run_attempt "${RUN_ATTEMPT}"
+            --arg root "${ROOT_INPUT}"
+            --arg backend_bucket "${BACKEND_BUCKET}"
+            --arg backend_prefix "${BACKEND_PREFIX}"
+            --arg tofu_version "${TOFU_VERSION}"
+            --arg plan_sha256 "${plan_sha256}"
+            --arg review_sha256 "${review_sha256}"
+          )
+          jq -n "${jq_args[@]}" '{
+              schema_version: 1,
+              repository: $repository,
+              repository_id: $repository_id,
+              repository_owner_id: $repository_owner_id,
+              commit_sha: $commit_sha,
+              git_ref: $git_ref,
+              event_name: $event_name,
+              workflow_ref: $workflow_ref,
+              workflow_sha: $workflow_sha,
+              run_id: $run_id,
+              run_attempt: $run_attempt,
+              root: $root,
+              backend_bucket: $backend_bucket,
+              backend_prefix: $backend_prefix,
+              tofu_version: $tofu_version,
+              plan_sha256: $plan_sha256,
+              review_sha256: $review_sha256
+            }' > "${PLAN_DIR}/metadata.json"
+          chmod 0600 "${PLAN_DIR}/plan.tfplan" "${PLAN_DIR}/review.txt" "${PLAN_DIR}/metadata.json"
+          echo "plan-sha256=${plan_sha256}" >> "${GITHUB_OUTPUT}"
+          echo "review-sha256=${review_sha256}" >> "${GITHUB_OUTPUT}"
+
+      - name: Encrypt the sensitive saved-plan bundle
+        id: encrypt
+        shell: bash
+        env:
+          ARTIFACT_PUBLIC_KEY_B64: ${{ secrets.SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PUBLIC_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          command -v gpg > /dev/null
+          test -n "${ARTIFACT_PUBLIC_KEY_B64}" || { echo "SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PUBLIC_KEY_B64 is not configured" >&2; exit 1; }
+          expected_fingerprint="$(printf '%s' "${ARTIFACT_KEY_FINGERPRINT}" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          [[ "${expected_fingerprint}" =~ ^[0-9A-F]{40}([0-9A-F]{24})?$ ]] || { echo "The plan-artifact key fingerprint is invalid" >&2; exit 1; }
+          export GNUPGHOME="${RUNNER_TEMP}/seen-registry-plan-gnupg"
+          mkdir -m 0700 "${GNUPGHOME}"
+          printf '%s' "${ARTIFACT_PUBLIC_KEY_B64}" | base64 --decode | gpg --batch --import > /dev/null 2>&1
+          mapfile -t primary_fingerprints < <(
+            gpg --batch --with-colons --list-keys |
+              awk -F: '$1 == "pub" { want_fingerprint = 1; next } want_fingerprint && $1 == "fpr" { print toupper($10); want_fingerprint = 0 }'
+          )
+          test "${#primary_fingerprints[@]}" -eq 1
+          test "${primary_fingerprints[0]}" = "${expected_fingerprint}"
+          tar -C "${PLAN_DIR}" -cf "${PLAN_DIR}/plan-bundle.tar" plan.tfplan review.txt metadata.json
+          gpg --batch --yes --trust-model always --force-mdc --cipher-algo AES256 \
+            --recipient "${expected_fingerprint}" \
+            --output "${PLAN_DIR}/plan-bundle.tar.gpg" \
+            --encrypt "${PLAN_DIR}/plan-bundle.tar"
+          bundle_sha256="$(sha256sum "${PLAN_DIR}/plan-bundle.tar.gpg" | awk '{print $1}')"
+          chmod 0600 "${PLAN_DIR}/plan-bundle.tar.gpg"
+          rm -f "${PLAN_DIR}/plan-bundle.tar" "${PLAN_DIR}/plan.tfplan" "${PLAN_DIR}/review.txt" "${PLAN_DIR}/metadata.json"
+          echo "bundle-sha256=${bundle_sha256}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload immutable saved-plan bundle
+        id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: seen-registry-${{ inputs.root }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/seen-registry-production-plan/plan-bundle.tar.gpg
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Publish review coordinates
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          BUNDLE_SHA256: ${{ steps.encrypt.outputs.bundle-sha256 }}
+          PLAN_SHA256: ${{ steps.plan.outputs.plan-sha256 }}
+          REVIEW_SHA256: ${{ steps.plan.outputs.review-sha256 }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Production infrastructure plan"
+            echo
+            echo "- Root: \`${ROOT_INPUT}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Artifact ID: \`${ARTIFACT_ID}\`"
+            echo "- Artifact digest: \`${ARTIFACT_DIGEST}\`"
+            echo "- Encrypted bundle SHA-256: \`${BUNDLE_SHA256}\`"
+            echo "- Plan SHA-256: \`${PLAN_SHA256}\`"
+            echo "- Review SHA-256: \`${REVIEW_SHA256}\`"
+            echo
+            echo "The saved plan and review are encrypted. A designated reviewer must decrypt the bundle offline and inspect \`review.txt\` before approving the protected apply environment."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Remove sensitive plan material
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${PLAN_DIR:-}" && "${PLAN_DIR}" == "${RUNNER_TEMP}/"* ]]; then
+            rm -rf -- "${PLAN_DIR}"
+          fi
+          gnupg_home="${RUNNER_TEMP}/seen-registry-plan-gnupg"
+          if [[ -d "${gnupg_home}" ]]; then
+            GNUPGHOME="${gnupg_home}" gpgconf --kill all || true
+            rm -rf -- "${gnupg_home}"
+          fi
+
+  apply:
+    name: Apply the reviewed saved plan
+    if: inputs.apply
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: seen-registry-production-apply
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ROOT_INPUT: ${{ inputs.root }}
+      APPLY_CONFIRMATION: ${{ inputs.apply_confirmation }}
+      PLAN_ARTIFACT_ID: ${{ needs.plan.outputs.artifact-id }}
+      PLAN_ARTIFACT_DIGEST: ${{ needs.plan.outputs.artifact-digest }}
+      EXPECTED_BUNDLE_SHA256: ${{ needs.plan.outputs.bundle-sha256 }}
+      EXPECTED_PLAN_SHA256: ${{ needs.plan.outputs.plan-sha256 }}
+      EXPECTED_REVIEW_SHA256: ${{ needs.plan.outputs.review-sha256 }}
+      PLANNED_ROOT: ${{ needs.plan.outputs.root }}
+      ARTIFACT_KEY_FINGERPRINT: ${{ vars.SEEN_REGISTRY_PROD_PLAN_ARTIFACT_KEY_FINGERPRINT }}
+      WIF_PROVIDER: ${{ vars.GCP_REGISTRY_PROD_INFRA_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ vars.GCP_REGISTRY_PROD_INFRA_SERVICE_ACCOUNT }}
+    steps:
+      - name: Validate protected apply contract
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          REPOSITORY_OWNER_ID: ${{ github.repository_owner_id }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "${APPLY_CONFIRMATION}" = "APPLY_SAVED_PLAN"
+          test "${EVENT_NAME}" = "workflow_dispatch"
+          test "${GIT_REF}" = "refs/heads/master"
+          test "${REPOSITORY}" = "codeyousef/summon-portfolio"
+          test "${REPOSITORY_ID}" = "1091564909"
+          test "${REPOSITORY_OWNER_ID}" = "10247142"
+          test "${WORKFLOW_REF}" = "${INFRA_WORKFLOW_REF}"
+          test "${WORKFLOW_SHA}" = "${COMMIT_SHA}"
+          test "${PLANNED_ROOT}" = "${ROOT_INPUT}"
+          [[ "${PLAN_ARTIFACT_ID}" =~ ^[1-9][0-9]*$ ]]
+          [[ "${PLAN_ARTIFACT_DIGEST}" =~ ^[0-9a-f]{64}$ ]]
+          [[ "${EXPECTED_BUNDLE_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+          [[ "${EXPECTED_PLAN_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+          [[ "${EXPECTED_REVIEW_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+          expected_provider_regex="^projects/[1-9][0-9]*/locations/global/workloadIdentityPools/${INFRA_POOL_ID}/providers/infra-apply$"
+          [[ "${WIF_PROVIDER}" =~ ${expected_provider_regex} ]]
+          test "${WIF_SERVICE_ACCOUNT}" = "seen-registry-prod-iac@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+          case "${ROOT_INPUT}" in
+            prod|prod-bootstrap) ;;
+            *) echo "Unsupported production root" >&2; exit 1 ;;
+          esac
+          echo "TF_ROOT=infra/registry/environments/${ROOT_INPUT}" >> "${GITHUB_ENV}"
+          echo "PLAN_DIR=${RUNNER_TEMP}/seen-registry-production-apply" >> "${GITHUB_ENV}"
+
+      - name: Check out the exact planned commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download exact same-run artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.plan.outputs.artifact-id }}
+          path: ${{ runner.temp }}/seen-registry-production-apply
+          merge-multiple: true
+
+      - name: Decrypt the exact saved-plan bundle
+        shell: bash
+        env:
+          ARTIFACT_PRIVATE_KEY_B64: ${{ secrets.SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_B64 }}
+          ARTIFACT_PRIVATE_KEY_PASSPHRASE: ${{ secrets.SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          command -v gpg > /dev/null
+          test -n "${ARTIFACT_PRIVATE_KEY_B64}" || { echo "SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_B64 is not configured" >&2; exit 1; }
+          test -n "${ARTIFACT_PRIVATE_KEY_PASSPHRASE}" || { echo "SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_PASSPHRASE is not configured" >&2; exit 1; }
+          mapfile -t downloaded_files < <(find "${PLAN_DIR}" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort)
+          test "${#downloaded_files[@]}" -eq 1
+          test "${downloaded_files[0]}" = "plan-bundle.tar.gpg"
+          test ! -L "${PLAN_DIR}/plan-bundle.tar.gpg"
+          bundle_sha256="$(sha256sum "${PLAN_DIR}/plan-bundle.tar.gpg" | awk '{print $1}')"
+          test "${bundle_sha256}" = "${EXPECTED_BUNDLE_SHA256}"
+          expected_fingerprint="$(printf '%s' "${ARTIFACT_KEY_FINGERPRINT}" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          [[ "${expected_fingerprint}" =~ ^[0-9A-F]{40}([0-9A-F]{24})?$ ]] || { echo "The plan-artifact key fingerprint is invalid" >&2; exit 1; }
+          export GNUPGHOME="${RUNNER_TEMP}/seen-registry-apply-gnupg"
+          mkdir -m 0700 "${GNUPGHOME}"
+          printf '%s' "${ARTIFACT_PRIVATE_KEY_B64}" | base64 --decode | gpg --batch --import > /dev/null 2>&1
+          mapfile -t primary_fingerprints < <(
+            gpg --batch --with-colons --list-secret-keys |
+              awk -F: '$1 == "sec" { want_fingerprint = 1; next } want_fingerprint && $1 == "fpr" { print toupper($10); want_fingerprint = 0 }'
+          )
+          test "${#primary_fingerprints[@]}" -eq 1
+          test "${primary_fingerprints[0]}" = "${expected_fingerprint}"
+          printf '%s' "${ARTIFACT_PRIVATE_KEY_PASSPHRASE}" |
+            gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+              --output "${PLAN_DIR}/plan-bundle.tar" \
+              --decrypt "${PLAN_DIR}/plan-bundle.tar.gpg" > /dev/null 2>&1
+          mapfile -t archive_entries < <(tar -tf "${PLAN_DIR}/plan-bundle.tar" | sort)
+          test "${#archive_entries[@]}" -eq 3
+          test "${archive_entries[*]}" = "metadata.json plan.tfplan review.txt"
+          tar --extract --no-same-owner --no-same-permissions -C "${PLAN_DIR}" -f "${PLAN_DIR}/plan-bundle.tar"
+          rm -f "${PLAN_DIR}/plan-bundle.tar" "${PLAN_DIR}/plan-bundle.tar.gpg"
+
+      - name: Verify saved-plan provenance and digest
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          REPOSITORY_OWNER_ID: ${{ github.repository_owner_id }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mapfile -t artifact_files < <(find "${PLAN_DIR}" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort)
+          test "${#artifact_files[@]}" -eq 3
+          test "${artifact_files[*]}" = "metadata.json plan.tfplan review.txt"
+          test ! -L "${PLAN_DIR}/metadata.json"
+          test ! -L "${PLAN_DIR}/plan.tfplan"
+          test ! -L "${PLAN_DIR}/review.txt"
+          plan_sha256="$(sha256sum "${PLAN_DIR}/plan.tfplan" | awk '{print $1}')"
+          review_sha256="$(sha256sum "${PLAN_DIR}/review.txt" | awk '{print $1}')"
+          test "${plan_sha256}" = "${EXPECTED_PLAN_SHA256}"
+          test "${review_sha256}" = "${EXPECTED_REVIEW_SHA256}"
+          case "${ROOT_INPUT}" in
+            prod)
+              backend_bucket="${PROD_PROJECT_ID}-prod-tofu-state"
+              backend_prefix="seen-registry/prod"
+              ;;
+            prod-bootstrap)
+              backend_bucket="${PROD_PROJECT_ID}-bootstrap-tofu-state"
+              backend_prefix="seen-registry/bootstrap/prod"
+              ;;
+          esac
+          jq_args=(
+            --arg repository "${REPOSITORY}"
+            --arg repository_id "${REPOSITORY_ID}"
+            --arg repository_owner_id "${REPOSITORY_OWNER_ID}"
+            --arg commit_sha "${COMMIT_SHA}"
+            --arg git_ref "${GIT_REF}"
+            --arg event_name "${EVENT_NAME}"
+            --arg workflow_ref "${WORKFLOW_REF}"
+            --arg workflow_sha "${WORKFLOW_SHA}"
+            --arg run_id "${RUN_ID}"
+            --arg run_attempt "${RUN_ATTEMPT}"
+            --arg root "${ROOT_INPUT}"
+            --arg backend_bucket "${backend_bucket}"
+            --arg backend_prefix "${backend_prefix}"
+            --arg tofu_version "${TOFU_VERSION}"
+            --arg plan_sha256 "${plan_sha256}"
+            --arg review_sha256 "${review_sha256}"
+          )
+          jq -e "${jq_args[@]}" '
+              .schema_version == 1 and
+              .repository == $repository and
+              .repository_id == $repository_id and
+              .repository_owner_id == $repository_owner_id and
+              .commit_sha == $commit_sha and
+              .git_ref == $git_ref and
+              .event_name == $event_name and
+              .workflow_ref == $workflow_ref and
+              .workflow_sha == $workflow_sha and
+              .run_id == $run_id and
+              .run_attempt == $run_attempt and
+              .root == $root and
+              .backend_bucket == $backend_bucket and
+              .backend_prefix == $backend_prefix and
+              .tofu_version == $tofu_version and
+              .plan_sha256 == $plan_sha256 and
+              .review_sha256 == $review_sha256
+            ' "${PLAN_DIR}/metadata.json" > /dev/null
+          {
+            printf 'bucket = "%s"\n' "${backend_bucket}"
+            printf 'prefix = "%s"\n' "${backend_prefix}"
+          } > "${PLAN_DIR}/backend.hcl"
+
+      - name: Set up the planned OpenTofu version
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Authenticate the protected apply identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Apply only the verified saved plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu -chdir="${TF_ROOT}" init -input=false -reconfigure -backend-config="${PLAN_DIR}/backend.hcl"
+          test ! -L "${PLAN_DIR}/plan.tfplan"
+          test ! -L "${PLAN_DIR}/backend.hcl"
+          plan_sha256="$(sha256sum "${PLAN_DIR}/plan.tfplan" | awk '{print $1}')"
+          test "${plan_sha256}" = "${EXPECTED_PLAN_SHA256}"
+          case "${ROOT_INPUT}" in
+            prod)
+              expected_backend_bucket="${PROD_PROJECT_ID}-prod-tofu-state"
+              expected_backend_prefix="seen-registry/prod"
+              ;;
+            prod-bootstrap)
+              expected_backend_bucket="${PROD_PROJECT_ID}-bootstrap-tofu-state"
+              expected_backend_prefix="seen-registry/bootstrap/prod"
+              ;;
+          esac
+          mapfile -t backend_lines < "${PLAN_DIR}/backend.hcl"
+          test "${#backend_lines[@]}" -eq 2
+          test "${backend_lines[0]}" = "bucket = \"${expected_backend_bucket}\""
+          test "${backend_lines[1]}" = "prefix = \"${expected_backend_prefix}\""
+          tofu -chdir="${TF_ROOT}" apply -input=false -lock-timeout=5m "${PLAN_DIR}/plan.tfplan"
+
+      - name: Remove sensitive plan material
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${PLAN_DIR:-}" && "${PLAN_DIR}" == "${RUNNER_TEMP}/"* ]]; then
+            rm -rf -- "${PLAN_DIR}"
+          fi
+          gnupg_home="${RUNNER_TEMP}/seen-registry-apply-gnupg"
+          if [[ -d "${gnupg_home}" ]]; then
+            GNUPGHOME="${gnupg_home}" gpgconf --kill all || true
+            rm -rf -- "${gnupg_home}"
+          fi

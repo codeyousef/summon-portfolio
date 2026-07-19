@@ -3,12 +3,14 @@ name: Seen registry validation and image publication
 on:
   pull_request:
     paths:
+      - .github/workflows/deploy-seen-registry-infrastructure.yml
       - .github/workflows/deploy-seen-registry.yml
       - infra/registry/**
       - registry-service/**
   push:
     branches: [dev, master]
     paths:
+      - .github/workflows/deploy-seen-registry-infrastructure.yml
       - .github/workflows/deploy-seen-registry.yml
       - infra/registry/**
       - registry-service/**
@@ -70,12 +72,16 @@ jobs:
         run: |
           set -euo pipefail
           tofu fmt -check -recursive infra/registry
-          for environment in dev prod; do
+          for environment in dev prod prod-bootstrap; do
             root="infra/registry/environments/${environment}"
             tofu -chdir="${root}" init -backend=false -input=false
             tofu -chdir="${root}" validate
             tofu -chdir="${root}" test
           done
+          module_root="infra/registry/modules/environment"
+          tofu -chdir="${module_root}" init -backend=false -input=false
+          tofu -chdir="${module_root}" validate
+          tofu -chdir="${module_root}" test
 
   publish-development-image:
     name: Publish immutable development image

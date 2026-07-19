@@ -2,7 +2,8 @@
 # project, state bucket, notification channel, and launch plan exist.
 # The root fixes the signed identity to production / seen-prod-registry-v1 /
 # https://seen.yousef.codes/packages; none of those values is overridden here.
-project_id                   = "REPLACE_WITH_DEDICATED_PRODUCTION_PROJECT"
+project_id                   = "seen-registry-prod-476219"
+bootstrap_production_policies_effective = false
 enable_production_foundation = false
 notification_channel_ids     = []
 billing_account_id            = null

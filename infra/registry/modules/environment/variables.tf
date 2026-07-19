@@ -2,6 +2,16 @@ variable "enabled" {
   description = "Creates this environment. Production roots keep this false until launch approval."
   type        = bool
   default     = true
+
+  validation {
+    condition = var.environment != "prod" || !var.enabled || (
+      !var.workloads_enabled &&
+      !var.schedules_enabled &&
+      !var.edge_provisioned &&
+      !var.edge_cutover_enabled
+    )
+    error_message = "Production permits only the explicitly selected read-only API, verifier, refresh, ceremony, and image-publication resources; writer workloads, schedules, and edge remain disabled."
+  }
 }
 
 variable "project_id" {
@@ -31,6 +41,15 @@ variable "runtime_environment" {
   validation {
     condition     = contains(["development", "production"], var.runtime_environment)
     error_message = "runtime_environment must be development or production."
+  }
+
+  validation {
+    condition = (
+      var.environment == "dev" && var.runtime_environment == "development"
+      ) || (
+      var.environment == "prod" && var.runtime_environment == "production"
+    )
+    error_message = "The short and signed environment names do not match."
   }
 }
 
@@ -87,6 +106,11 @@ variable "read_only_api_enabled" {
   description = "Deploys only the credential-free production public API. It receives Firestore plus public/metadata read authority and no writer surface."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.read_only_api_enabled || (var.environment == "prod" && !var.workloads_enabled)
+    error_message = "read_only_api_enabled is reserved for production and cannot be combined with the writer-capable stack."
+  }
 }
 
 variable "root_verifier_job_enabled" {
@@ -144,6 +168,17 @@ variable "container_image" {
     condition     = var.container_image == null || can(regex("@sha256:[0-9a-f]{64}$", var.container_image))
     error_message = "container_image must be null or an immutable sha256 image URI."
   }
+
+  validation {
+    condition = !var.enabled || !(
+      var.workloads_enabled ||
+      var.read_only_api_enabled ||
+      var.root_verifier_job_enabled ||
+      var.refresh_jobs_enabled ||
+      length(var.ceremony_operations) > 0
+    ) || var.container_image != null
+    error_message = "Every selected container workload requires an immutable application image."
+  }
 }
 
 variable "signer_container_image" {
@@ -155,6 +190,20 @@ variable "signer_container_image" {
   validation {
     condition     = var.signer_container_image == null || can(regex("@sha256:[0-9a-f]{64}$", var.signer_container_image))
     error_message = "signer_container_image must be null or an immutable sha256 image URI."
+  }
+
+  validation {
+    condition = !var.enabled || !(
+      var.workloads_enabled ||
+      var.refresh_jobs_enabled ||
+      length(setintersection(var.ceremony_operations, toset([
+        "online_bootstrap",
+        "targets_renewal",
+        "targets_releases_rotation",
+        "targets_security_rotation",
+      ]))) > 0
+    ) || var.signer_container_image != null
+    error_message = "Every selected signer-backed operation requires a separately reviewed immutable signer image."
   }
 }
 
@@ -195,6 +244,11 @@ variable "online_key_names" {
     condition     = toset(keys(var.online_key_names)) == toset(["releases", "security", "snapshot", "timestamp"])
     error_message = "online_key_names must contain exactly releases, security, snapshot, and timestamp."
   }
+
+  validation {
+    condition     = length(var.online_key_names) == length(toset(values(var.online_key_names)))
+    error_message = "Every online role must use a distinct KMS key resource."
+  }
 }
 
 variable "online_key_version_numbers" {
@@ -205,6 +259,17 @@ variable "online_key_version_numbers" {
   validation {
     condition     = alltrue([for version in values(var.online_key_version_numbers) : can(regex("^[1-9][0-9]*$", version))])
     error_message = "Every online KMS version must be a positive numeric version."
+  }
+
+  validation {
+    condition = !var.enabled || toset(keys(var.online_key_version_numbers)) == setunion(
+      var.workloads_enabled || var.refresh_jobs_enabled ? toset(["releases", "security", "snapshot", "timestamp"]) : toset([]),
+      contains(var.ceremony_operations, "online_bootstrap") ? toset(["releases", "security", "snapshot", "timestamp"]) : toset([]),
+      contains(var.ceremony_operations, "targets_renewal") ? toset(["snapshot", "timestamp"]) : toset([]),
+      contains(var.ceremony_operations, "targets_releases_rotation") ? toset(["releases", "snapshot", "timestamp"]) : toset([]),
+      contains(var.ceremony_operations, "targets_security_rotation") ? toset(["security", "snapshot", "timestamp"]) : toset([]),
+    )
+    error_message = "Enabled signer-backed operations require concrete versions for exactly their selected online roles."
   }
 }
 
@@ -217,6 +282,27 @@ variable "online_public_keys_hex" {
     condition     = alltrue([for key in values(var.online_public_keys_hex) : can(regex("^[0-9a-f]{64}$", key))])
     error_message = "Every online public key must contain 32 lowercase-hex bytes."
   }
+
+  validation {
+    condition     = length(var.online_public_keys_hex) == length(toset(values(var.online_public_keys_hex)))
+    error_message = "Every online role must use a distinct public key."
+  }
+
+  validation {
+    condition = !var.enabled || !(
+      var.workloads_enabled ||
+      var.read_only_api_enabled ||
+      var.root_verifier_job_enabled ||
+      var.refresh_jobs_enabled ||
+      length(var.ceremony_operations) > 0
+      ) || toset(keys(var.online_public_keys_hex)) == toset([
+        "releases",
+        "security",
+        "snapshot",
+        "timestamp",
+    ])
+    error_message = "Every selected container workload requires the complete reviewed online public-key set."
+  }
 }
 
 variable "trusted_root_v1_sha256" {
@@ -228,6 +314,20 @@ variable "trusted_root_v1_sha256" {
   validation {
     condition     = var.trusted_root_v1_sha256 == null || can(regex("^[0-9a-f]{64}$", var.trusted_root_v1_sha256))
     error_message = "trusted_root_v1_sha256 must be null or 64 lowercase hexadecimal characters."
+  }
+
+  validation {
+    condition = !var.enabled || !(
+      var.workloads_enabled ||
+      var.refresh_jobs_enabled ||
+      length(setintersection(var.ceremony_operations, toset([
+        "online_bootstrap",
+        "targets_renewal",
+        "targets_releases_rotation",
+        "targets_security_rotation",
+      ]))) > 0
+    ) || var.trusted_root_v1_sha256 != null
+    error_message = "Every selected signer-backed operation requires the reviewed immutable root-envelope pin."
   }
 }
 
@@ -267,6 +367,13 @@ variable "portfolio_gateway_service_account" {
   type        = string
   default     = null
   nullable    = true
+
+  validation {
+    condition = !var.enabled || !(
+      var.workloads_enabled || var.read_only_api_enabled
+    ) || var.edge_cutover_enabled || var.portfolio_gateway_service_account != null
+    error_message = "An enabled API requires the reviewed portfolio gateway service account unless an approved edge cutover owns invocation."
+  }
 }
 
 variable "reviewer_service_account" {
@@ -276,10 +383,102 @@ variable "reviewer_service_account" {
   nullable    = true
 }
 
+variable "infrastructure_executor_service_account" {
+  description = "Optional OpenTofu apply identity. It receives read-only access to the exact image repository plus one pre-provisioned serviceAccountUser binding on each explicitly selected finite runtime account; it never receives a project-wide actAs grant."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.infrastructure_executor_service_account == null || (
+      can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]@", var.infrastructure_executor_service_account)) &&
+      endswith(var.infrastructure_executor_service_account, "@${var.project_id}.iam.gserviceaccount.com")
+    )
+    error_message = "infrastructure_executor_service_account must be a service-account email in this registry project."
+  }
+
+  validation {
+    condition = var.infrastructure_executor_service_account == null || !contains(
+      [for account_id in values(var.service_account_ids) : "${account_id}@${var.project_id}.iam.gserviceaccount.com"],
+      var.infrastructure_executor_service_account,
+    )
+    error_message = "The infrastructure executor must remain distinct from every registry runtime service account."
+  }
+
+  validation {
+    condition = var.environment != "prod" || !var.enabled || !(
+      var.workloads_enabled ||
+      var.read_only_api_enabled ||
+      var.root_verifier_job_enabled ||
+      var.refresh_jobs_enabled ||
+      length(var.ceremony_operations) > 0
+    ) || var.infrastructure_executor_service_account != null
+    error_message = "Selected production Cloud Run services and jobs require the reviewed infrastructure executor service account."
+  }
+}
+
+variable "infrastructure_executor_act_as_identities" {
+  description = "Exact logical runtime identity keys on which the infrastructure executor receives serviceAccountUser. Must be explicit, finite, and cover every selected deployable workload."
+  type        = set(string)
+  default     = []
+
+  validation {
+    condition = (
+      var.infrastructure_executor_service_account == null &&
+      length(var.infrastructure_executor_act_as_identities) == 0
+      ) || (
+      var.infrastructure_executor_service_account != null &&
+      length(var.infrastructure_executor_act_as_identities) > 0 &&
+      length(setsubtract(
+        var.infrastructure_executor_act_as_identities,
+        toset(keys(var.service_account_ids)),
+      )) == 0
+    )
+    error_message = "Executor actAs identities must be empty without an executor, or a non-empty subset of the module's exact runtime identity keys when an executor is configured."
+  }
+
+  validation {
+    condition = var.environment != "prod" || length(setintersection(
+      var.infrastructure_executor_act_as_identities,
+      toset([
+        "source",
+        "scanner",
+        "promoter",
+        "release_actions",
+        "security_actions",
+        "scheduler",
+      ]),
+    )) == 0
+    error_message = "Production executor actAs cannot include writer, review, promotion, action, or scheduler identities that the production root hard-disables."
+  }
+}
+
 variable "github_ci_enabled" {
   description = "Creates a repository/ref/workflow-bound GitHub OIDC provider and image-publisher identity."
   type        = bool
   default     = false
+
+  validation {
+    condition = !var.github_ci_enabled || (
+      var.enabled &&
+      var.create_artifact_repository &&
+      var.github_repository != null &&
+      can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository)) &&
+      can(regex("^[1-9][0-9]*$", var.github_repository_id)) &&
+      can(regex("^[1-9][0-9]*$", var.github_repository_owner_id)) &&
+      var.github_ref != null &&
+      can(regex("^refs/heads/[A-Za-z0-9._/-]+$", var.github_ref)) &&
+      var.github_workflow_ref != null &&
+      can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\\.github/workflows/[A-Za-z0-9_./-]+\\.ya?ml@refs/heads/[A-Za-z0-9._/-]+$", var.github_workflow_ref)) &&
+      try(startswith(var.github_workflow_ref, "${var.github_repository}/"), false) &&
+      try(endswith(var.github_workflow_ref, "@${var.github_ref}"), false) &&
+      var.github_event_name != null &&
+      can(regex("^[a-z_]+$", var.github_event_name)) &&
+      var.github_environment != null &&
+      can(regex("^[A-Za-z0-9._-]+$", var.github_environment))
+    )
+    error_message = "GitHub CI requires an enabled Artifact Registry plus exact repository/owner IDs, repository-bound ref and workflow, event, and protected environment."
+  }
 }
 
 variable "github_repository" {
@@ -375,11 +574,34 @@ variable "secret_versions" {
     condition     = alltrue([for version in values(var.secret_versions) : can(regex("^[1-9][0-9]*$", version))])
     error_message = "Secret references must use concrete positive numeric versions."
   }
+
+  validation {
+    condition = !var.enabled || (
+      !contains(var.ceremony_operations, "offline_bootstrap_importer") || alltrue([
+        contains(keys(var.secret_versions), "bootstrap_root_envelope"),
+        contains(keys(var.secret_versions), "bootstrap_targets_envelope"),
+      ])
+      ) && (
+      !contains(var.ceremony_operations, "targets_renewal") || contains(keys(var.secret_versions), "targets_renewal_envelope")
+      ) && (
+      !contains(var.ceremony_operations, "targets_releases_rotation") || contains(keys(var.secret_versions), "targets_releases_rotation_envelope")
+      ) && (
+      !contains(var.ceremony_operations, "targets_security_rotation") || contains(keys(var.secret_versions), "targets_security_rotation_envelope")
+      ) && (
+      !contains(var.ceremony_operations, "root_importer") || contains(keys(var.secret_versions), "root_rotation_envelope")
+    )
+    error_message = "Enabled ceremony jobs require reviewed numeric versions for every offline envelope secret."
+  }
 }
 
 variable "notification_channel_ids" {
   type    = list(string)
   default = []
+
+  validation {
+    condition     = var.environment != "prod" || !var.enabled || !var.monitoring_enabled || length(var.notification_channel_ids) > 0
+    error_message = "An enabled production stack must route alerts to at least one reviewed notification channel."
+  }
 }
 
 variable "billing_account_id" {
@@ -419,6 +641,22 @@ variable "signer_jwks_all_apis_enabled" {
   description = "Explicitly allows signer-tagged workloads to reach the all-APIs private VIP for the exact Google OIDC JWKS hostname. Keep false unless separately reviewed."
   type        = bool
   default     = false
+
+  validation {
+    condition = var.signer_jwks_all_apis_enabled == (
+      var.enabled && (
+        var.workloads_enabled ||
+        var.refresh_jobs_enabled ||
+        length(setintersection(var.ceremony_operations, toset([
+          "online_bootstrap",
+          "targets_renewal",
+          "targets_releases_rotation",
+          "targets_security_rotation",
+        ]))) > 0
+      )
+    )
+    error_message = "The explicitly reviewed OIDC JWKS private-VIP route must be enabled exactly when this enabled stack selects signer services."
+  }
 }
 
 variable "edge_provisioned" {
@@ -464,4 +702,24 @@ variable "create_artifact_repository" {
 variable "create_firestore_database" {
   type    = bool
   default = true
+}
+
+variable "externally_managed_services" {
+  description = "Required APIs permanently owned by a separately reviewed bootstrap root."
+  type        = set(string)
+  default     = []
+
+  validation {
+    condition = length(setsubtract(var.externally_managed_services, toset([
+      "cloudresourcemanager.googleapis.com",
+      "iam.googleapis.com",
+      "iamcredentials.googleapis.com",
+      "monitoring.googleapis.com",
+      "orgpolicy.googleapis.com",
+      "serviceusage.googleapis.com",
+      "sts.googleapis.com",
+      "storage.googleapis.com",
+    ]))) == 0
+    error_message = "Only the reviewed bootstrap-owned control-plane services may be excluded from this module."
+  }
 }

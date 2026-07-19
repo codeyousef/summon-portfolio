@@ -65,4 +65,11 @@ resource "google_cloud_run_v2_service_iam_member" "signer_invoker" {
   name     = google_cloud_run_v2_service.signer[each.value.role].name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.runtime[each.value.identity].email}"
+
+  lifecycle {
+    precondition {
+      condition     = local.bootstrap_authority_split_contract && local.inactive_ceremonies_have_no_authority_contract
+      error_message = "Signer invocation IAM must preserve bootstrap isolation and leave every unselected ceremony identity unauthorized."
+    }
+  }
 }

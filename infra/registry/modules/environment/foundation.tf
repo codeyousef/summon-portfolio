@@ -24,6 +24,16 @@ resource "google_artifact_registry_repository" "registry" {
   }
 }
 
+resource "google_artifact_registry_repository_iam_member" "infrastructure_executor_reader" {
+  count = var.enabled && var.create_artifact_repository && var.infrastructure_executor_service_account != null ? 1 : 0
+
+  project    = var.project_id
+  location   = var.region
+  repository = google_artifact_registry_repository.registry[0].repository_id
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${var.infrastructure_executor_service_account}"
+}
+
 resource "google_firestore_database" "registry" {
   count = var.enabled && var.create_firestore_database ? 1 : 0
 
