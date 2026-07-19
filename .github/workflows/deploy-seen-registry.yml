@@ -92,8 +92,7 @@ jobs:
           done
 
           bootstrap_root="infra/registry/environments/prod-bootstrap"
-          bootstrap_graph="${RUNNER_TEMP}/seen-registry-prod-bootstrap-plan.dot"
-          tofu -chdir="${bootstrap_root}" graph -type=plan > "${bootstrap_graph}"
+          bootstrap_main="${bootstrap_root}/main.tf"
           service_account_dependent_resources=(
             "google_project_iam_member.infrastructure_plan"
             "google_project_iam_member.infrastructure_apply"
@@ -111,10 +110,34 @@ jobs:
             "google_storage_bucket_iam_policy.state"
           )
           for resource in "${service_account_dependent_resources[@]}"; do
-            edge="\"[root] ${resource} (expand)\" -> \"[root] google_service_account.infrastructure (expand)\""
-            grep -F -- "${edge}" "${bootstrap_graph}" > /dev/null
+            resource_type="${resource%%.*}"
+            resource_name="${resource#*.}"
+            declaration="resource \"${resource_type}\" \"${resource_name}\" {"
+            awk -v declaration="${declaration}" '
+              $0 == declaration {
+                in_block = 1
+                found_block = 1
+                next
+              }
+              in_block && $0 == "  depends_on = [" {
+                in_dependencies = 1
+                next
+              }
+              in_dependencies && $0 == "    google_service_account.infrastructure," {
+                found_dependency = 1
+              }
+              in_dependencies && $0 == "  ]" {
+                in_dependencies = 0
+              }
+              in_block && $0 == "}" {
+                in_block = 0
+                in_dependencies = 0
+              }
+              END {
+                exit !(found_block && found_dependency)
+              }
+            ' "${bootstrap_main}"
           done
-          rm -f "${bootstrap_graph}"
 
           module_root="infra/registry/modules/environment"
           tofu -chdir="${module_root}" init -backend=false -input=false
