@@ -17,6 +17,13 @@ provider "google" {
   user_project_override = true
 }
 
+// Keep the human identity lookup isolated from quota-project overrides. The
+// upstream provider returns a null OpenID email when that data source shares a
+// provider configured with billing_project and user_project_override.
+provider "google" {
+  alias = "bootstrap_identity"
+}
+
 provider "google" {
   alias = "project"
 
