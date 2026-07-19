@@ -21,7 +21,8 @@ provider "google" {
 // upstream provider returns a null OpenID email when that data source shares a
 // provider configured with billing_project and user_project_override.
 provider "google" {
-  alias = "bootstrap_identity"
+  alias                 = "bootstrap_identity"
+  user_project_override = false
 }
 
 provider "google" {
