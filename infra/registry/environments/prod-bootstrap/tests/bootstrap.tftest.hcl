@@ -1,5 +1,9 @@
 mock_provider "google" {}
 
+mock_provider "google" {
+  alias = "project"
+}
+
 override_data {
   target = data.google_client_openid_userinfo.bootstrap
   values = {
@@ -11,6 +15,14 @@ override_resource {
   target = google_project.production
   values = {
     number = "123456789012"
+  }
+}
+
+override_resource {
+  target = google_service_account.infrastructure
+  values = {
+    name  = "projects/seen-registry-prod-476219/serviceAccounts/mock-infrastructure@seen-registry-prod-476219.iam.gserviceaccount.com"
+    email = "mock-infrastructure@seen-registry-prod-476219.iam.gserviceaccount.com"
   }
 }
 
