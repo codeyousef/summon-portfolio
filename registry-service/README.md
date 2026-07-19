@@ -76,7 +76,8 @@ grants for their operation, never key versions or direct KMS permissions. The
 API, source verifier, and scanner receive no signer URL, signer-invoker grant,
 or KMS permission. Ordinary CI can publish an immutable image, read public key
 material, and produce a reviewed plan; it cannot act as a signer or ceremony
-identity. Trust-plane deployment requires a separate reviewed operator.
+identity. Trust-plane deployment requires a separate protected operator
+approval.
 
 It does not create offline keys, TUF envelopes, the publisher token, or GitHub
 App/GitLab credential values. Add the read-only GitHub App ID and PEM key out of

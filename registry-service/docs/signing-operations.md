@@ -2,7 +2,7 @@
 
 This public runbook defines the operational boundary for the Seen registry's
 TUF-compatible signing system. It contains no private key material, secret
-values, custodian identities, recovery locations, or incident contacts. Those
+values, operator identity, recovery locations, or incident contacts. Those
 details belong in the private security record linked from the active incident
 or ceremony ticket.
 
@@ -112,16 +112,25 @@ or copy one signer to satisfy two threshold positions.
 
 For every root and targets signer:
 
-1. Assign one primary encrypted removable device to one custodian. A custodian
-   may not hold enough keys to satisfy either threshold alone.
+1. Assign one primary encrypted removable device to one inventory position.
+   The repository has one human operator, so the same person controls multiple
+   positions, but the keys, devices, unlock credentials, and storage locations
+   remain distinct. This prevents compromise of one stored key from satisfying
+   a signature threshold, but does not provide multi-person custody. Root 2-of-3
+   tolerates loss of one key; targets 2-of-2 relies on its recovery copies for
+   availability. The threshold cannot protect against a malicious or fully
+   compromised sole operator.
 2. Create one independently encrypted recovery copy on different media. Store
    it in a documented geographic region separate from the primary and from the
-   other quorum members.
+   other threshold positions.
 3. Keep device-unlock and recovery credentials outside the device, registry
    repository, CI, password variables, GCP, and the public ceremony record.
-   Recovery access requires two-person approval recorded privately.
-4. Record only the public key ID, media inventory ID, custodian role, region,
-   creation date, and last recovery test in the private custody inventory.
+   Before recovery access, the operator records the reason, exact media
+   inventory ID, and expected public key ID in the private ticket, then performs
+   a separate verification pass before using the recovered key.
+4. Record only the public key ID, media inventory ID, inventory position,
+   region, creation date, and last recovery test in the private custody
+   inventory.
 5. Test one recovery copy per quarter on an offline host, rotating which copy
    is tested. Verify its derived public key ID, then securely erase the test
    host's working copy.
@@ -131,10 +140,13 @@ seal is a suspected compromise, not merely a missing backup.
 
 ## Ceremony controls
 
-Every ceremony needs a private ticket, an operator, a second operator, and an
-observer. The ticket records the purpose, approved role/version transition,
-expected thresholds, participants, and rollback/fail-closed decision. Never
-paste private material into the ticket, terminal transcript, chat, or logs.
+Every ceremony needs a private ticket and the repository's sole human operator.
+The ticket records that the ceremony uses the solo-operator control, plus the
+purpose, approved role/version transition, expected thresholds, and
+rollback/fail-closed decision. Because there is no second human, preparation
+and verification are separate recorded checklist passes by the same operator;
+do not describe them as independent human review. Never paste private material
+into the ticket, terminal transcript, chat, or logs.
 
 Before signing:
 
@@ -144,16 +156,17 @@ Before signing:
    independent channels. Record the JAR digest and source revision.
 3. Scan transfer media, mount inputs read-only, and copy only public online-key
    inputs plus already-public trusted metadata onto the host.
-4. Independently verify environment, repository ID, registry origin, current
-   versions, expiry, key IDs, and requested new public keys.
+4. In a separate checklist pass, verify environment, repository ID, registry
+   origin, current versions, expiry, key IDs, and requested new public keys.
 5. Load only the minimum quorum for the role being signed. Stop if an
    unexpected key, version, delegation, target, threshold, or expiry appears.
 
-After signing, each operator independently verifies canonical bytes,
-signatures, thresholds, version increments, environment/repository/origin, and
-expiry. Transfer only signed metadata. Record its filename, length, SHA-256,
-version, expiry, and signing key IDs. Power down and securely erase working
-copies before returning primary media to custody.
+After signing, the operator begins a distinct verification pass and verifies
+canonical bytes, signatures, thresholds, version increments,
+environment/repository/origin, and expiry. Transfer only signed metadata.
+Record its filename, length, SHA-256, version, expiry, and signing key IDs.
+Power down and securely erase working copies before returning primary media to
+custody.
 
 ## Production launch boundary
 
@@ -174,12 +187,12 @@ production input, even for a temporary smoke test.
 
 Infrastructure starts inert. Each foundation, image-publication, ceremony,
 refresh, verifier, and read-only API phase needs a complete saved OpenTofu plan,
-independent review, explicit approval, and application of that exact saved
+a separate review pass, explicit approval, and application of that exact saved
 plan. During bootstrap, select only one ephemeral ceremony operation at a time.
 After executing and verifying it, apply another complete saved plan with the
 selector empty to remove the job and all of its temporary secret, metadata, and
 signer-invocation authority. The exact rollout order and plan controls are in
-[Seen registry infrastructure](../../infra/registry/README.md#production-read-only-rollout).
+[Seen registry infrastructure](../../infra/registry/README.md#production-protected-rollout).
 
 The production metadata-refresh jobs are a later, separately gated surface.
 They invoke only their role-locked signers, run one task with zero retries, and
@@ -369,9 +382,9 @@ threshold. The fixed-policy helper requires both policies at 2-of-3 and rejects
 changes to targets, snapshot, timestamp, environment, repository, origin, or
 expiry policy. All three replacement root keys must be fresh, mutually
 distinct, and distinct from every currently trusted role key. Do not remove an
-old signer until the dual-threshold envelope exists and has been independently
-verified. This helper deliberately performs a full three-key root-set rotation;
-it is not a single-key replacement command.
+old signer until the dual-threshold envelope exists and has been verified in a
+separate checklist pass. This helper deliberately performs a full three-key
+root-set rotation; it is not a single-key replacement command.
 
 Import only the next root version:
 
@@ -436,13 +449,13 @@ single signer, or online root fallback.
 
 ## Offline loss, grace, and client recovery
 
-Unavailable offline custodians do not stop already-valid online publication,
-but they do stop root/targets renewal and rotation. The operational grace
-period is therefore the remaining signed lifetime, not extra time after
-expiry. Escalate at the alert thresholds, recover a tested backup under
-two-person control, and complete the normal ceremony. After root or targets
-expiry, readiness and clients must reject the chain until a correctly
-authorized sequential update is available.
+Unavailable offline signer devices do not stop already-valid online
+publication, but they do stop root/targets renewal and rotation. The
+operational grace period is therefore the remaining signed lifetime, not extra
+time after expiry. Escalate at the alert thresholds, recover a tested backup
+under the recorded solo-operator recovery procedure above, and complete the
+normal ceremony. After root or targets expiry, readiness and clients must
+reject the chain until a correctly authorized sequential update is available.
 
 Clients update root one version at a time: a client trusting root `N` fetches
 `N+1.root.json`, verifies it with the threshold from root `N`, then verifies it
@@ -471,7 +484,7 @@ disable/destroy actions, and IAM changes to signing resources.
 Each ceremony or drill evidence record contains:
 
 - ticket and reviewed source revision;
-- purpose, environment, start/end UTC, operator/observer roles;
+- purpose, environment, start/end UTC, operator, and solo-control mode;
 - old/new metadata versions, expiry, filenames, byte lengths, SHA-256, public
   key IDs, and the private key-inventory evidence reference;
 - threshold and invariant verification results;
@@ -505,8 +518,9 @@ after changing signing or infrastructure code:
    published interval. Prove the snapshot signer cannot write metadata and a
    stale timestamp generation cannot commit.
 6. Simulate loss of one primary offline device and recover its encrypted,
-   geographically separated backup under two-person approval. Compare the
-   derived public key ID and securely erase the working copy.
+   geographically separated backup under the recorded solo-operator recovery
+   procedure. Compare the derived public key ID and securely erase the working
+   copy.
 7. Rerun the infrastructure IAM policy checks, verify the bootstrap/import job,
    transfer versions, and temporary access are gone, and attach only the safe
    evidence fields listed above.

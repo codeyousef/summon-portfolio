@@ -144,13 +144,18 @@ infrastructure-only attestation from activating operations federation.
 Each environment must:
 
 - allow deployments only from `master`;
-- require a reviewer who is not the workflow initiator;
-- enable prevent-self-review;
+- require explicit approval from the repository's sole human operator;
+- permit the workflow initiator to provide that approval;
 - disable administrator bypass.
 
-Do not record the attestation until the repository has a second eligible human
-reviewer and all four environments have been tested to fail closed. Configure
-these environment-scoped values exactly:
+This is intentionally a solo-operator control, not independent or two-person
+review. The operator must approve plan and apply as two distinct actions. Before
+approving apply, they must verify the exact run, commit, artifact coordinates,
+hashes, and decrypted saved plan described below. Do not record either
+attestation until its two environments have been configured and tested to hold
+an unapproved deployment for review, reject non-`master` deployment branches,
+and disallow administrator bypass. Configure these environment-scoped values
+exactly:
 
 `seen-registry-production-plan` variables:
 
@@ -213,7 +218,7 @@ The jobs environment has no payload secrets.
 Generate a dedicated passphrase-protected RSA OpenPGP encryption key on an
 offline host. Export only its public key for the plan environment. Store the
 base64-encoded private-key export and its passphrase only in the apply
-environment, and retain a separate protected offline reviewer copy. Never put
+environment, and retain a separate protected offline review/recovery copy. Never put
 the private key, passphrase, decoded production variables, or decrypted plan
 material in the repository, an issue, a workflow log, or an unencrypted
 artifact.
@@ -221,7 +226,7 @@ artifact.
 The plan job suppresses plan diagnostics from public logs and encrypts exactly
 `plan.tfplan`, `review.txt`, and `metadata.json`. The only uploaded file is
 `plan-bundle.tar.gpg`, retained for one day. Before approving the apply
-environment, the designated reviewer downloads that ciphertext to the offline
+environment, the approving operator downloads that ciphertext to the offline
 review host, verifies its published digest, decrypts it, verifies the inner
 digests and metadata, and reviews `review.txt`. The apply job independently
 checks the same-run artifact ID, ciphertext and inner hashes, workflow commit,
