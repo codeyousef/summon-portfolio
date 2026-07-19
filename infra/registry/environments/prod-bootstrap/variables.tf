@@ -94,7 +94,7 @@ variable "enable_project_policy_admin_lease" {
 }
 
 variable "enable_temporary_human_state_migration_access" {
-  description = "Temporary, exact-object access to both dedicated state buckets for the reviewed human operator through migration, empty production foundation, and Owner-removal phases. The first WIF handoff apply removes it."
+  description = "Temporary read access across both dedicated state buckets, plus write/delete access to each root's exact state and lock objects, for the reviewed human operator through migration, empty production foundation, and Owner-removal phases. The first WIF handoff apply removes it."
   type        = bool
   default     = false
 

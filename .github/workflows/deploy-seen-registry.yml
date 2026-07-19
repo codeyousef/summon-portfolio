@@ -90,6 +90,55 @@ jobs:
             tofu -chdir="${root}" validate
             tofu -chdir="${root}" test
           done
+
+          bootstrap_root="infra/registry/environments/prod-bootstrap"
+          bootstrap_main="${bootstrap_root}/main.tf"
+          service_account_dependent_resources=(
+            "google_project_iam_member.infrastructure_plan"
+            "google_project_iam_member.infrastructure_apply"
+            "google_project_iam_member.material_key_versions"
+            "google_project_iam_member.material_secret_versions"
+            "google_project_iam_member.infrastructure_project_iam"
+            "google_project_iam_member.infrastructure_kms_policy_setter"
+            "google_project_iam_member.infrastructure_secret_policy_setter"
+            "google_project_iam_member.infrastructure_registry_storage_policy_setter"
+            "google_project_iam_member.infrastructure_state_storage_policy_setter"
+            "google_project_iam_member.infrastructure_run_policy_setter"
+            "google_organization_iam_member.infrastructure_read"
+            "google_billing_account_iam_member.infrastructure_read"
+            "google_project_iam_member.infrastructure_control_project"
+            "google_storage_bucket_iam_policy.state"
+          )
+          for resource in "${service_account_dependent_resources[@]}"; do
+            resource_type="${resource%%.*}"
+            resource_name="${resource#*.}"
+            declaration="resource \"${resource_type}\" \"${resource_name}\" {"
+            awk -v declaration="${declaration}" '
+              $0 == declaration {
+                in_block = 1
+                found_block = 1
+                next
+              }
+              in_block && $0 == "  depends_on = [" {
+                in_dependencies = 1
+                next
+              }
+              in_dependencies && $0 == "    google_service_account.infrastructure," {
+                found_dependency = 1
+              }
+              in_dependencies && $0 == "  ]" {
+                in_dependencies = 0
+              }
+              in_block && $0 == "}" {
+                in_block = 0
+                in_dependencies = 0
+              }
+              END {
+                exit !(found_block && found_dependency)
+              }
+            ' "${bootstrap_main}"
+          done
+
           module_root="infra/registry/modules/environment"
           tofu -chdir="${module_root}" init -backend=false -input=false
           tofu -chdir="${module_root}" validate

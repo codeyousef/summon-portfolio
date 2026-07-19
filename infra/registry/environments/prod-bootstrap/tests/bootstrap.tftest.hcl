@@ -523,7 +523,71 @@ run "temporary_human_state_access_covers_both_exact_roots" {
       ])) &&
       output.temporary_human_state_migration_access_enabled
     )
-    error_message = "The temporary human must retain exact reader/writer access on both dedicated roots without receiving plan-lock or bucket-policy authority."
+    error_message = "The temporary human must have bucket reader plus exact state-and-lock writer access on both dedicated roots, without the named locker role or bucket-policy authority."
+  }
+}
+
+run "next_project_bootstrap_phase_is_exact" {
+  command = plan
+
+  variables {
+    enable_control_project_apis                   = true
+    enable_organization_guardrails                = true
+    organization_guardrail_effective              = true
+    github_infrastructure_environments_reviewed   = true
+    github_operations_environments_reviewed       = true
+    enable_production_project_bootstrap           = true
+    enable_project_policy_admin_lease             = true
+    enable_temporary_human_state_migration_access = true
+    project_id                                    = "seen-registry-prod-476219"
+    organization_id                               = "567958019562"
+    billing_account_id                            = "ABCDEF-123456-ABCDEF"
+    bootstrap_operator_members                    = ["user:yousef@felidai.com"]
+    notification_email                            = "yousef@felidai.com"
+  }
+
+  assert {
+    condition = (
+      toset(keys(google_project_iam_member.policy_admin_lease)) == toset(["user:yousef@felidai.com"]) &&
+      google_project_iam_member.policy_admin_lease["user:yousef@felidai.com"].project == "seen-registry-prod-476219" &&
+      google_project_iam_member.policy_admin_lease["user:yousef@felidai.com"].role == "roles/orgpolicy.policyAdmin" &&
+      google_project_iam_member.policy_admin_lease["user:yousef@felidai.com"].member == "user:yousef@felidai.com"
+    )
+    error_message = "The next project-bootstrap phase must grant exactly one project-scoped Policy Admin lease to the reviewed human."
+  }
+
+  assert {
+    condition = (
+      toset(keys(data.google_iam_policy.state)) == toset(["bootstrap", "production"]) &&
+      alltrue([
+        for policy in values(data.google_iam_policy.state) :
+        contains(one([for binding in policy.binding : binding if endswith(binding.role, "/seenRegistryStateReader")]).members, "user:yousef@felidai.com") &&
+        contains(one([for binding in policy.binding : binding if endswith(binding.role, "/seenRegistryStateWriter")]).members, "user:yousef@felidai.com") &&
+        !contains(one([for binding in policy.binding : binding if endswith(binding.role, "/seenRegistryStateLocker")]).members, "user:yousef@felidai.com")
+      ])
+    )
+    error_message = "The next project-bootstrap phase must give the reviewed human reader and writer membership, but no lock membership, on both exact state policies."
+  }
+
+  assert {
+    condition = (
+      !var.enable_organization_policy_admin_lease &&
+      !var.project_executor_handoff_complete &&
+      !var.production_foundation_applied &&
+      !var.production_image_publisher_foundation_applied &&
+      var.project_creator_owner_member == null &&
+      !var.adopt_project_creator_owner &&
+      !var.approve_project_creator_owner_removal &&
+      !var.project_creator_owner_removed &&
+      !var.enable_portfolio_gateway_exception &&
+      !var.portfolio_gateway_exception_effective &&
+      !var.managed_member_policy_effective &&
+      !var.automatic_default_service_account_grants_policy_effective &&
+      length(google_service_account_iam_member.infrastructure_oidc) == 0 &&
+      length(google_org_policy_policy.legacy_domain_restriction_override) == 0 &&
+      length(google_project_iam_member.project_creator_owner) == 0
+    )
+    error_message = "The next project-bootstrap phase must leave every later handoff, foundation, policy exception, OIDC trust, and Owner-management gate inactive."
   }
 }
 
