@@ -32,7 +32,7 @@ env:
   PROD_PROJECT_ID: seen-registry-prod-476219
   INFRA_WORKFLOW_REF: codeyousef/summon-portfolio/.github/workflows/deploy-seen-registry-infrastructure.yml@refs/heads/master
   INFRA_POOL_ID: seen-registry-prod-infra
-  PINNED_ARTIFACT_KEY_FINGERPRINT: BF268CF20B9B6A7E21FC803EE5DE55E2365040FC
+  PINNED_ARTIFACT_KEY_FINGERPRINT: 9D791EB73F51446734092EB41B9D26FD0459404F
 
 jobs:
   plan:
