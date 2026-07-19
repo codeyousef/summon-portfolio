@@ -63,19 +63,48 @@ variable "enable_organization_policy_admin_lease" {
   }
 }
 
-variable "enable_production_project_bootstrap" {
-  description = "Explicit approval gate for managing the isolated production project and its bootstrap foundation."
+variable "enable_production_project_creation" {
+  description = "Explicit approval gate for managing only the isolated production project resource in its first saved-plan phase. Keep this true after creation so the project remains managed."
   type        = bool
   default     = false
 
   validation {
-    condition = !var.enable_production_project_bootstrap || (
+    condition = !var.enable_production_project_creation || (
       var.enable_organization_guardrails &&
       var.organization_guardrail_effective &&
       var.github_infrastructure_environments_reviewed &&
       var.github_operations_environments_reviewed
     )
-    error_message = "Production project bootstrap requires the separately verified effective organization guardrail and reviewed protected GitHub environments; the project resource separately blocks a remaining organization Policy Admin lease."
+    error_message = "Production project creation requires the separately verified effective organization guardrail and all four reviewed protected GitHub environments."
+  }
+}
+
+variable "production_project_creation_verified" {
+  description = "Manual attestation set only after the separate project-only apply succeeded and the exact project ID, assigned project number, sole expected creator Owner, and absence of Editor bindings were verified."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.production_project_creation_verified || var.enable_production_project_creation
+    error_message = "Production project creation can be attested only while the isolated production project remains managed."
+  }
+}
+
+variable "enable_production_project_bootstrap" {
+  description = "Explicit approval gate for configuring the verified production project bootstrap foundation in a separate saved-plan phase."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.enable_production_project_bootstrap || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
+      var.enable_organization_guardrails &&
+      var.organization_guardrail_effective &&
+      var.github_infrastructure_environments_reviewed &&
+      var.github_operations_environments_reviewed
+    )
+    error_message = "Production project bootstrap requires the separately applied and verified project creation phase, effective organization guardrail, and reviewed protected GitHub environments."
   }
 }
 
@@ -86,6 +115,8 @@ variable "enable_project_policy_admin_lease" {
 
   validation {
     condition = !var.enable_project_policy_admin_lease || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       !var.project_executor_handoff_complete
     )
@@ -100,6 +131,8 @@ variable "enable_temporary_human_state_migration_access" {
 
   validation {
     condition = !var.enable_temporary_human_state_migration_access || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       !var.project_executor_handoff_complete
     )
@@ -114,6 +147,8 @@ variable "project_executor_handoff_complete" {
 
   validation {
     condition = !var.project_executor_handoff_complete || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       var.github_infrastructure_environments_reviewed &&
       var.github_operations_environments_reviewed
@@ -129,6 +164,8 @@ variable "production_foundation_applied" {
 
   validation {
     condition = !var.production_foundation_applied || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       !var.enable_organization_policy_admin_lease &&
       !var.enable_project_policy_admin_lease &&
@@ -175,6 +212,8 @@ variable "adopt_project_creator_owner" {
 
   validation {
     condition = !var.adopt_project_creator_owner || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       !var.project_executor_handoff_complete &&
       var.project_creator_owner_member == "user:yousef@felidai.com"
@@ -190,6 +229,8 @@ variable "approve_project_creator_owner_removal" {
 
   validation {
     condition = !var.approve_project_creator_owner_removal || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       !var.project_executor_handoff_complete &&
       !var.enable_organization_policy_admin_lease &&
@@ -207,6 +248,8 @@ variable "project_creator_owner_removed" {
 
   validation {
     condition = !var.project_creator_owner_removed || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       !var.enable_organization_policy_admin_lease &&
       !var.enable_project_policy_admin_lease &&
@@ -225,6 +268,8 @@ variable "enable_portfolio_gateway_exception" {
 
   validation {
     condition = !var.enable_portfolio_gateway_exception || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
       var.managed_member_policy_effective
     )
@@ -250,6 +295,15 @@ variable "managed_member_policy_effective" {
   description = "Manual attestation set only after the effective managed-member policy matches the reviewed allowlist following propagation."
   type        = bool
   default     = false
+
+  validation {
+    condition = !var.managed_member_policy_effective || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
+      var.enable_production_project_bootstrap
+    )
+    error_message = "The managed-member policy can be attested effective only after the verified project creation and bootstrap phases."
+  }
 }
 
 variable "automatic_default_service_account_grants_policy_effective" {
@@ -258,7 +312,11 @@ variable "automatic_default_service_account_grants_policy_effective" {
   default     = false
 
   validation {
-    condition     = !var.automatic_default_service_account_grants_policy_effective || var.enable_production_project_bootstrap
+    condition = !var.automatic_default_service_account_grants_policy_effective || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
+      var.enable_production_project_bootstrap
+    )
     error_message = "The default-service-account policy can be attested effective only for the bootstrap-managed production project."
   }
 }

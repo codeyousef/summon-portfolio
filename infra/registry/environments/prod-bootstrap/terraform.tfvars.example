@@ -1,27 +1,34 @@
 # Every gate is false by default. Plan the organization guardrail and its
-# temporary Policy Admin lease first, then create the project in a later complete
-# saved plan. Create and verify the gateway exception in its separate temporary
-# project Policy Admin phase before the foundation, Owner removal, and CI handoff.
-enable_control_project_apis              = false
-enable_organization_guardrails           = false
-organization_guardrail_effective         = false
-enable_organization_policy_admin_lease   = false
-github_infrastructure_environments_reviewed = false
-github_operations_environments_reviewed     = false
-enable_production_project_bootstrap      = false
-enable_project_policy_admin_lease        = false
-enable_temporary_human_state_migration_access = false
+# temporary Policy Admin lease first. Then create only the project in a complete
+# saved plan by enabling production project creation; keep that gate true
+# thereafter. Attest project creation only after verifying its ID, number, sole
+# expected creator Owner, and absence of Editor. Enable the remaining project
+# bootstrap in a later complete saved plan so every authorization expression is
+# known and inspectable. Create and verify the gateway exception in its separate
+# temporary project Policy Admin phase before the foundation, Owner removal, and
+# CI handoff.
+enable_control_project_apis                               = false
+enable_organization_guardrails                            = false
+organization_guardrail_effective                          = false
+enable_organization_policy_admin_lease                    = false
+github_infrastructure_environments_reviewed               = false
+github_operations_environments_reviewed                   = false
+enable_production_project_creation                        = false
+production_project_creation_verified                      = false
+enable_production_project_bootstrap                       = false
+enable_project_policy_admin_lease                         = false
+enable_temporary_human_state_migration_access             = false
 automatic_default_service_account_grants_policy_effective = false
-managed_member_policy_effective                            = false
-enable_portfolio_gateway_exception                         = false
+managed_member_policy_effective                           = false
+enable_portfolio_gateway_exception                        = false
 portfolio_gateway_exception_effective                     = false
 production_foundation_applied                             = false
 production_image_publisher_foundation_applied             = false
-project_creator_owner_member             = null
-adopt_project_creator_owner              = false
-approve_project_creator_owner_removal    = false
-project_creator_owner_removed            = false
-project_executor_handoff_complete        = false
+project_creator_owner_member                              = null
+adopt_project_creator_owner                               = false
+approve_project_creator_owner_removal                     = false
+project_creator_owner_removed                             = false
+project_executor_handoff_complete                         = false
 
 project_id                 = "seen-registry-prod-476219"
 organization_id            = "567958019562"

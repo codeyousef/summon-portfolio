@@ -405,7 +405,25 @@ resource "terraform_data" "bootstrap_phase_contract" {
 
 data "google_client_openid_userinfo" "bootstrap" {
   provider = google.bootstrap_identity
-  count    = var.enable_production_project_bootstrap && !var.project_executor_handoff_complete ? 1 : 0
+  count    = var.enable_production_project_creation && !var.project_executor_handoff_complete ? 1 : 0
+}
+
+data "google_project" "production_verified" {
+  count = var.production_project_creation_verified ? 1 : 0
+
+  project_id = var.project_id
+
+  lifecycle {
+    postcondition {
+      condition = (
+        self.project_id == var.project_id &&
+        self.org_id == var.organization_id &&
+        self.billing_account == var.billing_account_id &&
+        can(regex("^[0-9]+$", self.number))
+      )
+      error_message = "The verified production project must already exist with the exact reviewed project ID, organization, billing account, and numeric project number."
+    }
+  }
 }
 
 resource "google_project_service" "control" {
@@ -448,7 +466,7 @@ resource "google_org_policy_policy" "skip_default_network" {
 }
 
 resource "google_project" "production" {
-  count = var.enable_production_project_bootstrap ? 1 : 0
+  count = var.enable_production_project_creation ? 1 : 0
 
   project_id          = var.project_id
   name                = local.project_name
@@ -524,8 +542,8 @@ resource "google_org_policy_policy" "automatic_default_service_account_grants" {
 
   provider = google.project
 
-  name   = "projects/${google_project.production[0].number}/policies/iam.automaticIamGrantsForDefaultServiceAccounts"
-  parent = "projects/${google_project.production[0].number}"
+  name   = "projects/${data.google_project.production_verified[0].number}/policies/iam.automaticIamGrantsForDefaultServiceAccounts"
+  parent = "projects/${data.google_project.production_verified[0].number}"
 
   spec {
     rules {
@@ -922,9 +940,9 @@ resource "google_project_iam_member" "material_secret_versions" {
     description = "Allows secret-version metadata operations only on this exact production ceremony secret"
     expression = format(
       "(resource.type == 'secretmanager.googleapis.com/Secret' && resource.name == 'projects/%s/secrets/%s') || (resource.type == 'secretmanager.googleapis.com/SecretVersion' && resource.name.startsWith('projects/%s/secrets/%s/versions/'))",
-      google_project.production[0].number,
+      data.google_project.production_verified[0].number,
       each.value,
-      google_project.production[0].number,
+      data.google_project.production_verified[0].number,
       each.value,
     )
   }
@@ -998,7 +1016,7 @@ resource "google_project_iam_member" "infrastructure_secret_policy_setter" {
     description = "Allows only secret-accessor grants on this exact production secret"
     expression = format(
       "resource.type == 'secretmanager.googleapis.com/Secret' && resource.name == 'projects/%s/secrets/%s' && %s",
-      google_project.production[0].number,
+      data.google_project.production_verified[0].number,
       each.value,
       local.secret_modified_roles_condition,
     )
@@ -1242,8 +1260,8 @@ resource "google_org_policy_policy" "managed_allowed_policy_members" {
 
   provider = google.project
 
-  name   = "projects/${google_project.production[0].number}/policies/iam.managed.allowedPolicyMembers"
-  parent = "projects/${google_project.production[0].number}"
+  name   = "projects/${data.google_project.production_verified[0].number}/policies/iam.managed.allowedPolicyMembers"
+  parent = "projects/${data.google_project.production_verified[0].number}"
 
   spec {
     rules {
@@ -1256,7 +1274,7 @@ resource "google_org_policy_policy" "managed_allowed_policy_members" {
           ),
           [
             for identity, config in local.github_identities :
-            "principal://iam.googleapis.com/${google_iam_workload_identity_pool.infrastructure[0].name}/subject/${config.subject}"
+            "principal://iam.googleapis.com/projects/${data.google_project.production_verified[0].number}/locations/global/workloadIdentityPools/${local.infrastructure_wif_pool_id}/subject/${config.subject}"
           ],
         ))
         allowedPrincipalSets = [local.organization_principal_set]
@@ -1265,6 +1283,7 @@ resource "google_org_policy_policy" "managed_allowed_policy_members" {
   }
 
   depends_on = [
+    google_iam_workload_identity_pool.infrastructure,
     google_project_iam_member.policy_admin_lease,
     google_project_service.bootstrap,
   ]
@@ -1279,8 +1298,8 @@ resource "google_org_policy_policy" "legacy_domain_restriction_override" {
 
   provider = google.project
 
-  name   = "projects/${google_project.production[0].number}/policies/iam.allowedPolicyMemberDomains"
-  parent = "projects/${google_project.production[0].number}"
+  name   = "projects/${data.google_project.production_verified[0].number}/policies/iam.allowedPolicyMemberDomains"
+  parent = "projects/${data.google_project.production_verified[0].number}"
 
   spec {
     inherit_from_parent = false
