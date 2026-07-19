@@ -4,6 +4,10 @@ mock_provider "google" {
   alias = "project"
 }
 
+mock_provider "google" {
+  alias = "bootstrap_identity"
+}
+
 override_data {
   target = data.google_client_openid_userinfo.bootstrap
   values = {
@@ -203,9 +207,11 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
       google_project.production[0].deletion_policy == "PREVENT" &&
       output.organization_guardrail_effective &&
       output.active_bootstrap_identity == "yousef@felidai.com" &&
+      strcontains(file("${path.root}/versions.tf"), "provider \"google\" {\n  alias = \"bootstrap_identity\"\n}") &&
+      strcontains(file("${path.root}/main.tf"), "provider = google.bootstrap_identity") &&
       length(google_project_iam_member.project_creator_owner) == 0
     )
-    error_message = "The production project must be isolated, protected, and managed by the reviewed human only before handoff."
+    error_message = "The production project must be isolated, protected, and managed by the reviewed human through the identity-only provider before handoff."
   }
 
   assert {

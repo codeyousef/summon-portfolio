@@ -404,7 +404,8 @@ resource "terraform_data" "bootstrap_phase_contract" {
 }
 
 data "google_client_openid_userinfo" "bootstrap" {
-  count = var.enable_production_project_bootstrap && !var.project_executor_handoff_complete ? 1 : 0
+  provider = google.bootstrap_identity
+  count    = var.enable_production_project_bootstrap && !var.project_executor_handoff_complete ? 1 : 0
 }
 
 resource "google_project_service" "control" {
