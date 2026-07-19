@@ -1,49 +1,142 @@
+locals {
+  ceremony_identities = toset([
+    "offline_bootstrap_importer",
+    "online_bootstrap",
+    "targets_renewal",
+    "targets_releases_rotation",
+    "targets_security_rotation",
+    "root_importer",
+  ])
+  inactive_ceremony_identities = setsubtract(local.ceremony_identities, var.ceremony_operations)
+
+  bootstrap_authority_split_contract = (
+    !contains([for binding in local.signer_authorizations : binding.identity], "offline_bootstrap_importer") &&
+    (
+      contains(var.ceremony_operations, "online_bootstrap") ==
+      contains([for binding in local.signer_authorizations : binding.identity], "online_bootstrap")
+    ) &&
+    toset([for binding in values(local.bootstrap_metadata_objects) : binding.filename if binding.identity == "offline_bootstrap_importer"]) == toset(["1.root.json", "1.targets.json"]) &&
+    !contains([for binding in values(local.bootstrap_metadata_objects) : binding.filename if binding.identity == "online_bootstrap"], "root.json") &&
+    !contains(local.firestore_users, "offline_bootstrap_importer")
+  )
+
+  inactive_ceremonies_have_no_authority_contract = alltrue([
+    for identity in local.inactive_ceremony_identities : (
+      !contains(local.firestore_users, identity) &&
+      !contains(local.firestore_readers, identity) &&
+      !contains(local.metadata_readers, identity) &&
+      !contains(keys(local.metadata_creator_suffixes), identity) &&
+      !contains([for binding in local.signer_authorizations : binding.identity], identity) &&
+      !contains([for request in values(local.secret_access_requests) : request.identity], identity)
+    )
+  ])
+
+  signers_use_exact_versions_contract = !var.enabled || !local.signers_enabled || alltrue([
+    for role in local.selected_signer_roles : try(endswith(
+      local.online_key_versions[role],
+      "/cryptoKeyVersions/${var.online_key_version_numbers[role]}",
+    ), false)
+  ])
+
+  signer_oidc_egress_shape_contract = !var.enabled || !var.signer_jwks_all_apis_enabled || (
+    try(google_dns_record_set.oidc_certificates_private[0].name, null) == "www.googleapis.com." &&
+    toset(try(google_dns_record_set.oidc_certificates_private[0].rrdatas, [])) == toset(["private.googleapis.com."]) &&
+    toset(try(google_compute_firewall.oidc_certificates_private_egress[0].destination_ranges, [])) == toset(["199.36.153.8/30"]) &&
+    toset(try(google_compute_firewall.oidc_certificates_private_egress[0].target_tags, [])) == toset(["${var.name_prefix}-signer"]) &&
+    try(one(google_compute_firewall.oidc_certificates_private_egress[0].allow).protocol, null) == "tcp" &&
+    toset(try(one(google_compute_firewall.oidc_certificates_private_egress[0].allow).ports, [])) == toset(["443"]) &&
+    toset(try(google_compute_firewall.restricted_egress_deny[0].destination_ranges, [])) == toset(["0.0.0.0/0"]) &&
+    toset(try(google_compute_firewall.restricted_egress_deny[0].target_tags, [])) == toset(["${var.name_prefix}-restricted-egress"])
+  )
+
+  read_only_api_contract = !local.read_only_api_enabled || (
+    local.api_service.api.argument == "serve-read-only-public-api" &&
+    local.api_service.api.server_mode == "read-only-public-api" &&
+    length(local.api_service.api.secrets) == 0 &&
+    toset(keys(local.read_only_api_environment)) == toset([
+      "GOOGLE_CLOUD_PROJECT",
+      "REGISTRY_ENVIRONMENT",
+      "REGISTRY_FIRESTORE_DATABASE",
+      "REGISTRY_METADATA_BUCKET",
+      "REGISTRY_OBJECT_PREFIX",
+      "REGISTRY_ORIGIN",
+      "REGISTRY_PUBLIC_BUCKET",
+      "REGISTRY_REPOSITORY_ID",
+      "REGISTRY_STORAGE_MODE",
+    ]) &&
+    local.firestore_readers == toset(["api"]) &&
+    !contains(local.firestore_users, "api") &&
+    contains(local.metadata_readers, "api") &&
+    !contains(keys(local.metadata_creator_suffixes), "api") &&
+    !contains([for request in values(local.secret_access_requests) : request.identity], "api")
+  )
+
+  github_ci_claim_order = [
+    "repository",
+    "repository_id",
+    "repository_owner_id",
+    "ref",
+    "workflow_ref",
+    "event_name",
+    "environment",
+  ]
+  github_ci_claim_names = toset(local.github_ci_claim_order)
+  github_ci_claim_values = {
+    repository          = var.github_repository == null ? "" : var.github_repository
+    repository_id       = var.github_repository_id == null ? "" : var.github_repository_id
+    repository_owner_id = var.github_repository_owner_id == null ? "" : var.github_repository_owner_id
+    ref                 = var.github_ref == null ? "" : var.github_ref
+    workflow_ref        = var.github_workflow_ref == null ? "" : var.github_workflow_ref
+    event_name          = var.github_event_name == null ? "" : var.github_event_name
+    environment         = var.github_environment == null ? "" : var.github_environment
+  }
+  github_ci_attribute_mapping = merge(
+    { "google.subject" = "assertion.sub" },
+    { for claim in local.github_ci_claim_names : "attribute.${claim}" => "assertion.${claim}" },
+  )
+  github_ci_attribute_condition_terms = [
+    for claim in local.github_ci_claim_order :
+    "assertion.${claim} == '${local.github_ci_claim_values[claim]}'"
+  ]
+  github_ci_attribute_condition = join(" && ", local.github_ci_attribute_condition_terms)
+  production_ci_claim_pinning_contract = !var.github_ci_enabled || (
+    toset(keys(local.github_ci_claim_values)) == local.github_ci_claim_names &&
+    toset(keys(local.github_ci_attribute_mapping)) == setunion(
+      toset(["google.subject"]),
+      toset([for claim in local.github_ci_claim_names : "attribute.${claim}"]),
+    ) &&
+    local.github_ci_attribute_mapping["google.subject"] == "assertion.sub" &&
+    alltrue([
+      for claim in local.github_ci_claim_names :
+      local.github_ci_attribute_mapping["attribute.${claim}"] == "assertion.${claim}" &&
+      contains(local.github_ci_attribute_condition_terms, "assertion.${claim} == '${local.github_ci_claim_values[claim]}'")
+    ]) &&
+    (
+      var.environment != "prod" || (
+        startswith(local.github_ci_claim_values.ref, "refs/heads/") &&
+        local.github_ci_claim_values.event_name == "push"
+      )
+    )
+  )
+}
+
 check "bootstrap_authority_split" {
   assert {
-    condition = (
-      !contains([for binding in local.signer_authorizations : binding.identity], "offline_bootstrap_importer") &&
-      (
-        contains(var.ceremony_operations, "online_bootstrap") ==
-        contains([for binding in local.signer_authorizations : binding.identity], "online_bootstrap")
-      ) &&
-      toset([for binding in values(local.bootstrap_metadata_objects) : binding.filename if binding.identity == "offline_bootstrap_importer"]) == toset(["1.root.json", "1.targets.json"]) &&
-      !contains([for binding in values(local.bootstrap_metadata_objects) : binding.filename if binding.identity == "online_bootstrap"], "root.json") &&
-      !contains(local.firestore_users, "offline_bootstrap_importer")
-    )
+    condition     = local.bootstrap_authority_split_contract
     error_message = "Offline bootstrap import and online signing authority must remain disjoint."
   }
 }
 
 check "inactive_ceremonies_have_no_authority" {
   assert {
-    condition = alltrue([
-      for identity in setsubtract(toset([
-        "offline_bootstrap_importer",
-        "online_bootstrap",
-        "targets_renewal",
-        "targets_releases_rotation",
-        "targets_security_rotation",
-        "root_importer",
-        ]), var.ceremony_operations) : (
-        !contains(local.firestore_users, identity) &&
-        !contains(local.metadata_readers, identity) &&
-        !contains(keys(local.metadata_creator_suffixes), identity) &&
-        !contains([for binding in local.signer_authorizations : binding.identity], identity) &&
-        !contains([for request in values(local.secret_access_requests) : request.identity], identity)
-      )
-    ])
+    condition     = local.inactive_ceremonies_have_no_authority_contract
     error_message = "An unselected ceremony identity retained data, secret, or signer-invocation authority."
   }
 }
 
 check "signers_use_exact_versions" {
   assert {
-    condition = !var.enabled || !local.signers_enabled || alltrue([
-      for role in local.selected_signer_roles : endswith(
-        local.online_key_versions[role],
-        "/cryptoKeyVersions/${var.online_key_version_numbers[role]}",
-      )
-    ])
+    condition     = local.signers_use_exact_versions_contract
     error_message = "Every signer must use a reviewed concrete KMS key version."
   }
 }
@@ -81,16 +174,7 @@ check "signers_require_oidc_jwks_egress" {
 
 check "signer_oidc_egress_shape" {
   assert {
-    condition = !var.enabled || !var.signer_jwks_all_apis_enabled || (
-      try(google_dns_record_set.oidc_certificates_private[0].name, null) == "www.googleapis.com." &&
-      toset(try(google_dns_record_set.oidc_certificates_private[0].rrdatas, [])) == toset(["private.googleapis.com."]) &&
-      toset(try(google_compute_firewall.oidc_certificates_private_egress[0].destination_ranges, [])) == toset(["199.36.153.8/30"]) &&
-      toset(try(google_compute_firewall.oidc_certificates_private_egress[0].target_tags, [])) == toset(["${var.name_prefix}-signer"]) &&
-      try(one(google_compute_firewall.oidc_certificates_private_egress[0].allow).protocol, null) == "tcp" &&
-      toset(try(one(google_compute_firewall.oidc_certificates_private_egress[0].allow).ports, [])) == toset(["443"]) &&
-      toset(try(google_compute_firewall.restricted_egress_deny[0].destination_ranges, [])) == toset(["0.0.0.0/0"]) &&
-      toset(try(google_compute_firewall.restricted_egress_deny[0].target_tags, [])) == toset(["${var.name_prefix}-restricted-egress"])
-    )
+    condition     = local.signer_oidc_egress_shape_contract
     error_message = "Signer OIDC egress must retain its exact DNS, private VIP, signer tag, TCP port, and fallback deny shape."
   }
 }
@@ -126,27 +210,7 @@ check "api_gateway_input" {
 
 check "read_only_api_contract" {
   assert {
-    condition = !local.read_only_api_enabled || (
-      local.api_service.api.argument == "serve-read-only-public-api" &&
-      local.api_service.api.server_mode == "read-only-public-api" &&
-      length(local.api_service.api.secrets) == 0 &&
-      toset(keys(local.read_only_api_environment)) == toset([
-        "GOOGLE_CLOUD_PROJECT",
-        "REGISTRY_ENVIRONMENT",
-        "REGISTRY_FIRESTORE_DATABASE",
-        "REGISTRY_METADATA_BUCKET",
-        "REGISTRY_OBJECT_PREFIX",
-        "REGISTRY_ORIGIN",
-        "REGISTRY_PUBLIC_BUCKET",
-        "REGISTRY_REPOSITORY_ID",
-        "REGISTRY_STORAGE_MODE",
-      ]) &&
-      contains(local.firestore_readers, "api") &&
-      !contains(local.firestore_users, "api") &&
-      contains(local.metadata_readers, "api") &&
-      !contains(keys(local.metadata_creator_suffixes), "api") &&
-      !contains([for request in values(local.secret_access_requests) : request.identity], "api")
-    )
+    condition     = local.read_only_api_contract
     error_message = "The read-only API must retain the exact credential-free environment and read-only Firestore/metadata/public authority shape."
   }
 }
@@ -200,12 +264,14 @@ check "github_ci_inputs" {
       var.enabled &&
       var.create_artifact_repository &&
       var.github_repository != null &&
-      can(regex("^[^/]+/[^/]+$", var.github_repository)) &&
+      can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository)) &&
       can(regex("^[1-9][0-9]*$", var.github_repository_id)) &&
       can(regex("^[1-9][0-9]*$", var.github_repository_owner_id)) &&
       var.github_ref != null &&
-      try(startswith(var.github_ref, "refs/"), false) &&
+      can(regex("^refs/heads/[A-Za-z0-9._/-]+$", var.github_ref)) &&
       var.github_workflow_ref != null &&
+      can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\\.github/workflows/[A-Za-z0-9_./-]+\\.ya?ml@refs/heads/[A-Za-z0-9._/-]+$", var.github_workflow_ref)) &&
+      try(startswith(var.github_workflow_ref, "${var.github_repository}/"), false) &&
       try(endswith(var.github_workflow_ref, "@${var.github_ref}"), false) &&
       var.github_event_name != null &&
       can(regex("^[a-z_]+$", var.github_event_name)) &&
@@ -213,6 +279,30 @@ check "github_ci_inputs" {
       can(regex("^[A-Za-z0-9._-]+$", var.github_environment))
     )
     error_message = "GitHub CI requires an enabled Artifact Registry plus exact repository/owner IDs, repository, ref, workflow, event, and protected environment."
+  }
+}
+
+check "production_ci_claim_pinning" {
+  assert {
+    condition     = local.production_ci_claim_pinning_contract
+    error_message = "Production image-publisher federation must retain the complete repository, immutable-ID, ref, workflow, event, and protected-environment claim set."
+  }
+}
+
+check "infrastructure_executor_act_as_scope" {
+  assert {
+    condition = (
+      !var.enabled || var.infrastructure_executor_service_account == null
+      ) ? length(google_service_account_iam_member.infrastructure_executor_act_as) == 0 : (
+      toset(keys(google_service_account_iam_member.infrastructure_executor_act_as)) == var.infrastructure_executor_act_as_identities &&
+      length(setsubtract(local.executor_required_act_as_identities, var.infrastructure_executor_act_as_identities)) == 0 &&
+      alltrue([
+        for binding in values(google_service_account_iam_member.infrastructure_executor_act_as) :
+        binding.role == "roles/iam.serviceAccountUser" &&
+        binding.member == "serviceAccount:${var.infrastructure_executor_service_account}"
+      ])
+    )
+    error_message = "The infrastructure executor may receive serviceAccountUser only through the explicit finite identity set, which must cover every selected deployable workload."
   }
 }
 

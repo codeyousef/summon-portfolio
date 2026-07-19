@@ -216,9 +216,22 @@ resource "google_cloud_run_v2_service" "signer" {
     }
   }
 
+  lifecycle {
+    precondition {
+      condition     = local.signers_use_exact_versions_contract
+      error_message = "Every signer service must receive the reviewed concrete KMS key version for its exact role."
+    }
+
+    precondition {
+      condition     = local.signer_oidc_egress_shape_contract
+      error_message = "Signer services require the exact signer-tagged OIDC JWKS private-VIP route and fallback egress deny."
+    }
+  }
+
   depends_on = [
     google_compute_router_nat.registry,
     google_kms_crypto_key_iam_member.signer,
+    google_service_account_iam_member.infrastructure_executor_act_as,
     google_storage_bucket_iam_member.metadata_reader,
   ]
 }
@@ -341,12 +354,20 @@ resource "google_cloud_run_v2_service" "application" {
     }
   }
 
+  lifecycle {
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "The read-only API service must remain credential-free and retain only its exact read-only environment and authority shape."
+    }
+  }
+
   depends_on = [
     google_cloud_run_v2_service.signer,
     google_compute_router_nat.registry,
     google_project_iam_member.firestore_reader,
     google_project_iam_member.firestore_user,
     google_secret_manager_secret_iam_member.runtime,
+    google_service_account_iam_member.infrastructure_executor_act_as,
     google_storage_bucket_iam_member.metadata_reader,
   ]
 }
@@ -359,4 +380,11 @@ resource "google_cloud_run_v2_service_iam_member" "portfolio_gateway" {
   name     = each.value.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.portfolio_gateway_service_account}"
+
+  lifecycle {
+    precondition {
+      condition     = local.read_only_api_contract
+      error_message = "Gateway invocation must not accompany a read-only API with writer or secret authority."
+    }
+  }
 }

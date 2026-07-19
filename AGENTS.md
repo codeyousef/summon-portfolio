@@ -24,8 +24,18 @@
 
 ## Infrastructure changes
 
+- Approval to implement or review infrastructure code does not authorize a
+  cloud plan or apply. Require separate, explicit authorization for the exact
+  cloud phase before changing external state.
 - Production, IAM, Cloud Run job, and scheduler changes require explicit
   approval and one complete reviewed saved plan. Apply only that exact plan.
+- Keep production planning and applying on separate protected OIDC identities,
+  and never expose a saved plan or rendered plan through public logs or a
+  plaintext artifact.
+- Treat protected review of the exact saved plan as the production apply
+  security boundary. The apply identity has no direct standing data or signing
+  role, but approved infrastructure changes can bind allowlisted runtime roles
+  and deploy code as the finite pre-provisioned runtime service accounts.
 - Keep routine application and privileged signer image digests immutable and
   separately reviewed.
 - Treat temporary plan-reader IAM as an approval-scoped lease. Remove its

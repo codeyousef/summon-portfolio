@@ -159,6 +159,7 @@ resource "google_cloud_run_v2_job" "long_lived" {
     google_compute_router_nat.registry,
     google_project_iam_member.firestore_user,
     google_secret_manager_secret_iam_member.runtime,
+    google_service_account_iam_member.infrastructure_executor_act_as,
     google_storage_bucket_iam_member.metadata_creator,
   ]
 }
@@ -329,6 +330,7 @@ resource "google_cloud_run_v2_job" "ceremony" {
   depends_on = [
     google_cloud_run_v2_service.signer,
     google_secret_manager_secret_iam_member.runtime,
+    google_service_account_iam_member.infrastructure_executor_act_as,
     google_storage_bucket_iam_member.metadata_creator,
     google_storage_bucket_iam_member.timestamp_pointer_replacer,
   ]

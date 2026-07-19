@@ -18,29 +18,18 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   display_name                       = "Seen registry image publisher"
   description                        = "Accepts only the exact repository, branch, and workflow used for registry image publication"
 
-  attribute_mapping = {
-    "google.subject"                = "assertion.sub"
-    "attribute.repository"          = "assertion.repository"
-    "attribute.repository_id"       = "assertion.repository_id"
-    "attribute.repository_owner_id" = "assertion.repository_owner_id"
-    "attribute.ref"                 = "assertion.ref"
-    "attribute.workflow_ref"        = "assertion.workflow_ref"
-    "attribute.event_name"          = "assertion.event_name"
-    "attribute.environment"         = "assertion.environment"
-  }
-
-  attribute_condition = join(" && ", [
-    "assertion.repository == '${var.github_repository}'",
-    "assertion.repository_id == '${var.github_repository_id}'",
-    "assertion.repository_owner_id == '${var.github_repository_owner_id}'",
-    "assertion.ref == '${var.github_ref}'",
-    "assertion.workflow_ref == '${var.github_workflow_ref}'",
-    "assertion.event_name == '${var.github_event_name}'",
-    "assertion.environment == '${var.github_environment}'",
-  ])
+  attribute_mapping   = local.github_ci_attribute_mapping
+  attribute_condition = local.github_ci_attribute_condition
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = local.production_ci_claim_pinning_contract
+      error_message = "Production image-publisher federation must pin every required GitHub claim, a branch ref, and the push event."
+    }
   }
 }
 
@@ -65,6 +54,13 @@ resource "google_service_account_iam_member" "github_image_publisher" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github[0].name}/attribute.repository_id/${var.github_repository_id}"
 
   depends_on = [google_service_account.image_publisher]
+
+  lifecycle {
+    precondition {
+      condition     = local.production_ci_claim_pinning_contract
+      error_message = "Image-publisher impersonation must remain bound to the fully claim-pinned GitHub provider and immutable repository ID."
+    }
+  }
 }
 
 resource "google_artifact_registry_repository_iam_member" "github_image_publisher" {

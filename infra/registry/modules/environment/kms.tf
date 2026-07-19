@@ -15,11 +15,12 @@ resource "google_kms_key_ring" "registry" {
 resource "google_kms_crypto_key" "online" {
   for_each = var.enabled ? local.roles : toset([])
 
-  name                       = var.online_key_names[each.value]
-  key_ring                   = google_kms_key_ring.registry[0].id
-  purpose                    = "ASYMMETRIC_SIGN"
-  destroy_scheduled_duration = "2592000s"
-  labels                     = merge(local.common_labels, { tuf_role = each.value })
+  name                          = var.online_key_names[each.value]
+  key_ring                      = google_kms_key_ring.registry[0].id
+  purpose                       = "ASYMMETRIC_SIGN"
+  skip_initial_version_creation = true
+  destroy_scheduled_duration    = "2592000s"
+  labels                        = merge(local.common_labels, { tuf_role = each.value })
 
   version_template {
     algorithm        = "EC_SIGN_ED25519"

@@ -1,0 +1,3 @@
+# Initial one-use backend. Keep the state mode-0600 and migrate it immediately
+# after the isolated production state bucket is created and verified.
+path = ".state/terraform.tfstate"

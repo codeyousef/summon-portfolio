@@ -1,3 +1,28 @@
+locals {
+  # Production foundation is applied before any runtime selector is enabled.
+  # Pre-provisioning the executor on this finite set avoids giving the steady
+  # identity service-account IAM mutation authority during later saved-plan
+  # rollouts. This is deliberately one binding per named runtime account, not
+  # a project-level serviceAccountUser grant.
+  executor_required_act_as_identities = setunion(
+    var.workloads_enabled ? toset([
+      "api",
+      "source",
+      "scanner",
+      "promoter",
+      "release_actions",
+      "security_actions",
+      "root_verifier",
+    ]) : toset([]),
+    local.read_only_api_enabled ? toset(["api"]) : toset([]),
+    local.root_verifier_job_enabled ? toset(["root_verifier"]) : toset([]),
+    var.refresh_jobs_enabled ? toset(["release_refresh", "security_refresh"]) : toset([]),
+    var.schedules_enabled && var.workloads_enabled ? toset(["scheduler"]) : toset([]),
+    var.ceremony_operations,
+    toset([for role in local.selected_signer_roles : "signer_${role}"]),
+  )
+}
+
 resource "google_service_account" "runtime" {
   for_each = var.enabled ? local.service_account_ids : {}
 
@@ -8,6 +33,28 @@ resource "google_service_account" "runtime" {
 
   lifecycle {
     prevent_destroy = true
+  }
+}
+
+resource "google_service_account_iam_member" "infrastructure_executor_act_as" {
+  for_each = var.enabled && var.infrastructure_executor_service_account != null ? var.infrastructure_executor_act_as_identities : toset([])
+
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${local.service_account_ids[each.value]}@${var.project_id}.iam.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.infrastructure_executor_service_account}"
+
+  depends_on = [google_service_account.runtime]
+
+  lifecycle {
+    precondition {
+      condition     = contains(keys(local.service_account_ids), each.value)
+      error_message = "Infrastructure executor actAs may target only one of the finite named registry runtime identities."
+    }
+
+    precondition {
+      condition     = length(setsubtract(local.executor_required_act_as_identities, var.infrastructure_executor_act_as_identities)) == 0
+      error_message = "Infrastructure executor actAs must cover every identity required by the selected services, jobs, signers, ceremonies, and schedules."
+    }
   }
 }
 

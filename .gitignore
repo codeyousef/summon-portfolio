@@ -66,12 +66,18 @@ gha-creds-*.json
 *.private-key.pem
 *.private.pem
 *.key.pem
+*.private-key.asc
+*.private-key.gpg
+*.private.gpg
 
 # Local OpenTofu state configuration and generated plans.
 infra/registry/environments/*/backend.hcl
 infra/registry/environments/*/terraform.tfvars
 infra/registry/environments/*/.terraform/
 infra/registry/environments/*/*.tfplan
+infra/registry/environments/*/.state/
+infra/registry/environments/*/*.tfstate
+infra/registry/environments/*/*.tfstate.*
 
 # Offline registry signing material is encrypted locally and never tracked.
 /.offline-keys/

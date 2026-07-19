@@ -1,0 +1,4 @@
+# Final bootstrap backend used only after versions.tf is changed to backend
+# "gcs" in a reviewed follow-up commit.
+bucket = "seen-registry-prod-476219-bootstrap-tofu-state"
+prefix = "seen-registry/bootstrap/prod"

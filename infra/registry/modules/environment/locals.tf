@@ -33,7 +33,7 @@ locals {
     managed_by  = "opentofu"
   }, var.labels)
 
-  required_services = toset([
+  all_required_services = toset([
     "artifactregistry.googleapis.com",
     "billingbudgets.googleapis.com",
     "cloudkms.googleapis.com",
@@ -52,6 +52,7 @@ locals {
     "sts.googleapis.com",
     "storage.googleapis.com",
   ])
+  required_services = setsubtract(local.all_required_services, var.externally_managed_services)
 
   service_account_descriptions = {
     api                        = "Seen registry ${var.environment} verification-only API"
