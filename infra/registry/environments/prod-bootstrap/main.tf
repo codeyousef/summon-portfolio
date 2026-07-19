@@ -856,7 +856,10 @@ resource "google_project_iam_member" "infrastructure_plan" {
   role    = local.infrastructure_role_names.plan
   member  = "serviceAccount:${local.infrastructure_identities.plan.email}"
 
-  depends_on = [google_project_iam_custom_role.infrastructure_plan]
+  depends_on = [
+    google_project_iam_custom_role.infrastructure_plan,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "infrastructure_apply" {
@@ -868,7 +871,10 @@ resource "google_project_iam_member" "infrastructure_apply" {
   role    = local.infrastructure_role_names.apply
   member  = "serviceAccount:${local.infrastructure_identities.apply.email}"
 
-  depends_on = [google_project_iam_custom_role.infrastructure_apply]
+  depends_on = [
+    google_project_iam_custom_role.infrastructure_apply,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "material_key_versions" {
@@ -896,7 +902,10 @@ resource "google_project_iam_member" "material_key_versions" {
     )
   }
 
-  depends_on = [google_project_iam_custom_role.material_key_versions]
+  depends_on = [
+    google_project_iam_custom_role.material_key_versions,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "material_secret_versions" {
@@ -920,7 +929,10 @@ resource "google_project_iam_member" "material_secret_versions" {
     )
   }
 
-  depends_on = [google_project_iam_custom_role.material_secret_versions]
+  depends_on = [
+    google_project_iam_custom_role.material_secret_versions,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "infrastructure_project_iam" {
@@ -938,7 +950,10 @@ resource "google_project_iam_member" "infrastructure_project_iam" {
     expression  = local.iam_modified_roles_condition
   }
 
-  depends_on = [google_project_iam_custom_role.project_iam_apply]
+  depends_on = [
+    google_project_iam_custom_role.project_iam_apply,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "infrastructure_kms_policy_setter" {
@@ -963,7 +978,10 @@ resource "google_project_iam_member" "infrastructure_kms_policy_setter" {
     )
   }
 
-  depends_on = [google_project_iam_custom_role.resource_iam_setter]
+  depends_on = [
+    google_project_iam_custom_role.resource_iam_setter,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "infrastructure_secret_policy_setter" {
@@ -986,7 +1004,10 @@ resource "google_project_iam_member" "infrastructure_secret_policy_setter" {
     )
   }
 
-  depends_on = [google_project_iam_custom_role.resource_iam_setter]
+  depends_on = [
+    google_project_iam_custom_role.resource_iam_setter,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "infrastructure_registry_storage_policy_setter" {
@@ -1008,7 +1029,10 @@ resource "google_project_iam_member" "infrastructure_registry_storage_policy_set
     )
   }
 
-  depends_on = [google_project_iam_custom_role.resource_iam_setter]
+  depends_on = [
+    google_project_iam_custom_role.resource_iam_setter,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "infrastructure_state_storage_policy_setter" {
@@ -1030,7 +1054,10 @@ resource "google_project_iam_member" "infrastructure_state_storage_policy_setter
     )
   }
 
-  depends_on = [google_project_iam_custom_role.resource_iam_setter]
+  depends_on = [
+    google_project_iam_custom_role.resource_iam_setter,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_project_iam_member" "infrastructure_run_policy_setter" {
@@ -1048,7 +1075,10 @@ resource "google_project_iam_member" "infrastructure_run_policy_setter" {
     expression  = each.value.modified_roles_condition
   }
 
-  depends_on = [google_project_iam_custom_role.resource_iam_setter]
+  depends_on = [
+    google_project_iam_custom_role.resource_iam_setter,
+    google_service_account.infrastructure,
+  ]
 }
 
 locals {
@@ -1143,7 +1173,10 @@ resource "google_organization_iam_member" "infrastructure_read" {
   role   = each.value.role
   member = "serviceAccount:${local.infrastructure_identities[each.value.identity].email}"
 
-  depends_on = [google_organization_iam_custom_role.bootstrap_refresh]
+  depends_on = [
+    google_organization_iam_custom_role.bootstrap_refresh,
+    google_service_account.infrastructure,
+  ]
 }
 
 resource "google_billing_account_iam_member" "infrastructure_read" {
@@ -1153,7 +1186,10 @@ resource "google_billing_account_iam_member" "infrastructure_read" {
   role               = local.billing_refresh_role_name
   member             = "serviceAccount:${each.value.email}"
 
-  depends_on = [google_organization_iam_custom_role.billing_refresh]
+  depends_on = [
+    google_organization_iam_custom_role.billing_refresh,
+    google_service_account.infrastructure,
+  ]
 
   lifecycle {
     prevent_destroy = true
@@ -1170,6 +1206,7 @@ resource "google_project_iam_member" "infrastructure_control_project" {
   depends_on = [
     google_organization_iam_custom_role.control_project_refresh,
     google_project_service.control,
+    google_service_account.infrastructure,
   ]
 }
 
@@ -1357,6 +1394,7 @@ resource "google_storage_bucket_iam_policy" "state" {
     google_project_iam_custom_role.state_reader,
     google_project_iam_custom_role.state_writer,
     google_project_iam_custom_role.resource_iam_setter,
+    google_service_account.infrastructure,
   ]
 }
 

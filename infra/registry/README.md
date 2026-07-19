@@ -332,7 +332,7 @@ full saved plan where it changes managed state:
    is effective. Wait for propagation and independently verify the effective
    legacy-domain exception before setting
    `portfolio_gateway_exception_effective=true`. The attested follow-up plan may
-   then install the two exact OIDC-to-service-account trust bindings without
+   then install the four exact OIDC-to-service-account trust bindings without
    being rejected by the inherited legacy restriction. Retain both protected
    policies, then remove the project Policy Admin lease. Both organization and
    project Policy Admin leases must now be false.
@@ -375,10 +375,11 @@ full saved plan where it changes managed state:
     `project_creator_owner_removed=true`.
 
 No phase grants a human Storage Object Admin or Service Account Token Creator
-role. The temporary human backend access uses only the custom exact-state
-reader/writer permissions on both named roots and remains solely so the human
-can migrate state, apply the empty foundation, and remove the imported Owner.
-Storage data reads and writes are audit logged.
+role. The temporary human backend access uses only the custom reader role across
+each dedicated state bucket and the custom writer role conditioned to that
+root's exact state and lock objects. It remains solely so the human can migrate
+state, apply the empty foundation, and remove the imported Owner. Storage data
+reads and writes are audit logged.
 
 #### First WIF handoff and steady state
 
