@@ -4,16 +4,22 @@ on:
   pull_request:
     paths:
       - .github/workflows/deploy-seen-registry-infrastructure.yml
+      - .github/workflows/operate-seen-registry-production.yml
       - .github/workflows/deploy-seen-registry.yml
       - infra/registry/**
       - registry-service/**
+      - scripts/operate-seen-registry-production.sh
+      - scripts/test-operate-seen-registry-production.sh
   push:
     branches: [dev, master]
     paths:
       - .github/workflows/deploy-seen-registry-infrastructure.yml
+      - .github/workflows/operate-seen-registry-production.yml
       - .github/workflows/deploy-seen-registry.yml
       - infra/registry/**
       - registry-service/**
+      - scripts/operate-seen-registry-production.sh
+      - scripts/test-operate-seen-registry-production.sh
   workflow_dispatch:
 
 concurrency:
@@ -55,7 +61,13 @@ jobs:
           tofu_version: 1.12.4
 
       - name: Check shell syntax
-        run: bash -n registry-service/scripts/provision-development-owner.sh
+        run: |
+          bash -n registry-service/scripts/provision-development-owner.sh
+          bash -n scripts/operate-seen-registry-production.sh
+          bash -n scripts/test-operate-seen-registry-production.sh
+
+      - name: Test protected production operation contracts
+        run: bash scripts/test-operate-seen-registry-production.sh
 
       - name: Test and package the isolated registry
         env:

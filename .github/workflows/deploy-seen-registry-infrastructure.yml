@@ -21,7 +21,7 @@ on:
         type: string
 
 concurrency:
-  group: seen-registry-production-infrastructure
+  group: seen-registry-production-control
   cancel-in-progress: false
 
 permissions:

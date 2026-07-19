@@ -6,8 +6,10 @@ locals {
   github_repository_owner_id = "10247142"
   github_ref                 = "refs/heads/master"
   github_ref_type            = "branch"
-  github_workflow_ref        = "codeyousef/summon-portfolio/.github/workflows/deploy-seen-registry-infrastructure.yml@refs/heads/master"
   github_event_name          = "workflow_dispatch"
+
+  infrastructure_workflow_ref = "codeyousef/summon-portfolio/.github/workflows/deploy-seen-registry-infrastructure.yml@refs/heads/master"
+  operations_workflow_ref     = "codeyousef/summon-portfolio/.github/workflows/operate-seen-registry-production.yml@refs/heads/master"
 
   infrastructure_wif_pool_id = "seen-registry-prod-infra"
   infrastructure_identities = {
@@ -19,6 +21,7 @@ locals {
       provider_id  = "infra-plan"
       environment  = "seen-registry-production-plan"
       subject      = "repo:codeyousef/summon-portfolio:environment:seen-registry-production-plan"
+      workflow_ref = local.infrastructure_workflow_ref
     }
     apply = {
       account_id   = "seen-registry-prod-iac"
@@ -28,8 +31,32 @@ locals {
       provider_id  = "infra-apply"
       environment  = "seen-registry-production-apply"
       subject      = "repo:codeyousef/summon-portfolio:environment:seen-registry-production-apply"
+      workflow_ref = local.infrastructure_workflow_ref
     }
   }
+  operations_identities = {
+    materials = {
+      account_id   = "seen-registry-prod-materials"
+      email        = "seen-registry-prod-materials@${var.project_id}.iam.gserviceaccount.com"
+      display_name = "Seen Registry Production Materials Operator"
+      description  = "Creates exact production KMS and Secret Manager material versions without reading secret payloads or signing"
+      provider_id  = "material-ops"
+      environment  = "seen-registry-production-materials"
+      subject      = "repo:codeyousef/summon-portfolio:environment:seen-registry-production-materials"
+      workflow_ref = local.operations_workflow_ref
+    }
+    jobs = {
+      account_id   = "seen-registry-prod-job-runner"
+      email        = "seen-registry-prod-job-runner@${var.project_id}.iam.gserviceaccount.com"
+      display_name = "Seen Registry Production Job Runner"
+      description  = "Invokes only production Cloud Run jobs selected by the reviewed production root"
+      provider_id  = "job-ops"
+      environment  = "seen-registry-production-jobs"
+      subject      = "repo:codeyousef/summon-portfolio:environment:seen-registry-production-jobs"
+      workflow_ref = local.operations_workflow_ref
+    }
+  }
+  github_identities = merge(local.infrastructure_identities, local.operations_identities)
 
   portfolio_gateway_member = (
     "serviceAccount:portfolio-prod-runtime@portfolio-476219.iam.gserviceaccount.com"
@@ -150,6 +177,11 @@ locals {
       title      = "Seen Registry Run Service IAM Applier"
       permission = "run.services.setIamPolicy"
     }
+    run_job = {
+      role_id    = "seenRegistryRunJobIamApply"
+      title      = "Seen Registry Run Job IAM Applier"
+      permission = "run.jobs.setIamPolicy"
+    }
     secret = {
       role_id    = "seenRegistrySecretIamApply"
       title      = "Seen Registry Secret IAM Applier"
@@ -202,6 +234,19 @@ locals {
     "seen-registry-prod-targets-security-rotation-envelope",
     "seen-registry-prod-trust-and-safety-token",
   ])
+  production_ceremony_secret_names = toset([
+    "seen-registry-prod-root-envelope",
+    "seen-registry-prod-root-rotation-envelope",
+    "seen-registry-prod-targets-envelope",
+    "seen-registry-prod-targets-releases-rotation-envelope",
+    "seen-registry-prod-targets-renewal-envelope",
+    "seen-registry-prod-targets-security-rotation-envelope",
+  ])
+  material_role_names = {
+    key_versions    = "projects/${var.project_id}/roles/seenRegistryMaterialKeyVersions"
+    secret_versions = "projects/${var.project_id}/roles/seenRegistryMaterialSecretVersions"
+  }
+  job_operations_viewer_role_name = "projects/${var.project_id}/roles/seenRegistryJobViewer"
   production_registry_buckets = toset([
     "${var.project_id}-seen-registry-prod-backup",
     "${var.project_id}-seen-registry-prod-blobs",
@@ -214,7 +259,11 @@ locals {
     "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['projects/%s/roles/seen_registry_prod_kms_signer', 'roles/cloudkms.publicKeyViewer'])",
     var.project_id,
   )
-  run_modified_roles_condition    = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker'])"
+  run_service_modified_roles_condition = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker'])"
+  run_job_modified_roles_condition = format(
+    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker', '%s'])",
+    local.job_operations_viewer_role_name,
+  )
   secret_modified_roles_condition = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/secretmanager.secretAccessor'])"
   registry_storage_modified_roles_condition = format(
     "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([%s])",
@@ -255,10 +304,17 @@ locals {
   }
 
   project_run_iam_setter_bindings = {
+    job = {
+      role                     = local.resource_iam_setter_role_names.run_job
+      title                    = "limit_registry_run_job_iam_roles"
+      description              = "Allows only exact Cloud Run job invoker and one-permission viewer grants in the isolated registry project"
+      modified_roles_condition = local.run_job_modified_roles_condition
+    }
     service = {
-      role        = local.resource_iam_setter_role_names.run_service
-      title       = "limit_registry_run_service_iam_roles"
-      description = "Allows only Cloud Run service invoker grants in the isolated registry project"
+      role                     = local.resource_iam_setter_role_names.run_service
+      title                    = "limit_registry_run_service_iam_roles"
+      description              = "Allows only Cloud Run service invoker grants in the isolated registry project"
+      modified_roles_condition = local.run_service_modified_roles_condition
     }
   }
 
@@ -272,6 +328,7 @@ resource "terraform_data" "bootstrap_phase_contract" {
     precondition {
       condition = !var.project_executor_handoff_complete || (
         var.github_infrastructure_environments_reviewed &&
+        var.github_operations_environments_reviewed &&
         var.production_foundation_applied &&
         var.project_creator_owner_removed &&
         var.project_creator_owner_member == null &&
@@ -406,8 +463,11 @@ resource "google_project" "production" {
     prevent_destroy = true
 
     precondition {
-      condition     = var.github_infrastructure_environments_reviewed
-      error_message = "Both protected production infrastructure GitHub environments must be reviewed before project creation."
+      condition = (
+        var.github_infrastructure_environments_reviewed &&
+        var.github_operations_environments_reviewed
+      )
+      error_message = "All four protected production infrastructure and operations GitHub environments must be reviewed before project creation."
     }
 
     precondition {
@@ -483,7 +543,7 @@ resource "google_org_policy_policy" "automatic_default_service_account_grants" {
 }
 
 resource "google_service_account" "infrastructure" {
-  for_each = var.enable_production_project_bootstrap ? local.infrastructure_identities : {}
+  for_each = var.enable_production_project_bootstrap ? local.github_identities : {}
 
   provider = google.project
 
@@ -506,8 +566,8 @@ resource "google_iam_workload_identity_pool" "infrastructure" {
 
   project                   = google_project.production[0].project_id
   workload_identity_pool_id = local.infrastructure_wif_pool_id
-  display_name              = "Seen registry prod infra"
-  description               = "GitHub OIDC identities restricted to protected production infrastructure environments"
+  display_name              = "Seen registry prod control"
+  description               = "GitHub OIDC identities restricted to exact protected production infrastructure and operations environments"
   disabled                  = false
 
   depends_on = [google_project_service.bootstrap]
@@ -518,14 +578,14 @@ resource "google_iam_workload_identity_pool" "infrastructure" {
 }
 
 resource "google_iam_workload_identity_pool_provider" "infrastructure" {
-  for_each = var.enable_production_project_bootstrap ? local.infrastructure_identities : {}
+  for_each = var.enable_production_project_bootstrap ? local.github_identities : {}
 
   provider = google.project
 
   project                            = google_project.production[0].project_id
   workload_identity_pool_id          = google_iam_workload_identity_pool.infrastructure[0].workload_identity_pool_id
   workload_identity_pool_provider_id = each.value.provider_id
-  display_name                       = "Infrastructure ${each.key}"
+  display_name                       = "Production ${each.key}"
   description                        = "Exact protected GitHub ${each.key} environment identity"
   disabled                           = false
 
@@ -549,7 +609,7 @@ resource "google_iam_workload_identity_pool_provider" "infrastructure" {
     "assertion.repository_owner_id == '${local.github_repository_owner_id}'",
     "assertion.ref == '${local.github_ref}'",
     "assertion.ref_type == '${local.github_ref_type}'",
-    "assertion.workflow_ref == '${local.github_workflow_ref}'",
+    "assertion.workflow_ref == '${each.value.workflow_ref}'",
     "assertion.event_name == '${local.github_event_name}'",
     "assertion.environment == '${each.value.environment}'",
     "assertion.workflow_sha == assertion.sha",
@@ -565,7 +625,7 @@ resource "google_iam_workload_identity_pool_provider" "infrastructure" {
 }
 
 resource "google_service_account_iam_member" "infrastructure_oidc" {
-  for_each = var.enable_production_project_bootstrap && var.portfolio_gateway_exception_effective ? local.infrastructure_identities : {}
+  for_each = var.enable_production_project_bootstrap && var.portfolio_gateway_exception_effective ? local.github_identities : {}
 
   provider = google.project
 
@@ -643,6 +703,72 @@ resource "google_project_iam_custom_role" "resource_iam_setter" {
   title       = each.value.title
   description = startswith(each.key, "run_") ? "Sets only Cloud Run IAM policies under a project binding limited to invoker-role changes" : "Sets IAM only through an inherited project binding limited to an exact reviewed ${replace(each.key, "_", " ")} resource"
   permissions = [each.value.permission]
+  stage       = "GA"
+
+  depends_on = [google_project_service.bootstrap]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_project_iam_custom_role" "material_key_versions" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  provider = google.project
+
+  project     = google_project.production[0].project_id
+  role_id     = "seenRegistryMaterialKeyVersions"
+  title       = "Seen Registry Material Key Versions"
+  description = "Creates and verifies versions under only the exact production online signing keys"
+  permissions = [
+    "cloudkms.cryptoKeyVersions.create",
+    "cloudkms.cryptoKeyVersions.get",
+    "cloudkms.cryptoKeyVersions.list",
+  ]
+  stage = "GA"
+
+  depends_on = [google_project_service.bootstrap]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_project_iam_custom_role" "material_secret_versions" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  provider = google.project
+
+  project     = google_project.production[0].project_id
+  role_id     = "seenRegistryMaterialSecretVersions"
+  title       = "Seen Registry Material Secret Versions"
+  description = "Adds and verifies metadata for versions under only exact production ceremony secrets without payload access"
+  permissions = [
+    "secretmanager.secrets.get",
+    "secretmanager.versions.add",
+    "secretmanager.versions.get",
+    "secretmanager.versions.list",
+  ]
+  stage = "GA"
+
+  depends_on = [google_project_service.bootstrap]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_project_iam_custom_role" "job_operations_viewer" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  provider = google.project
+
+  project     = google_project.production[0].project_id
+  role_id     = "seenRegistryJobViewer"
+  title       = "Seen Registry Exact Job Viewer"
+  description = "Reads an exact production Cloud Run job before protected invocation"
+  permissions = ["run.jobs.get"]
   stage       = "GA"
 
   depends_on = [google_project_service.bootstrap]
@@ -742,6 +868,58 @@ resource "google_project_iam_member" "infrastructure_apply" {
   member  = "serviceAccount:${local.infrastructure_identities.apply.email}"
 
   depends_on = [google_project_iam_custom_role.infrastructure_apply]
+}
+
+resource "google_project_iam_member" "material_key_versions" {
+  for_each = var.enable_production_project_bootstrap ? local.production_kms_keys : toset([])
+
+  provider = google.project
+
+  project = google_project.production[0].project_id
+  role    = local.material_role_names.key_versions
+  member  = "serviceAccount:${local.operations_identities.materials.email}"
+
+  condition {
+    title       = "limit_material_versions_${replace(each.value, "-", "_")}"
+    description = "Allows key-version operations only on this exact production signing key"
+    expression = format(
+      "(resource.type == 'cloudkms.googleapis.com/CryptoKey' && resource.name == 'projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s') || (resource.type == 'cloudkms.googleapis.com/CryptoKeyVersion' && resource.name.startsWith('projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s/cryptoKeyVersions/'))",
+      var.project_id,
+      local.production_region,
+      local.production_kms_key_ring,
+      each.value,
+      var.project_id,
+      local.production_region,
+      local.production_kms_key_ring,
+      each.value,
+    )
+  }
+
+  depends_on = [google_project_iam_custom_role.material_key_versions]
+}
+
+resource "google_project_iam_member" "material_secret_versions" {
+  for_each = var.enable_production_project_bootstrap ? local.production_ceremony_secret_names : toset([])
+
+  provider = google.project
+
+  project = google_project.production[0].project_id
+  role    = local.material_role_names.secret_versions
+  member  = "serviceAccount:${local.operations_identities.materials.email}"
+
+  condition {
+    title       = "limit_material_versions_${replace(each.value, "-", "_")}"
+    description = "Allows secret-version metadata operations only on this exact production ceremony secret"
+    expression = format(
+      "(resource.type == 'secretmanager.googleapis.com/Secret' && resource.name == 'projects/%s/secrets/%s') || (resource.type == 'secretmanager.googleapis.com/SecretVersion' && resource.name.startsWith('projects/%s/secrets/%s/versions/'))",
+      google_project.production[0].number,
+      each.value,
+      google_project.production[0].number,
+      each.value,
+    )
+  }
+
+  depends_on = [google_project_iam_custom_role.material_secret_versions]
 }
 
 resource "google_project_iam_member" "infrastructure_project_iam" {
@@ -866,7 +1044,7 @@ resource "google_project_iam_member" "infrastructure_run_policy_setter" {
   condition {
     title       = each.value.title
     description = each.value.description
-    expression  = local.run_modified_roles_condition
+    expression  = each.value.modified_roles_condition
   }
 
   depends_on = [google_project_iam_custom_role.resource_iam_setter]
@@ -1039,7 +1217,7 @@ resource "google_org_policy_policy" "managed_allowed_policy_members" {
             sort(tolist(var.bootstrap_operator_members)),
           ),
           [
-            for identity, config in local.infrastructure_identities :
+            for identity, config in local.github_identities :
             "principal://iam.googleapis.com/${google_iam_workload_identity_pool.infrastructure[0].name}/subject/${config.subject}"
           ],
         ))

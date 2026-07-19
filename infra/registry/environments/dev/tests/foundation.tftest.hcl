@@ -39,8 +39,8 @@ run "reviewed_cutover_shape" {
   command = plan
 
   variables {
-    container_image        = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/registry-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    signer_container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/registry-service@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    container_image        = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    signer_container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/seen-registry@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     online_key_version_numbers = {
       releases  = "1"
       security  = "2"

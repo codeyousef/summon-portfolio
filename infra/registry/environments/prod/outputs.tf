@@ -38,6 +38,10 @@ output "ceremony_job_names" {
   value = module.registry.ceremony_job_names
 }
 
+output "job_operations_authorizations" {
+  value = module.registry.job_operations_authorizations
+}
+
 output "online_key_versions" {
   value = module.registry.online_key_versions
 }

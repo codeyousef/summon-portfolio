@@ -1,6 +1,6 @@
 # Public pins and resource references only. Never put secret payloads here.
-container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/registry-service@sha256:REPLACE_WITH_64_HEX"
-signer_container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/registry-service@sha256:REPLACE_WITH_SEPARATELY_REVIEWED_64_HEX"
+container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/seen-registry@sha256:REPLACE_WITH_64_HEX"
+signer_container_image = "us-central1-docker.pkg.dev/portfolio-476219/seen-registry/seen-registry@sha256:REPLACE_WITH_SEPARATELY_REVIEWED_64_HEX"
 
 online_key_version_numbers = {
   releases  = "1"
