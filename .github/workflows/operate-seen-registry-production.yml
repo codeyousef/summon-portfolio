@@ -83,19 +83,19 @@ jobs:
               [[ "${EXPECTED_NEXT_VERSION}" =~ ^[1-9][0-9]*$ ]]
               test -z "${EXPECTED_PAYLOAD_SHA256}"
               test -z "${EXPECTED_IMAGE_URI}"
-              operation_class=materials
+              operation_class="materials"
               ;;
             add_bootstrap_root_envelope|add_bootstrap_targets_envelope|add_targets_renewal_envelope|add_targets_releases_rotation_envelope|add_targets_security_rotation_envelope|add_root_rotation_envelope)
               [[ "${EXPECTED_NEXT_VERSION}" =~ ^[1-9][0-9]*$ ]]
               [[ "${EXPECTED_PAYLOAD_SHA256}" =~ ^[0-9a-f]{64}$ ]]
               test -z "${EXPECTED_IMAGE_URI}"
-              operation_class=materials
+              operation_class="materials"
               ;;
             run_offline_bootstrap|run_online_bootstrap|run_root_verifier|run_release_refresh|run_security_refresh|run_targets_renewal|run_targets_releases_rotation|run_targets_security_rotation|run_root_import)
               test -z "${EXPECTED_NEXT_VERSION}"
               test -z "${EXPECTED_PAYLOAD_SHA256}"
               [[ "${EXPECTED_IMAGE_URI}" =~ ^us-central1-docker\.pkg\.dev/seen-registry-prod-476219/seen-registry/seen-registry@sha256:[0-9a-f]{64}$ ]]
-              operation_class=jobs
+              operation_class="jobs"
               ;;
             *)
               echo "Unsupported production registry operation." >&2
@@ -105,10 +105,10 @@ jobs:
           echo "operation-class=${operation_class}" >> "${GITHUB_OUTPUT}"
           {
             printf '### Exact protected production operation\n\n'
-            printf -- '- Operation: `%s`\n' "${OPERATION}"
-            printf -- '- Expected next version: `%s`\n' "${EXPECTED_NEXT_VERSION:-not-applicable}"
-            printf -- '- Expected payload SHA-256: `%s`\n' "${EXPECTED_PAYLOAD_SHA256:-not-applicable}"
-            printf -- '- Expected image: `%s`\n' "${EXPECTED_IMAGE_URI:-not-applicable}"
+            printf -- '- Operation: %s\n' "${OPERATION}"
+            printf -- '- Expected next version: %s\n' "${EXPECTED_NEXT_VERSION:-not-applicable}"
+            printf -- '- Expected payload SHA-256: %s\n' "${EXPECTED_PAYLOAD_SHA256:-not-applicable}"
+            printf -- '- Expected image: %s\n' "${EXPECTED_IMAGE_URI:-not-applicable}"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   materials:
