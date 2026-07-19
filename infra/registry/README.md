@@ -106,10 +106,11 @@ plan files. Do not impersonate the infrastructure apply account. A typical
 human bootstrap phase is:
 
 The bootstrap root reads the human email through its identity-only Google
-provider alias. Keep that alias free of `billing_project` and
-`user_project_override`: the quota-overridden providers remain required for
-cloud resources, but the upstream provider otherwise returns a null email for
-the OpenID identity data source and the bootstrap guard fails closed.
+provider alias. Keep that alias free of `billing_project` and keep
+`user_project_override=false` explicit so an environment value cannot enable
+it. The quota-overridden providers remain required for cloud resources, but the
+upstream provider otherwise returns a null email for the OpenID identity data
+source and the bootstrap guard fails closed.
 
 ```sh
 umask 077

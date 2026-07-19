@@ -207,7 +207,7 @@ run "enabled_human_bootstrap_has_hardened_identity_contract" {
       google_project.production[0].deletion_policy == "PREVENT" &&
       output.organization_guardrail_effective &&
       output.active_bootstrap_identity == "yousef@felidai.com" &&
-      strcontains(file("${path.root}/versions.tf"), "provider \"google\" {\n  alias = \"bootstrap_identity\"\n}") &&
+      strcontains(file("${path.root}/versions.tf"), "provider \"google\" {\n  alias                 = \"bootstrap_identity\"\n  user_project_override = false\n}") &&
       strcontains(file("${path.root}/main.tf"), "provider = google.bootstrap_identity") &&
       length(google_project_iam_member.project_creator_owner) == 0
     )
