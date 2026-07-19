@@ -189,12 +189,12 @@ digests and metadata, and reviews `review.txt`. The apply job independently
 checks the same-run artifact ID, ciphertext and inner hashes, workflow commit,
 root, backend, repository identity, and OpenTofu version before applying.
 
-The workflow currently trusts the matching fingerprint stored in each protected
-environment. After the permanent key is generated, pin that full fingerprint
-as a reviewed constant in the workflow in a follow-up commit, while retaining
-the environment/key equality checks. Treat that code pin as an activation
-prerequisite so an environment administrator cannot substitute both a key and
-its expected fingerprint.
+The permanent plan-artifact key fingerprint is pinned as a reviewed constant in
+the workflow. Each protected environment must contain that same fingerprint,
+and the imported public or private key must match it. Rotating the key therefore
+requires a reviewed code change as well as protected-environment updates, so an
+environment administrator cannot substitute both a key and its expected
+fingerprint.
 
 #### One-time direct-human bootstrap
 
