@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-  backend "local" {}
+  backend "gcs" {}
 }
 
 provider "google" {
