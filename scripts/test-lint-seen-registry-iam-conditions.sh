@@ -642,6 +642,13 @@ for address in "${STATE_POLICY_ADDRESSES[@]}"; do
   COMPLETE_MIGRATION_PLAN_JSON="$(set_planned_resource_string "${COMPLETE_MIGRATION_PLAN_JSON}" "${address}" policy_data "${migration_policy_data}")"
 done
 readonly COMPLETE_MIGRATION_PLAN_JSON
+PROVIDER_CANONICAL_COMPLETE_PLAN_JSON="${COMPLETE_PLAN_JSON}"
+for address in "${STATE_POLICY_ADDRESSES[@]}"; do
+  canonical_key="$(binding_key "${address}")"
+  canonical_bucket="$(state_bucket_for_key "${canonical_key}")"
+  PROVIDER_CANONICAL_COMPLETE_PLAN_JSON="$(set_planned_resource_string "${PROVIDER_CANONICAL_COMPLETE_PLAN_JSON}" "${address}" bucket "b/${canonical_bucket}")"
+done
+readonly PROVIDER_CANONICAL_COMPLETE_PLAN_JSON
 COMPLETE_WITHOUT_STATE_POLICIES_PLAN_JSON="${COMPLETE_PLAN_JSON}"
 COMPLETE_STATE_POLICY_REMOVAL_PLAN_JSON="${COMPLETE_PLAN_JSON}"
 for address in "${STATE_POLICY_ADDRESSES[@]}"; do
@@ -708,6 +715,8 @@ FAKE_PLAN_JSON="${COMPLETE_PLAN_JSON}"; export FAKE_PLAN_JSON
 assert_lint_success 'Official IAM lint accepted 31 unique condition(s) across 31 validated complete-mode binding(s).' 31 complete
 FAKE_PLAN_JSON="${COMPLETE_MIGRATION_PLAN_JSON}"; export FAKE_PLAN_JSON
 assert_lint_success 'Official IAM lint accepted 31 unique condition(s) across 31 validated complete-mode binding(s).' 31 complete
+FAKE_PLAN_JSON="${PROVIDER_CANONICAL_COMPLETE_PLAN_JSON}"; export FAKE_PLAN_JSON
+assert_lint_success 'Official IAM lint accepted 31 unique condition(s) across 31 validated complete-mode binding(s).' 31 complete
 FAKE_PLAN_JSON="${COMPLETE_WITHOUT_STATE_POLICIES_PLAN_JSON}"; export FAKE_PLAN_JSON
 assert_lint_success 'Official IAM lint accepted 31 unique condition(s) across 31 validated complete-mode binding(s).' 31 complete
 FAKE_PLAN_JSON="${CLEAN_COMPLETE_PLAN_JSON}"; export FAKE_PLAN_JSON
@@ -737,6 +746,8 @@ assert_rejected 'require full managed resource-change coverage' bash "${LINT_SCR
 FAKE_PLAN_JSON="${COMPLETE_STATE_POLICY_REMOVAL_PLAN_JSON}"; export FAKE_PLAN_JSON
 assert_rejected 'forbids removing or omitting previously managed authoritative state policies' bash "${LINT_SCRIPT}" "${FAKE_ROOT}" "${FAKE_PLAN_PATH}" complete
 complete_policy_probe="${STATE_POLICY_ADDRESSES[0]}"
+FAKE_PLAN_JSON="$(set_planned_resource_string "${PROVIDER_CANONICAL_COMPLETE_PLAN_JSON}" "${complete_policy_probe}" bucket 'b/unreviewed-state-bucket')"; export FAKE_PLAN_JSON
+assert_rejected 'authoritative state policy targets the wrong bucket' bash "${LINT_SCRIPT}" "${FAKE_ROOT}" "${FAKE_PLAN_PATH}" complete
 complete_base_policy_data="$(build_state_policy_resource "${complete_policy_probe}" false | jq -r '.values.policy_data')"
 complete_extra_role_policy_data="$(jq -r --arg member 'serviceAccount:unreviewed@seen-registry-prod-476219.iam.gserviceaccount.com' '(.bindings += [{role: "roles/storage.admin", members: [$member]}]) | tojson' <<< "${complete_base_policy_data}")"
 FAKE_PLAN_JSON="$(set_planned_resource_string "${COMPLETE_PLAN_JSON}" "${complete_policy_probe}" policy_data "${complete_extra_role_policy_data}")"; export FAKE_PLAN_JSON

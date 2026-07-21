@@ -291,7 +291,10 @@ rejected.
   cleanup, and Owner-removal plans. It rejects targeted/incomplete coverage of
   the managed prior/planned address set. An Owner-removal plan must leave both
   authoritative state policies unchanged with the verified temporary migration
-  bindings still present.
+  bindings still present. Existing state-policy resources may expose their
+  exact bucket as either the configured name or the Google provider's canonical
+  `b/<name>` identifier; both forms are exact-validated and no other bucket
+  representation is accepted.
 - `steady` is reserved for the protected post-handoff workflow. It requires
   all 27 steady bindings, valid immutable prior-state records for recovery
   reconciliation, Owner adoption, recovery cleanup, and Owner removal, and no
