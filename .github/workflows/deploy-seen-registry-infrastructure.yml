@@ -117,6 +117,14 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
+      - name: Set up the IAM condition linter
+        if: inputs.root == 'prod-bootstrap'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.PROD_PROJECT_ID }}
+          install_components: alpha
+          version: '576.0.0'
+
       - name: Prepare dedicated backend
         id: backend
         shell: bash
@@ -181,12 +189,104 @@ jobs:
           set -euo pipefail
           tofu -chdir="${TF_ROOT}" init -input=false -reconfigure -backend-config="${PLAN_DIR}/backend.hcl"
           tofu -chdir="${TF_ROOT}" validate
+          if [[ "${ROOT_INPUT}" == "prod-bootstrap" ]]; then
+            umask 077
+            assert_bootstrap_boolean() {
+              local input_name="$1"
+              local expected_value="$2"
+              local actual_value
+              if ! actual_value="$(
+                printf 'var.%s\n' "${input_name}" |
+                  tofu -chdir="${TF_ROOT}" console -var-file="${PLAN_DIR}/terraform.tfvars" 2>/dev/null
+              )"; then
+                echo "Unable to verify the protected prod-bootstrap input contract" >&2
+                exit 1
+              fi
+              case "${actual_value}" in
+                true|false) ;;
+                *) echo "The protected prod-bootstrap input contract was not a concrete boolean" >&2; exit 1 ;;
+              esac
+              if [[ "${actual_value}" != "${expected_value}" ]]; then
+                echo "Protected prod-bootstrap planning rejects direct-human and recovery inputs" >&2
+                exit 1
+              fi
+            }
+
+            assert_bootstrap_null() {
+              local input_name="$1"
+              local is_null
+              if ! is_null="$(
+                printf 'var.%s == null\n' "${input_name}" |
+                  tofu -chdir="${TF_ROOT}" console -var-file="${PLAN_DIR}/terraform.tfvars" 2>/dev/null
+              )"; then
+                echo "Unable to verify the protected prod-bootstrap input contract" >&2
+                exit 1
+              fi
+              if [[ "${is_null}" != "true" ]]; then
+                echo "Protected prod-bootstrap planning rejects temporary lease expiries" >&2
+                exit 1
+              fi
+            }
+
+            assert_bootstrap_boolean "project_executor_handoff_complete" true
+            assert_bootstrap_boolean "production_foundation_applied" true
+            assert_bootstrap_boolean "project_creator_owner_removed" true
+            assert_bootstrap_boolean "enable_state_bucket_iam_reconciliation" true
+            assert_bootstrap_boolean "enable_organization_policy_admin_lease" false
+            assert_bootstrap_boolean "enable_project_policy_admin_lease" false
+            assert_bootstrap_boolean "enable_temporary_human_state_migration_access" false
+            assert_bootstrap_boolean "enable_temporary_human_state_bucket_policy_access" false
+            assert_bootstrap_boolean "temporary_human_state_bucket_policy_access_verified" true
+            assert_bootstrap_boolean "approve_temporary_human_state_bucket_policy_access_removal" false
+            assert_bootstrap_boolean "temporary_human_state_bucket_policy_access_removed" true
+            assert_bootstrap_boolean "adopt_project_creator_owner" false
+            assert_bootstrap_boolean "approve_project_creator_owner_removal" false
+            assert_bootstrap_null "policy_admin_lease_expiry"
+            assert_bootstrap_null "temporary_human_state_migration_access_expiry"
+            assert_bootstrap_null "temporary_human_state_bucket_policy_access_expiry"
+            assert_bootstrap_null "project_creator_owner_member"
+
+            project_iam_policy="${PLAN_DIR}/project-iam-policy.json"
+            if ! gcloud projects get-iam-policy "${PROD_PROJECT_ID}" \
+              --format=json > "${project_iam_policy}" 2>/dev/null; then
+              rm -f "${project_iam_policy}"
+              echo "Unable to verify the protected production project IAM handoff contract" >&2
+              exit 1
+            fi
+            if ! jq -e '
+              type == "object" and
+              (.bindings | type) == "array" and
+              all(
+                .bindings[];
+                (.role | type) == "string" and
+                (.members | type) == "array" and
+                all(.members[]; type == "string")
+              ) and
+              ([
+                .bindings[]
+                | select(.role == "roles/owner" or .role == "roles/editor")
+                | .members[]
+              ] | length == 0)
+            ' "${project_iam_policy}" >/dev/null; then
+              rm -f "${project_iam_policy}"
+              echo "Protected prod-bootstrap planning requires Owner and Editor to be absent" >&2
+              exit 1
+            fi
+            rm -f "${project_iam_policy}"
+          fi
           if ! tofu -chdir="${TF_ROOT}" plan -input=false -lock-timeout=5m -no-color -var-file="${PLAN_DIR}/terraform.tfvars" -out="${PLAN_DIR}/plan.tfplan" > "${PLAN_DIR}/plan.log" 2>&1; then
             echo "The production plan failed; reproduce it in an approved private environment because plan diagnostics may contain sensitive values." >&2
             exit 1
           fi
           rm -f "${PLAN_DIR}/plan.log"
-          tofu -chdir="${TF_ROOT}" show -no-color "${PLAN_DIR}/plan.tfplan" > "${PLAN_DIR}/review.txt"
+          if [[ "${ROOT_INPUT}" == "prod-bootstrap" ]]; then
+            bash scripts/lint-seen-registry-iam-conditions.sh "${TF_ROOT}" "${PLAN_DIR}/plan.tfplan" steady
+          fi
+          if ! tofu -chdir="${TF_ROOT}" show -no-color "${PLAN_DIR}/plan.tfplan" > "${PLAN_DIR}/review.txt" 2>/dev/null; then
+            rm -f "${PLAN_DIR}/review.txt"
+            echo "The production plan review could not be rendered safely" >&2
+            exit 1
+          fi
           plan_sha256="$(sha256sum "${PLAN_DIR}/plan.tfplan" | awk '{print $1}')"
           review_sha256="$(sha256sum "${PLAN_DIR}/review.txt" | awk '{print $1}')"
           jq_args=(
@@ -237,6 +337,8 @@ jobs:
           ARTIFACT_PUBLIC_KEY_B64: ${{ secrets.SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PUBLIC_KEY_B64 }}
         run: |
           set -euo pipefail
+          umask 077
+          chmod 0700 "${PLAN_DIR}"
           command -v gpg > /dev/null
           test -n "${ARTIFACT_PUBLIC_KEY_B64}" || { echo "SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PUBLIC_KEY_B64 is not configured" >&2; exit 1; }
           expected_fingerprint="$(printf '%s' "${ARTIFACT_KEY_FINGERPRINT}" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
@@ -390,6 +492,8 @@ jobs:
           ARTIFACT_PRIVATE_KEY_PASSPHRASE: ${{ secrets.SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_PASSPHRASE }}
         run: |
           set -euo pipefail
+          umask 077
+          chmod 0700 "${PLAN_DIR}"
           command -v gpg > /dev/null
           test -n "${ARTIFACT_PRIVATE_KEY_B64}" || { echo "SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_B64 is not configured" >&2; exit 1; }
           test -n "${ARTIFACT_PRIVATE_KEY_PASSPHRASE}" || { echo "SEEN_REGISTRY_PROD_PLAN_ARTIFACT_PRIVATE_KEY_PASSPHRASE is not configured" >&2; exit 1; }
@@ -397,6 +501,7 @@ jobs:
           test "${#downloaded_files[@]}" -eq 1
           test "${downloaded_files[0]}" = "plan-bundle.tar.gpg"
           test ! -L "${PLAN_DIR}/plan-bundle.tar.gpg"
+          chmod 0600 "${PLAN_DIR}/plan-bundle.tar.gpg"
           bundle_sha256="$(sha256sum "${PLAN_DIR}/plan-bundle.tar.gpg" | awk '{print $1}')"
           test "${bundle_sha256}" = "${EXPECTED_BUNDLE_SHA256}"
           expected_fingerprint="$(printf '%s' "${ARTIFACT_KEY_FINGERPRINT}" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
@@ -418,6 +523,7 @@ jobs:
           test "${#archive_entries[@]}" -eq 3
           test "${archive_entries[*]}" = "metadata.json plan.tfplan review.txt"
           tar --extract --no-same-owner --no-same-permissions -C "${PLAN_DIR}" -f "${PLAN_DIR}/plan-bundle.tar"
+          chmod 0600 "${PLAN_DIR}/metadata.json" "${PLAN_DIR}/plan.tfplan" "${PLAN_DIR}/review.txt"
           rm -f "${PLAN_DIR}/plan-bundle.tar" "${PLAN_DIR}/plan-bundle.tar.gpg"
 
       - name: Verify saved-plan provenance and digest
@@ -508,10 +614,18 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
+      - name: Set up the project IAM handoff verifier
+        if: inputs.root == 'prod-bootstrap'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: ${{ env.PROD_PROJECT_ID }}
+          version: '576.0.0'
+
       - name: Apply only the verified saved plan
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
           tofu -chdir="${TF_ROOT}" init -input=false -reconfigure -backend-config="${PLAN_DIR}/backend.hcl"
           test ! -L "${PLAN_DIR}/plan.tfplan"
           test ! -L "${PLAN_DIR}/backend.hcl"
@@ -531,7 +645,42 @@ jobs:
           test "${#backend_lines[@]}" -eq 2
           test "${backend_lines[0]}" = "bucket = \"${expected_backend_bucket}\""
           test "${backend_lines[1]}" = "prefix = \"${expected_backend_prefix}\""
-          tofu -chdir="${TF_ROOT}" apply -input=false -lock-timeout=5m "${PLAN_DIR}/plan.tfplan"
+          if [[ "${ROOT_INPUT}" == "prod-bootstrap" ]]; then
+            project_iam_policy="${PLAN_DIR}/project-iam-policy.json"
+            if ! gcloud projects get-iam-policy "${PROD_PROJECT_ID}" \
+              --format=json > "${project_iam_policy}" 2>/dev/null; then
+              rm -f "${project_iam_policy}"
+              echo "Unable to verify the protected production project IAM handoff contract" >&2
+              exit 1
+            fi
+            if ! jq -e '
+              type == "object" and
+              (.bindings | type) == "array" and
+              all(
+                .bindings[];
+                (.role | type) == "string" and
+                (.members | type) == "array" and
+                all(.members[]; type == "string")
+              ) and
+              ([
+                .bindings[]
+                | select(.role == "roles/owner" or .role == "roles/editor")
+                | .members[]
+              ] | length == 0)
+            ' "${project_iam_policy}" >/dev/null; then
+              rm -f "${project_iam_policy}"
+              echo "Protected prod-bootstrap apply requires Owner and Editor to be absent" >&2
+              exit 1
+            fi
+            rm -f "${project_iam_policy}"
+          fi
+          apply_log="${PLAN_DIR}/apply.log"
+          if ! tofu -chdir="${TF_ROOT}" apply -input=false -lock-timeout=5m \
+            "${PLAN_DIR}/plan.tfplan" > "${apply_log}" 2>&1; then
+            echo "Unable to apply the verified saved plan" >&2
+            exit 1
+          fi
+          rm -f "${apply_log}"
 
       - name: Remove sensitive plan material
         if: always()

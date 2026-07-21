@@ -83,6 +83,7 @@ locals {
   ])
   control_project_services = toset([
     "cloudbilling.googleapis.com",
+    "iam.googleapis.com",
     "orgpolicy.googleapis.com",
   ])
 
@@ -168,29 +169,29 @@ locals {
   }
   resource_iam_setter_roles = {
     kms = {
-      role_id    = "seenRegistryKmsIamApply"
-      title      = "Seen Registry KMS IAM Applier"
-      permission = "cloudkms.cryptoKeys.setIamPolicy"
+      role_id     = "seenRegistryKmsIamApply"
+      title       = "Seen Registry KMS IAM Applier"
+      permissions = ["cloudkms.cryptoKeys.setIamPolicy"]
     }
     run_service = {
-      role_id    = "seenRegistryRunServiceIamApply"
-      title      = "Seen Registry Run Service IAM Applier"
-      permission = "run.services.setIamPolicy"
+      role_id     = "seenRegistryRunServiceIamApply"
+      title       = "Seen Registry Run Service IAM Applier"
+      permissions = ["run.services.setIamPolicy"]
     }
     run_job = {
-      role_id    = "seenRegistryRunJobIamApply"
-      title      = "Seen Registry Run Job IAM Applier"
-      permission = "run.jobs.setIamPolicy"
+      role_id     = "seenRegistryRunJobIamApply"
+      title       = "Seen Registry Run Job IAM Applier"
+      permissions = ["run.jobs.setIamPolicy"]
     }
     secret = {
-      role_id    = "seenRegistrySecretIamApply"
-      title      = "Seen Registry Secret IAM Applier"
-      permission = "secretmanager.secrets.setIamPolicy"
+      role_id     = "seenRegistrySecretIamApply"
+      title       = "Seen Registry Secret IAM Applier"
+      permissions = ["secretmanager.secrets.setIamPolicy"]
     }
     storage = {
-      role_id    = "seenRegistryStorageIamApply"
-      title      = "Seen Registry Storage IAM Applier"
-      permission = "storage.buckets.setIamPolicy"
+      role_id     = "seenRegistryStorageIamApply"
+      title       = "Seen Registry Storage IAM Applier"
+      permissions = ["storage.buckets.setIamPolicy"]
     }
   }
   resource_iam_setter_role_names = {
@@ -198,17 +199,20 @@ locals {
     name => "projects/${var.project_id}/roles/${role.role_id}"
   }
   state_role_names = {
-    reader = "projects/${var.project_id}/roles/seenRegistryStateReader"
-    locker = "projects/${var.project_id}/roles/seenRegistryStateLocker"
-    writer = "projects/${var.project_id}/roles/seenRegistryStateWriter"
+    reader        = "projects/${var.project_id}/roles/seenRegistryStateReader"
+    policy_reader = "projects/${var.project_id}/roles/seenRegistryStateBucketPolicyReader"
+    locker        = "projects/${var.project_id}/roles/seenRegistryStateLocker"
+    writer        = "projects/${var.project_id}/roles/seenRegistryStateWriter"
   }
+  project_policy_scope_tag_key   = "seen-registry-policy-scope"
+  project_policy_scope_tag_value = "production"
 
   iam_modified_role_allowlist = sort([
     "roles/datastore.user",
     "roles/datastore.viewer",
   ])
   iam_modified_roles_condition = format(
-    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([%s])",
+    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([%s])",
     join(", ", [for role in local.iam_modified_role_allowlist : "'${role}'"]),
   )
 
@@ -256,17 +260,17 @@ locals {
     "${var.project_id}-seen-registry-prod-quarantine",
   ])
   kms_modified_roles_condition = format(
-    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['projects/%s/roles/seen_registry_prod_kms_signer', 'roles/cloudkms.publicKeyViewer'])",
+    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['projects/%s/roles/seen_registry_prod_kms_signer', 'roles/cloudkms.publicKeyViewer'])",
     var.project_id,
   )
-  run_service_modified_roles_condition = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker'])"
+  run_service_modified_roles_condition = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker'])"
   run_job_modified_roles_condition = format(
-    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker', '%s'])",
+    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/run.invoker', '%s'])",
     local.job_operations_viewer_role_name,
   )
-  secret_modified_roles_condition = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/secretmanager.secretAccessor'])"
+  secret_modified_roles_condition = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/secretmanager.secretAccessor'])"
   registry_storage_modified_roles_condition = format(
-    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([%s])",
+    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([%s])",
     join(", ", [for role in sort([
       "projects/${var.project_id}/roles/seen_registry_prod_blob_creator",
       "projects/${var.project_id}/roles/seen_registry_prod_metadata_creator",
@@ -277,7 +281,7 @@ locals {
     ]) : "'${role}'"]),
   )
   state_storage_modified_roles_condition = format(
-    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).size() > 0 && api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([%s])",
+    "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([%s])",
     join(", ", [for role in sort([
       local.state_role_names.locker,
       local.state_role_names.reader,
@@ -319,6 +323,206 @@ locals {
   }
 
   project_creator_owner_members = var.adopt_project_creator_owner ? toset([var.project_creator_owner_member]) : toset([])
+  recovery_reconciliation_record_members = (
+    var.temporary_human_state_bucket_policy_access_verified ||
+    var.approve_temporary_human_state_bucket_policy_access_removal ||
+    var.temporary_human_state_bucket_policy_access_removed ||
+    var.approve_project_creator_owner_removal ||
+    var.project_creator_owner_removed ||
+    var.project_executor_handoff_complete
+  ) ? toset(["user:yousef@felidai.com"]) : toset([])
+  project_creator_owner_adoption_record_members = (
+    var.adopt_project_creator_owner ||
+    var.approve_temporary_human_state_bucket_policy_access_removal ||
+    var.temporary_human_state_bucket_policy_access_removed ||
+    var.approve_project_creator_owner_removal ||
+    var.project_creator_owner_removed ||
+    var.project_executor_handoff_complete
+  ) ? toset(["user:yousef@felidai.com"]) : toset([])
+  recovery_cleanup_record_members = (
+    var.approve_temporary_human_state_bucket_policy_access_removal ||
+    var.temporary_human_state_bucket_policy_access_removed ||
+    var.approve_project_creator_owner_removal ||
+    var.project_creator_owner_removed ||
+    var.project_executor_handoff_complete
+  ) ? toset(["user:yousef@felidai.com"]) : toset([])
+  project_creator_owner_removal_record_members = (
+    var.approve_project_creator_owner_removal ||
+    var.project_creator_owner_removed ||
+    var.project_executor_handoff_complete
+  ) ? toset(["user:yousef@felidai.com"]) : toset([])
+
+  recovery_reconciliation_record_valid = try(
+    terraform_data.recovery_reconciliation_record["user:yousef@felidai.com"].input == "recovery-reconciliation-applied",
+    false,
+  )
+  project_creator_owner_adoption_record_valid = try(
+    terraform_data.project_creator_owner_adoption_record["user:yousef@felidai.com"].input == "project-creator-owner-adopted",
+    false,
+  )
+  recovery_cleanup_record_valid = try(
+    terraform_data.recovery_cleanup_record["user:yousef@felidai.com"].input == "recovery-project-bindings-cleaned",
+    false,
+  )
+  project_creator_owner_removal_record_valid = try(
+    terraform_data.project_creator_owner_removal_record["user:yousef@felidai.com"].input == "project-creator-owner-removed",
+    false,
+  )
+}
+
+resource "terraform_data" "recovery_reconciliation_record" {
+  for_each = local.recovery_reconciliation_record_members
+
+  input = (
+    var.enable_temporary_human_state_bucket_policy_access &&
+    var.temporary_human_state_bucket_policy_access_verified &&
+    var.enable_state_bucket_iam_reconciliation &&
+    !var.approve_temporary_human_state_bucket_policy_access_removal &&
+    !var.temporary_human_state_bucket_policy_access_removed
+  ) ? "recovery-reconciliation-applied" : "recovery-reconciliation-unproven"
+
+  depends_on = [google_storage_bucket_iam_policy.state]
+
+  lifecycle {
+    ignore_changes  = [input]
+    prevent_destroy = true
+
+    postcondition {
+      condition     = self.output == "recovery-reconciliation-applied"
+      error_message = "Later phases require a separately applied authoritative state-policy reconciliation record."
+    }
+  }
+}
+
+resource "terraform_data" "project_creator_owner_adoption_record" {
+  for_each = local.project_creator_owner_adoption_record_members
+
+  input = (
+    var.adopt_project_creator_owner &&
+    !var.approve_temporary_human_state_bucket_policy_access_removal &&
+    !var.approve_project_creator_owner_removal &&
+    !var.project_creator_owner_removed
+  ) ? "project-creator-owner-adopted" : "project-creator-owner-adoption-unproven"
+
+  depends_on = [google_project_iam_member.project_creator_owner]
+
+  lifecycle {
+    ignore_changes  = [input]
+    prevent_destroy = true
+
+    postcondition {
+      condition     = self.output == "project-creator-owner-adopted"
+      error_message = "Owner cleanup requires a separately applied creator-Owner adoption record."
+    }
+  }
+}
+
+resource "terraform_data" "recovery_cleanup_record" {
+  for_each = local.recovery_cleanup_record_members
+
+  input = (
+    var.approve_temporary_human_state_bucket_policy_access_removal &&
+    !var.enable_temporary_human_state_bucket_policy_access &&
+    !var.temporary_human_state_bucket_policy_access_removed &&
+    var.adopt_project_creator_owner &&
+    !var.approve_project_creator_owner_removal
+  ) ? "recovery-project-bindings-cleaned" : "recovery-project-bindings-cleanup-unproven"
+
+  depends_on = [
+    google_project_iam_member.temporary_human_state_bucket_policy_access,
+    google_project_iam_member.temporary_human_state_bucket_policy_read_access,
+  ]
+
+  lifecycle {
+    ignore_changes  = [input]
+    prevent_destroy = true
+
+    postcondition {
+      condition     = self.output == "recovery-project-bindings-cleaned"
+      error_message = "Later phases require a separately applied cleanup record for all four project-level recovery bindings."
+    }
+  }
+}
+
+resource "terraform_data" "project_creator_owner_removal_record" {
+  for_each = local.project_creator_owner_removal_record_members
+
+  input = (
+    var.approve_project_creator_owner_removal &&
+    !var.adopt_project_creator_owner &&
+    !var.project_creator_owner_removed &&
+    var.project_creator_owner_member == "user:yousef@felidai.com"
+  ) ? "project-creator-owner-removed" : "project-creator-owner-removal-unproven"
+
+  depends_on = [google_project_iam_member.project_creator_owner]
+
+  lifecycle {
+    ignore_changes  = [input]
+    prevent_destroy = true
+
+    postcondition {
+      condition     = self.output == "project-creator-owner-removed"
+      error_message = "CI handoff requires a separately applied creator-Owner removal record."
+    }
+  }
+}
+
+resource "terraform_data" "phase_evidence_contract" {
+  input = "seen-registry-production-bootstrap-phase-evidence-contract"
+
+  lifecycle {
+    precondition {
+      condition = !var.temporary_human_state_bucket_policy_access_verified || (
+        local.recovery_reconciliation_record_valid
+      )
+      error_message = "Verified recovery access requires a plan-time-valid reconciliation record; a later phase cannot create that evidence retroactively."
+    }
+
+    precondition {
+      condition = !var.adopt_project_creator_owner || (
+        local.project_creator_owner_adoption_record_valid
+      )
+      error_message = "Owner adoption requires its plan-time-valid immutable evidence record in the pure adoption phase."
+    }
+
+    precondition {
+      condition = !var.approve_temporary_human_state_bucket_policy_access_removal || (
+        local.recovery_reconciliation_record_valid &&
+        local.project_creator_owner_adoption_record_valid &&
+        local.recovery_cleanup_record_valid
+      )
+      error_message = "Recovery cleanup requires separately applied reconciliation and Owner-adoption evidence and its own plan-time-valid cleanup record."
+    }
+
+    precondition {
+      condition = !var.temporary_human_state_bucket_policy_access_removed || (
+        local.recovery_reconciliation_record_valid &&
+        local.project_creator_owner_adoption_record_valid &&
+        local.recovery_cleanup_record_valid
+      )
+      error_message = "Recovery-binding removal requires separately applied reconciliation, adoption, and cleanup evidence."
+    }
+
+    precondition {
+      condition = !var.approve_project_creator_owner_removal || (
+        local.recovery_reconciliation_record_valid &&
+        local.project_creator_owner_adoption_record_valid &&
+        local.recovery_cleanup_record_valid &&
+        local.project_creator_owner_removal_record_valid
+      )
+      error_message = "Owner removal requires separately applied reconciliation, adoption, and cleanup evidence plus its own plan-time-valid removal record."
+    }
+
+    precondition {
+      condition = !var.project_creator_owner_removed || (
+        local.recovery_reconciliation_record_valid &&
+        local.project_creator_owner_adoption_record_valid &&
+        local.recovery_cleanup_record_valid &&
+        local.project_creator_owner_removal_record_valid
+      )
+      error_message = "The Owner-removed attestation requires all four separately applied phase-evidence records."
+    }
+  }
 }
 
 resource "terraform_data" "bootstrap_phase_contract" {
@@ -337,8 +541,14 @@ resource "terraform_data" "bootstrap_phase_contract" {
         !var.enable_organization_policy_admin_lease &&
         !var.enable_project_policy_admin_lease &&
         !var.enable_temporary_human_state_migration_access &&
+        var.temporary_human_state_migration_access_expiry == null &&
+        !var.enable_temporary_human_state_bucket_policy_access &&
+        var.temporary_human_state_bucket_policy_access_verified &&
+        var.temporary_human_state_bucket_policy_access_removed &&
+        !var.approve_temporary_human_state_bucket_policy_access_removal &&
         var.enable_portfolio_gateway_exception &&
-        var.portfolio_gateway_exception_effective
+        var.portfolio_gateway_exception_effective &&
+        var.enable_state_bucket_iam_reconciliation
       )
       error_message = "CI handoff requires confirmed Owner removal and no human Owner, policy-admin, or state access configuration."
     }
@@ -351,7 +561,60 @@ resource "terraform_data" "bootstrap_phase_contract" {
           var.enable_project_policy_admin_lease
         )
       )
-      error_message = "The gateway exception must first be created under the temporary direct-human project Policy Admin lease, then attested effective before that lease is removed."
+      error_message = "The gateway exception must first be created under the temporary direct-human organization-scoped Policy Admin lease for project policies, then attested effective before that lease is removed."
+    }
+
+    precondition {
+      condition = !(
+        var.enable_organization_policy_admin_lease &&
+        var.enable_project_policy_admin_lease
+      )
+      error_message = "Organization-guardrail and project-policy Policy Admin purposes must use separate reviewed lease phases."
+    }
+
+    precondition {
+      condition = !var.enable_temporary_human_state_bucket_policy_access || (
+        !var.project_executor_handoff_complete
+      )
+      error_message = "Temporary state-bucket policy recovery access is allowed only through direct-human bootstrap phases and must be removed by CI handoff."
+    }
+
+    precondition {
+      condition = !var.enable_state_bucket_iam_reconciliation || (
+        var.temporary_human_state_bucket_policy_access_verified ||
+        var.project_executor_handoff_complete
+      )
+      error_message = "Authoritative state-bucket IAM reconciliation is one-way and requires separately verified recovery access before its first direct-human apply."
+    }
+
+    precondition {
+      condition = (
+        !var.temporary_human_state_bucket_policy_access_verified ||
+        var.enable_temporary_human_state_bucket_policy_access ||
+        var.approve_temporary_human_state_bucket_policy_access_removal ||
+        var.temporary_human_state_bucket_policy_access_removed
+      )
+      error_message = "After state-bucket policy access is verified, all four exact bindings must remain configured until their separate pre-Owner-removal cleanup plan or be attested removed."
+    }
+
+    precondition {
+      condition = !var.approve_temporary_human_state_bucket_policy_access_removal || (
+        var.production_foundation_applied &&
+        var.adopt_project_creator_owner &&
+        !var.approve_project_creator_owner_removal &&
+        !var.temporary_human_state_bucket_policy_access_removed
+      )
+      error_message = "Recovery cleanup requires separately applied reconciliation and Owner-adoption evidence and its own plan-time-valid cleanup record."
+    }
+
+    precondition {
+      condition = !var.temporary_human_state_bucket_policy_access_removed || (
+        var.production_foundation_applied &&
+        var.temporary_human_state_bucket_policy_access_verified &&
+        !var.enable_temporary_human_state_bucket_policy_access &&
+        !var.approve_temporary_human_state_bucket_policy_access_removal
+      )
+      error_message = "Recovery-binding removal may be attested only from separately applied reconciliation, adoption, and cleanup evidence."
     }
 
     precondition {
@@ -381,11 +644,13 @@ resource "terraform_data" "bootstrap_phase_contract" {
         var.project_creator_owner_member == null &&
         !var.enable_organization_policy_admin_lease &&
         !var.enable_project_policy_admin_lease &&
+        var.temporary_human_state_bucket_policy_access_verified &&
+        var.temporary_human_state_bucket_policy_access_removed &&
         var.production_foundation_applied &&
         var.enable_portfolio_gateway_exception &&
         var.portfolio_gateway_exception_effective
       )
-      error_message = "The Owner-removed attestation is valid only after all creator Owner management inputs are absent."
+      error_message = "The Owner-removed attestation requires all four separately applied phase-evidence records and no remaining Owner management input."
     }
 
 
@@ -396,6 +661,8 @@ resource "terraform_data" "bootstrap_phase_contract" {
         var.portfolio_gateway_exception_effective &&
         !var.enable_organization_policy_admin_lease &&
         !var.enable_project_policy_admin_lease &&
+        var.temporary_human_state_bucket_policy_access_verified &&
+        var.temporary_human_state_bucket_policy_access_removed &&
         var.enable_temporary_human_state_migration_access
       )
       error_message = "Owner removal requires the completed production foundation, effective gateway exception, and temporary exact state access retained for both roots."
@@ -426,6 +693,41 @@ data "google_project" "production_verified" {
   }
 }
 
+resource "google_tags_tag_key" "project_policy_scope" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  parent      = "organizations/${var.organization_id}"
+  short_name  = local.project_policy_scope_tag_key
+  description = "Permanently scopes delegated production-project Organization Policy administration"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_tags_tag_value" "project_policy_scope" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  parent      = google_tags_tag_key.project_policy_scope[0].id
+  short_name  = local.project_policy_scope_tag_value
+  description = "Exact Seen registry production project policy-administration scope"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_tags_tag_binding" "project_policy_scope" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  parent    = "//cloudresourcemanager.googleapis.com/projects/${data.google_project.production_verified[0].number}"
+  tag_value = google_tags_tag_value.project_policy_scope[0].id
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 resource "google_project_service" "control" {
   for_each = var.enable_control_project_apis ? local.control_project_services : toset([])
 
@@ -436,11 +738,27 @@ resource "google_project_service" "control" {
 }
 
 resource "google_organization_iam_member" "policy_admin_lease" {
-  for_each = var.enable_organization_policy_admin_lease ? var.bootstrap_operator_members : toset([])
+  for_each = var.enable_organization_policy_admin_lease || var.enable_project_policy_admin_lease ? var.bootstrap_operator_members : toset([])
 
   org_id = var.organization_id
   role   = "roles/orgpolicy.policyAdmin"
   member = each.value
+
+  condition {
+    title = var.enable_organization_policy_admin_lease ? "temporary_guardrail_policy_admin" : "temporary_project_policy_admin"
+    description = var.enable_organization_policy_admin_lease ? (
+      "Time-bounded organization Policy Admin lease for the reviewed organization guardrail phase"
+      ) : (
+      "Time-bounded organization-scoped Policy Admin lease for reviewed production-project policies"
+    )
+    expression = var.enable_organization_policy_admin_lease ? (
+      "request.time < timestamp('${var.policy_admin_lease_expiry}')"
+      ) : (
+      "resource.matchTag('${var.organization_id}/${local.project_policy_scope_tag_key}', '${local.project_policy_scope_tag_value}') && request.time < timestamp('${var.policy_admin_lease_expiry}')"
+    )
+  }
+
+  depends_on = [google_tags_tag_binding.project_policy_scope]
 }
 
 resource "google_org_policy_policy" "skip_default_network" {
@@ -462,6 +780,11 @@ resource "google_org_policy_policy" "skip_default_network" {
 
   lifecycle {
     prevent_destroy = true
+
+    precondition {
+      condition     = var.organization_guardrail_effective || var.enable_organization_policy_admin_lease
+      error_message = "Creating the organization guardrail requires its time-bounded organization Policy Admin lease; later refreshes require the effective-policy attestation."
+    }
   }
 }
 
@@ -495,8 +818,11 @@ resource "google_project" "production" {
     }
 
     precondition {
-      condition     = !var.enable_organization_policy_admin_lease
-      error_message = "The temporary organization Policy Admin lease must be removed before production project creation."
+      condition = (
+        !var.enable_organization_policy_admin_lease &&
+        (!var.enable_project_policy_admin_lease || var.production_project_creation_verified)
+      )
+      error_message = "The guardrail Policy Admin lease must be removed before project creation; the project-policy purpose is allowed only after project creation was verified."
     }
 
     precondition {
@@ -520,21 +846,13 @@ resource "google_project_service" "bootstrap" {
   disable_dependent_services = false
 
   lifecycle {
+    prevent_destroy = true
+
     precondition {
       condition     = each.value != "compute.googleapis.com"
       error_message = "Compute cannot be enabled by bootstrap before the automatic default-service-account grant policy is enforced."
     }
   }
-}
-
-resource "google_project_iam_member" "policy_admin_lease" {
-  for_each = var.enable_production_project_bootstrap && var.enable_project_policy_admin_lease ? var.bootstrap_operator_members : toset([])
-
-  provider = google.project
-
-  project = google_project.production[0].project_id
-  role    = "roles/orgpolicy.policyAdmin"
-  member  = each.value
 }
 
 resource "google_org_policy_policy" "automatic_default_service_account_grants" {
@@ -552,12 +870,17 @@ resource "google_org_policy_policy" "automatic_default_service_account_grants" {
   }
 
   depends_on = [
-    google_project_iam_member.policy_admin_lease,
+    google_organization_iam_member.policy_admin_lease,
     google_project_service.bootstrap,
   ]
 
   lifecycle {
     prevent_destroy = true
+
+    precondition {
+      condition     = var.automatic_default_service_account_grants_policy_effective || var.enable_project_policy_admin_lease
+      error_message = "Creating the production-project default-service-account policy requires the time-bounded organization-scoped project-policy lease; later refreshes require its effective-policy attestation."
+    }
   }
 }
 
@@ -721,7 +1044,7 @@ resource "google_project_iam_custom_role" "resource_iam_setter" {
   role_id     = each.value.role_id
   title       = each.value.title
   description = startswith(each.key, "run_") ? "Sets only Cloud Run IAM policies under a project binding limited to invoker-role changes" : "Sets IAM only through an inherited project binding limited to an exact reviewed ${replace(each.key, "_", " ")} resource"
-  permissions = [each.value.permission]
+  permissions = each.value.permissions
   stage       = "GA"
 
   depends_on = [google_project_service.bootstrap]
@@ -810,6 +1133,28 @@ resource "google_project_iam_custom_role" "state_reader" {
     "storage.buckets.get",
     "storage.objects.get",
     "storage.objects.list",
+  ]
+  stage = "GA"
+
+  depends_on = [google_project_service.bootstrap]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_project_iam_custom_role" "state_bucket_policy_reader" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  provider = google.project
+
+  project     = google_project.production[0].project_id
+  role_id     = "seenRegistryStateBucketPolicyReader"
+  title       = "Seen Registry State Bucket Policy Reader"
+  description = "Reads only metadata and IAM policy for one conditionally bound dedicated state bucket"
+  permissions = [
+    "storage.buckets.get",
+    "storage.buckets.getIamPolicy",
   ]
   stage = "GA"
 
@@ -1101,8 +1446,8 @@ resource "google_project_iam_member" "infrastructure_run_policy_setter" {
 
 locals {
   organization_refresh_role_name    = "organizations/${var.organization_id}/roles/seenRegistryBootstrapRefresh"
-  billing_refresh_role_name         = "organizations/${var.organization_id}/roles/seenRegistryBillingRefresh"
-  control_project_refresh_role_name = "organizations/${var.organization_id}/roles/seenRegistryControlProjectRefresh"
+  billing_refresh_role_name         = "roles/billing.viewer"
+  control_project_refresh_role_name = "projects/${var.control_project_id}/roles/seenRegistryControlProjectRefresh"
   ci_organization_read_roles = toset([
     local.organization_refresh_role_name,
     "roles/orgpolicy.policyViewer",
@@ -1139,6 +1484,9 @@ resource "google_organization_iam_custom_role" "bootstrap_refresh" {
     "iam.roles.get",
     "resourcemanager.organizations.get",
     "resourcemanager.organizations.getIamPolicy",
+    "resourcemanager.hierarchyNodes.listTagBindings",
+    "resourcemanager.tagKeys.get",
+    "resourcemanager.tagValues.get",
   ]
   stage = "GA"
 
@@ -1184,6 +1532,32 @@ resource "google_organization_iam_custom_role" "control_project_refresh" {
   }
 }
 
+// These two organization custom roles are retained at their established state
+// addresses but intentionally left unbound. The standalone billing account is
+// outside the organization hierarchy, and the parentless control project needs
+// a role created in its own project. Their eventual retirement is a separate,
+// explicitly reviewed destructive change.
+
+resource "google_project_iam_custom_role" "control_project_refresh" {
+  count = var.enable_production_project_bootstrap ? 1 : 0
+
+  project     = var.control_project_id
+  role_id     = "seenRegistryControlProjectRefresh"
+  title       = "Seen Registry Control Project Refresh"
+  description = "Reads only project metadata and IAM policy in the exact bootstrap control project"
+  permissions = [
+    "resourcemanager.projects.get",
+    "resourcemanager.projects.getIamPolicy",
+  ]
+  stage = "GA"
+
+  depends_on = [google_project_service.control]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 resource "google_organization_iam_member" "infrastructure_read" {
   for_each = var.enable_production_project_bootstrap ? local.ci_organization_read_bindings : {}
 
@@ -1205,7 +1579,6 @@ resource "google_billing_account_iam_member" "infrastructure_read" {
   member             = "serviceAccount:${each.value.email}"
 
   depends_on = [
-    google_organization_iam_custom_role.billing_refresh,
     google_service_account.infrastructure,
   ]
 
@@ -1222,7 +1595,7 @@ resource "google_project_iam_member" "infrastructure_control_project" {
   member  = "serviceAccount:${local.infrastructure_identities[each.value.identity].email}"
 
   depends_on = [
-    google_organization_iam_custom_role.control_project_refresh,
+    google_project_iam_custom_role.control_project_refresh,
     google_project_service.control,
     google_service_account.infrastructure,
   ]
@@ -1284,12 +1657,17 @@ resource "google_org_policy_policy" "managed_allowed_policy_members" {
 
   depends_on = [
     google_iam_workload_identity_pool.infrastructure,
-    google_project_iam_member.policy_admin_lease,
+    google_organization_iam_member.policy_admin_lease,
     google_project_service.bootstrap,
   ]
 
   lifecycle {
     prevent_destroy = true
+
+    precondition {
+      condition     = var.managed_member_policy_effective || var.enable_project_policy_admin_lease
+      error_message = "Creating the managed-member policy requires the time-bounded organization-scoped project-policy lease; later refreshes require its effective-policy attestation."
+    }
   }
 }
 
@@ -1308,10 +1686,18 @@ resource "google_org_policy_policy" "legacy_domain_restriction_override" {
     }
   }
 
-  depends_on = [google_org_policy_policy.managed_allowed_policy_members]
+  depends_on = [
+    google_org_policy_policy.managed_allowed_policy_members,
+    google_organization_iam_member.policy_admin_lease,
+  ]
 
   lifecycle {
     prevent_destroy = true
+
+    precondition {
+      condition     = var.portfolio_gateway_exception_effective || var.enable_project_policy_admin_lease
+      error_message = "Creating the gateway exception requires the time-bounded organization-scoped project-policy lease; later refreshes require its effective-policy attestation."
+    }
   }
 }
 
@@ -1357,17 +1743,29 @@ resource "google_storage_bucket" "state" {
 }
 
 data "google_iam_policy" "state" {
-  for_each = var.enable_production_project_bootstrap ? local.state_backend_resources : {}
+  for_each = var.enable_production_project_bootstrap && var.enable_state_bucket_iam_reconciliation ? local.state_backend_resources : {}
 
   binding {
     role = local.state_role_names.reader
-    members = concat(
-      [
-        "serviceAccount:${local.infrastructure_identities.apply.email}",
-        "serviceAccount:${local.infrastructure_identities.plan.email}",
-      ],
-      var.enable_temporary_human_state_migration_access ? sort(tolist(var.bootstrap_operator_members)) : [],
-    )
+    members = [
+      "serviceAccount:${local.infrastructure_identities.apply.email}",
+      "serviceAccount:${local.infrastructure_identities.plan.email}",
+    ]
+  }
+
+  dynamic "binding" {
+    for_each = var.enable_temporary_human_state_migration_access ? var.bootstrap_operator_members : toset([])
+
+    content {
+      role    = local.state_role_names.reader
+      members = [binding.value]
+
+      condition {
+        title       = "temporary_${each.key}_human_state_read"
+        description = "Time-bounded human state read on this exact dedicated bucket through Owner removal"
+        expression  = "request.time < timestamp('${var.temporary_human_state_migration_access_expiry}')"
+      }
+    }
   }
 
   binding {
@@ -1382,11 +1780,8 @@ data "google_iam_policy" "state" {
   }
 
   binding {
-    role = local.state_role_names.writer
-    members = concat(
-      ["serviceAccount:${local.infrastructure_identities.apply.email}"],
-      var.enable_temporary_human_state_migration_access ? sort(tolist(var.bootstrap_operator_members)) : [],
-    )
+    role    = local.state_role_names.writer
+    members = ["serviceAccount:${local.infrastructure_identities.apply.email}"]
 
     condition {
       title       = "exact_${each.key}_state_mutations"
@@ -1398,10 +1793,74 @@ data "google_iam_policy" "state" {
     }
   }
 
+  dynamic "binding" {
+    for_each = var.enable_temporary_human_state_migration_access ? var.bootstrap_operator_members : toset([])
+
+    content {
+      role    = local.state_role_names.writer
+      members = [binding.value]
+
+      condition {
+        title       = "temporary_${each.key}_human_state_mutations"
+        description = "Time-bounded human mutation of only this root's exact state and lock objects through Owner removal"
+        expression = "(${join(" || ", [
+          "resource.name == '${each.value.state_resource}'",
+          "resource.name == '${each.value.lock_resource}'",
+        ])}) && request.time < timestamp('${var.temporary_human_state_migration_access_expiry}')"
+      }
+    }
+  }
+}
+
+resource "google_project_iam_member" "temporary_human_state_bucket_policy_read_access" {
+  for_each = var.enable_production_project_bootstrap && var.enable_temporary_human_state_bucket_policy_access ? local.state_backends : {}
+
+  provider = google.project
+
+  project = google_project.production[0].project_id
+  role    = local.state_role_names.policy_reader
+  member  = one(var.bootstrap_operator_members)
+
+  condition {
+    title       = "temporary_${each.key}_state_bucket_policy_readback"
+    description = "Time-bounded metadata and IAM-policy readback on this exact state bucket during direct-human recovery"
+    expression  = "resource.type == 'storage.googleapis.com/Bucket' && resource.name == 'projects/_/buckets/${each.value.bucket}' && request.time < timestamp('${var.temporary_human_state_bucket_policy_access_expiry}')"
+  }
+
+  depends_on = [
+    google_project_iam_custom_role.state_bucket_policy_reader,
+    google_project_service.bootstrap["storage.googleapis.com"],
+  ]
+}
+
+resource "google_project_iam_member" "temporary_human_state_bucket_policy_access" {
+  for_each = var.enable_production_project_bootstrap && var.enable_temporary_human_state_bucket_policy_access ? local.state_backends : {}
+
+  provider = google.project
+
+  project = google_project.production[0].project_id
+  role    = local.resource_iam_setter_role_names.storage
+  member  = one(var.bootstrap_operator_members)
+
+  condition {
+    title       = "temporary_${each.key}_state_bucket_policy_recovery"
+    description = "Time-bounded recovery authority to change only the three reviewed roles on this exact state-bucket policy"
+    expression = format(
+      "resource.type == 'storage.googleapis.com/Bucket' && resource.name == 'projects/_/buckets/%s' && %s && request.time < timestamp('%s')",
+      each.value.bucket,
+      local.state_storage_modified_roles_condition,
+      var.temporary_human_state_bucket_policy_access_expiry,
+    )
+  }
+
+  depends_on = [
+    google_project_iam_custom_role.resource_iam_setter["storage"],
+    google_project_service.bootstrap["storage.googleapis.com"],
+  ]
 }
 
 resource "google_storage_bucket_iam_policy" "state" {
-  for_each = var.enable_production_project_bootstrap ? local.state_backends : {}
+  for_each = var.enable_production_project_bootstrap && var.enable_state_bucket_iam_reconciliation ? local.state_backends : {}
 
   provider = google.project
 
@@ -1413,8 +1872,23 @@ resource "google_storage_bucket_iam_policy" "state" {
     google_project_iam_custom_role.state_reader,
     google_project_iam_custom_role.state_writer,
     google_project_iam_custom_role.resource_iam_setter,
+    google_project_iam_member.infrastructure_state_storage_policy_setter,
+    google_project_iam_member.temporary_human_state_bucket_policy_access,
+    google_project_iam_member.temporary_human_state_bucket_policy_read_access,
     google_service_account.infrastructure,
   ]
+
+  lifecycle {
+    prevent_destroy = true
+
+    precondition {
+      condition = (
+        var.project_executor_handoff_complete ||
+        var.temporary_human_state_bucket_policy_access_verified
+      )
+      error_message = "Authoritative state-bucket IAM policies require live verification of the exact temporary bucket-policy recovery access before direct-human reconciliation."
+    }
+  }
 }
 
 resource "google_project_iam_audit_config" "storage" {

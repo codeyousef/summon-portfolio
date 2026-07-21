@@ -133,6 +133,26 @@ output "temporary_human_state_migration_access_enabled" {
   value = var.enable_temporary_human_state_migration_access
 }
 
+output "state_bucket_iam_reconciliation_enabled" {
+  value = var.enable_state_bucket_iam_reconciliation
+}
+
+output "temporary_human_state_bucket_policy_access_enabled" {
+  value = var.enable_temporary_human_state_bucket_policy_access
+}
+
+output "temporary_human_state_bucket_policy_access_verified" {
+  value = var.temporary_human_state_bucket_policy_access_verified
+}
+
+output "temporary_human_state_bucket_policy_access_removal_approved" {
+  value = var.approve_temporary_human_state_bucket_policy_access_removal
+}
+
+output "temporary_human_state_bucket_policy_access_removed" {
+  value = var.temporary_human_state_bucket_policy_access_removed
+}
+
 output "enabled_bootstrap_services" {
   value = var.enable_production_project_bootstrap ? toset(keys(google_project_service.bootstrap)) : toset([])
 }
