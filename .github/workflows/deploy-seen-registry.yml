@@ -159,20 +159,20 @@ jobs:
             assert_step_line_once "${setup_gcloud_step}" "          version: '576.0.0'"
           done
           assert_step_line_once "${plan_setup_gcloud_step}" '          install_components: alpha'
-          grep -Fq 'bash scripts/lint-seen-registry-iam-conditions.sh "${TF_ROOT}" "${PLAN_DIR}/plan.tfplan" steady' "${infrastructure_workflow}"
-          test "$(grep -Fc 'gcloud projects get-iam-policy "${PROD_PROJECT_ID}"' "${infrastructure_workflow}")" -eq 2
+          grep -Fq "bash scripts/lint-seen-registry-iam-conditions.sh \"\${TF_ROOT}\" \"\${PLAN_DIR}/plan.tfplan\" steady" "${infrastructure_workflow}"
+          test "$(grep -Fc "gcloud projects get-iam-policy \"\${PROD_PROJECT_ID}\"" "${infrastructure_workflow}")" -eq 2
           test "$(grep -Fc '(.bindings | type) == "array"' "${infrastructure_workflow}")" -eq 2
           test "$(grep -Fc 'all(.members[]; type == "string")' "${infrastructure_workflow}")" -eq 2
           test "$(grep -Fc 'select(.role == "roles/owner" or .role == "roles/editor")' "${infrastructure_workflow}")" -eq 2
           grep -Fq 'name: Set up the project IAM handoff verifier' "${infrastructure_workflow}"
           saved_plan_step="$(extract_job_step plan 'Create saved plan and review record')"
           assert_step_line_once "${saved_plan_step}" \
-            '          if ! tofu -chdir="${TF_ROOT}" show -no-color "${PLAN_DIR}/plan.tfplan" > "${PLAN_DIR}/review.txt" 2>/dev/null; then'
+            "          if ! tofu -chdir=\"\${TF_ROOT}\" show -no-color \"\${PLAN_DIR}/plan.tfplan\" > \"\${PLAN_DIR}/review.txt\" 2>/dev/null; then"
           assert_step_line_once "${saved_plan_step}" \
             '            echo "The production plan review could not be rendered safely" >&2'
-          test "$(grep -Fc 'chmod 0700 "${PLAN_DIR}"' "${infrastructure_workflow}")" -eq 2
-          grep -Fq 'chmod 0600 "${PLAN_DIR}/metadata.json" "${PLAN_DIR}/plan.tfplan" "${PLAN_DIR}/review.txt"' "${infrastructure_workflow}"
-          grep -Fq '"${PLAN_DIR}/plan.tfplan" > "${apply_log}" 2>&1' "${infrastructure_workflow}"
+          test "$(grep -Fc "chmod 0700 \"\${PLAN_DIR}\"" "${infrastructure_workflow}")" -eq 2
+          grep -Fq "chmod 0600 \"\${PLAN_DIR}/metadata.json\" \"\${PLAN_DIR}/plan.tfplan\" \"\${PLAN_DIR}/review.txt\"" "${infrastructure_workflow}"
+          grep -Fq "\"\${PLAN_DIR}/plan.tfplan\" > \"\${apply_log}\" 2>&1" "${infrastructure_workflow}"
           grep -Fq 'Unable to apply the verified saved plan' "${infrastructure_workflow}"
           target_prefix='-tar'"get"
           exclude_prefix='-excl'"ude"
