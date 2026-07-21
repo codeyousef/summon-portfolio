@@ -623,7 +623,8 @@ validate_exact_state_policies() {
     (( policy_count == 1 )) || fail "${contract_mode} mode requires both authoritative state policies"
     policy_type="$(jq -er --arg address "${address}" '[.[] | select(.address == $address)][0].type' 2>/dev/null <<< "${managed_resources}")" || fail "an authoritative state policy is not concrete"
     policy_bucket="$(jq -er --arg address "${address}" '[.[] | select(.address == $address)][0].values.bucket | select(type == "string")' 2>/dev/null <<< "${managed_resources}")" || fail "an authoritative state policy is not concrete"
-    [[ "${policy_type}" == "google_storage_bucket_iam_policy" && "${policy_bucket}" == "${bucket}" ]] || fail "an authoritative state policy targets the wrong bucket"
+    [[ "${policy_type}" == "google_storage_bucket_iam_policy" ]] || fail "an authoritative state policy targets the wrong bucket"
+    [[ "${policy_bucket}" == "${bucket}" || "${policy_bucket}" == "b/${bucket}" ]] || fail "an authoritative state policy targets the wrong bucket"
     policy_data="$(jq -er --arg address "${address}" '[.[] | select(.address == $address)][0].values.policy_data | select(type == "string")' 2>/dev/null <<< "${managed_resources}")" || fail "an authoritative state policy is not concrete"
     policy_json="$(
       jq -ce '
