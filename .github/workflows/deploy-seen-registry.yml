@@ -10,6 +10,8 @@ on:
       - registry-service/**
       - scripts/operate-seen-registry-production.sh
       - scripts/test-operate-seen-registry-production.sh
+      - scripts/lint-seen-registry-iam-conditions.sh
+      - scripts/test-lint-seen-registry-iam-conditions.sh
   push:
     branches: [dev, master]
     paths:
@@ -20,6 +22,8 @@ on:
       - registry-service/**
       - scripts/operate-seen-registry-production.sh
       - scripts/test-operate-seen-registry-production.sh
+      - scripts/lint-seen-registry-iam-conditions.sh
+      - scripts/test-lint-seen-registry-iam-conditions.sh
   workflow_dispatch:
 
 concurrency:
@@ -63,11 +67,125 @@ jobs:
       - name: Check shell syntax
         run: |
           bash -n registry-service/scripts/provision-development-owner.sh
+          bash -n scripts/lint-seen-registry-iam-conditions.sh
           bash -n scripts/operate-seen-registry-production.sh
+          bash -n scripts/test-lint-seen-registry-iam-conditions.sh
           bash -n scripts/test-operate-seen-registry-production.sh
+
+      - name: Test IAM-condition saved-plan linting
+        run: bash scripts/test-lint-seen-registry-iam-conditions.sh
 
       - name: Test protected production operation contracts
         run: bash scripts/test-operate-seen-registry-production.sh
+
+      - name: Test protected infrastructure recovery guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          infrastructure_workflow=.github/workflows/deploy-seen-registry-infrastructure.yml
+          extract_job_step() {
+            local job_name="$1"
+            local step_name="$2"
+            awk -v job_name="${job_name}" -v step_name="${step_name}" '
+              /^  [[:alnum:]_-]+:$/ {
+                current_job = $0
+                sub(/^  /, "", current_job)
+                sub(/:$/, "", current_job)
+              }
+              current_job == job_name && $0 == "      - name: " step_name {
+                if (found) {
+                  exit 2
+                }
+                found = 1
+                capture = 1
+              }
+              capture && $0 != "      - name: " step_name && $0 ~ /^      - / {
+                capture = 0
+              }
+              capture {
+                print
+              }
+              END {
+                if (!found) {
+                  exit 1
+                }
+              }
+            ' "${infrastructure_workflow}"
+          }
+          assert_step_line_once() {
+            local step_block="$1"
+            local expected_line="$2"
+            local match_count
+            match_count="$(
+              awk -v expected_line="${expected_line}" '
+                $0 == expected_line {
+                  count += 1
+                }
+                END {
+                  print count + 0
+                }
+              ' <<< "${step_block}"
+            )"
+            test "${match_count}" -eq 1
+          }
+          grep -Fq 'assert_bootstrap_boolean "project_executor_handoff_complete" true' "${infrastructure_workflow}"
+          grep -Fq 'assert_bootstrap_boolean "production_foundation_applied" true' "${infrastructure_workflow}"
+          grep -Fq 'assert_bootstrap_boolean "project_creator_owner_removed" true' "${infrastructure_workflow}"
+          grep -Fq 'assert_bootstrap_boolean "enable_state_bucket_iam_reconciliation" true' "${infrastructure_workflow}"
+          grep -Fq 'assert_bootstrap_boolean "temporary_human_state_bucket_policy_access_verified" true' "${infrastructure_workflow}"
+          grep -Fq 'assert_bootstrap_boolean "temporary_human_state_bucket_policy_access_removed" true' "${infrastructure_workflow}"
+          for rejected_input in \
+            enable_organization_policy_admin_lease \
+            enable_project_policy_admin_lease \
+            enable_temporary_human_state_migration_access \
+            enable_temporary_human_state_bucket_policy_access \
+            approve_temporary_human_state_bucket_policy_access_removal \
+            adopt_project_creator_owner \
+            approve_project_creator_owner_removal; do
+            grep -Fq "assert_bootstrap_boolean \"${rejected_input}\" false" "${infrastructure_workflow}"
+          done
+          for rejected_expiry in \
+            policy_admin_lease_expiry \
+            temporary_human_state_migration_access_expiry \
+            temporary_human_state_bucket_policy_access_expiry \
+            project_creator_owner_member; do
+            grep -Fq "assert_bootstrap_null \"${rejected_expiry}\"" "${infrastructure_workflow}"
+          done
+          plan_setup_gcloud_step="$(extract_job_step plan 'Set up the IAM condition linter')"
+          apply_setup_gcloud_step="$(extract_job_step apply 'Set up the project IAM handoff verifier')"
+          for setup_gcloud_step in "${plan_setup_gcloud_step}" "${apply_setup_gcloud_step}"; do
+            assert_step_line_once "${setup_gcloud_step}" \
+              '        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3'
+            assert_step_line_once "${setup_gcloud_step}" "          version: '576.0.0'"
+          done
+          assert_step_line_once "${plan_setup_gcloud_step}" '          install_components: alpha'
+          grep -Fq 'bash scripts/lint-seen-registry-iam-conditions.sh "${TF_ROOT}" "${PLAN_DIR}/plan.tfplan" steady' "${infrastructure_workflow}"
+          test "$(grep -Fc 'gcloud projects get-iam-policy "${PROD_PROJECT_ID}"' "${infrastructure_workflow}")" -eq 2
+          test "$(grep -Fc '(.bindings | type) == "array"' "${infrastructure_workflow}")" -eq 2
+          test "$(grep -Fc 'all(.members[]; type == "string")' "${infrastructure_workflow}")" -eq 2
+          test "$(grep -Fc 'select(.role == "roles/owner" or .role == "roles/editor")' "${infrastructure_workflow}")" -eq 2
+          grep -Fq 'name: Set up the project IAM handoff verifier' "${infrastructure_workflow}"
+          saved_plan_step="$(extract_job_step plan 'Create saved plan and review record')"
+          assert_step_line_once "${saved_plan_step}" \
+            '          if ! tofu -chdir="${TF_ROOT}" show -no-color "${PLAN_DIR}/plan.tfplan" > "${PLAN_DIR}/review.txt" 2>/dev/null; then'
+          assert_step_line_once "${saved_plan_step}" \
+            '            echo "The production plan review could not be rendered safely" >&2'
+          test "$(grep -Fc 'chmod 0700 "${PLAN_DIR}"' "${infrastructure_workflow}")" -eq 2
+          grep -Fq 'chmod 0600 "${PLAN_DIR}/metadata.json" "${PLAN_DIR}/plan.tfplan" "${PLAN_DIR}/review.txt"' "${infrastructure_workflow}"
+          grep -Fq '"${PLAN_DIR}/plan.tfplan" > "${apply_log}" 2>&1' "${infrastructure_workflow}"
+          grep -Fq 'Unable to apply the verified saved plan' "${infrastructure_workflow}"
+          target_prefix='-tar'"get"
+          exclude_prefix='-excl'"ude"
+          for prohibited_flag in \
+            "${target_prefix}" \
+            "${target_prefix}-file" \
+            "${exclude_prefix}" \
+            "${exclude_prefix}-file"; do
+            if grep -Fq -- "${prohibited_flag}" "${infrastructure_workflow}"; then
+              echo "The protected production workflow must always create a complete plan" >&2
+              exit 1
+            fi
+          done
 
       - name: Test and package the isolated registry
         env:
@@ -212,6 +330,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '576.0.0'
 
       - name: Authenticate Docker to Artifact Registry
         shell: bash
@@ -319,6 +438,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
         with:
           project_id: ${{ env.PROD_PROJECT_ID }}
+          version: '576.0.0'
 
       - name: Authenticate Docker to Artifact Registry
         shell: bash

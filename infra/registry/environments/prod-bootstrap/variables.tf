@@ -10,7 +10,7 @@ variable "control_project_id" {
 }
 
 variable "enable_control_project_apis" {
-  description = "Enables only the reviewed Organization Policy and Cloud Billing APIs in the existing bootstrap quota project."
+  description = "Enables only the reviewed Organization Policy, Cloud Billing, and IAM APIs in the existing bootstrap quota project."
   type        = bool
   default     = false
 }
@@ -109,7 +109,7 @@ variable "enable_production_project_bootstrap" {
 }
 
 variable "enable_project_policy_admin_lease" {
-  description = "Temporary human project-level Policy Admin lease used only while changing production-project policies."
+  description = "Temporary human Policy Admin lease used only while changing production-project policies. The organization-level grant is constrained to the permanently tagged production project and expires within four hours."
   type        = bool
   default     = false
 
@@ -117,15 +117,35 @@ variable "enable_project_policy_admin_lease" {
     condition = !var.enable_project_policy_admin_lease || (
       var.enable_production_project_creation &&
       var.production_project_creation_verified &&
-      var.enable_production_project_bootstrap &&
-      !var.project_executor_handoff_complete
+      var.enable_production_project_bootstrap
     )
-    error_message = "The human project Policy Admin lease is limited to the direct-human bootstrap phase."
+    error_message = "The tag-scoped human Policy Admin lease for project policies is limited to the verified direct-human bootstrap phase."
+  }
+}
+
+variable "policy_admin_lease_expiry" {
+  description = "Concrete RFC3339 expiry for the one active Policy Admin lease. It must be in the future, no more than four hours after plan creation, and null when neither policy-administration purpose is enabled."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      (!var.enable_organization_policy_admin_lease && !var.enable_project_policy_admin_lease && var.policy_admin_lease_expiry == null) ||
+      (
+        var.enable_organization_policy_admin_lease != var.enable_project_policy_admin_lease &&
+        var.policy_admin_lease_expiry != null &&
+        can(formatdate("YYYY-MM-DD'T'hh:mm:ss'Z'", var.policy_admin_lease_expiry)) &&
+        try(timecmp(var.policy_admin_lease_expiry, plantimestamp()) > 0, false) &&
+        try(timecmp(var.policy_admin_lease_expiry, timeadd(plantimestamp(), "4h")) <= 0, false)
+      )
+    )
+    error_message = "Exactly one Policy Admin purpose requires one concrete future RFC3339 lease expiry no more than four hours after plan creation; otherwise policy_admin_lease_expiry must be null."
   }
 }
 
 variable "enable_temporary_human_state_migration_access" {
-  description = "Temporary read access across both dedicated state buckets, plus write/delete access to each root's exact state and lock objects, for the reviewed human operator through migration, empty production foundation, and Owner-removal phases. The first WIF handoff apply removes it."
+  description = "Temporary time-bounded state read across both dedicated state buckets, plus write/delete access to each root's exact state and lock objects, for the reviewed human operator through migration, foundation, and Owner-removal phases. The first WIF handoff apply removes it."
   type        = bool
   default     = false
 
@@ -133,10 +153,125 @@ variable "enable_temporary_human_state_migration_access" {
     condition = !var.enable_temporary_human_state_migration_access || (
       var.enable_production_project_creation &&
       var.production_project_creation_verified &&
-      var.enable_production_project_bootstrap &&
-      !var.project_executor_handoff_complete
+      var.enable_production_project_bootstrap
     )
     error_message = "Temporary human state migration access is allowed only before the CI identity handoff."
+  }
+}
+
+variable "temporary_human_state_migration_access_expiry" {
+  description = "Concrete RFC3339 expiry for temporary human state migration access. It must be in the future, no more than 24 hours after plan creation, and null while access is disabled."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      (!var.enable_temporary_human_state_migration_access && var.temporary_human_state_migration_access_expiry == null) ||
+      (
+        var.enable_temporary_human_state_migration_access &&
+        var.temporary_human_state_migration_access_expiry != null &&
+        can(formatdate("YYYY-MM-DD'T'hh:mm:ss'Z'", var.temporary_human_state_migration_access_expiry)) &&
+        try(timecmp(var.temporary_human_state_migration_access_expiry, plantimestamp()) > 0, false) &&
+        try(timecmp(var.temporary_human_state_migration_access_expiry, timeadd(plantimestamp(), "24h")) <= 0, false)
+      )
+    )
+    error_message = "Temporary human state migration access requires one concrete future RFC3339 expiry no more than 24 hours after plan creation; otherwise its expiry must be null."
+  }
+}
+
+variable "enable_temporary_human_state_bucket_policy_access" {
+  description = "Temporary exact IAM-policy recovery access for the reviewed human on only the two dedicated state buckets, split between a bucket-metadata-and-policy-only reader and a set-only role constrained to the three state roles. It is retained through live verification and complete reconciliation, then its four project-level bindings are removed before Owner removal."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.enable_temporary_human_state_bucket_policy_access || (
+      var.enable_production_project_creation &&
+      var.production_project_creation_verified &&
+      var.enable_production_project_bootstrap
+    )
+    error_message = "Temporary state-bucket policy recovery access requires the verified production bootstrap and must remain a direct-human pre-handoff lease."
+  }
+}
+
+variable "temporary_human_state_bucket_policy_access_expiry" {
+  description = "Concrete RFC3339 expiry for temporary human state-bucket policy recovery access. It must be in the future, no more than four hours after plan creation, and null while access is disabled."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      (!var.enable_temporary_human_state_bucket_policy_access && var.temporary_human_state_bucket_policy_access_expiry == null) ||
+      (
+        var.enable_temporary_human_state_bucket_policy_access &&
+        var.temporary_human_state_bucket_policy_access_expiry != null &&
+        can(formatdate("YYYY-MM-DD'T'hh:mm:ss'Z'", var.temporary_human_state_bucket_policy_access_expiry)) &&
+        try(timecmp(var.temporary_human_state_bucket_policy_access_expiry, plantimestamp()) > 0, false) &&
+        try(timecmp(var.temporary_human_state_bucket_policy_access_expiry, timeadd(plantimestamp(), "4h")) <= 0, false)
+      )
+    )
+    error_message = "Temporary human state-bucket policy recovery access requires one concrete future RFC3339 expiry no more than four hours after plan creation; otherwise its expiry must be null."
+  }
+}
+
+variable "enable_state_bucket_iam_reconciliation" {
+  description = "One-way gate for authoritative IAM policies on both state buckets. Keep false for a clean prerequisite bootstrap, then enable only after exact temporary bucket-policy access is installed and verified. Existing partially applied environments whose policies already landed must keep it true."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.enable_state_bucket_iam_reconciliation || (
+      var.enable_production_project_bootstrap
+    )
+    error_message = "Authoritative state-bucket IAM reconciliation requires the verified production bootstrap; the central phase contract requires verified recovery access before reconciliation and preserves the gate through handoff."
+  }
+}
+
+variable "temporary_human_state_bucket_policy_access_verified" {
+  description = "Manual attestation set only after the exact recovery bindings propagated and bucket IAM-policy read/write permissions were verified live on both dedicated state buckets. It remains true after the temporary access is removed."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.temporary_human_state_bucket_policy_access_verified || (
+      var.enable_production_project_bootstrap
+    )
+    error_message = "State-bucket policy access may be attested only for the verified production bootstrap."
+  }
+}
+
+variable "approve_temporary_human_state_bucket_policy_access_removal" {
+  description = "Explicit direct-human gate for removing all four temporary state-bucket policy recovery bindings in a complete plan after the production foundation is applied and before Owner removal."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.approve_temporary_human_state_bucket_policy_access_removal || (
+      var.enable_production_project_bootstrap &&
+      var.temporary_human_state_bucket_policy_access_verified &&
+      !var.enable_temporary_human_state_bucket_policy_access &&
+      var.temporary_human_state_bucket_policy_access_expiry == null &&
+      var.project_creator_owner_member == "user:yousef@felidai.com"
+    )
+    error_message = "Recovery-binding removal requires verified disabled recovery access and the exact reviewed creator member; the central phase contract enforces foundation, adoption, and handoff ordering."
+  }
+}
+
+variable "temporary_human_state_bucket_policy_access_removed" {
+  description = "Manual attestation set only after all four temporary recovery bindings were removed in the separately approved human cleanup plan and verified absent."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.temporary_human_state_bucket_policy_access_removed || (
+      var.enable_production_project_bootstrap &&
+      var.temporary_human_state_bucket_policy_access_verified &&
+      !var.enable_temporary_human_state_bucket_policy_access &&
+      var.temporary_human_state_bucket_policy_access_expiry == null
+    )
+    error_message = "Recovery access can be attested removed only after verified access is disabled and its expiry is cleared; the central phase contract enforces foundation and cleanup ordering."
   }
 }
 
@@ -150,6 +285,13 @@ variable "project_executor_handoff_complete" {
       var.enable_production_project_creation &&
       var.production_project_creation_verified &&
       var.enable_production_project_bootstrap &&
+      var.temporary_human_state_bucket_policy_access_verified &&
+      var.enable_state_bucket_iam_reconciliation &&
+      var.temporary_human_state_bucket_policy_access_removed &&
+      !var.enable_temporary_human_state_bucket_policy_access &&
+      !var.enable_temporary_human_state_migration_access &&
+      var.temporary_human_state_migration_access_expiry == null &&
+      !var.approve_temporary_human_state_bucket_policy_access_removal &&
       var.github_infrastructure_environments_reviewed &&
       var.github_operations_environments_reviewed
     )
@@ -169,12 +311,14 @@ variable "production_foundation_applied" {
       var.enable_production_project_bootstrap &&
       !var.enable_organization_policy_admin_lease &&
       !var.enable_project_policy_admin_lease &&
+      var.temporary_human_state_bucket_policy_access_verified &&
+      var.enable_state_bucket_iam_reconciliation &&
       var.managed_member_policy_effective &&
       var.enable_portfolio_gateway_exception &&
       var.portfolio_gateway_exception_effective &&
       var.automatic_default_service_account_grants_policy_effective
     )
-    error_message = "The production foundation attestation requires the bootstrap-managed project, both Policy Admin leases removed, and verified effective managed-member, gateway-exception, and default-service-account policies."
+    error_message = "The production foundation attestation requires verified state-bucket policy access, removal of both Policy Admin purposes, and effective managed-member, gateway-exception, and default-service-account policies."
   }
 }
 
@@ -235,9 +379,11 @@ variable "approve_project_creator_owner_removal" {
       !var.project_executor_handoff_complete &&
       !var.enable_organization_policy_admin_lease &&
       !var.enable_project_policy_admin_lease &&
+      var.temporary_human_state_bucket_policy_access_verified &&
+      var.temporary_human_state_bucket_policy_access_removed &&
       var.project_creator_owner_member == "user:yousef@felidai.com"
     )
-    error_message = "Owner removal must be a separate direct-human phase for the exact previously imported creator after both Policy Admin leases are removed."
+    error_message = "Owner removal must be a separate direct-human phase for the exact previously imported creator after both Policy Admin lease gates are disabled."
   }
 }
 
@@ -253,6 +399,8 @@ variable "project_creator_owner_removed" {
       var.enable_production_project_bootstrap &&
       !var.enable_organization_policy_admin_lease &&
       !var.enable_project_policy_admin_lease &&
+      var.temporary_human_state_bucket_policy_access_verified &&
+      var.temporary_human_state_bucket_policy_access_removed &&
       !var.adopt_project_creator_owner &&
       !var.approve_project_creator_owner_removal &&
       var.project_creator_owner_member == null

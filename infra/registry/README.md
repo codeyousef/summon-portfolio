@@ -3,7 +3,7 @@
 This directory owns the isolated Google Cloud infrastructure for the Seen
 package registry. The reusable module is instantiated by a concrete development
 root and an inert-by-default production root whose launch surfaces are enabled
-independently.
+separately.
 
 OpenTofu manages resource containers, identities, IAM, network policy,
 Cloud Run definitions, schedules, and monitoring. It never manages secret
@@ -95,11 +95,39 @@ output contains only `SEEN_REGISTRY_PUBLIC_HOST` and
 
 #### Saved-plan approval contract
 
-Every phase requires one new, complete saved plan from the current state, an
-offline review, an explicit approval, and application of that exact binary
-plan. Never use `-target`, regenerate a plan after review, or apply a plan after
-its commit, inputs, state, root, backend, or approval context changes. Discard
-it and start the phase again instead.
+Every ordinary phase requires one new, complete saved plan from the current
+state, an offline review, an explicit approval, and application of that exact
+binary plan. Do not use `-target`, `-target-file`, `-exclude`, or
+`-exclude-file`, regenerate a plan after review, or apply a plan after its
+commit, inputs, state, root, backend, or approval context changes. Discard it
+and start the phase again instead.
+
+The sole exception is the fail-closed, direct-human state-bucket IAM recovery
+described below. It requires its own exact approval and a saved plan limited to
+exactly five managed changes: create the permanent bucket-policy-only reader,
+create its two exact temporary project-level readback bindings, and create the
+set-only storage IAM role's two exact temporary setter bindings. After the
+bindings propagate and any failed canonical-policy
+instances are repaired in state, it must be followed by a new, untargeted,
+complete reconciliation plan with a distinct review and approval. The
+protected GitHub workflow never accepts recovery inputs,
+`-target`, `-target-file`, `-exclude`, or `-exclude-file` and cannot be used for
+that exception.
+
+All IAM mutation conditions use the supported
+`api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly([...])`
+form. Do not join multiple `hasOnly` calls or add a `.size()` guard; the
+documented empty default and single `hasOnly` call restrict the reported role
+changes to the enumerated roles. The permanent
+`google_project_iam_custom_role.state_bucket_policy_reader[0]` contains only
+`storage.buckets.get` and `storage.buckets.getIamPolicy`. Its temporary
+project-level recovery bindings are conditioned to one exact bucket resource
+and expiry, with no state-object list or read permission. The separate
+`seenRegistryStateReader` retains only the backend metadata/object permissions
+used inside the authoritative bucket policies. The storage policy setter
+contains only `storage.buckets.setIamPolicy`, like every other resource IAM
+setter. Keeping readback and mutation in separate roles prevents a setter from
+acquiring bucket-policy read authority.
 
 Before the OIDC handoff, use direct human ADC and ignored mode-0600 inputs and
 plan files. Do not impersonate the infrastructure apply account. A typical
@@ -155,8 +183,8 @@ Each environment must:
 - permit the workflow initiator to provide that approval;
 - disable administrator bypass.
 
-This is intentionally a solo-operator control, not independent or two-person
-review. The operator must approve plan and apply as two distinct actions. Before
+This is intentionally a solo-operator control, not a two-person review. The
+operator must separately approve plan and apply as two distinct actions. Before
 approving apply, they must verify the exact run, commit, artifact coordinates,
 hashes, and decrypted saved plan described below. Do not record either
 attestation until its two environments have been configured and tested to hold
@@ -225,19 +253,53 @@ The jobs environment has no payload secrets.
 Generate a dedicated passphrase-protected RSA OpenPGP encryption key on an
 offline host. Export only its public key for the plan environment. Store the
 base64-encoded private-key export and its passphrase only in the apply
-environment, and retain a separate protected offline review/recovery copy. Never put
-the private key, passphrase, decoded production variables, or decrypted plan
-material in the repository, an issue, a workflow log, or an unencrypted
-artifact.
+environment, and retain a separate protected offline review/recovery copy.
+Never put the private key, passphrase, decoded production variables, or
+decrypted plan material in the repository, an issue, a workflow log, or an
+unencrypted artifact.
 
-The plan job suppresses plan diagnostics from public logs and encrypts exactly
-`plan.tfplan`, `review.txt`, and `metadata.json`. The only uploaded file is
+The plan and apply jobs suppress potentially sensitive OpenTofu diagnostics
+from public logs. The plan job encrypts exactly `plan.tfplan`, `review.txt`, and
+`metadata.json`. The only uploaded file is
 `plan-bundle.tar.gpg`, retained for one day. Before approving the apply
 environment, the approving operator downloads that ciphertext to the offline
 review host, verifies its published digest, decrypts it, verifies the inner
-digests and metadata, and reviews `review.txt`. The apply job independently
+digests and metadata, and reviews `review.txt`. The apply job separately
 checks the same-run artifact ID, ciphertext and inner hashes, workflow commit,
 root, backend, repository identity, and OpenTofu version before applying.
+Downloaded and decrypted files are restricted to the apply job's private
+mode-0700 directory and mode-0600 files. Final apply output stays in that
+directory; public logs receive only a generic failure.
+
+From the first plan with `enable_production_project_bootstrap=true` onward,
+production-bootstrap saved plans must pass the tracked
+`scripts/lint-seen-registry-iam-conditions.sh` helper in the mode for their
+phase. The helper privately inspects the saved plan, reconstructs every
+reviewed role, member, custom-role permission set, and IAM condition, rejects
+unreviewed IAM-policy mutation authority, and then sends only the validated
+condition expressions to the official IAM condition linter. It suppresses plan
+and linter diagnostics from public logs. Run it with Google Cloud CLI version
+`576.0.0`, including the `alpha` component; every other SDK version is
+rejected.
+
+- `recovery` permits exactly five create-only managed changes: creation of the
+  permanent bucket-policy-only reader plus the four temporary project-level
+  recovery bindings. It validates the four recovery conditions.
+- `complete` requires all 27 steady setter bindings and accepts either no
+  recovery binding or the exact set of four. Use it for untargeted
+  direct-human project-bootstrap prerequisite, reconciliation, adoption,
+  cleanup, and Owner-removal plans. It rejects targeted/incomplete coverage of
+  the managed prior/planned address set. An Owner-removal plan must leave both
+  authoritative state policies unchanged with the verified temporary migration
+  bindings still present.
+- `steady` is reserved for the protected post-handoff workflow. It requires
+  all 27 steady bindings, valid immutable prior-state records for recovery
+  reconciliation, Owner adoption, recovery cleanup, and Owner removal, and no
+  Owner or project-level recovery binding in prior state. It exact-validates
+  both authoritative state policies and rejects mutation of those records or
+  any planned human IAM grant.
+
+The linter does not modify an IAM policy or replace private saved-plan review.
 
 The permanent plan-artifact key fingerprint is pinned as a reviewed constant in
 the workflow. Each protected environment must contain that same fingerprint,
@@ -256,34 +318,44 @@ full saved plan where it changes managed state:
    (or an equivalent exact `setIamPolicy` capability) on the selected billing
    account.
    The latter is an external prerequisite for installing the two exact-account
-   `seenRegistryBillingRefresh` read bindings; neither infrastructure WIF
-   identity receives billing-policy mutation permission. Remove a temporary
+   predefined `roles/billing.viewer` bindings; neither infrastructure WIF
+   identity receives billing-policy mutation permission. A custom organization
+   role cannot be granted on a parentless billing account. Remove a temporary
    external billing privilege after those bindings are verified. The
    direct-human bootstrap also requires separately approved, time-bounded
-   authority to create the project,
-   define organization custom roles, update organization IAM, enable the two
-   control-project APIs, and update IAM on the exact control project. These are
-   external bootstrap prerequisites, not standing grants created for an
-   infrastructure WIF identity; remove any temporary assignments and verify
-   their absence after the corresponding bootstrap phase.
+   authority to create the project, define the required organization custom
+   roles, update organization IAM, enable the three control-project APIs, create
+   the control project's exact two-permission read role, and update IAM on that
+   exact project. These are external bootstrap prerequisites, not standing
+   grants created for an infrastructure WIF identity; remove any temporary
+   assignments and verify their absence after the corresponding bootstrap
+   phase. Before project-policy administration, also obtain temporary Tag Admin
+   and Tag User capability sufficient to create the permanent
+   `seen-registry-policy-scope=production` organization tag and attach it to the
+   exact numeric production project. Remove those temporary tag-management
+   grants after the tag key, value, and binding are verified.
 2. Copy `environments/prod-bootstrap/backend.hcl.example` to the ignored
    backend file. The initial backend is the mode-0600 local path
    `.state/terraform.tfstate`. It contains infrastructure configuration
    metadata, but no secret payload versions or private signing material. Never
    place it in the development bucket.
-3. Apply only `enable_control_project_apis=true` first. It enables only
-   Organization Policy and Cloud Billing in `portfolio-476219`. Inspect the
+3. Apply only `enable_control_project_apis=true` first. It enables only IAM,
+   Organization Policy, and Cloud Billing in `portfolio-476219`. Inspect the
    organization for a stored `compute.skipDefaultNetworkCreation` policy before
    planning the guardrail. If one exists, import that exact policy into
    `google_org_policy_policy.skip_default_network[0]` and review both the import
    and post-import plan as state mutations. If no stored policy exists, review
    creation of the enforced policy in the complete saved plan. Never assume a
    prior policy exists or try to import an absent policy.
-4. Apply `enable_organization_guardrails=true` with the temporary organization
-   Policy Admin lease. Wait for propagation, independently verify the effective
+4. Apply `enable_organization_guardrails=true` with
+   `enable_organization_policy_admin_lease=true` and an exact future RFC3339
+   `policy_admin_lease_expiry`. The Policy Admin role is necessarily granted at
+   organization scope and expires through its IAM condition. The expiry must be
+   no more than four hours after plan creation. Never enable both Policy Admin
+   lease gates at once. Wait for propagation, separately verify the effective
    no-default-network policy, and only then set
-   `organization_guardrail_effective=true`. Remove the organization Policy Admin
-   lease in another complete plan while retaining the policy.
+   `organization_guardrail_effective=true`. Remove the lease and clear its
+   expiry in another complete plan while retaining the policy.
 5. With the reviewed GitHub-environment attestation true, use direct ADC as
    `yousef@felidai.com` and apply a complete saved plan with only
    `enable_production_project_creation=true`. Keep
@@ -303,27 +375,52 @@ full saved plan where it changes managed state:
    no Editor.
 6. In a second complete saved-plan phase, keep
    `enable_production_project_creation=true`, set
-   `production_project_creation_verified=true`, and set
+   `production_project_creation_verified=true`, and enable
    `enable_production_project_bootstrap=true`. Keep Owner adoption/removal, the
-   gateway exception, and the OIDC handoff false; enable only the temporary
-   project Policy Admin lease and human state-migration access required
-   for the reviewed phases. The project must be a no-op in this plan. Every
-   authorization member, principal, role, policy, and condition expression must
-   be concrete and inspectable; stop if any such expression is unknown. This
-   separation lets the project number settle into state before the
-   authorization-bearing bootstrap plan is reviewed. The phase creates the
-   eight bootstrap-owned APIs, two state buckets, monitoring channel, four
-   protected plan, apply, materials, and jobs identities and providers, and
-   their bounded custom roles. The verification attestation also enables a
-   fail-closed live lookup of the exact project, organization, billing account,
-   and numeric project number. A combined first-ever creation/bootstrap plan
-   therefore fails before apply because that lookup cannot find the project.
+   gateway exception, foundation attestations, and handoff false. The project
+   itself must be a no-op, and every authorization value must be concrete.
+
+   For a clean bootstrap, first keep
+   `enable_state_bucket_iam_reconciliation=false`, enable the exact temporary
+   state-bucket recovery access with a future expiry no more than four hours
+   away, and apply one complete prerequisite plan. This creates the permanent
+   separate `seenRegistryStateReader` and
+   `seenRegistryStateBucketPolicyReader` roles, the set-only storage IAM role,
+   the two state buckets, the four conditional recovery
+   bindings, and the rest of the bootstrap prerequisites without writing an
+   authoritative bucket policy. Verify all four recovery grants on both
+   buckets. Then set
+   `temporary_human_state_bucket_policy_access_verified=true` and
+   `enable_state_bucket_iam_reconciliation=true` in a fresh untargeted complete
+   plan. That plan writes both authoritative policies and creates the immutable
+   recovery-reconciliation record. Never turn the reconciliation gate off
+   after either policy has landed.
+
+   A project-policy phase may set
+   `enable_project_policy_admin_lease=true` with an exact expiry no more than
+   four hours away. The organization-scoped lease is constrained by
+   `resource.matchTag` to the permanent
+   `567958019562/seen-registry-policy-scope=production` tag on the exact
+   production project. The bootstrap also creates the eight APIs, monitoring
+   channel, four protected plan/apply/materials/jobs identities and providers,
+   and bounded custom roles. The verified-project lookup makes a combined
+   first-ever project creation/bootstrap plan fail closed. For an environment
+   where an earlier partial apply already wrote either authoritative state
+   policy, keep reconciliation enabled and use only the recovery procedure
+   below.
 7. In its own plan, adopt the already audited creator Owner by setting
    `project_creator_owner_member="user:yousef@felidai.com"` and
-   `adopt_project_creator_owner=true`. Accept only import of that already
-   existing binding with no IAM addition, then verify it is in state. OpenTofu
-   must never create an Owner grant.
+   `adopt_project_creator_owner=true`. Accept only import of that existing
+   binding with no IAM addition, then verify it is in state. The plan creates
+   the immutable, deletion-protected
+   `terraform_data.project_creator_owner_adoption_record["user:yousef@felidai.com"]`.
+   Its valid value can originate only in this adoption phase. Later phases keep
+   the prior value through `ignore_changes`; a newly asserted same-plan record
+   fails closed. OpenTofu must never create a new Owner grant.
 8. Migrate the bootstrap state immediately after its destination is verified.
+   Temporary human migration access requires its own concrete future RFC3339
+   expiry no more than 24 hours after plan creation. Keep it only through state
+   migration and Owner removal; the first protected handoff removes it.
    The two independent backends are:
 
    - bootstrap: bucket
@@ -352,15 +449,16 @@ full saved plan where it changes managed state:
    `automatic_default_service_account_grants_policy_effective=true` only after
    the effective policies match the reviewed configuration. Do not enable
    Compute before the automatic-default-service-account policy is effective.
-10. Under the temporary project Policy Admin lease, apply
-   `enable_portfolio_gateway_exception=true` only after the managed-member policy
-   is effective. Wait for propagation and independently verify the effective
-   legacy-domain exception before setting
+10. Under the expiring organization-scoped Policy Admin lease selected by
+   `enable_project_policy_admin_lease=true`, apply
+   `enable_portfolio_gateway_exception=true` only after the managed-member
+   policy is effective. Wait for propagation and separately verify the
+   effective legacy-domain exception before setting
    `portfolio_gateway_exception_effective=true`. The attested follow-up plan may
    then install the four exact OIDC-to-service-account trust bindings without
    being rejected by the inherited legacy restriction. Retain both protected
-   policies, then remove the project Policy Admin lease. Both organization and
-   project Policy Admin leases must now be false.
+   policies, then remove the organization-scoped lease and clear
+   `policy_admin_lease_expiry`. Both lease gates must now be false.
 11. Complete the email verification and refresh until
     `production_notification_channel_verification_status` is exactly `VERIFIED`.
     The production root rejects a channel that is not the exact same-project,
@@ -389,35 +487,152 @@ full saved plan where it changes managed state:
     The foundation creates KMS key and Secret Manager containers only. It does
     not create a KMS key version, add a secret payload version, or execute a
     Cloud Run job.
-13. Remove the creator Owner in its own direct-human saved plan. Keep exact human
-    state access to both roots, keep both Policy Admin leases false, and require
-    the effective gateway exception and completed foundation attestations. Set
-    `adopt_project_creator_owner=false`, keep the exact member long enough to
-    identify the imported binding, and set
+13. Before touching the creator Owner, complete the four-binding recovery
+    cleanup described below. Its separately applied immutable cleanup record
+    must exist before Owner removal. Remove the creator Owner in its own
+    direct-human saved plan while temporary state-migration access remains
+    active, both Policy Admin lease gates are false, and the effective gateway
+    exception and foundation attestations are true. Set
+    `adopt_project_creator_owner=false`, retain the exact member, and set
     `approve_project_creator_owner_removal=true`. Accept only deletion of that
-    exact imported Owner. After apply, verify no direct Owner or Editor remains;
-    then clear the member and removal input and set
-    `project_creator_owner_removed=true`.
+    imported Owner and creation of the immutable Owner-removal record. After
+    apply, do not attempt another human-authenticated plan. The first protected
+    WIF planner performs the authoritative project-IAM read and refuses to plan
+    while any direct Owner or Editor remains. After protected review, the apply
+    identity repeats the same authoritative check immediately before applying
+    the exact saved plan and fails closed on any intervening Owner or Editor
+    drift. That protected plan records `project_creator_owner_removed=true`,
+    closes the removal gate, clears the member, and completes handoff while
+    removing the remaining temporary human state-migration bindings.
 
-No phase grants a human Storage Object Admin or Service Account Token Creator
-role. The temporary human backend access uses only the custom reader role across
-each dedicated state bucket and the custom writer role conditioned to that
-root's exact state and lock objects. It remains solely so the human can migrate
-state, apply the empty foundation, and remove the imported Owner. Storage data
-reads and writes are audit logged.
+#### Partial state-bucket IAM recovery
+
+Use this procedure only when a prior bootstrap apply wrote one or both
+authoritative `google_storage_bucket_iam_policy.state` policies but their
+post-write read failed because the direct-human operator lacked bucket-policy
+readback. It is not a general shortcut for a clean bootstrap or drift repair.
+
+1. Stop the rollout and preserve the private mode-0600 state and backup.
+   Inventory every partial action for the later full reconciliation. Preserve
+   the canonical
+   `google_storage_bucket_iam_policy.state["bootstrap"]` and
+   `google_storage_bucket_iam_policy.state["production"]` addresses; do not
+   forget, import, rename, or move them. Because these policies already landed,
+   keep `enable_state_bucket_iam_reconciliation=true` throughout recovery and
+   every later phase.
+2. Keep direct-human ADC and all handoff/foundation/Owner-removal gates false.
+   Set `enable_temporary_human_state_bucket_policy_access=true`, use one
+   canonical future RFC3339 expiry no more than four hours after plan creation,
+   and keep the verified attestation false. Generate a private saved recovery
+   plan with exactly these five targets and no others:
+
+   ```sh
+   tofu -chdir=infra/registry/environments/prod-bootstrap plan \
+     -var-file=terraform.tfvars \
+     -target='google_project_iam_custom_role.state_bucket_policy_reader[0]' \
+     -target='google_project_iam_member.temporary_human_state_bucket_policy_read_access["bootstrap"]' \
+     -target='google_project_iam_member.temporary_human_state_bucket_policy_read_access["production"]' \
+     -target='google_project_iam_member.temporary_human_state_bucket_policy_access["bootstrap"]' \
+     -target='google_project_iam_member.temporary_human_state_bucket_policy_access["production"]' \
+     -out=/absolute/private/path/plan.tfplan
+   ```
+
+   This is the sole targeted-plan exception. The saved plan must contain
+   exactly five managed changes: create the permanent two-permission
+   bucket-policy reader and the four bindings. Run the
+   pinned linter in `recovery` mode and require zero findings:
+
+   ```sh
+   bash scripts/lint-seen-registry-iam-conditions.sh \
+     infra/registry/environments/prod-bootstrap \
+     /absolute/private/path/plan.tfplan \
+     recovery
+   ```
+
+   Never expose the saved plan, expiry, or condition diagnostics in a public
+   log.
+3. Reject the plan unless both readback bindings use
+   `seenRegistryStateBucketPolicyReader` for the exact operator and one exact
+   bucket, bucket resource type, and expiry. The role itself has only bucket
+   metadata and IAM readback permissions. Both setter bindings must use the one-permission
+   `seenRegistryStorageIamApply` role and additionally constrain mutation to the
+   exact state reader, locker, and writer roles. Apply only that reviewed saved
+   plan.
+4. Separately verify all four bindings and successful IAM-policy readback on
+   both buckets. If the failed apply left either canonical policy instance
+   tainted, privately back up and hash state, obtain separate authorization for
+   the state-only repair, and untaint only those exact addresses. Verify that no
+   other address changed. Never remove `prevent_destroy`, forget/import a
+   canonical policy, or reuse a saved plan after any state change.
+5. Only after access and any state-only repair are verified, set
+   `temporary_human_state_bucket_policy_access_verified=true` and generate a
+   fresh untargeted complete reconciliation plan with reconciliation still
+   enabled. The project must be a no-op and every authorization value concrete.
+   Run the linter in `complete` mode. The plan must reconcile both authoritative
+   policies and create the immutable
+   `terraform_data.recovery_reconciliation_record` with its valid value. A
+   later phase cannot replace missing prior reconciliation evidence with a new
+   record in that later plan.
+6. Keep the four recovery bindings only while direct-human reconciliation is
+   still required. Renew an expiry only in a separately reviewed complete plan,
+   always within the four-hour maximum. The time-bounded human state-reader and
+   writer bindings inside each authoritative bucket policy are separate and
+   remain available for state migration through Owner removal; the imported
+   Owner remains the direct-human policy-readback authority until its own
+   reviewed deletion.
+7. After the foundation is applied and the Owner adoption record already exists,
+   clean up the four project-level bindings in a fresh untargeted direct-human
+   plan. Keep `adopt_project_creator_owner=true`, disable recovery access, clear
+   its expiry, keep verification true, leave the removed attestation false, and
+   set `approve_temporary_human_state_bucket_policy_access_removal=true`. Run
+   the linter in `complete` mode. Accept only the four binding deletions and
+   creation of the immutable recovery-cleanup record; both permanent reader
+   roles and the setter role remain. Verify all four project bindings absent.
+8. The next direct-human Owner-removal plan closes the cleanup approval, sets
+   `temporary_human_state_bucket_policy_access_removed=true`, and relies on the
+   valid cleanup record from prior state. It cannot fabricate cleanup and remove
+   Owner in the same plan. Keep the time-bounded bucket-level migration access
+   unchanged until Owner deletion succeeds. Run the saved-plan linter in
+   `complete` mode and reject any state-policy change; the only managed
+   mutations are deletion of the exact imported Owner and creation of its
+   immutable removal record. On any recovery, reconciliation, or cleanup
+   failure, stop and preserve private evidence; do not widen the target set or
+   continue with an old plan.
+
+No phase grants a human Storage Object Admin or Service Account Token Creator.
+Temporary migration access uses the custom reader plus a custom writer
+conditioned to each root's exact state and lock objects, with a maximum 24-hour
+expiry. The four project-level recovery bindings provide only conditional
+bucket-policy readback or exact-role mutation, with a maximum four-hour expiry.
+Storage data reads and writes remain audit logged.
 
 #### First WIF handoff and steady state
 
 Populate the protected environment values from the verified bootstrap outputs
-only after the backend migration and human bootstrap are complete. The first
-protected `prod-bootstrap` saved-plan apply must set
-`project_executor_handoff_complete=true`, keep
-`project_creator_owner_removed=true`, clear all Owner adoption/removal inputs,
-keep both Policy Admin leases false, and set
-`enable_temporary_human_state_migration_access=false`. That same apply replaces
-both authoritative state-bucket policies and removes the human's actual state
-access. Verify the binding is absent; the permanent managed-policy allowlist
-entry still does not grant access.
+only after backend migration, foundation, recovery cleanup, and direct-human
+Owner removal are complete. There is no human-authenticated plan after Owner
+deletion. The first protected `prod-bootstrap` plan simultaneously records the
+verified removal and completes handoff. It must set
+`project_creator_owner_removed=true` and
+`project_executor_handoff_complete=true`; keep
+`production_foundation_applied=true` and
+`enable_state_bucket_iam_reconciliation=true`; clear the Owner member,
+adoption, and removal-approval inputs; disable both Policy Admin leases; and
+clear their expiry. It must also disable temporary migration access and clear
+its expiry. Recovery access remains disabled with a null expiry, verification
+and removal attestations stay true, and the cleanup approval stays false.
+
+Before that plan, prior state must contain valid immutable records for recovery
+reconciliation, Owner adoption, recovery cleanup, and Owner removal. Prior
+state must contain neither the Owner member nor any of the four project-level
+recovery bindings. Before creating the saved plan, the WIF planner reads the
+live project IAM policy and requires zero `roles/owner` and zero `roles/editor`
+members. The separate WIF apply identity repeats that live read immediately
+before applying the reviewed plan so out-of-band IAM drift during review cannot
+complete handoff. The protected WIF plan removes the remaining time-bounded
+human reader/writer bindings from both authoritative bucket policies. Verify
+all temporary access absent after apply; the permanent managed-policy allowlist
+entry is still not an IAM grant.
 
 The plan identity and apply identity then use GitHub OIDC-derived ADC directly;
 they do not share a service account or depend on human impersonation. Keep the
@@ -428,6 +643,28 @@ IAM, service-account IAM, or the state-policy capability boundary require a
 separately approved privileged bootstrap path. They are not ordinary steady
 production applies. In particular, later Artifact Registry or runtime `actAs`
 drift cannot be repaired by broadening the protected apply identity.
+
+The protected workflow evaluates the bootstrap inputs before creating a plan.
+It requires the completed foundation, reconciliation, Owner-removal, recovery
+verification/removal, and handoff gates. It rejects either Policy Admin lease,
+either temporary human state-access gate, either cleanup/removal approval,
+Owner adoption, the Owner member, and every non-null temporary expiry. It
+always creates one complete plan with the WIF planner. The `steady` linter
+validates all 27 setter conditions, the four prior-state evidence records, the
+prior absence of Owner and project-level recovery bindings, and the absence of
+any mutation to those records or bindings. Only that same-run saved plan can be
+applied by the separate WIF apply identity.
+
+The obsolete organization custom roles
+`seenRegistryBillingRefresh` and `seenRegistryControlProjectRefresh` remain
+managed at their existing addresses with deletion protection but are unbound.
+Active billing refresh uses predefined `roles/billing.viewer`; active control
+project refresh uses the project-local
+`projects/portfolio-476219/roles/seenRegistryControlProjectRefresh` role with
+only `resourcemanager.projects.get` and
+`resourcemanager.projects.getIamPolicy`. Do not destroy or rename the retained
+organization roles as part of recovery. Their eventual cleanup requires a
+separate, explicitly destructive plan.
 
 The same boundary applies to post-handoff drift in required API enablement,
 durable Artifact Registry, Firestore, network, bucket, KMS, and Secret Manager
@@ -506,7 +743,7 @@ production in this order:
    enable its repository-side publication gate. The master workflow may publish
    and attest an immutable candidate; it never deploys it.
 2. Through the separately approved key/secret operations path, create the exact
-   concrete online KMS key versions and independently record their four public
+   concrete online KMS key versions and separately record their four public
    keys. On a clean network-disabled host, generate fresh production root and
    targets keys and complete the ceremony in
    [signing operations](../../registry-service/docs/signing-operations.md). Add
@@ -520,7 +757,7 @@ production in this order:
    authority are removed.
 4. Repeat that provision, protected invocation, verification, and removal
    sequence for `online_bootstrap`. Review application and signer digests
-   independently, pin concrete KMS versions and the immutable `1.root.json`
+   separately, pin concrete KMS versions and the immutable `1.root.json`
    SHA-256, and enable the signer JWKS route only for a plan that selects
    signers.
 5. Before the initial online metadata expires, separately enable the
@@ -576,6 +813,11 @@ retries; declaring only `retry_count = 0` causes perpetual plan drift without
 changing runtime behavior.
 
 ### Temporary plan-reader access
+
+This project-level plan-reader path is not valid for production-bootstrap
+state-policy recovery. That recovery must use only the four exact
+bucket-restricted, conditional bindings and procedure above; do not substitute
+this broader role.
 
 A complete plan may require project-level bucket metadata access. If the
 reviewed operator lacks it, obtain explicit approval for the exact principal,

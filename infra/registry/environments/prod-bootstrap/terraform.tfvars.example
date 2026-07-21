@@ -1,16 +1,23 @@
 # Every gate is false by default. Plan the organization guardrail and its
-# temporary Policy Admin lease first. Then create only the project in a complete
-# saved plan by enabling production project creation; keep that gate true
+# temporary time-bounded Policy Admin lease first. Then create only the project
+# in a complete saved plan by enabling production project creation; keep that gate true
 # thereafter. Attest project creation only after verifying its ID, number, sole
 # expected creator Owner, and absence of Editor. Enable the remaining project
 # bootstrap in a later complete saved plan so every authorization expression is
-# known and inspectable. Create and verify the gateway exception in its separate
-# temporary project Policy Admin phase before the foundation, Owner removal, and
-# CI handoff.
+# known and inspectable. A clean bootstrap first installs and verifies the four
+# temporary state-policy recovery bindings with state IAM reconciliation false;
+# only a later complete plan enables the one-way reconciliation gate. An
+# existing partial environment whose canonical policies landed keeps that gate
+# true and uses only the documented five-change recovery exception. Policy and
+# recovery leases expire within four hours; state-migration access expires
+# within 24 hours. Create and verify the tag-scoped project-policy exception
+# before foundation, evidence-backed cleanup, Owner removal, and the first WIF
+# handoff. Verified recovery/removal attestations remain true after cleanup.
 enable_control_project_apis                               = false
 enable_organization_guardrails                            = false
 organization_guardrail_effective                          = false
 enable_organization_policy_admin_lease                    = false
+policy_admin_lease_expiry                                 = null
 github_infrastructure_environments_reviewed               = false
 github_operations_environments_reviewed                   = false
 enable_production_project_creation                        = false
@@ -18,6 +25,13 @@ production_project_creation_verified                      = false
 enable_production_project_bootstrap                       = false
 enable_project_policy_admin_lease                         = false
 enable_temporary_human_state_migration_access             = false
+temporary_human_state_migration_access_expiry             = null
+enable_temporary_human_state_bucket_policy_access         = false
+temporary_human_state_bucket_policy_access_expiry         = null
+temporary_human_state_bucket_policy_access_verified       = false
+approve_temporary_human_state_bucket_policy_access_removal = false
+temporary_human_state_bucket_policy_access_removed        = false
+enable_state_bucket_iam_reconciliation                     = false
 automatic_default_service_account_grants_policy_effective = false
 managed_member_policy_effective                           = false
 enable_portfolio_gateway_exception                        = false
