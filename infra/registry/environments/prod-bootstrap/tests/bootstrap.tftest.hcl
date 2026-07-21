@@ -503,6 +503,14 @@ run "targeted_recovery_installs_exact_policy_bindings_before_verification" {
     condition     = length(google_storage_bucket_iam_policy.state) == 0
     error_message = "The exceptional recovery target set must not reconcile authoritative state policies before verification."
   }
+
+  assert {
+    condition = length(regexall(
+      "project\\s*=\\s*data\\.google_project\\.production_verified\\[0\\]\\.project_id",
+      file("${path.root}/main.tf"),
+    )) == 5
+    error_message = "The five recovery dependency nodes must resolve the authoritative verified project without pulling project-creation ancestors into the target closure."
+  }
 }
 
 run "verified_recovery_access_cannot_be_silently_disabled" {

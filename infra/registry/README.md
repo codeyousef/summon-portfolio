@@ -542,6 +542,12 @@ readback. It is not a general shortcut for a clean bootstrap or drift repair.
    bucket-policy reader and the four bindings. Run the
    pinned linter in `recovery` mode and require zero findings:
 
+   The five recovery dependency nodes deliberately resolve the project through
+   the authoritative verified-project lookup rather than the managed project
+   resource. Preserve that boundary: referencing the managed project from any
+   of those nodes pulls unfinished project-creation prerequisites into the
+   target closure and invalidates the five-change recovery contract.
+
    ```sh
    bash scripts/lint-seen-registry-iam-conditions.sh \
      infra/registry/environments/prod-bootstrap \

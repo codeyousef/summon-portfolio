@@ -675,6 +675,9 @@ data "google_client_openid_userinfo" "bootstrap" {
   count    = var.enable_production_project_creation && !var.project_executor_handoff_complete ? 1 : 0
 }
 
+// Recovery-safe project bootstrap resources use this authoritative lookup
+// instead of google_project.production so their documented target closure does
+// not pull unfinished project-creation ancestors into a recovery plan.
 data "google_project" "production_verified" {
   count = var.production_project_creation_verified ? 1 : 0
 
@@ -840,7 +843,7 @@ resource "google_project_service" "bootstrap" {
 
   provider = google.project
 
-  project                    = google_project.production[0].project_id
+  project                    = data.google_project.production_verified[0].project_id
   service                    = each.value
   disable_on_destroy         = false
   disable_dependent_services = false
@@ -1040,7 +1043,7 @@ resource "google_project_iam_custom_role" "resource_iam_setter" {
 
   provider = google.project
 
-  project     = google_project.production[0].project_id
+  project     = data.google_project.production_verified[0].project_id
   role_id     = each.value.role_id
   title       = each.value.title
   description = startswith(each.key, "run_") ? "Sets only Cloud Run IAM policies under a project binding limited to invoker-role changes" : "Sets IAM only through an inherited project binding limited to an exact reviewed ${replace(each.key, "_", " ")} resource"
@@ -1148,7 +1151,7 @@ resource "google_project_iam_custom_role" "state_bucket_policy_reader" {
 
   provider = google.project
 
-  project     = google_project.production[0].project_id
+  project     = data.google_project.production_verified[0].project_id
   role_id     = "seenRegistryStateBucketPolicyReader"
   title       = "Seen Registry State Bucket Policy Reader"
   description = "Reads only metadata and IAM policy for one conditionally bound dedicated state bucket"
@@ -1817,7 +1820,7 @@ resource "google_project_iam_member" "temporary_human_state_bucket_policy_read_a
 
   provider = google.project
 
-  project = google_project.production[0].project_id
+  project = data.google_project.production_verified[0].project_id
   role    = local.state_role_names.policy_reader
   member  = one(var.bootstrap_operator_members)
 
@@ -1838,7 +1841,7 @@ resource "google_project_iam_member" "temporary_human_state_bucket_policy_access
 
   provider = google.project
 
-  project = google_project.production[0].project_id
+  project = data.google_project.production_verified[0].project_id
   role    = local.resource_iam_setter_role_names.storage
   member  = one(var.bootstrap_operator_members)
 
