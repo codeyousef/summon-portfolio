@@ -148,7 +148,7 @@ class HydrationTest {
             body.contains("id=\"fifth-wall-scene-container\" style=\"width: 100%; height: calc(100vh - 80px);"),
             "The Sigil canvas should retain a definite responsive height through its SSR host wrapper"
         )
-        assertTrue(body.contains("/sigil-hydration.js?v=0.4.3.2"), "Should load the released Sigil 0.4.3.2 runtime")
+        assertTrue(body.contains("/sigil-hydration.js?v=0.4.3.3"), "Should load the released Sigil 0.4.3.3 runtime")
         assertTrue(body.contains("\"rendererPreference\":\"webgl\""), "Renderer preference should be declared through Sigil")
         assertTrue(body.contains("\"adaptiveResolution\""), "Scene should declare adaptive render resolution")
         assertTrue(body.contains("\"targetFps\":60.0"), "Adaptive resolution should target 60 FPS")
@@ -203,7 +203,7 @@ class HydrationTest {
             assertEquals("focus-package-$index", interaction.stringValue("interactionId"))
             assertEquals(listOf("activate", "package"), interaction.stringList("actions"))
             assertEquals(
-                listOf("click", "dragstart", "drag", "dragend"),
+                listOf("pointerenter", "pointerleave", "click", "dragstart", "drag", "dragend"),
                 interaction.stringList("events"),
                 "Package $index should keep click focus while opting into pointer drag events"
             )
@@ -211,20 +211,57 @@ class HydrationTest {
             assertEquals(true, drag.booleanValue("enabled"))
             assertEquals("horizontal", drag.stringValue("mode"))
             assertEquals(listOf("fifth-wall-routing-target"), drag.stringList("dropGroups"))
+            assertEquals(false, nodes.singleNode("package-slot-$index-hover").booleanValue("visible"))
         }
 
         (0..3).forEach { index ->
             assertRoutingDropTarget(
                 interaction = nodes.singleNode("truck-slot-$index").objectValue("interaction"),
-                targetId = "route-truck-$index"
+                targetId = "route-truck-$index",
+                hitCenter = listOf(0.0, 1.22, 0.0),
+                hitSize = listOf(3.5, 2.5, 1.95),
+                dropCenter = listOf(0.0, 1.5, 0.0),
+                dropSize = listOf(3.6, 3.7, 3.0)
             )
+            assertEquals(false, nodes.singleNode("truck-slot-$index-hover").booleanValue("visible"))
         }
         assertRoutingDropTarget(
             interaction = nodes.singleNode("return-bin").objectValue("interaction"),
-            targetId = "route-return-bin"
+            targetId = "route-return-bin",
+            hitCenter = listOf(0.0, 0.85, 0.0),
+            hitSize = listOf(2.35, 1.75, 2.35),
+            dropCenter = listOf(0.0, 1.3, 0.0),
+            dropSize = listOf(2.8, 3.2, 2.8)
         )
+        assertEquals(false, nodes.singleNode("return-bin-hover").booleanValue("visible"))
 
         val actions = fifthWallSceneActions(body)
+        val hoverTargets = buildMap {
+            repeat(3) { index -> put("focus-package-$index", "package-slot-$index-hover") }
+            repeat(4) { index -> put("route-truck-$index", "truck-slot-$index-hover") }
+            put("route-return-bin", "return-bin-hover")
+        }
+        val hoverActions = actions.filter {
+            it.objectValue("match").stringValue("type") in setOf("pointerenter", "pointerleave")
+        }
+        assertEquals(16, hoverActions.size, "Every world interaction should have local enter and leave feedback")
+        hoverTargets.forEach { (interactionId, hoverNodeId) ->
+            listOf("pointerenter" to true, "pointerleave" to false).forEach { (type, visible) ->
+                val action = hoverActions.single {
+                    val match = it.objectValue("match")
+                    match.stringValue("type") == type && match.stringValue("interactionId") == interactionId
+                }
+                assertEquals(visible, action.optimisticNode(hoverNodeId).booleanValue("visible"))
+                assertEquals(false, action.booleanValue("preventDefault"))
+                assertEquals(false, action.booleanValue("stopPropagation"))
+                listOf("callbackId", "callbackUrl", "localHandlerId", "requestKey", "url").forEach { key ->
+                    assertTrue(
+                        action[key] == null || action[key] == JsonNull,
+                        "Local hover binding should not serialize $key"
+                    )
+                }
+            }
+        }
         val dropActions = actions.filter { it.objectValue("match").stringValue("type") == "drop" }
         assertEquals(15, dropActions.size, "Every package slot should bind to four trucks and the return bin")
         repeat(3) { sourceIndex ->
@@ -535,15 +572,36 @@ class HydrationTest {
         return json
     }
 
-    private fun assertRoutingDropTarget(interaction: JsonObject, targetId: String) {
+    private fun assertRoutingDropTarget(
+        interaction: JsonObject,
+        targetId: String,
+        hitCenter: List<Double>,
+        hitSize: List<Double>,
+        dropCenter: List<Double>,
+        dropSize: List<Double>
+    ) {
         assertEquals(targetId, interaction.stringValue("interactionId"))
-        assertTrue(interaction.stringList("events").containsAll(listOf("click", "dragenter", "dragleave", "drop")))
+        assertTrue(
+            interaction.stringList("events").containsAll(
+                listOf("pointerenter", "pointerleave", "click", "dragenter", "dragleave", "drop")
+            )
+        )
+        val hitVolume = interaction.objectValue("hitVolume")
+        assertEquals("box", hitVolume.stringValue("shape"))
+        assertVectorEquals(hitCenter, hitVolume.doubleList("center"), "$targetId pointer center")
+        assertVectorEquals(hitSize, hitVolume.doubleList("size"), "$targetId pointer size")
         val dropTarget = interaction.objectValue("dropTarget")
         assertEquals(true, dropTarget.booleanValue("enabled"))
         assertEquals(targetId, dropTarget.stringValue("targetId"))
         assertEquals(listOf("fifth-wall-routing-target"), dropTarget.stringList("groups"))
         assertEquals(listOf("package"), dropTarget.stringList("accepts"))
-        assertEquals(setOf("hover", "active", "valid", "invalid"), dropTarget.objectValue("states").keys)
+        val states = dropTarget.objectValue("states")
+        assertEquals(setOf("hover", "active", "valid", "invalid"), states.keys)
+        assertEquals(JsonNull, states["hover"], "Ordinary hover should use the dedicated ring, not tint the target")
+        val dropVolume = dropTarget.objectValue("hitVolume")
+        assertEquals("box", dropVolume.stringValue("shape"))
+        assertVectorEquals(dropCenter, dropVolume.doubleList("center"), "$targetId drop center")
+        assertVectorEquals(dropSize, dropVolume.doubleList("size"), "$targetId drop size")
     }
 
     private fun assertPackageWrapGeometry(body: String, expected: List<PackageWrapExpectation>) {

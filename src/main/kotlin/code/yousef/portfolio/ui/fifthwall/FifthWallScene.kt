@@ -147,7 +147,7 @@ internal fun FifthWallScene(
         height = "calc(100vh - 80px)",
         backgroundColor = CHARCOAL,
         sceneEventHandlers = fifthWallSceneEventHandlers(controller),
-        sceneEventBindings = fifthWallDragSnapBindings()
+        sceneEventBindings = fifthWallDragSnapBindings() + fifthWallHoverBindings()
     ) {
         SceneConfig(
             backgroundColor = CHARCOAL,
@@ -526,6 +526,18 @@ private fun PackageSlot(
             name = "package-slot-$index-selection",
             id = "package-slot-$index-selection"
         )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 1.41f, outerRadius = 1.53f, radialSegments = 28),
+            position = listOf(0f, 0.84f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = CYAN,
+            visible = false,
+            castShadow = false,
+            receiveShadow = false,
+            name = "package-slot-$index-hover",
+            id = "package-slot-$index-hover"
+        )
         SigilText(
             text = packageColorLabel(index, pkg),
             position = listOf(0f, 2.42f, 0f),
@@ -560,8 +572,10 @@ private fun TruckSlot(
             interactionId = truckInteraction(index),
             targetId = truckInteraction(index),
             enabled = visible && interactionEnabled,
-            size = listOf(3.6f, 3.7f, 3f),
-            center = listOf(0f, 1.5f, 0f)
+            hitSize = listOf(3.5f, 2.5f, 1.95f),
+            hitCenter = listOf(0f, 1.22f, 0f),
+            dropSize = listOf(3.6f, 3.7f, 3f),
+            dropCenter = listOf(0f, 1.5f, 0f)
         ),
         id = "truck-slot-$index"
     ) {
@@ -605,6 +619,18 @@ private fun TruckSlot(
             name = "truck-slot-$index-selection",
             id = "truck-slot-$index-selection"
         )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 1.76f, outerRadius = 1.9f, radialSegments = 28),
+            position = listOf(0f, 0.07f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = CYAN,
+            visible = false,
+            castShadow = false,
+            receiveShadow = false,
+            name = "truck-slot-$index-hover",
+            id = "truck-slot-$index-hover"
+        )
         SigilText(
             text = "TRUCK ${'A' + index}",
             position = listOf(0f, 2.86f, 0f),
@@ -632,8 +658,10 @@ private fun ReturnBin(selected: Boolean, interactionEnabled: Boolean) {
             interactionId = INTERACTION_RETURN,
             targetId = INTERACTION_RETURN,
             enabled = interactionEnabled,
-            size = listOf(2.8f, 3.2f, 2.8f),
-            center = listOf(0f, 1.3f, 0f)
+            hitSize = listOf(2.35f, 1.75f, 2.35f),
+            hitCenter = listOf(0f, 0.85f, 0f),
+            dropSize = listOf(2.8f, 3.2f, 2.8f),
+            dropCenter = listOf(0f, 1.3f, 0f)
         ),
         id = "return-bin"
     ) {
@@ -670,6 +698,18 @@ private fun ReturnBin(selected: Boolean, interactionEnabled: Boolean) {
             receiveShadow = false,
             name = "return-bin-selection",
             id = "return-bin-selection"
+        )
+        SigilMesh(
+            geometryType = GeometryType.RING,
+            geometryParams = GeometryParams(innerRadius = 1.3f, outerRadius = 1.44f, radialSegments = 28),
+            position = listOf(0f, 0.06f, 0f),
+            rotation = listOf(-(PI.toFloat() / 2f), 0f, 0f),
+            color = CYAN,
+            visible = false,
+            castShadow = false,
+            receiveShadow = false,
+            name = "return-bin-hover",
+            id = "return-bin-hover"
         )
         SigilText(
             text = "RETURN BIN",
@@ -1443,6 +1483,38 @@ private fun fifthWallDragSnapBindings(): List<SigilSceneEventBinding> =
         )
     }
 
+private fun fifthWallHoverBindings(): List<SigilSceneEventBinding> =
+    buildList {
+        repeat(PACKAGE_SLOT_COUNT) { index ->
+            add(focusInteraction(index) to "package-slot-$index-hover")
+        }
+        repeat(TRUCK_SLOT_COUNT) { index ->
+            add(truckInteraction(index) to "truck-slot-$index-hover")
+        }
+        add(INTERACTION_RETURN to "return-bin-hover")
+    }.flatMap { (interactionId, hoverNodeId) ->
+        listOf(
+            fifthWallHoverBinding(interactionId, hoverNodeId, "pointerenter", true),
+            fifthWallHoverBinding(interactionId, hoverNodeId, "pointerleave", false)
+        )
+    }
+
+private fun fifthWallHoverBinding(
+    interactionId: String,
+    hoverNodeId: String,
+    eventType: String,
+    visible: Boolean
+): SigilSceneEventBinding = SigilSceneEventBinding(
+    match = SigilSceneEventMatch(type = eventType, interactionId = interactionId),
+    optimisticPatch = ScenePatch(
+        nodes = listOf(SceneNodePatch(id = hoverNodeId, visible = visible))
+    ),
+    suppressWhilePending = false,
+    reloadOnSuccess = false,
+    preventDefault = false,
+    stopPropagation = false
+)
+
 private fun stateResponse(
     controller: FifthWallController,
     cue: SceneCue = SceneCue.NONE,
@@ -1913,7 +1985,7 @@ private fun packageDragInteraction(
     cursor = if (enabled) CursorHint.GRAB else CursorHint.AUTO,
     hitVolume = HitVolumeData(HitVolumeShape.BOX, center = center, size = size),
     actions = listOf("activate", "package"),
-    events = listOf("click", "dragstart", "drag", "dragend"),
+    events = listOf("pointerenter", "pointerleave", "click", "dragstart", "drag", "dragend"),
     enabled = enabled,
     drag = DragMetadata(
         enabled = true,
@@ -1928,14 +2000,16 @@ private fun routingDropInteraction(
     interactionId: String,
     targetId: String,
     enabled: Boolean,
-    size: List<Float>,
-    center: List<Float>
+    hitSize: List<Float>,
+    hitCenter: List<Float>,
+    dropSize: List<Float>,
+    dropCenter: List<Float>
 ): InteractionMetadata = InteractionMetadata(
     interactionId = interactionId,
     cursor = if (enabled) CursorHint.POINTER else CursorHint.AUTO,
-    hitVolume = HitVolumeData(HitVolumeShape.BOX, center = center, size = size),
+    hitVolume = HitVolumeData(HitVolumeShape.BOX, center = hitCenter, size = hitSize),
     actions = listOf("activate", "drop-target"),
-    events = listOf("click", "dragenter", "dragleave", "drop"),
+    events = listOf("pointerenter", "pointerleave", "click", "dragenter", "dragleave", "drop"),
     enabled = enabled,
     dropTarget = DropTargetMetadata(
         enabled = true,
@@ -1943,11 +2017,11 @@ private fun routingDropInteraction(
         groups = listOf(ROUTING_DROP_GROUP),
         accepts = listOf("package"),
         states = DropTargetStateMetadata(
-            hover = HighlightPatch(true, CYAN, 0.35f),
             active = HighlightPatch(true, CYAN, 0.55f),
             valid = HighlightPatch(true, CYAN, 0.78f),
             invalid = HighlightPatch(true, CORAL, 0.78f)
-        )
+        ),
+        hitVolume = HitVolumeData(HitVolumeShape.BOX, center = dropCenter, size = dropSize)
     )
 )
 
