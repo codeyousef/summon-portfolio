@@ -6,6 +6,10 @@ import codes.yousef.sigil.schema.AudioPatch
 import codes.yousef.sigil.schema.AudioPatchAction
 import codes.yousef.sigil.schema.CameraPatch
 import codes.yousef.sigil.schema.CursorHint
+import codes.yousef.sigil.schema.DragConstraintMode
+import codes.yousef.sigil.schema.DragMetadata
+import codes.yousef.sigil.schema.DropTargetMetadata
+import codes.yousef.sigil.schema.DropTargetStateMetadata
 import codes.yousef.sigil.schema.GeometryParams
 import codes.yousef.sigil.schema.GeometryType
 import codes.yousef.sigil.schema.HighlightPatch
@@ -27,6 +31,7 @@ import codes.yousef.sigil.schema.TextBaselineMode
 import codes.yousef.sigil.schema.TextFacingMode
 import codes.yousef.sigil.summon.canvas.MateriaCanvas
 import codes.yousef.sigil.summon.canvas.SceneConfig
+import codes.yousef.sigil.summon.canvas.SigilSceneEventBinding
 import codes.yousef.sigil.summon.canvas.SigilSceneEventCallbackResponse
 import codes.yousef.sigil.summon.canvas.SigilSceneEventHandler
 import codes.yousef.sigil.summon.canvas.SigilSceneEventMatch
@@ -43,7 +48,6 @@ import codes.yousef.sigil.summon.components.SigilOrbitControls
 import codes.yousef.sigil.summon.components.SigilPlane
 import codes.yousef.sigil.summon.components.SigilScreenLayer
 import codes.yousef.sigil.summon.components.SigilSoundBus
-import codes.yousef.sigil.summon.components.SigilSphere
 import codes.yousef.sigil.summon.components.SigilText
 import codes.yousef.summon.annotation.Composable
 import io.materia.core.math.Color
@@ -54,6 +58,8 @@ private const val TRUCK_SLOT_COUNT = 4
 private const val MODEL_ASSET_VERSION = "20260711-sigil-0430"
 private const val SOUND_STORAGE_KEY = "fifth-wall-sound-volume-v1"
 private const val FIFTH_WALL_FONT = "/static/fifth-wall-control-font.json"
+private const val ROUTING_DROP_GROUP = "fifth-wall-routing-target"
+private const val ROUTING_REQUEST_KEY = "fifth-wall:route"
 
 private const val INTERACTION_RETURN = "route-return-bin"
 private const val INTERACTION_OVERVIEW = "camera-overview"
@@ -90,14 +96,7 @@ private val packageModelUrls = listOf(
     fifthWallModelUrl("sphere-package-with-cradle.glb")
 )
 
-private val packageColors = listOf(
-    "red" to CORAL,
-    "blue" to argb("#5aa9ff"),
-    "green" to TEAL,
-    "yellow" to AMBER,
-    "gray" to argb("#9fb0c8"),
-    "purple" to argb("#b690ff")
-)
+private val packageColors = FifthWallColors.map { color -> color.name to argb(color.hex) }
 
 private enum class SceneCue {
     NONE,
@@ -108,6 +107,32 @@ private enum class SceneCue {
 }
 
 private data class PromptChoice(val label: String)
+
+private data class PackageModelBounds(
+    val baseY: Float,
+    val width: Float,
+    val height: Float,
+    val depth: Float,
+    val frontZ: Float
+)
+
+private data class PackageWrapProfile(
+    val frontWidthRatio: Float,
+    val frontHeightRatio: Float,
+    val verticalWidthRatio: Float,
+    val verticalHeightRatio: Float,
+    val topWidthRatio: Float,
+    val topDepthRatio: Float
+)
+
+private data class PackageWrapGeometry(
+    val frontPosition: List<Float>,
+    val frontSize: List<Float>,
+    val verticalPosition: List<Float>,
+    val verticalSize: List<Float>,
+    val topPosition: List<Float>,
+    val topSize: List<Float>
+)
 
 @Composable
 internal fun FifthWallScene(
@@ -121,7 +146,8 @@ internal fun FifthWallScene(
         width = "100%",
         height = "calc(100vh - 80px)",
         backgroundColor = CHARCOAL,
-        sceneEventHandlers = fifthWallSceneEventHandlers(controller)
+        sceneEventHandlers = fifthWallSceneEventHandlers(controller),
+        sceneEventBindings = fifthWallDragSnapBindings()
     ) {
         SceneConfig(
             backgroundColor = CHARCOAL,
@@ -407,7 +433,7 @@ private fun PackageSlot(
     interactionEnabled: Boolean
 ) {
     val position = packageSlotPosition(index)
-    val interaction = worldInteraction(
+    val interaction = packageDragInteraction(
         interactionId = focusInteraction(index),
         enabled = interactionEnabled && pkg != null,
         size = listOf(2.7f, 3.2f, 2.7f),
@@ -442,31 +468,48 @@ private fun PackageSlot(
             name = "package-slot-$index-model",
             id = "package-slot-$index-model"
         )
+        val wrap = packageWrapGeometry(pkg)
         packageColors.forEach { (name, color) ->
             SigilGroup(
                 visible = pkg?.color?.name == name,
                 name = "package-slot-$index-color-$name",
                 id = "package-slot-$index-color-$name"
             ) {
-                SigilSphere(
-                    radius = 0.14f,
-                    widthSegments = 8,
-                    heightSegments = 6,
-                    position = listOf(-0.66f, 1.66f, 0.57f),
+                SigilBox(
+                    width = 1f,
+                    height = 1f,
+                    depth = 1f,
+                    position = wrap.frontPosition,
+                    scale = wrap.frontSize,
                     color = color,
                     castShadow = false,
                     receiveShadow = false,
-                    name = "package-slot-$index-color-marker-$name"
+                    name = "package-slot-$index-color-wrap-front-$name",
+                    id = "package-slot-$index-color-wrap-front-$name"
                 )
                 SigilBox(
-                    width = 0.52f,
-                    height = 0.06f,
-                    depth = 0.08f,
-                    position = listOf(-0.4f, 1.66f, 0.57f),
+                    width = 1f,
+                    height = 1f,
+                    depth = 1f,
+                    position = wrap.verticalPosition,
+                    scale = wrap.verticalSize,
                     color = color,
                     castShadow = false,
                     receiveShadow = false,
-                    name = "package-slot-$index-color-stem-$name"
+                    name = "package-slot-$index-color-wrap-vertical-$name",
+                    id = "package-slot-$index-color-wrap-vertical-$name"
+                )
+                SigilBox(
+                    width = 1f,
+                    height = 1f,
+                    depth = 1f,
+                    position = wrap.topPosition,
+                    scale = wrap.topSize,
+                    color = color,
+                    castShadow = false,
+                    receiveShadow = false,
+                    name = "package-slot-$index-color-wrap-top-$name",
+                    id = "package-slot-$index-color-wrap-top-$name"
                 )
                 ""
             }
@@ -484,7 +527,7 @@ private fun PackageSlot(
             id = "package-slot-$index-selection"
         )
         SigilText(
-            text = "P${index + 1}",
+            text = packageColorLabel(index, pkg),
             position = listOf(0f, 2.42f, 0f),
             color = SAFETY_WHITE,
             size = 0.3f,
@@ -513,8 +556,9 @@ private fun TruckSlot(
         position = truckSlotPosition(index),
         visible = visible,
         name = "truck-slot-$index",
-        interaction = worldInteraction(
+        interaction = routingDropInteraction(
             interactionId = truckInteraction(index),
+            targetId = truckInteraction(index),
             enabled = visible && interactionEnabled,
             size = listOf(3.6f, 3.7f, 3f),
             center = listOf(0f, 1.5f, 0f)
@@ -584,8 +628,9 @@ private fun ReturnBin(selected: Boolean, interactionEnabled: Boolean) {
     SigilGroup(
         position = listOf(8.7f, 0f, 4.8f),
         name = "return-bin",
-        interaction = worldInteraction(
+        interaction = routingDropInteraction(
             interactionId = INTERACTION_RETURN,
+            targetId = INTERACTION_RETURN,
             enabled = interactionEnabled,
             size = listOf(2.8f, 3.2f, 2.8f),
             center = listOf(0f, 1.3f, 0f)
@@ -1222,7 +1267,7 @@ private fun fifthWallSceneEventHandlers(controller: FifthWallController): List<S
     repeat(TRUCK_SLOT_COUNT) { index ->
         handlers += sceneHandler(
             interactionId = truckInteraction(index),
-            requestKey = "route-truck-$index",
+            requestKey = "route",
             optimisticPatch = routeOptimisticPatch("truck-slot-$index-selection"),
             onEvent = { controller.routeToTruck(index) },
             onResponse = { stateResponse(controller, cue = SceneCue.ROUTE) }
@@ -1230,11 +1275,51 @@ private fun fifthWallSceneEventHandlers(controller: FifthWallController): List<S
     }
     handlers += sceneHandler(
         interactionId = INTERACTION_RETURN,
-        requestKey = "route-return",
+        requestKey = "route",
         optimisticPatch = routeOptimisticPatch("return-bin-selection"),
         onEvent = controller::routeToReturn,
         onResponse = { stateResponse(controller, cue = SceneCue.ROUTE) }
     )
+    repeat(PACKAGE_SLOT_COUNT) { sourceIndex ->
+        repeat(TRUCK_SLOT_COUNT) { targetIndex ->
+            handlers += sceneHandler(
+                match = SigilSceneEventMatch(
+                    type = "drop",
+                    sourceInteractionId = focusInteraction(sourceIndex),
+                    targetInteractionId = truckInteraction(targetIndex),
+                    accepted = true
+                ),
+                requestKey = ROUTING_REQUEST_KEY,
+                optimisticPatch = routeOptimisticPatch(
+                    selectionNodeId = "truck-slot-$targetIndex-selection",
+                    sourceSlot = sourceIndex
+                ),
+                onEvent = {
+                    val packageId = controller.state.value.visiblePackages().getOrNull(sourceIndex)?.id
+                    controller.dropOnTruck(targetIndex, packageId)
+                },
+                onResponse = { stateResponse(controller, cue = SceneCue.ROUTE) }
+            )
+        }
+        handlers += sceneHandler(
+            match = SigilSceneEventMatch(
+                type = "drop",
+                sourceInteractionId = focusInteraction(sourceIndex),
+                targetInteractionId = INTERACTION_RETURN,
+                accepted = true
+            ),
+            requestKey = ROUTING_REQUEST_KEY,
+            optimisticPatch = routeOptimisticPatch(
+                selectionNodeId = "return-bin-selection",
+                sourceSlot = sourceIndex
+            ),
+            onEvent = {
+                val packageId = controller.state.value.visiblePackages().getOrNull(sourceIndex)?.id
+                controller.dropOnReturn(packageId)
+            },
+            onResponse = { stateResponse(controller, cue = SceneCue.ROUTE) }
+        )
+    }
     handlers += sceneHandler(
         interactionId = INTERACTION_OVERVIEW,
         requestKey = "camera-overview",
@@ -1308,18 +1393,55 @@ private fun sceneHandler(
     optimisticPatch: ScenePatch? = null,
     onEvent: () -> Unit,
     onResponse: () -> SigilSceneEventCallbackResponse
+): SigilSceneEventHandler = sceneHandler(
+    match = SigilSceneEventMatch(type = "click", interactionId = interactionId),
+    requestKey = "fifth-wall:$requestKey",
+    optimisticPatch = optimisticPatch,
+    onEvent = onEvent,
+    onResponse = onResponse
+)
+
+private fun sceneHandler(
+    match: SigilSceneEventMatch,
+    requestKey: String,
+    optimisticPatch: ScenePatch? = null,
+    onEvent: () -> Unit,
+    onResponse: () -> SigilSceneEventCallbackResponse
 ): SigilSceneEventHandler =
     SigilSceneEventHandler(
-        match = SigilSceneEventMatch(type = "click", interactionId = interactionId),
+        match = match,
         onEvent = onEvent,
         onResponse = onResponse,
         optimisticPatch = optimisticPatch,
-        requestKey = "fifth-wall:$requestKey",
+        requestKey = requestKey,
         suppressWhilePending = true,
         reloadOnSuccess = false,
         preventDefault = true,
         stopPropagation = true
     )
+
+private fun fifthWallDragSnapBindings(): List<SigilSceneEventBinding> =
+    List(PACKAGE_SLOT_COUNT) { index ->
+        SigilSceneEventBinding(
+            match = SigilSceneEventMatch(
+                type = "dragend",
+                sourceInteractionId = focusInteraction(index)
+            ),
+            optimisticPatch = ScenePatch(
+                nodes = listOf(
+                    SceneNodePatch(
+                        id = "package-slot-$index",
+                        position = packageSlotPosition(index)
+                    )
+                )
+            ),
+            requestKey = "fifth-wall:drag-snap-$index",
+            suppressWhilePending = false,
+            reloadOnSuccess = false,
+            preventDefault = true,
+            stopPropagation = true
+        )
+    }
 
 private fun stateResponse(
     controller: FifthWallController,
@@ -1385,6 +1507,7 @@ private fun fifthWallScenePatch(
         val selected = pkg?.id == focusedId
         nodes += SceneNodePatch(
             id = "package-slot-$index",
+            position = packageSlotPosition(index),
             rotation = listOf(0f, packageYaw(pkg, index), 0f),
             visible = pkg != null,
             interactionEnabled = interactionEnabled && pkg != null
@@ -1401,10 +1524,30 @@ private fun fifthWallScenePatch(
             visible = selected,
             highlight = HighlightPatch(selected, CYAN, if (selected) 0.9f else 0f)
         )
+        nodes += SceneNodePatch(
+            id = "package-slot-$index-world-label",
+            text = packageColorLabel(index, pkg)
+        )
+        val wrap = packageWrapGeometry(pkg)
         packageColors.forEach { (name, _) ->
             nodes += SceneNodePatch(
                 id = "package-slot-$index-color-$name",
                 visible = pkg?.color?.name == name
+            )
+            nodes += SceneNodePatch(
+                id = "package-slot-$index-color-wrap-front-$name",
+                position = wrap.frontPosition,
+                scale = wrap.frontSize
+            )
+            nodes += SceneNodePatch(
+                id = "package-slot-$index-color-wrap-vertical-$name",
+                position = wrap.verticalPosition,
+                scale = wrap.verticalSize
+            )
+            nodes += SceneNodePatch(
+                id = "package-slot-$index-color-wrap-top-$name",
+                position = wrap.topPosition,
+                scale = wrap.topSize
             )
         }
     }
@@ -1567,14 +1710,24 @@ private fun focusOptimisticPatch(index: Int): ScenePatch = ScenePatch(
     }
 )
 
-private fun routeOptimisticPatch(selectionNodeId: String): ScenePatch = ScenePatch(
-    nodes = listOf(
-        SceneNodePatch(
-            id = selectionNodeId,
-            visible = true,
-            highlight = HighlightPatch(true, CYAN, 0.9f)
+private fun routeOptimisticPatch(selectionNodeId: String, sourceSlot: Int? = null): ScenePatch = ScenePatch(
+    nodes = buildList {
+        sourceSlot?.let { index ->
+            add(
+                SceneNodePatch(
+                    id = "package-slot-$index",
+                    position = packageSlotPosition(index)
+                )
+            )
+        }
+        add(
+            SceneNodePatch(
+                id = selectionNodeId,
+                visible = true,
+                highlight = HighlightPatch(true, CYAN, 0.9f)
+            )
         )
-    )
+    }
 )
 
 private fun checkpointSavePatches(state: FifthWallUiState): List<StoragePatch> {
@@ -1750,6 +1903,54 @@ private fun worldInteraction(
     enabled = enabled
 )
 
+private fun packageDragInteraction(
+    interactionId: String,
+    enabled: Boolean,
+    size: List<Float>,
+    center: List<Float>
+): InteractionMetadata = InteractionMetadata(
+    interactionId = interactionId,
+    cursor = if (enabled) CursorHint.GRAB else CursorHint.AUTO,
+    hitVolume = HitVolumeData(HitVolumeShape.BOX, center = center, size = size),
+    actions = listOf("activate", "package"),
+    events = listOf("click", "dragstart", "drag", "dragend"),
+    enabled = enabled,
+    drag = DragMetadata(
+        enabled = true,
+        mode = DragConstraintMode.HORIZONTAL,
+        planeNormal = listOf(0f, 1f, 0f),
+        planePoint = listOf(0f, center[1], 0f),
+        dropGroups = listOf(ROUTING_DROP_GROUP)
+    )
+)
+
+private fun routingDropInteraction(
+    interactionId: String,
+    targetId: String,
+    enabled: Boolean,
+    size: List<Float>,
+    center: List<Float>
+): InteractionMetadata = InteractionMetadata(
+    interactionId = interactionId,
+    cursor = if (enabled) CursorHint.POINTER else CursorHint.AUTO,
+    hitVolume = HitVolumeData(HitVolumeShape.BOX, center = center, size = size),
+    actions = listOf("activate", "drop-target"),
+    events = listOf("click", "dragenter", "dragleave", "drop"),
+    enabled = enabled,
+    dropTarget = DropTargetMetadata(
+        enabled = true,
+        targetId = targetId,
+        groups = listOf(ROUTING_DROP_GROUP),
+        accepts = listOf("package"),
+        states = DropTargetStateMetadata(
+            hover = HighlightPatch(true, CYAN, 0.35f),
+            active = HighlightPatch(true, CYAN, 0.55f),
+            valid = HighlightPatch(true, CYAN, 0.78f),
+            invalid = HighlightPatch(true, CORAL, 0.78f)
+        )
+    )
+)
+
 private fun screenInteraction(
     interactionId: String,
     enabled: Boolean,
@@ -1800,6 +2001,85 @@ private fun packageModelPosition(pkg: FifthWallPackage?): List<Float> = when (pk
     "sphere" -> listOf(0f, 0.9f, 0f)
     else -> listOf(0f, 0.84f, 0f)
 }
+
+private fun packageWrapGeometry(pkg: FifthWallPackage?): PackageWrapGeometry {
+    val (bounds, profile) = when (pkg?.shape) {
+        "rect" -> RECT_PACKAGE_BOUNDS to RECT_WRAP_PROFILE
+        "cylinder" -> CYLINDER_PACKAGE_BOUNDS to CYLINDER_WRAP_PROFILE
+        "sphere" -> SPHERE_PACKAGE_BOUNDS to SPHERE_WRAP_PROFILE
+        else -> CUBE_PACKAGE_BOUNDS to CUBE_WRAP_PROFILE
+    }
+    val centerY = bounds.baseY + bounds.height / 2f
+    val frontZ = bounds.frontZ + WRAP_CLEARANCE + FRONT_WRAP_DEPTH / 2f
+    val verticalZ = bounds.frontZ + WRAP_CLEARANCE + VERTICAL_WRAP_DEPTH / 2f
+    return PackageWrapGeometry(
+        frontPosition = listOf(0f, centerY, frontZ),
+        frontSize = listOf(
+            bounds.width * profile.frontWidthRatio,
+            bounds.height * profile.frontHeightRatio,
+            FRONT_WRAP_DEPTH
+        ),
+        verticalPosition = listOf(0f, centerY, verticalZ),
+        verticalSize = listOf(
+            bounds.width * profile.verticalWidthRatio,
+            bounds.height * profile.verticalHeightRatio,
+            VERTICAL_WRAP_DEPTH
+        ),
+        topPosition = listOf(
+            0f,
+            bounds.baseY + bounds.height + WRAP_CLEARANCE + TOP_WRAP_HEIGHT / 2f,
+            0f
+        ),
+        topSize = listOf(
+            bounds.width * profile.topWidthRatio,
+            TOP_WRAP_HEIGHT,
+            bounds.depth * profile.topDepthRatio
+        )
+    )
+}
+
+private const val WRAP_CLEARANCE = 0.055f
+private const val FRONT_WRAP_DEPTH = 0.08f
+private const val VERTICAL_WRAP_DEPTH = 0.09f
+private const val TOP_WRAP_HEIGHT = 0.08f
+
+// Bounds come from each authored glTF's vertices after its SigilModel scale, position, and local yaw.
+private val CUBE_PACKAGE_BOUNDS = PackageModelBounds(
+    baseY = 0.84f,
+    width = 1.357343757f,
+    height = 1.113164063f,
+    depth = 1.224531216f,
+    frontZ = 0.612265608f
+)
+private val RECT_PACKAGE_BOUNDS = PackageModelBounds(
+    baseY = 0.84f,
+    width = 2.075937510f,
+    height = 0.774414063f,
+    depth = 1.077890630f,
+    frontZ = 0.538945315f
+)
+private val CYLINDER_PACKAGE_BOUNDS = PackageModelBounds(
+    baseY = 0.84f,
+    width = 1.166512703f,
+    height = 1.086406250f,
+    depth = 1.351626454f,
+    frontZ = 0.680616993f
+)
+private val SPHERE_PACKAGE_BOUNDS = PackageModelBounds(
+    baseY = 0.9f,
+    width = 1.481062319f,
+    height = 0.942968750f,
+    depth = 1.483240093f,
+    frontZ = 0.742556690f
+)
+
+private val CUBE_WRAP_PROFILE = PackageWrapProfile(0.82f, 0.27f, 0.22f, 0.74f, 0.22f, 0.86f)
+private val RECT_WRAP_PROFILE = PackageWrapProfile(0.82f, 0.34f, 0.16f, 0.72f, 0.16f, 0.84f)
+private val CYLINDER_WRAP_PROFILE = PackageWrapProfile(0.66f, 0.28f, 0.25f, 0.72f, 0.26f, 0.68f)
+private val SPHERE_WRAP_PROFILE = PackageWrapProfile(0.5f, 0.32f, 0.2f, 0.62f, 0.3f, 0.3f)
+
+private fun packageColorLabel(index: Int, pkg: FifthWallPackage?): String =
+    "P${index + 1} \u2022 ${pkg?.color?.name?.uppercase() ?: "--"}"
 
 private fun packageModelScale(pkg: FifthWallPackage?): List<Float> = when (pkg?.shape) {
     "rect" -> listOf(2.08f, 1.22f, 1.08f)
