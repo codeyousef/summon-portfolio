@@ -28,10 +28,20 @@ for role in roles/iam.workloadIdentityUser roles/bigquery.jobUser roles/bigquery
   rg -q "${role}" "${root}/dev/main.tf" || fail "missing required least-privilege role ${role}"
 done
 
-if rg -n 'resource[[:space:]]+"google_service_account_key"|roles/(owner|editor|viewer|billing\.|datastore\.)' \
+if rg -n 'resource[[:space:]]+"google_service_account_key"|roles/(owner|editor|viewer|billing\.)' \
   "${root}" -g '*.tf'; then
-  fail "service-account keys, broad project roles, billing mutation, and Firestore roles are forbidden"
+  fail "service-account keys, broad project roles, and billing mutation roles are forbidden"
 fi
+
+firestore_iam="${root}/dev/portfolio_firestore_iam.tf"
+[[ "$(rg -n 'roles/datastore\.' "${root}" -g '*.tf' | wc -l)" -eq 1 ]] ||
+  fail "exactly one reviewed Firestore role binding is permitted"
+rg -q 'role[[:space:]]*=[[:space:]]*"roles/datastore\.user"' "${firestore_iam}" ||
+  fail "the reviewed Dammam binding must retain roles/datastore.user"
+rg -q "resource.name == 'projects/portfolio-476219/databases/portfolio-me-dev'" "${firestore_iam}" ||
+  fail "the Firestore role must remain constrained to portfolio-me-dev"
+rg -q 'member[[:space:]]*=[[:space:]]*"serviceAccount:portfolio-dev-runtime@portfolio-476219\.iam\.gserviceaccount\.com"' "${firestore_iam}" ||
+  fail "the Firestore role must remain bound only to the Portfolio dev runtime"
 
 rg -q 'maximum_bytes_billed[[:space:]]*=[[:space:]]*50000000' "${root}/dev/outputs.tf" ||
   fail "the Worker handoff must retain the 50 MB daily query cap"

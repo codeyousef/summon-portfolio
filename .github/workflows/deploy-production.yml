@@ -148,7 +148,7 @@ jobs:
             echo "- Previous Worker version: \`${before}\`"
             echo "- Deployed Worker version: \`${after}\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
-            echo "- Rollback: `pnpm exec wrangler rollback ${before} --name yousef-portfolio-edge-prod`"
+            printf -- '- Rollback: `pnpm exec wrangler rollback %s --name yousef-portfolio-edge-prod`\n' "${before}"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Verify production health
