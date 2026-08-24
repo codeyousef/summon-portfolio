@@ -46,13 +46,48 @@ class GoogleCloudRunTufIdTokenProvider(
     }
 }
 
+/**
+ * Pinned bearer used only inside a Cloudflare Container. The Container's
+ * outbound host map replaces this value at the service-binding boundary, so
+ * the route-less signer Worker never becomes directly reachable.
+ */
+class CloudflareServiceBindingTufTokenProvider(
+    private val target: RemoteTufSignerTarget,
+    private val token: String,
+) : RemoteTufTokenProvider {
+    init {
+        require(token.length in 32..512 && token.none(Char::isISOControl)) {
+            "SEEN_SIGNER_CALL_TOKEN must contain 32 to 512 non-control characters"
+        }
+    }
+
+    override fun accessToken(endpoint: URI): String {
+        if (endpoint.normalize() != target.endpoint.normalize()) {
+            throw RemoteTufSigningException("Remote signer authentication endpoint does not match its pinned target")
+        }
+        return token
+    }
+}
+
+internal fun defaultRemoteTufTokenProvider(
+    target: RemoteTufSignerTarget,
+    environment: (String) -> String? = System::getenv,
+): RemoteTufTokenProvider {
+    val cloudflareToken = environment("SEEN_SIGNER_CALL_TOKEN")?.trim()?.takeIf(String::isNotEmpty)
+    return if (cloudflareToken == null) {
+        GoogleCloudRunTufIdTokenProvider(target)
+    } else {
+        CloudflareServiceBindingTufTokenProvider(target, cloudflareToken)
+    }
+}
+
 internal fun createRemoteTufOnlineSigners(
     activeRoles: Set<String>,
     operation: TufSigningOperation,
     publicKeysHex: Map<String, String>,
     targets: Map<String, RemoteTufSignerTarget>,
     tokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
-        { target -> GoogleCloudRunTufIdTokenProvider(target) },
+        ::defaultRemoteTufTokenProvider,
 ): TufOnlineSigners {
     require(activeRoles.all(TufRole.ONLINE::contains)) { "Unknown online TUF signing role" }
     require(activeRoles.all(operation::permitsRole)) { "TUF signing operation does not permit every active role" }

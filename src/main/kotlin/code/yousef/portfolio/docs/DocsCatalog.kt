@@ -12,7 +12,8 @@ import java.nio.file.Path
 import java.nio.file.FileVisitOption
 
 class DocsCatalog(
-    private val config: DocsConfig
+    private val config: DocsConfig,
+    private val entryLoader: (() -> List<DocEntry>)? = null,
 ) {
     data class DocEntry(
         val slug: String,
@@ -32,40 +33,48 @@ class DocsCatalog(
     private val httpClient: java.net.http.HttpClient = java.net.http.HttpClient.newBuilder().build()
 
     @Volatile
-    private var snapshot: Snapshot = loadSnapshot()
+    private var snapshotState: Snapshot? = null
 
     fun reload() {
-        snapshot = loadSnapshot()
+        snapshotState = loadSnapshot()
     }
 
-    fun find(slug: String): DocEntry? = snapshot.slugMap[slug]
+    fun find(slug: String): DocEntry? = currentSnapshot().slugMap[slug]
 
     fun firstEntryStartingWith(prefix: String): DocEntry? {
         if (prefix.isBlank()) return null
         val normalizedPrefix = prefix.lowercase().trimEnd('/') + "/"
-        return snapshot.entries.firstOrNull {
+        return currentSnapshot().entries.firstOrNull {
             it.slug.lowercase().startsWith(normalizedPrefix)
         }
     }
 
-    fun navTree(): DocsNavTree = snapshot.navTree
+    fun navTree(): DocsNavTree = currentSnapshot().navTree
 
     fun neighbors(slug: String): NeighborLinks {
-        val ordered = snapshot.orderedSlugs
-        val map = snapshot.slugMap
+        val current = currentSnapshot()
+        val ordered = current.orderedSlugs
+        val map = current.slugMap
         val index = ordered.indexOf(slug).takeIf { it >= 0 } ?: return NeighborLinks(null, null)
         val previous = ordered.getOrNull(index - 1)?.let { map[it] }?.toNavLink()
         val next = ordered.getOrNull(index + 1)?.let { map[it] }?.toNavLink()
         return NeighborLinks(previous, next)
     }
 
-    fun allSlugs(): List<String> = snapshot.orderedSlugs
+    fun allSlugs(): List<String> = currentSnapshot().orderedSlugs
+
+    private fun currentSnapshot(): Snapshot {
+        snapshotState?.let { return it }
+        return synchronized(this) {
+            snapshotState ?: loadSnapshot().also { snapshotState = it }
+        }
+    }
 
     private fun DocEntry.toNavLink(): NavLink =
         NavLink(title = title, path = if (slug == SLUG_ROOT) "/" else "/$slug")
 
     private fun loadSnapshot(): Snapshot {
-        val entries = loadEntries()
+        val entries = entryLoader?.invoke() ?: loadEntries()
         return Snapshot(
             entries = entries,
             slugMap = entries.associateBy { it.slug },

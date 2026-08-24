@@ -3,6 +3,7 @@ package code.yousef.portfolio.ui.photography
 import code.yousef.portfolio.content.model.PhotographyMediaType
 import code.yousef.portfolio.content.model.PhotographyPhoto
 import code.yousef.portfolio.content.model.PhotographySourceKind
+import code.yousef.portfolio.photography.parseContentAddressedPhotoKey
 import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.theme.PortfolioTheme
 import code.yousef.portfolio.ui.components.AppHeader
@@ -664,14 +665,21 @@ private fun EmptyPhotographyPage() {
 
 private fun mediaSource(photo: PhotographyPhoto): String =
     when (photo.sourceKind) {
-        PhotographySourceKind.UPLOAD -> "/uploads/photography/${photo.uploadAssetRef().urlPathSegment()}"
+        PhotographySourceKind.UPLOAD -> photo.uploadAssetHref()
         PhotographySourceKind.EXTERNAL -> photo.externalUrl.orEmpty()
     }
 
 private fun PhotographyPhoto.primaryImageSource(): String =
     when (sourceKind) {
-        PhotographySourceKind.UPLOAD -> "/uploads/photography/${id.urlPathSegment()}"
+        PhotographySourceKind.UPLOAD -> uploadAssetHref()
         PhotographySourceKind.EXTERNAL -> externalUrl.orEmpty()
+    }
+
+private fun PhotographyPhoto.uploadAssetHref(): String =
+    if (parseContentAddressedPhotoKey(storageKey) != null) {
+        "/cdn/media/$storageKey"
+    } else {
+        "/uploads/photography/${uploadAssetRef().urlPathSegment()}"
     }
 
 private fun PhotographyPhoto.uploadAssetRef(): String =

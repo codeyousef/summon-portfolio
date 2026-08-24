@@ -576,10 +576,11 @@ class FirestoreRegistryRepository(
         }
 
         fun create(projectId: String, databaseId: String): FirestoreRegistryRepository {
-            val firestore = FirestoreOptions.newBuilder()
+            val builder = FirestoreOptions.newBuilder()
                 .setProjectId(projectId)
                 .setDatabaseId(databaseId)
-                .build()
+            FirestoreCredentials.fromEnvironment()?.let(builder::setCredentials)
+            val firestore = builder.build()
                 .service
             return FirestoreRegistryRepository(firestore)
         }
@@ -588,7 +589,7 @@ class FirestoreRegistryRepository(
 
 data class StoredObject(val bytes: ByteArray, val contentType: String)
 
-private fun verifyStoredObject(
+internal fun verifyStoredObject(
     input: InputStream,
     declaredBytes: Long,
     expectedBytes: Long,
@@ -621,7 +622,7 @@ private fun verifyStoredObject(
     check(observedDigest == expectedDigest) { "$description digest changed before promotion" }
 }
 
-interface RegistryObjectStorage {
+interface RegistryObjectStorage : AutoCloseable {
     fun putQuarantine(uploadId: String, bytes: ByteArray)
     fun putQuarantine(uploadId: String, source: ReopenableArchiveSource) {
         val bytes = source.openStream().use(InputStream::readAllBytes)
@@ -660,6 +661,7 @@ interface RegistryObjectStorage {
      */
     fun replaceMetadataIfUnchanged(filename: String, expected: ByteArray?, bytes: ByteArray): Boolean
     fun getMetadata(filename: String): ByteArray?
+    override fun close() = Unit
 }
 
 class InMemoryRegistryObjectStorage : RegistryObjectStorage {
@@ -738,7 +740,10 @@ class GcsRegistryObjectStorage(
         val source = storage.get(sourceId) ?: throw FileNotFoundException("Quarantine object is missing")
         verifyBlob(source, expectedBytes, digest, "Quarantine object", "application/gzip", "no-store")
 
-        val targetId = BlobId.of(publicBucket, "$prefix/blobs/sha256/$digest")
+        val targetId = BlobId.of(
+            publicBucket,
+            RegistryObjectKeys.contentAddressed(prefix, RegistryBucketRole.PUBLIC, digest),
+        )
         val target = BlobInfo.newBuilder(targetId)
             .setContentType("application/gzip")
             .setCacheControl("public,max-age=31536000,immutable")
@@ -791,8 +796,17 @@ class GcsRegistryObjectStorage(
             .let(Channels::newInputStream)
         verifyStoredObject(input, declaredBytes, expectedBytes, digest, description)
     }
-    override fun putPublicBlob(digest: String, bytes: ByteArray) = put(publicBucket, "$prefix/blobs/sha256/$digest", bytes, "application/gzip", "public,max-age=31536000,immutable")
-    override fun getPublicBlob(digest: String): ByteArray? = get(publicBucket, "$prefix/blobs/sha256/$digest")
+    override fun putPublicBlob(digest: String, bytes: ByteArray) = put(
+        publicBucket,
+        RegistryObjectKeys.contentAddressed(prefix, RegistryBucketRole.PUBLIC, digest),
+        bytes,
+        "application/gzip",
+        "public,max-age=31536000,immutable",
+    )
+    override fun getPublicBlob(digest: String): ByteArray? = get(
+        publicBucket,
+        RegistryObjectKeys.contentAddressed(prefix, RegistryBucketRole.PUBLIC, digest),
+    )
     override fun putMetadata(filename: String, bytes: ByteArray) = put(metadataBucket, "$prefix/metadata/$filename", bytes, "application/json", "public,max-age=300,must-revalidate")
     override fun putMetadataIfAbsent(filename: String, bytes: ByteArray): Boolean {
         val info = BlobInfo.newBuilder(BlobId.of(metadataBucket, "$prefix/metadata/$filename"))
@@ -835,13 +849,16 @@ class GcsRegistryObjectStorage(
     private fun get(bucket: String, name: String): ByteArray? = storage.get(BlobId.of(bucket, name))?.getContent()
 
     companion object {
-        fun create(config: RegistryConfig): GcsRegistryObjectStorage = GcsRegistryObjectStorage(
-            storage = StorageOptions.newBuilder().setProjectId(config.projectId).build().service,
-            quarantineBucket = requireNotNull(config.quarantineBucket),
-            publicBucket = requireNotNull(config.publicBucket),
-            metadataBucket = requireNotNull(config.metadataBucket),
-            prefix = config.objectPrefix,
-        )
+        fun create(config: RegistryConfig): GcsRegistryObjectStorage {
+            val buckets = config.effectiveObjectStoreConfig().buckets
+            return GcsRegistryObjectStorage(
+                storage = StorageOptions.newBuilder().setProjectId(config.projectId).build().service,
+                quarantineBucket = buckets.require(RegistryBucketRole.QUARANTINE),
+                publicBucket = buckets.require(RegistryBucketRole.PUBLIC),
+                metadataBucket = buckets.require(RegistryBucketRole.METADATA),
+                prefix = config.objectPrefix,
+            )
+        }
 
         fun create(
             projectId: String,

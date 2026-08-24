@@ -1,0 +1,194 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "__SCRIPT_NAME__",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-13",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": __WORKERS_DEV__,
+  "preview_urls": false,
+  "placement": {
+    "mode": "smart"
+  },
+  "vars": {
+    "PORTFOLIO_ENV": "__ENVIRONMENT__",
+    "PORTFOLIO_CONTAINER_POOL_VERSION": "__CONTAINER_POOL_VERSION__",
+    "PORTFOLIO_CANONICAL_ORIGIN": "__CANONICAL_ORIGIN__",
+    "FIRESTORE_PROJECT_ID": "__FIRESTORE_PROJECT_ID__",
+    "FIRESTORE_DATABASE_ID": "__FIRESTORE_DATABASE_ID__",
+    "FIRESTORE_WRITE_MODE": "__FIRESTORE_WRITE_MODE__",
+    "PHOTOGRAPHY_WRITE_MODE": "__PHOTOGRAPHY_WRITE_MODE__",
+    "PHOTOGRAPHY_UPLOAD_BUCKET": "__PHOTOGRAPHY_UPLOAD_BUCKET__",
+    "PHOTOGRAPHY_UPLOAD_PREFIX": "__PHOTOGRAPHY_UPLOAD_PREFIX__",
+    "PHOTOGRAPHY_MAX_UPLOAD_BYTES": "__PHOTOGRAPHY_MAX_UPLOAD_BYTES__",
+    "PHOTOGRAPHY_R2_REVERSE_MIRROR": "__PHOTOGRAPHY_R2_REVERSE_MIRROR__",
+    "PORTFOLIO_SESSION_COOKIE": "admin_session",
+    "PORTFOLIO_ASYNC_DLQ_NAME": "__PORTFOLIO_ASYNC_DLQ__",
+    "FINOPS_INGEST_QUEUE_NAME": "__FINOPS_INGEST_QUEUE__",
+    "FINOPS_COVERAGE_START_DATE": "2026-08-24",
+    "PORTFOLIO_MIGRATION_EXECUTION_ENABLED": "false",
+    "PHOTOGRAPHY_MIGRATION_EXECUTION_ENABLED": "__PHOTOGRAPHY_MIGRATION_EXECUTION_ENABLED__",
+    "FINOPS_ALLOCATION_ENTRY_PROJECTIONS_READY": "false",
+    "FINOPS_SHARDED_ROLLUP_WRITES_ENABLED": "false",
+    "FINOPS_SHARDED_ROLLUPS_READY": "false",
+    "FINOPS_SHARDED_ROLLUP_BACKFILL_EXECUTION_ENABLED": "false",
+    "SAMURAI_FINOPS_IDENTITY_URL": "__SAMURAI_FINOPS_IDENTITY_URL__"
+  },
+  "assets": {
+    "directory": "../../src/main/resources/static",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/health*",
+      "/internal/*",
+      "/cdn/media/*",
+      "/cdn/docs/*",
+      "/playground*",
+      "/api/seen/run"
+    ]
+  },
+  "r2_buckets": [
+    {
+      "binding": "PORTFOLIO_MEDIA",
+      "bucket_name": "__PORTFOLIO_MEDIA_BUCKET__"
+    },
+    {
+      "binding": "PORTFOLIO_DOCS",
+      "bucket_name": "__PORTFOLIO_DOCS_BUCKET__"
+    },
+    {
+      "binding": "PORTFOLIO_LOGS",
+      "bucket_name": "__PORTFOLIO_LOGS_BUCKET__"
+    },
+    {
+      "binding": "FINOPS_RECEIPTS",
+      "bucket_name": "__FINOPS_RECEIPTS_BUCKET__"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "PORTFOLIO_ASYNC_QUEUE",
+        "queue": "__PORTFOLIO_ASYNC_QUEUE__"
+      },
+      {
+        "binding": "PORTFOLIO_ASYNC_DLQ",
+        "queue": "__PORTFOLIO_ASYNC_DLQ__"
+      },
+      {
+        "binding": "PORTFOLIO_ASYNC_PARKING",
+        "queue": "__PORTFOLIO_ASYNC_PARKING__"
+      },
+      {
+        "binding": "FINOPS_INGEST_QUEUE",
+        "queue": "__FINOPS_INGEST_QUEUE__"
+      },
+      {
+        "binding": "FINOPS_INGEST_DLQ",
+        "queue": "__FINOPS_INGEST_DLQ__"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "__PORTFOLIO_ASYNC_QUEUE__",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "retry_delay": 10,
+        "dead_letter_queue": "__PORTFOLIO_ASYNC_DLQ__"
+      },
+      {
+        "queue": "__FINOPS_INGEST_QUEUE__",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "retry_delay": 10,
+        "dead_letter_queue": "__FINOPS_INGEST_DLQ__"
+      },
+      {
+        "queue": "__PORTFOLIO_ASYNC_DLQ__",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "max_concurrency": 1,
+        "retry_delay": 30,
+        "dead_letter_queue": "__PORTFOLIO_ASYNC_PARKING__"
+      }
+    ]
+  },
+  "triggers": {
+    "crons": ["1 5 * * *", "11 5 * * *", "21 5 * * *", "31 5 * * *", "51 5 * * *"]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PORTFOLIO_SESSIONS",
+        "class_name": "PortfolioSessionDO"
+      },
+      {
+        "name": "PORTFOLIO_SSR",
+        "class_name": "PortfolioSsrContainer"
+      },
+      {
+        "name": "SEEN_PLAYGROUND",
+        "class_name": "SeenPlaygroundContainer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "PortfolioSessionDO",
+        "PortfolioSsrContainer",
+        "SeenPlaygroundContainer"
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "name": "__PORTFOLIO_SSR_CONTAINER__",
+      "class_name": "PortfolioSsrContainer",
+      "image": "../../Dockerfile.portfolio",
+      "image_build_context": "../..",
+      "instance_type": "basic",
+      "max_instances": 8,
+      "rollout_active_grace_period": 86400,
+      "rollout_step_percentage": [10, 25, 50, 100],
+      "constraints": {
+        "regions": ["ME", "WEUR"]
+      }
+    },
+    {
+      "name": "__SEEN_PLAYGROUND_CONTAINER__",
+      "class_name": "SeenPlaygroundContainer",
+      "image": "../../Dockerfile",
+      "image_build_context": "../..",
+      "instance_type": "basic",
+      "max_instances": 2,
+      "rollout_active_grace_period": 3600,
+      "rollout_step_percentage": [50, 100],
+      "constraints": {
+        "regions": ["ME", "WEUR"]
+      }
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "PORTFOLIO_MIGRATION_WORKFLOW",
+      "name": "__PORTFOLIO_MIGRATION_WORKFLOW__",
+      "class_name": "PortfolioMigrationWorkflow"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true
+    }
+  }
+}

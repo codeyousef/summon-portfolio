@@ -7,6 +7,10 @@ import code.yousef.portfolio.i18n.PortfolioLocale
 import code.yousef.portfolio.ui.PortfolioLandingPage
 import code.yousef.portfolio.ui.admin.AdminHomePage
 import code.yousef.portfolio.ui.admin.MarkdownPreviewPage
+import code.yousef.portfolio.ui.admin.SpendingDashboardPage
+import code.yousef.portfolio.ui.admin.SpendingGroup
+import code.yousef.portfolio.ui.admin.SpendingView
+import code.yousef.portfolio.finops.*
 import code.yousef.portfolio.ui.photography.PhotographyAdminPage
 import code.yousef.portfolio.ui.photography.PhotographyPage
 import code.yousef.portfolio.ui.projects.ProjectsPage
@@ -137,6 +141,53 @@ class PortfolioRenderer(
             locale = PortfolioLocale.EN
         )
     }
+
+    fun spendingDashboardPage(
+        username: String,
+        summary: FinOpsSummary,
+        entries: FinOpsEntryPage,
+        users: SamuraiUserSpendPage,
+        reconciliations: List<FinOpsReconciliation>,
+        recurringExpenses: List<FinOpsRecurringExpense>,
+        view: SpendingView,
+        group: SpendingGroup,
+        currency: String,
+        rangeLabel: String,
+        query: FinOpsQuery,
+        csrfToken: String,
+        manualSourceRecordId: String,
+        receiptsEnabled: Boolean,
+        successMessage: String? = null,
+        errorMessage: String? = null,
+    ): SummonPage = SummonPage(
+        head = { head ->
+            head.title("Studio Spending | Yousef")
+            head.meta("viewport", null, "width=device-width, initial-scale=1", null, null)
+            head.meta("robots", null, "noindex, nofollow", null, null)
+            head.script(HYDRATION_SCRIPT_PATH, "summon-hydration-runtime", "application/javascript", false, false, null)
+        },
+        content = {
+            SpendingDashboardPage(
+                username = username,
+                summary = summary,
+                entries = entries,
+                users = users,
+                reconciliations = reconciliations,
+                recurringExpenses = recurringExpenses,
+                view = view,
+                group = group,
+                currency = currency,
+                rangeLabel = rangeLabel,
+                query = query,
+                csrfToken = csrfToken,
+                manualSourceRecordId = manualSourceRecordId,
+                receiptsEnabled = receiptsEnabled,
+                successMessage = successMessage,
+                errorMessage = errorMessage,
+            )
+        },
+        locale = PortfolioLocale.EN,
+    )
 
     fun markdownPreviewPage(
         source: String,

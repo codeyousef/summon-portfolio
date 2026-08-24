@@ -54,6 +54,14 @@ chmod +x "$TOOLS_DIR/seen"
 # Copy runtime (C source + headers + precompiled objects)
 cp -r "$SEEN_RUNTIME" "$TOOLS_DIR/seen_runtime"
 
+# The shipped 0.10.1 JIT runtime is compiled without -fPIC. Its hidden C TLS
+# depth counter therefore emits R_X86_64_TPOFF32, which ORC/lli cannot load in
+# the Cloudflare Seen playground. Preserve per-thread nesting through pthread
+# storage until the upstream compiler emits a PIC JIT runtime object.
+patch --batch --forward --no-backup-if-mismatch -p1 \
+    -d "$TOOLS_DIR/seen_runtime" \
+    --input="$SCRIPT_DIR/patches/seen-runtime-jit-pthread-tls.patch"
+
 # Copy language definitions (keyword/builtin mappings for multilingual support)
 cp -r "$SEEN_LANGUAGES" "$TOOLS_DIR/languages"
 

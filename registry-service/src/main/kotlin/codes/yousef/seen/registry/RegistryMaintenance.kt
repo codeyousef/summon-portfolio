@@ -187,6 +187,7 @@ data class RegistryMaintenanceConfig(
     val remoteOnlineSignerTargets: Map<String, RemoteTufSignerTarget>,
     val bootstrapRootEnvelopeBase64: String? = null,
     val bootstrapTargetsEnvelopeBase64: String? = null,
+    val objectStoreConfig: RegistryObjectStoreConfig? = null,
 ) {
     init {
         val identity = maintenanceRepositoryIdentity(environment)
@@ -217,11 +218,13 @@ data class RegistryMaintenanceConfig(
             } else {
                 require(firestoreDatabase == null) { "This maintenance phase must not receive Firestore configuration" }
             }
+            effectiveObjectStoreConfig().requireRoles(setOf(RegistryBucketRole.METADATA))
         } else {
             require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory or gcp" }
             require(projectId == null && firestoreDatabase == null && metadataBucket == null) {
                 "Memory maintenance must not receive cloud project, database, or bucket configuration"
             }
+            require(objectStoreConfig == null) { "Memory maintenance must not receive cloud object storage configuration" }
         }
         if (mode.requiresBootstrapEnvelopes) {
             require(!bootstrapRootEnvelopeBase64.isNullOrBlank() && !bootstrapTargetsEnvelopeBase64.isNullOrBlank()) {
@@ -263,10 +266,16 @@ data class RegistryMaintenanceConfig(
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
                 bootstrapTargetsEnvelopeBase64 = env["REGISTRY_BOOTSTRAP_TARGETS_ENVELOPE_BASE64"]
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
+                objectStoreConfig = if (storageMode == "gcp") {
+                    RegistryObjectStoreConfig.fromEnvironment(env, setOf(RegistryBucketRole.METADATA))
+                } else null,
             )
         }
     }
 }
+
+private fun RegistryMaintenanceConfig.effectiveObjectStoreConfig(): RegistryObjectStoreConfig =
+    objectStoreConfig ?: RegistryObjectStoreConfig.legacyGcs(metadataBucket = metadataBucket)
 
 private data class MaintenanceRepositoryIdentity(
     val repositoryId: String,
@@ -296,6 +305,9 @@ private fun rejectMaintenanceEnvironment(
         "REGISTRY_SERVER_MODE",
         "REGISTRY_QUARANTINE_BUCKET",
         "REGISTRY_PUBLIC_BUCKET",
+        "REGISTRY_PRIVATE_BUCKET",
+        "REGISTRY_EVIDENCE_BUCKET",
+        "REGISTRY_BACKUP_BUCKET",
         "REGISTRY_WRITER_MODE",
         "REGISTRY_WRITER_TOKEN",
         "REGISTRY_WRITER_PRINCIPAL",
@@ -333,10 +345,13 @@ private fun rejectMaintenanceEnvironment(
             name.contains("PRIVATE_KEY") ||
             name.contains("PKCS8") ||
             (!mode.requiresPublicationLease && name == "REGISTRY_FIRESTORE_DATABASE") ||
-            (env["REGISTRY_STORAGE_MODE"] == "memory" && name in setOf(
-                "GOOGLE_CLOUD_PROJECT",
-                "REGISTRY_FIRESTORE_DATABASE",
-                "REGISTRY_METADATA_BUCKET",
+            (env["REGISTRY_STORAGE_MODE"] == "memory" && name in (
+                setOf(
+                    "GOOGLE_CLOUD_PROJECT",
+                    "REGISTRY_FIRESTORE_DATABASE",
+                    "REGISTRY_METADATA_BUCKET",
+                    "REGISTRY_OBJECT_STORE_PROVIDER",
+                ) + REGISTRY_R2_ENVIRONMENT_NAMES
             ))
     }
     require(forbidden.isEmpty()) {
@@ -420,6 +435,7 @@ class RegistryMaintenanceResources private constructor(
 
     override fun close() {
         onlineSigners.close()
+        storage.close()
         repository?.close()
     }
 
@@ -439,13 +455,25 @@ class RegistryMaintenanceResources private constructor(
             },
             metadataStorageFactory: (RegistryMaintenanceConfig) -> RegistryObjectStorage = { maintenance ->
                 if (maintenance.storageMode == "gcp") {
-                    GcsMetadataOnlyRegistryObjectStorage.create(
-                        projectId = requireNotNull(maintenance.projectId),
-                        metadataBucket = requireNotNull(maintenance.metadataBucket),
-                        prefix = maintenance.objectPrefix,
-                        allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
-                        allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,
-                    )
+                    val objectStore = maintenance.effectiveObjectStoreConfig()
+                        .requireRoles(setOf(RegistryBucketRole.METADATA))
+                    when (objectStore.provider) {
+                        RegistryObjectStoreProvider.GCS -> GcsMetadataOnlyRegistryObjectStorage.create(
+                            projectId = requireNotNull(maintenance.projectId),
+                            metadataBucket = objectStore.buckets.require(RegistryBucketRole.METADATA),
+                            prefix = maintenance.objectPrefix,
+                            allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
+                            allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,
+                        )
+                        RegistryObjectStoreProvider.R2 -> RestrictedMetadataRegistryObjectStorage(
+                            delegate = S3CompatibleRegistryObjectStorage.create(objectStore, maintenance.objectPrefix),
+                            allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
+                            allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,
+                            // Match the GCS authority boundary: the isolated timestamp signer,
+                            // never a coordinator or maintenance job, commits timestamp.json.
+                            allowTimestampPointerWrite = false,
+                        )
+                    }
                 } else {
                     RestrictedMetadataRegistryObjectStorage(
                         allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
@@ -471,7 +499,7 @@ class RegistryMaintenanceResources private constructor(
                 }
             },
             remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
-                { target -> GoogleCloudRunTufIdTokenProvider(target) },
+                ::defaultRemoteTufTokenProvider,
         ): RegistryMaintenanceResources {
             val storage = metadataStorageFactory(config)
             val online = onlineSignersFactory(config, remoteTokenProviderFactory)

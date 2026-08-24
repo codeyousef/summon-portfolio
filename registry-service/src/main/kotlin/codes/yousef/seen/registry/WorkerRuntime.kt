@@ -30,6 +30,7 @@ data class RegistryWorkerConfig(
     val gitlabToken: String?,
     val kmsPublicKeysHex: Map<String, String>,
     val remoteSignerTargets: Map<String, RemoteTufSignerTarget>,
+    val objectStoreConfig: RegistryObjectStoreConfig? = null,
 ) {
     init {
         require(environment == "development") { "Review workers are development-only" }
@@ -57,6 +58,7 @@ data class RegistryWorkerConfig(
         } else {
             require(remoteSignerTargets.isEmpty()) { "Source and scanner workers must not receive signer URLs" }
         }
+        effectiveObjectStoreConfig().requireRoles(mode.objectStoreRoles)
     }
 
     companion object {
@@ -86,6 +88,7 @@ data class RegistryWorkerConfig(
                     env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]?.takeIf(String::isNotBlank)?.let { role to it }
                 }.toMap(),
                 remoteSignerTargets = env.remoteSignerTargets(),
+                objectStoreConfig = RegistryObjectStoreConfig.fromEnvironment(env, mode.objectStoreRoles),
             )
         }
 
@@ -94,21 +97,43 @@ data class RegistryWorkerConfig(
     }
 }
 
+private val RegistryWorkerMode.objectStoreRoles: Set<RegistryBucketRole>
+    get() = when (this) {
+        RegistryWorkerMode.SOURCE, RegistryWorkerMode.SCAN -> setOf(RegistryBucketRole.QUARANTINE)
+        RegistryWorkerMode.PROMOTE -> setOf(
+            RegistryBucketRole.QUARANTINE,
+            RegistryBucketRole.PUBLIC,
+            RegistryBucketRole.METADATA,
+        )
+    }
+
+private fun RegistryWorkerConfig.effectiveObjectStoreConfig(): RegistryObjectStoreConfig =
+    objectStoreConfig ?: RegistryObjectStoreConfig.legacyGcs(
+        quarantineBucket = quarantineBucket,
+        publicBucket = publicBucket,
+        metadataBucket = metadataBucket,
+    )
+
 object RegistryWorkerRuntime {
     fun run(
         config: RegistryWorkerConfig,
         clock: Clock = Clock.systemUTC(),
         remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
-            { target -> GoogleCloudRunTufIdTokenProvider(target) },
+            ::defaultRemoteTufTokenProvider,
     ): ReviewWorkerOutcome {
         val repository = FirestoreRegistryRepository.create(config.projectId, config.firestoreDatabase)
-        val storage = GcsRegistryObjectStorage.create(
-            projectId = config.projectId,
-            quarantineBucket = config.quarantineBucket,
-            publicBucket = config.publicBucket ?: config.quarantineBucket,
-            metadataBucket = config.metadataBucket ?: config.quarantineBucket,
-            prefix = config.objectPrefix,
-        )
+        val objectStore = config.effectiveObjectStoreConfig().requireRoles(config.mode.objectStoreRoles)
+        val storage: RegistryObjectStorage = when (objectStore.provider) {
+            RegistryObjectStoreProvider.GCS -> GcsRegistryObjectStorage.create(
+                projectId = config.projectId,
+                quarantineBucket = config.quarantineBucket,
+                publicBucket = config.publicBucket ?: config.quarantineBucket,
+                metadataBucket = config.metadataBucket ?: config.quarantineBucket,
+                prefix = config.objectPrefix,
+            )
+            RegistryObjectStoreProvider.R2 ->
+                S3CompatibleRegistryObjectStorage.create(objectStore, config.objectPrefix)
+        }
         try {
             val inspector = StorageReviewArchiveInspector(storage, ArchiveValidator())
             val stateMachine = ReviewStateMachine(config.publicDelay)
@@ -137,6 +162,7 @@ object RegistryWorkerRuntime {
             }
             return outcome
         } finally {
+            storage.close()
             repository.close()
         }
     }

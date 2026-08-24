@@ -29,6 +29,7 @@ data class TufSignerStateGuardConfig(
     val trustedRootV1Sha256: String,
     val audience: String,
     val callerEmails: Map<TufSigningOperation, Set<String>>,
+    val objectStoreConfig: RegistryObjectStoreConfig? = null,
 ) {
     init {
         require(BUCKET.matches(metadataBucket)) { "REGISTRY_TUF_SIGNER_METADATA_BUCKET is invalid" }
@@ -43,6 +44,10 @@ data class TufSignerStateGuardConfig(
         ) {
             "REGISTRY_TUF_SIGNER_CALLER_BINDINGS is invalid"
         }
+        effectiveObjectStoreConfig().requireRoles(setOf(RegistryBucketRole.METADATA))
+        require(
+            effectiveObjectStoreConfig().buckets.require(RegistryBucketRole.METADATA) == metadataBucket,
+        ) { "TUF signer metadata bucket does not match its object-store capability" }
     }
 
     companion object {
@@ -61,12 +66,14 @@ data class TufSignerStateGuardConfig(
                     TufSigningOperation.parse(binding.substring(0, separator)) to
                         binding.substring(separator + 1).trim()
                 }
+            val metadataBucket = required("REGISTRY_TUF_SIGNER_METADATA_BUCKET")
             return TufSignerStateGuardConfig(
-                metadataBucket = required("REGISTRY_TUF_SIGNER_METADATA_BUCKET"),
+                metadataBucket = metadataBucket,
                 objectPrefix = env["REGISTRY_TUF_SIGNER_OBJECT_PREFIX"]?.trim('/')?.takeIf(String::isNotEmpty) ?: "v1",
                 trustedRootV1Sha256 = required("REGISTRY_TUF_SIGNER_TRUSTED_ROOT_V1_SHA256"),
                 audience = required("REGISTRY_TUF_SIGNER_AUDIENCE"),
                 callerEmails = bindings.groupBy({ it.first }, { it.second }).mapValues { (_, emails) -> emails.toSet() },
+                objectStoreConfig = signerObjectStoreConfig(env, metadataBucket),
             )
         }
 
@@ -77,18 +84,51 @@ data class TufSignerStateGuardConfig(
     }
 }
 
+private fun TufSignerStateGuardConfig.effectiveObjectStoreConfig(): RegistryObjectStoreConfig =
+    objectStoreConfig ?: RegistryObjectStoreConfig.legacyGcs(metadataBucket = metadataBucket)
+
+private fun signerObjectStoreConfig(
+    env: Map<String, String>,
+    metadataBucket: String,
+): RegistryObjectStoreConfig {
+    val canonical = buildMap {
+        put("REGISTRY_METADATA_BUCKET", metadataBucket)
+        SIGNER_OBJECT_STORE_ENVIRONMENT_NAMES.forEach { (signerName, canonicalName) ->
+            env[signerName]?.let { put(canonicalName, it) }
+        }
+    }
+    return RegistryObjectStoreConfig.fromEnvironment(canonical, setOf(RegistryBucketRole.METADATA))
+}
+
+private val SIGNER_OBJECT_STORE_ENVIRONMENT_NAMES = mapOf(
+    "REGISTRY_TUF_SIGNER_OBJECT_STORE_PROVIDER" to "REGISTRY_OBJECT_STORE_PROVIDER",
+    "REGISTRY_TUF_SIGNER_R2_ENDPOINT" to "REGISTRY_R2_ENDPOINT",
+    "REGISTRY_TUF_SIGNER_R2_REGION" to "REGISTRY_R2_REGION",
+    "REGISTRY_TUF_SIGNER_R2_ACCESS_KEY_ID" to "REGISTRY_R2_ACCESS_KEY_ID",
+    "REGISTRY_TUF_SIGNER_R2_SECRET_ACCESS_KEY" to "REGISTRY_R2_SECRET_ACCESS_KEY",
+)
+
 data class TufSignerMetadataObject(
     val bytes: ByteArray,
-    val generation: Long,
-)
+    /** Provider-native conditional-write token: a GCS generation or R2 ETag. */
+    val version: String,
+) {
+    init {
+        require(version.isNotBlank() && version.length <= 1_024 && version.none(Char::isISOControl)) {
+            "TUF signer metadata version token is invalid"
+        }
+    }
+}
 
 internal const val MAXIMUM_TUF_SIGNER_METADATA_OBJECT_BYTES: Long = 8L * 1024L * 1024L
 
-interface TufSignerMetadataStore {
+interface TufSignerMetadataStore : AutoCloseable {
     fun get(filename: String): TufSignerMetadataObject?
 
     /** The sole mutable write exposed to signer code. */
-    fun commitTimestamp(expectedGeneration: Long?, bytes: ByteArray): Boolean
+    fun commitTimestamp(expectedVersion: String?, bytes: ByteArray): Boolean
+
+    override fun close() = Unit
 }
 
 class GcsTufSignerMetadataStore(
@@ -98,22 +138,26 @@ class GcsTufSignerMetadataStore(
 ) : TufSignerMetadataStore {
     override fun get(filename: String): TufSignerMetadataObject? {
         require(METADATA_NAME.matches(filename)) { "TUF signer metadata filename is invalid" }
-        val blob = storage.get(BlobId.of(bucket, "$prefix/metadata/$filename")) ?: return null
+        val blob = storage.get(BlobId.of(bucket, tufSignerMetadataKey(prefix, filename))) ?: return null
         if (blob.size !in 1..MAXIMUM_TUF_SIGNER_METADATA_OBJECT_BYTES) {
             rejectSigning("TUF metadata object $filename exceeds the signer size bound")
         }
-        return TufSignerMetadataObject(blob.getContent(), requireNotNull(blob.generation))
+        return TufSignerMetadataObject(blob.getContent(), requireNotNull(blob.generation).toString())
     }
 
-    override fun commitTimestamp(expectedGeneration: Long?, bytes: ByteArray): Boolean {
+    override fun commitTimestamp(expectedVersion: String?, bytes: ByteArray): Boolean {
         if (bytes.isEmpty() || bytes.size.toLong() > MAXIMUM_TUF_SIGNER_METADATA_OBJECT_BYTES) {
             rejectSigning("timestamp.json exceeds the signer size bound")
         }
-        val info = BlobInfo.newBuilder(BlobId.of(bucket, "$prefix/metadata/timestamp.json"))
+        val info = BlobInfo.newBuilder(BlobId.of(bucket, tufSignerMetadataKey(prefix, "timestamp.json")))
             .setContentType("application/json")
             .setCacheControl("public,max-age=300,must-revalidate")
             .build()
-        val precondition = expectedGeneration?.let { Storage.BlobTargetOption.generationMatch(it) }
+        val precondition = expectedVersion?.let { version ->
+            val generation = version.toLongOrNull()
+                ?: throw IllegalStateException("GCS TUF signer metadata version token is invalid")
+            Storage.BlobTargetOption.generationMatch(generation)
+        }
             ?: Storage.BlobTargetOption.doesNotExist()
         return try {
             storage.create(info, bytes, precondition)
@@ -124,8 +168,70 @@ class GcsTufSignerMetadataStore(
     }
 
     private companion object {
-        val METADATA_NAME = Regex("^(?:[1-9][0-9]*\\.)?(?:root|targets|releases|security|snapshot)\\.json$|^timestamp\\.json$")
+        val METADATA_NAME = TUF_SIGNER_METADATA_NAME
     }
+}
+
+/** Metadata-only signer capability over Cloudflare R2's S3-compatible API. */
+class S3CompatibleTufSignerMetadataStore internal constructor(
+    private val client: S3CompatibleObjectClient,
+    private val bucket: String,
+    private val prefix: String,
+) : TufSignerMetadataStore {
+    override fun get(filename: String): TufSignerMetadataObject? {
+        require(TUF_SIGNER_METADATA_NAME.matches(filename)) { "TUF signer metadata filename is invalid" }
+        val value = client.get(bucket, tufSignerMetadataKey(prefix, filename)) ?: return null
+        if (value.bytes.size.toLong() !in 1..MAXIMUM_TUF_SIGNER_METADATA_OBJECT_BYTES) {
+            rejectSigning("TUF metadata object $filename exceeds the signer size bound")
+        }
+        return TufSignerMetadataObject(value.bytes.copyOf(), value.version)
+    }
+
+    override fun commitTimestamp(expectedVersion: String?, bytes: ByteArray): Boolean {
+        if (bytes.isEmpty() || bytes.size.toLong() > MAXIMUM_TUF_SIGNER_METADATA_OBJECT_BYTES) {
+            rejectSigning("timestamp.json exceeds the signer size bound")
+        }
+        return client.replace(
+            bucket = bucket,
+            key = tufSignerMetadataKey(prefix, "timestamp.json"),
+            expectedVersion = expectedVersion,
+            bytes = bytes,
+            contentType = "application/json",
+            cacheControl = "public,max-age=300,must-revalidate",
+        )
+    }
+
+    override fun close() = client.close()
+
+    companion object {
+        fun create(
+            config: RegistryObjectStoreConfig,
+            prefix: String,
+            requestTimeout: java.time.Duration,
+        ): S3CompatibleTufSignerMetadataStore {
+            val objectStore = config.requireRoles(setOf(RegistryBucketRole.METADATA))
+            require(objectStore.provider == RegistryObjectStoreProvider.R2) {
+                "S3-compatible TUF signer metadata storage requires the R2 provider"
+            }
+            return S3CompatibleTufSignerMetadataStore(
+                client = AwsSdkS3CompatibleObjectClient.create(
+                    config = objectStore,
+                    requestTimeout = requestTimeout,
+                    disableRetries = true,
+                ),
+                bucket = objectStore.buckets.require(RegistryBucketRole.METADATA),
+                prefix = prefix,
+            )
+        }
+    }
+}
+
+private val TUF_SIGNER_METADATA_NAME =
+    Regex("^(?:[1-9][0-9]*\\.)?(?:root|targets|releases|security|snapshot)\\.json$|^timestamp\\.json$")
+
+private fun tufSignerMetadataKey(prefix: String, filename: String): String {
+    require(TUF_SIGNER_METADATA_NAME.matches(filename)) { "TUF signer metadata filename is invalid" }
+    return RegistryObjectKeys.metadata(prefix, filename)
 }
 
 data class VerifiedTufSignerCaller(val email: String)
@@ -198,31 +304,56 @@ interface TufTimestampCommitStatePolicyGuard : TufSignerStatePolicyGuard {
     )
 }
 
-object GcsTufSignerStatePolicyGuardFactory : TufSignerStatePolicyGuardFactory {
+object RegistryTufSignerStatePolicyGuardFactory : TufSignerStatePolicyGuardFactory {
     override fun create(config: TufSignerServerConfig): TufSignerStatePolicyGuard {
         val guardConfig = requireNotNull(config.stateGuardConfig) {
             "${config.role} signing requires committed metadata state configuration"
         }
-        val rpcTimeoutMillis = config.signingTimeout.toMillis().toInt()
-        val storage = StorageOptions.newBuilder()
-            .setRetrySettings(ServiceOptions.getNoRetrySettings())
-            .setTransportOptions(
-                HttpTransportOptions.newBuilder()
-                    .setConnectTimeout(rpcTimeoutMillis)
-                    .setReadTimeout(rpcTimeoutMillis)
-                    .build(),
+        val objectStore = guardConfig.effectiveObjectStoreConfig()
+            .requireRoles(setOf(RegistryBucketRole.METADATA))
+        val metadata: TufSignerMetadataStore = when (objectStore.provider) {
+            RegistryObjectStoreProvider.GCS -> {
+                val rpcTimeoutMillis = config.signingTimeout.toMillis().toInt()
+                val storage = StorageOptions.newBuilder()
+                    .setRetrySettings(ServiceOptions.getNoRetrySettings())
+                    .setTransportOptions(
+                        HttpTransportOptions.newBuilder()
+                            .setConnectTimeout(rpcTimeoutMillis)
+                            .setReadTimeout(rpcTimeoutMillis)
+                            .build(),
+                    )
+                    .build()
+                    .service
+                GcsTufSignerMetadataStore(
+                    storage,
+                    objectStore.buckets.require(RegistryBucketRole.METADATA),
+                    guardConfig.objectPrefix,
+                )
+            }
+            RegistryObjectStoreProvider.R2 -> S3CompatibleTufSignerMetadataStore.create(
+                config = objectStore,
+                prefix = guardConfig.objectPrefix,
+                requestTimeout = config.signingTimeout,
             )
-            .build()
-            .service
+        }
         return StateAwareTufSignerPolicyGuard(
             role = config.role,
             environment = config.environment,
             repositoryId = config.repositoryId,
             config = guardConfig,
-            metadata = GcsTufSignerMetadataStore(storage, guardConfig.metadataBucket, guardConfig.objectPrefix),
+            metadata = metadata,
             tokenVerifier = GoogleOidcTufSignerCallerTokenVerifier(),
         )
     }
+}
+
+@Deprecated(
+    message = "Use the provider-aware RegistryTufSignerStatePolicyGuardFactory",
+    replaceWith = ReplaceWith("RegistryTufSignerStatePolicyGuardFactory"),
+)
+object GcsTufSignerStatePolicyGuardFactory : TufSignerStatePolicyGuardFactory {
+    override fun create(config: TufSignerServerConfig): TufSignerStatePolicyGuard =
+        RegistryTufSignerStatePolicyGuardFactory.create(config)
 }
 
 /**
@@ -243,6 +374,8 @@ class StateAwareTufSignerPolicyGuard(
     init {
         require(role in TufRole.ONLINE)
     }
+
+    override fun close() = metadata.close()
 
     override fun authorize(request: TufSignerAuthorizationRequest) {
         requireAuthorizedCaller(request)
@@ -288,7 +421,7 @@ class StateAwareTufSignerPolicyGuard(
             put("signed", parseCanonicalSigned(request.canonicalSignedBytes))
         })
         requireCommitDeadline(request)
-        if (!metadata.commitTimestamp(state.timestampGeneration, envelope)) {
+        if (!metadata.commitTimestamp(state.timestampVersion, envelope)) {
             rejectSigning("Committed timestamp changed during signer authorization")
         }
     }
@@ -498,7 +631,7 @@ class StateAwareTufSignerPolicyGuard(
                 releasesExpiry = Instant.parse(releases.string("expires")),
                 securityExpiry = Instant.parse(security.string("expires")),
             ),
-            timestampGeneration = timestampObject.generation,
+            timestampVersion = timestampObject.version,
         )
     }
 
@@ -775,7 +908,7 @@ class StateAwareTufSignerPolicyGuard(
         val root: RootTrust,
         val targets: TopLevelTargets,
         val current: CurrentTransaction?,
-        val timestampGeneration: Long?,
+        val timestampVersion: String?,
     )
 
     private companion object {

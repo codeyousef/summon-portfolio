@@ -30,6 +30,8 @@ import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryStore
 import code.yousef.portfolio.ui.admin.AdminChangePasswordPage
 import code.yousef.portfolio.ui.admin.AdminLoginPage
 import code.yousef.portfolio.ui.admin.MARKDOWN_PREVIEW_MAX_CHARS
+import code.yousef.portfolio.finops.FinOpsService
+import code.yousef.portfolio.finops.FinOpsReceiptStore
 import codes.yousef.aether.core.Exchange
 import codes.yousef.aether.core.jvm.receiveParameters
 import codes.yousef.aether.core.respondJson
@@ -52,6 +54,7 @@ import kotlinx.serialization.encodeToString
 import kotlin.time.toJavaInstant
 
 private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+private val portfolioRouteLogger = LoggerFactory.getLogger("PortfolioRoutes")
 private const val MARKDOWN_PREVIEW_MAX_FORM_BYTES: Long = 64L * 1024L
 
 fun Router.summonRoutes(
@@ -118,6 +121,9 @@ internal fun Router.portfolioRoutes(
     fifthWallSessionStore: FifthWallSessionStore = FifthWallSessionStore(),
     scratchpadRenderer: ScratchpadRenderer = ScratchpadRenderer(),
     markdownRenderer: MarkdownRenderer? = null,
+    finOpsService: FinOpsService? = null,
+    finOpsReceiptStore: FinOpsReceiptStore? = null,
+    finOpsInternalIngestToken: String? = null,
 ) {
     get("/version") { exchange ->
         exchange.response.setHeader("Cache-Control", "no-store")
@@ -133,13 +139,7 @@ internal fun Router.portfolioRoutes(
             )
             exchange.respondSummonPage(page)
         } catch (e: Exception) {
-            val errorBody = "Error in route handler: ${e.message}\n${e.stackTraceToString()}"
-            val errorBytes = errorBody.toByteArray(Charsets.UTF_8)
-            exchange.response.statusCode = 500
-            exchange.response.setHeader("Content-Type", "text/plain")
-            exchange.response.setHeader("Content-Length", errorBytes.size.toString())
-            exchange.response.write(errorBytes)
-            exchange.response.end()
+            exchange.respondInternalServerError(portfolioRouteLogger, "Portfolio landing route", e)
         }
     }
 
@@ -412,6 +412,16 @@ internal fun Router.portfolioRoutes(
     }
 
     // Admin Routes
+    if (finOpsService != null) {
+        registerFinOpsRoutes(
+            service = finOpsService,
+            renderer = portfolioRenderer,
+            internalIngestToken = finOpsInternalIngestToken,
+            receiptStore = finOpsReceiptStore,
+            ownerUsername = adminAuthService::currentUsername,
+        )
+    }
+
     get("/admin/login") { exchange ->
         val next = exchange.request.queryParameter("next")?.sanitizeNextPath()
         val session = exchange.getAdminSession()

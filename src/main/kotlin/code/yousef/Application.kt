@@ -25,13 +25,21 @@ import code.yousef.portfolio.content.PortfolioContentService
 import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.db.ContentStoreDriver
 import code.yousef.portfolio.docs.*
-import code.yousef.portfolio.photography.GcsPhotoAssetStore
-import code.yousef.portfolio.photography.LocalPhotoAssetStore
 import code.yousef.portfolio.photography.PhotographyService
+import code.yousef.portfolio.photography.PortfolioPhotoAssetStoreFactory
 import code.yousef.portfolio.docs.summon.DocsRouter
 import code.yousef.portfolio.seen.SeenExecutionService
 import code.yousef.portfolio.seen.SeenPlaygroundRenderer
 import code.yousef.portfolio.server.*
+import code.yousef.portfolio.session.PortfolioSessionStoreFactory
+import code.yousef.portfolio.session.portfolioSessionConfig
+import code.yousef.portfolio.finops.FinOpsService
+import code.yousef.portfolio.finops.FinOpsRollupBackfillService
+import code.yousef.portfolio.finops.FirestoreFinOpsRepository
+import code.yousef.portfolio.finops.InMemoryFinOpsRepository
+import code.yousef.portfolio.finops.HttpEdgeFinOpsReceiptStore
+import code.yousef.portfolio.finops.HttpSamuraiIdentityResolver
+import code.yousef.portfolio.finops.NoopSamuraiIdentityResolver
 import code.yousef.portfolio.ssr.*
 import code.yousef.portfolio.ui.fifthwall.FileFifthWallTelemetryStore
 import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryStore
@@ -42,8 +50,6 @@ import codes.yousef.aether.core.jvm.VertxServerConfig
 import codes.yousef.aether.core.pipeline.Pipeline
 import codes.yousef.aether.core.pipeline.installCallLogging
 import codes.yousef.aether.core.pipeline.installContentNegotiation
-import codes.yousef.aether.core.session.InMemorySessionStore
-import codes.yousef.aether.core.session.SessionConfig
 import codes.yousef.aether.core.session.SessionMiddleware
 import codes.yousef.aether.core.session.session
 import codes.yousef.aether.db.DatabaseDriverRegistry
@@ -60,26 +66,75 @@ data class ApplicationResources(
 fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val log = LoggerFactory.getLogger("Application")
     log.info("Starting Summon Portfolio with projectId={}, port={}", appConfig.projectId, appConfig.port)
+    val sessionStoreResources = PortfolioSessionStoreFactory.fromEnvironment()
 
     // Services
-    val firestore = if (appConfig.useLocalStore) null else FirestoreProvider.create(appConfig)
-    val portfolioMetaService = if (firestore != null) {
-        PortfolioMetaService(PortfolioMetaRepository(firestore))
+    val firestoreDatabases = if (appConfig.useLocalStore) null else FirestoreProvider.createDatabases(appConfig)
+    firestoreDatabases?.verifyPortfolioMigrationReady()
+    val firestore = firestoreDatabases?.authority
+    val mutationCoordinator = firestoreDatabases?.mutationCoordinator()
+    val portfolioFirestoreStore = firestoreDatabases?.portfolioStore(mutationCoordinator!!)
+    val portfolioMetaService = if (portfolioFirestoreStore != null) {
+        PortfolioMetaService(PortfolioMetaRepository(portfolioFirestoreStore))
     } else {
         null
     }
+    val samuraiIdentityResolver = System.getenv("SAMURAI_FINOPS_IDENTITY_URL")
+        ?.trim()?.takeIf(String::isNotEmpty)?.let { endpoint ->
+            HttpSamuraiIdentityResolver(
+                endpoint = endpoint,
+                bearerToken = requireNotNull(System.getenv("FINOPS_IDENTITY_READ_TOKEN")?.trim()?.takeIf(String::isNotEmpty)) {
+                    "SAMURAI_FINOPS_IDENTITY_URL requires FINOPS_IDENTITY_READ_TOKEN"
+                },
+            )
+        } ?: NoopSamuraiIdentityResolver
+    val finOpsRepository = portfolioFirestoreStore?.let { store ->
+            FirestoreFinOpsRepository(
+                store = store,
+                allocationEntryProjectionsReady = appConfig.finOpsAllocationEntryProjectionsReady,
+                shardedRollupWritesEnabled = appConfig.finOpsShardedRollupWritesEnabled,
+                shardedRollupsReady = appConfig.finOpsShardedRollupsReady,
+            )
+        } ?: InMemoryFinOpsRepository()
+    val finOpsService = FinOpsService(
+        repository = finOpsRepository,
+        coverageStartAt = appConfig.finOpsCoverageStartAt,
+        samuraiIdentityResolver = samuraiIdentityResolver,
+    )
+    val finOpsRollupBackfillService = portfolioFirestoreStore?.let { store ->
+        FinOpsRollupBackfillService(
+            source = FirestoreFinOpsRepository(store = store, shardedRollupsReady = false),
+            target = FirestoreFinOpsRepository(
+                store = store,
+                shardedRollupWritesEnabled = true,
+                shardedRollupsReady = true,
+            ),
+        )
+    }
+    val finOpsReceiptStore = appConfig.finOpsReceiptBaseUrl?.let { endpoint ->
+        HttpEdgeFinOpsReceiptStore(
+            endpoint = endpoint,
+            bearerToken = requireNotNull(System.getenv("EDGE_ORIGIN_TOKEN")?.trim()?.takeIf(String::isNotEmpty)) {
+                "FINOPS_RECEIPT_BASE_URL requires EDGE_ORIGIN_TOKEN"
+            },
+            maxReceiptBytes = appConfig.finOpsReceiptMaxBytes,
+        )
+    }
     
     val contentStore = if (firestore != null) {
-        code.yousef.firestore.FirestoreContentStore(firestore)
+        code.yousef.firestore.FirestoreContentStore(
+            firestore = firestore,
+            mutationCoordinator = requireNotNull(mutationCoordinator),
+            seedOnInit = appConfig.firestoreSeedOnStart,
+        )
     } else {
         FileContentStore.fromEnvironment()
     }
     
     val contentService = PortfolioContentService(contentStore)
     val contactService = ContactService(FileContactRepository(contentStore))
-    val photoAssetStore = appConfig.photographyUploadBucket?.let { bucket ->
-        GcsPhotoAssetStore(bucket = bucket, prefix = appConfig.photographyUploadPrefix)
-    } ?: LocalPhotoAssetStore(appConfig.photographyUploadDir)
+    val photoAssetStore = PortfolioPhotoAssetStoreFactory.fromEnvironment(appConfig)
+    val photographyAssetBackfillService = PortfolioPhotoAssetStoreFactory.backfillFromEnvironment(appConfig)
     val photographyService = PhotographyService(
         contentStore = contentStore,
         assetStore = photoAssetStore,
@@ -87,17 +142,23 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     )
     
     // Admin auth - use Firestore in production, file-based locally
-    val adminAuthService: AdminAuthProvider = if (firestore != null) {
-        FirestoreAdminAuthService(firestore)
+    val adminAuthService: AdminAuthProvider = if (portfolioFirestoreStore != null) {
+        FirestoreAdminAuthService(
+            store = portfolioFirestoreStore,
+            allowBootstrapCredentials = appConfig.firestoreSeedOnStart,
+        )
     } else {
         AdminAuthService(java.nio.file.Paths.get("storage/admin-credentials.json"))
     }
     
     // Building management services (requires Firestore)
-    val buildingRouter = if (firestore != null) {
-        val buildingAuthProvider = BuildingAuthProvider(firestore)
-        val passwordResetService = PasswordResetService(firestore, buildingAuthProvider)
-        val buildingRepository = BuildingRepository(firestore)
+    val buildingRouter = if (portfolioFirestoreStore != null) {
+        val buildingAuthProvider = BuildingAuthProvider(
+            store = portfolioFirestoreStore,
+            seedOnInit = appConfig.firestoreSeedOnStart,
+        )
+        val passwordResetService = PasswordResetService(portfolioFirestoreStore, buildingAuthProvider)
+        val buildingRepository = BuildingRepository(portfolioFirestoreStore)
         val buildingService = BuildingService(buildingRepository)
         val excelImportService = ExcelImportService(buildingRepository)
         createBuildingRouter(buildingAuthProvider, passwordResetService, buildingRepository, buildingService, excelImportService)
@@ -175,8 +236,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val seenLandingRenderer = SeenLandingRenderer(packagesEnabled = appConfig.registryUpstreamUrl != null)
 
     // AI Curriculum
-    val aiProgressStore: AiProgressStore = if (firestore != null)
-        FirestoreAiProgressStore(firestore) else FileAiProgressStore()
+    val aiProgressStore: AiProgressStore = if (portfolioFirestoreStore != null)
+        FirestoreAiProgressStore(portfolioFirestoreStore) else FileAiProgressStore()
     val aiCurriculumCatalog = AiCurriculumCatalog()
     val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer, aiCurriculumCatalog, aiProgressStore)
     val fifthWallTelemetryStore: FifthWallTelemetryStore = FileFifthWallTelemetryStore()
@@ -195,6 +256,15 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             aiProgressStore = aiProgressStore,
             fifthWallTelemetryStore = fifthWallTelemetryStore,
             markdownRenderer = markdownRenderer,
+            finOpsService = finOpsService,
+            finOpsReceiptStore = finOpsReceiptStore,
+            finOpsInternalIngestToken = System.getenv("FINOPS_INTERNAL_INGEST_TOKEN")?.trim()?.takeIf(String::isNotEmpty),
+        )
+        registerPortfolioEdgeJobRoutes(
+            mutationCoordinator = mutationCoordinator,
+            photographyAssetBackfillService = photographyAssetBackfillService,
+            finOpsRollupBackfillService = finOpsRollupBackfillService,
+            photographyMaxAssetBytes = appConfig.photographyMaxUploadBytes,
         )
     }
 
@@ -328,20 +398,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     }
 
     val pipeline = Pipeline().apply {
-        // Custom debug recovery to print stack traces
+        // Final recovery boundary. Detailed failures stay in structured server
+        // logs; production clients receive only an opaque correlation ID.
         this.use { exchange, next ->
             try {
                 next()
             } catch (e: Throwable) {
-                System.err.println("Uncaught exception: ${e.message}")
-                e.printStackTrace()
-                val errorBody = "Debug Recovery: ${e.message}\n${e.stackTraceToString()}"
-                val errorBytes = errorBody.toByteArray(Charsets.UTF_8)
-                exchange.response.statusCode = 500
-                exchange.response.setHeader("Content-Type", "text/plain")
-                exchange.response.setHeader("Content-Length", errorBytes.size.toString())
-                exchange.response.write(errorBytes)
-                exchange.response.end()
+                exchange.respondInternalServerError(log, "Unhandled portfolio request", e)
             }
         }
         installCallLogging()
@@ -357,7 +420,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 
         registryGateway?.let { use(it.middleware) }
 
-        use(SessionMiddleware(InMemorySessionStore(), SessionConfig(cookieName = "admin_session")).asMiddleware())
+        use(SessionMiddleware(sessionStoreResources.store, portfolioSessionConfig()).asMiddleware())
         
         // Admin Site Middleware (only for main portfolio site, not building subdomain)
         val adminMiddleware: codes.yousef.aether.core.pipeline.Middleware = { exchange, next ->
@@ -368,12 +431,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 !isBuildingSite &&
                 (path == "/admin" ||
                     path.startsWith("/admin/photography") ||
-                    path == "/admin/markdown-preview")
+                    path == "/admin/markdown-preview" ||
+                    path.startsWith("/admin/spending"))
             ) {
                 val session = exchange.session()
                 val username = session?.get("username") as? String
                 if (username == null) {
-                    exchange.redirect("/admin/login?next=${path}")
+                    exchange.redirectWithLength("/admin/login?next=${path}")
                 } else {
                     next()
                 }
@@ -385,7 +449,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 val session = exchange.session()
                 val username = session?.get("username") as? String
                 if (username == null) {
-                    exchange.redirect("/admin/login")
+                    exchange.redirectWithLength("/admin/login")
                 } else {
                     adminRouter.asMiddleware()(exchange, next)
                 }
@@ -393,7 +457,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 val session = exchange.session()
                 val username = session?.get("username") as? String
                 if (username == null) {
-                    exchange.redirect("/admin/login?next=${path}")
+                    exchange.redirectWithLength("/admin/login?next=${path}")
                 } else {
                     next()
                 }
@@ -409,7 +473,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     }
     
     return ApplicationResources(pipeline) {
-        firestore?.close()
+        sessionStoreResources.close()
+        firestoreDatabases?.close()
     }
 }
 
@@ -417,13 +482,13 @@ fun main() {
     val appConfig = loadAppConfig()
     val resources = buildApplication(appConfig)
 
-    // Aether buffers request bodies before middleware. Only raise the global
-    // server cap on the development service that actually fronts the registry;
-    // other portfolio deployments retain Aether's smaller default.
-    val config = if (appConfig.registryUpstreamUrl != null) {
+    // Aether buffers request bodies before middleware. Raise the global cap only
+    // when a configured route needs it; each registry/receipt route still applies
+    // its narrower content and size validation before processing the payload.
+    val config = if (appConfig.registryUpstreamUrl != null || appConfig.finOpsReceiptBaseUrl != null) {
         VertxServerConfig(
             port = appConfig.port,
-            maxRequestBodySize = REGISTRY_GATEWAY_MAX_REQUEST_BYTES
+            maxRequestBodySize = maxOf(REGISTRY_GATEWAY_MAX_REQUEST_BYTES, MAX_FINOPS_MANUAL_MULTIPART_BYTES)
         )
     } else {
         VertxServerConfig(port = appConfig.port)

@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "id": "tofu-state-backups-90-days",
+      "enabled": true,
+      "prefix": "backups/",
+      "condition": {
+        "type": "Age",
+        "maxAgeSeconds": 7776000
+      }
+    }
+  ]
+}

@@ -79,6 +79,37 @@ infra/registry/environments/*/.state/
 infra/registry/environments/*/*.tfstate
 infra/registry/environments/*/*.tfstate.*
 
+# Cloudflare OpenTofu/Wrangler local state, inputs, plans, and secrets.
+infra/cloudflare/**/backend.hcl
+infra/cloudflare/**/terraform.tfvars
+infra/cloudflare/**/.terraform/
+infra/cloudflare/**/.state/
+infra/cloudflare/**/*.tfplan
+infra/cloudflare/**/*.tfstate
+infra/cloudflare/**/*.tfstate.*
+infra/cloudflare/**/.wrangler/
+.wrangler/
+infra/cloudflare/**/.dev.vars
+infra/cloudflare/**/.dev.vars.*
+
+# Dev GCP FinOps OpenTofu local state, inputs, plans, and provider cache.
+infra/gcp-finops/**/backend.hcl
+infra/gcp-finops/**/terraform.tfvars
+infra/gcp-finops/**/.terraform/
+infra/gcp-finops/**/.state/
+infra/gcp-finops/**/*.tfplan
+infra/gcp-finops/**/*.tfstate
+infra/gcp-finops/**/*.tfstate.*
+
+# Cloudflare Worker release outputs and local dependencies.
+cloudflare/**/node_modules/
+cloudflare/**/coverage/
+cloudflare/**/.wrangler/
+cloudflare/**/.dev.vars
+cloudflare/**/.dev.vars.*
+cloudflare/**/wrangler.generated.*.json
+cloudflare/**/wrangler.deploy.*.json
+
 # Offline registry signing material is encrypted locally and never tracked.
 /.offline-keys/
 
