@@ -113,7 +113,7 @@ jobs:
           trap 'rm -f "${config}"' EXIT
           test ! -e "${config}"
 
-          before="$(pnpm exec wrangler versions list --name yousef-portfolio-edge-dev --json | jq -r 'last?.id // "none"')"
+          before="$(pnpm exec wrangler versions list --name yousef-portfolio-edge-dev --json | jq -r '.[-1].id // "none"')"
           pool_version="ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           node scripts/generate-config.mjs \
             --environment dev \
@@ -134,7 +134,7 @@ jobs:
             --message "GitHub ${GITHUB_REPOSITORY}@${GITHUB_SHA}" \
             --tag "github-${GITHUB_SHA}"
 
-          after="$(pnpm exec wrangler versions list --config "${config}" --json | jq -r 'last.id')"
+          after="$(pnpm exec wrangler versions list --config "${config}" --json | jq -r '.[-1].id')"
           [[ "${after}" =~ ^[0-9a-f-]{36}$ ]]
           {
             echo "### Portfolio Cloudflare dev deployment"
