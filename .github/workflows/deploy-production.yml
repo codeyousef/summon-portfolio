@@ -117,7 +117,7 @@ jobs:
           config="wrangler.generated.ci.prod.json"
           trap 'rm -f "${config}"' EXIT
           test ! -e "${config}"
-          before="$(pnpm exec wrangler versions list --name yousef-portfolio-edge-prod --json | jq -r 'last?.id // "none"')"
+          before="$(pnpm exec wrangler versions list --name yousef-portfolio-edge-prod --json | jq -r '.[-1].id // "none"')"
           pool_version="ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           args=(
             --environment prod
@@ -141,7 +141,7 @@ jobs:
             --config "${config}" \
             --message "Protected GitHub production ${GITHUB_REPOSITORY}@${GITHUB_SHA}" \
             --tag "github-${GITHUB_SHA}"
-          after="$(pnpm exec wrangler versions list --config "${config}" --json | jq -r 'last.id')"
+          after="$(pnpm exec wrangler versions list --config "${config}" --json | jq -r '.[-1].id')"
           [[ "${after}" =~ ^[0-9a-f-]{36}$ ]]
           {
             echo "### Portfolio Cloudflare production deployment"
