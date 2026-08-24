@@ -6,7 +6,9 @@ operation-specific coordinator, ephemeral importer, and private role-locked
 signer workloads. Production initially deploys only the credential-free
 read-only public API plus separately gated trust-maintenance jobs. The service
 uses Aether for HTTP, Summon for the public catalog, Firestore for records, and
-GCS for quarantine/public objects and signed metadata. Only a role-locked
+GCS by default for quarantine/public objects and signed metadata. Cloudflare R2
+can replace only the object layer through its S3-compatible endpoint; Firestore
+remains authoritative. Only a role-locked
 signer workload can open one online KMS key version; local Ed25519 keys are
 development-test only.
 
@@ -29,6 +31,44 @@ validated at startup. The service request body limit is 25 MiB plus one byte so
 oversized archive uploads are rejected before materialization.
 Release upload reservations last 25 hours so the contract's full 24-hour
 byte-exact idempotency replay window always returns usable upload instructions.
+
+## Object storage providers
+
+`REGISTRY_OBJECT_STORE_PROVIDER` defaults to `gcs`, preserving the existing
+deployment. Set it to `r2` only on a runtime that also receives:
+
+- `REGISTRY_R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`
+- `REGISTRY_R2_REGION=auto` (the default)
+- `REGISTRY_R2_ACCESS_KEY_ID` and `REGISTRY_R2_SECRET_ACCESS_KEY`
+
+The provider-neutral role model recognizes six independently provisioned
+buckets: `REGISTRY_QUARANTINE_BUCKET`, `REGISTRY_PUBLIC_BUCKET`,
+`REGISTRY_METADATA_BUCKET`, `REGISTRY_PRIVATE_BUCKET`,
+`REGISTRY_EVIDENCE_BUCKET`, and `REGISTRY_BACKUP_BUCKET`. A process must receive
+exactly its required subset. For example, the production read-only API accepts
+only public and metadata buckets; TUF action and maintenance processes accept
+only metadata; source/scanner workers accept only quarantine. R2 configurations
+reject aliases between logical roles so later migration/backup tooling can use
+all six without collapsing their access boundaries.
+
+The four isolated KMS signer processes use only the signer-scoped equivalents:
+`REGISTRY_TUF_SIGNER_OBJECT_STORE_PROVIDER`,
+`REGISTRY_TUF_SIGNER_R2_ENDPOINT`, `REGISTRY_TUF_SIGNER_R2_REGION`,
+`REGISTRY_TUF_SIGNER_R2_ACCESS_KEY_ID`, and
+`REGISTRY_TUF_SIGNER_R2_SECRET_ACCESS_KEY`, together with their existing
+`REGISTRY_TUF_SIGNER_METADATA_BUCKET`. General registry bucket variables and
+credentials remain forbidden there. Give the releases, security, and snapshot
+signers distinct read-only R2 tokens; give only the timestamp signer a token
+that can conditionally replace `timestamp.json` in the same metadata bucket.
+This changes neither the signers' KMS key bindings nor their role policy.
+
+Public archives keep the immutable `v1/blobs/sha256/<digest>` layout on both
+providers. R2 creates them with `If-None-Match: *`, verifies any collision byte
+for byte, and records SHA-256 metadata. Versioned TUF files remain create-only
+at their protocol-defined filenames, while `root.json` and `timestamp.json`
+retain the existing ETag-backed compare-and-set semantics. This provider switch
+does not change signing roles, key custody, repository identity, or TUF wire
+behavior.
 
 ## Production read-only mode
 
@@ -67,7 +107,7 @@ API, source verifier, scanner, release coordinator, security coordinator,
 ephemeral targets/root importers, and four private role-locked signer services.
 Each signer service account can use exactly one online Ed25519 KMS key and read
 the public metadata chain. Releases, security, and snapshot signers are
-read-only; only the timestamp signer can generation-match replace
+read-only; only the timestamp signer can provider-conditionally replace
 `timestamp.json`. Only the ephemeral root importer can generation-match
 replace `root.json`.
 
@@ -160,7 +200,8 @@ than 30 days away. It refuses rollback, replay, tampering, and overwrite. The
 ephemeral targets importer creates the immutable targets candidate, invokes
 only the snapshot and timestamp signers for the `targets-renewal` operation,
 and creates the immutable snapshot. The timestamp signer reloads and validates
-the full candidate chain and alone generation-match replaces `timestamp.json`.
+the full candidate chain and alone conditionally replaces `timestamp.json`
+using a GCS generation or R2 ETag.
 Never provision a targets private key in the online runtime.
 
 For GCP, run the importer as a one-task Cloud Run job built from the deployed

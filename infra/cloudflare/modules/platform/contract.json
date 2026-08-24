@@ -1,0 +1,313 @@
+{
+  "schema_version": 1,
+  "toolchain": {
+    "opentofu": "1.12.5",
+    "cloudflare_provider": "5.23.0",
+    "wrangler": "4.125.0",
+    "compatibility_date": "2026-08-13"
+  },
+  "authoritative_database": "firestore",
+  "ownership": {
+    "opentofu": [
+      "access_applications",
+      "access_policies",
+      "access_service_tokens",
+      "r2_buckets",
+      "r2_bucket_locks",
+      "queues"
+    ],
+    "wrangler": [
+      "worker_versions",
+      "worker_bindings",
+      "durable_object_classes",
+      "durable_object_migrations",
+      "workflows",
+      "containers",
+      "queue_consumers"
+    ],
+    "unmanaged_until_reviewed_import": [
+      "zones",
+      "dns_records",
+      "worker_routes",
+      "custom_domains"
+    ]
+  },
+  "r2_buckets": {
+    "portfolio_media": {
+      "name_suffix": "portfolio-media",
+      "binding": "PORTFOLIO_MEDIA",
+      "location_policy": "portfolio",
+      "storage_class": "Standard"
+    },
+    "portfolio_docs": {
+      "name_suffix": "portfolio-docs",
+      "binding": "PORTFOLIO_DOCS",
+      "location_policy": "portfolio",
+      "storage_class": "Standard"
+    },
+    "portfolio_logs": {
+      "name_suffix": "portfolio-logs",
+      "binding": "PORTFOLIO_LOGS",
+      "location_policy": "portfolio",
+      "storage_class": "Standard"
+    },
+    "finops_receipts": {
+      "name_suffix": "finops-receipts",
+      "binding": "FINOPS_RECEIPTS",
+      "location_policy": "portfolio",
+      "storage_class": "Standard"
+    },
+    "seen_quarantine": {
+      "name_suffix": "seen-quarantine",
+      "binding": "SEEN_QUARANTINE",
+      "location_policy": "seen",
+      "storage_class": "Standard"
+    },
+    "seen_public": {
+      "name_suffix": "seen-public",
+      "binding": "SEEN_PUBLIC",
+      "location_policy": "seen",
+      "storage_class": "Standard",
+      "lock_rules": [
+        {
+          "id": "published-content-addressed-packages",
+          "enabled": true,
+          "prefix": "v1/blobs/sha256/",
+          "condition": {
+            "type": "Indefinite"
+          }
+        }
+      ]
+    },
+    "seen_metadata": {
+      "name_suffix": "seen-metadata",
+      "binding": "SEEN_METADATA",
+      "location_policy": "seen",
+      "storage_class": "Standard"
+    },
+    "seen_private": {
+      "name_suffix": "seen-private",
+      "binding": "SEEN_PRIVATE",
+      "location_policy": "seen",
+      "storage_class": "Standard"
+    },
+    "seen_evidence": {
+      "name_suffix": "seen-evidence",
+      "binding": "SEEN_EVIDENCE",
+      "location_policy": "seen",
+      "storage_class": "Standard",
+      "lock_rules": [
+        {
+          "id": "content-addressed-evidence-90-days",
+          "enabled": true,
+          "prefix": "v1/evidence/sha256/",
+          "condition": {
+            "type": "Age",
+            "max_age_seconds": 7776000
+          }
+        }
+      ]
+    },
+    "seen_backup": {
+      "name_suffix": "seen-backup",
+      "binding": "SEEN_BACKUP",
+      "location_policy": "seen",
+      "storage_class": "InfrequentAccess",
+      "lock_rules": [
+        {
+          "id": "content-addressed-backups-90-days",
+          "enabled": true,
+          "prefix": "v1/backup/sha256/",
+          "condition": {
+            "type": "Age",
+            "max_age_seconds": 7776000
+          }
+        }
+      ]
+    }
+  },
+  "queues": {
+    "portfolio_async": {
+      "name_suffix": "portfolio-async",
+      "binding": "PORTFOLIO_ASYNC_QUEUE",
+      "dead_letter_queue_key": "portfolio_async_dlq"
+    },
+    "portfolio_async_dlq": {
+      "name_suffix": "portfolio-async-dlq",
+      "binding": "PORTFOLIO_ASYNC_DLQ",
+      "dead_letter_queue_key": null
+    },
+    "portfolio_async_parking": {
+      "name_suffix": "portfolio-async-parking",
+      "binding": "PORTFOLIO_ASYNC_PARKING",
+      "dead_letter_queue_key": null
+    },
+    "finops_ingest": {
+      "name_suffix": "finops-ingest",
+      "binding": "FINOPS_INGEST_QUEUE",
+      "dead_letter_queue_key": "finops_ingest_dlq"
+    },
+    "finops_ingest_dlq": {
+      "name_suffix": "finops-ingest-dlq",
+      "binding": "FINOPS_INGEST_DLQ",
+      "dead_letter_queue_key": null
+    },
+    "seen_operations": {
+      "name_suffix": "seen-operations",
+      "binding": "SEEN_OPERATIONS_QUEUE",
+      "dead_letter_queue_key": "seen_operations_dlq"
+    },
+    "seen_operations_dlq": {
+      "name_suffix": "seen-operations-dlq",
+      "binding": "SEEN_OPERATIONS_DLQ",
+      "dead_letter_queue_key": null
+    }
+  },
+  "workers": {
+    "portfolio_edge": {
+      "name_suffix": "portfolio-edge",
+      "deployment_owner": "wrangler",
+      "container_regions": [
+        "ME",
+        "WEUR"
+      ],
+      "durable_objects": [
+        {
+          "binding": "PORTFOLIO_SESSIONS",
+          "class_name": "PortfolioSessionDO",
+          "storage": "sqlite"
+        },
+        {
+          "binding": "PORTFOLIO_SSR",
+          "class_name": "PortfolioSsrContainer",
+          "storage": "sqlite"
+        },
+        {
+          "binding": "SEEN_PLAYGROUND",
+          "class_name": "SeenPlaygroundContainer",
+          "storage": "sqlite"
+        }
+      ],
+      "containers": [
+        {
+          "binding": "PORTFOLIO_SSR",
+          "class_name": "PortfolioSsrContainer",
+          "instance_type": "basic",
+          "max_instances": 8,
+          "idle_policy": "scale-to-zero"
+        },
+        {
+          "binding": "SEEN_PLAYGROUND",
+          "class_name": "SeenPlaygroundContainer",
+          "instance_type": "basic",
+          "max_instances": 2,
+          "idle_policy": "scale-to-zero"
+        }
+      ],
+      "workflows": [
+        {
+          "binding": "PORTFOLIO_MIGRATION_WORKFLOW",
+          "class_name": "PortfolioMigrationWorkflow",
+          "name_suffix": "portfolio-migration"
+        }
+      ],
+      "r2_bucket_keys": [
+        "portfolio_media",
+        "portfolio_docs",
+        "portfolio_logs",
+        "finops_receipts"
+      ],
+      "queue_keys": [
+        "portfolio_async",
+        "portfolio_async_dlq",
+        "portfolio_async_parking",
+        "finops_ingest",
+        "finops_ingest_dlq"
+      ]
+    },
+    "seen_edge": {
+      "name_suffix": "seen-edge",
+      "deployment_owner": "wrangler",
+      "container_regions": [
+        "ENAM",
+        "WNAM"
+      ],
+      "durable_objects": [
+        {
+          "binding": "SEEN_RESERVATIONS",
+          "class_name": "SeenReservationDO",
+          "storage": "sqlite"
+        },
+        {
+          "binding": "SEEN_PROMOTIONS",
+          "class_name": "SeenPromotionDO",
+          "storage": "sqlite"
+        },
+        {
+          "binding": "SEEN_SIGNING_ORDER",
+          "class_name": "SeenSigningOrderDO",
+          "storage": "sqlite"
+        }
+      ],
+      "containers": [
+        {
+          "binding": "SEEN_REGISTRY_JOBS",
+          "class_name": "SeenRegistryJobContainer",
+          "instance_type": "basic",
+          "max_instances": 8,
+          "idle_policy": "scale-to-zero"
+        }
+      ],
+      "workflows": [
+        {
+          "binding": "SEEN_PROMOTION_WORKFLOW",
+          "class_name": "SeenPromotionWorkflow",
+          "name_suffix": "seen-promotion"
+        },
+        {
+          "binding": "SEEN_MAINTENANCE_WORKFLOW",
+          "class_name": "SeenMaintenanceWorkflow",
+          "name_suffix": "seen-maintenance"
+        }
+      ],
+      "r2_bucket_keys": [
+        "seen_quarantine",
+        "seen_public",
+        "seen_metadata",
+        "seen_private",
+        "seen_evidence",
+        "seen_backup"
+      ],
+      "queue_keys": [
+        "seen_operations",
+        "seen_operations_dlq"
+      ],
+      "route_less_workers": [
+        {
+          "role": "releases",
+          "name_suffix": "seen-signer-releases",
+          "route_less": true,
+          "secret_binding": "SEEN_RELEASES_SIGNING_KEY"
+        },
+        {
+          "role": "security",
+          "name_suffix": "seen-signer-security",
+          "route_less": true,
+          "secret_binding": "SEEN_SECURITY_SIGNING_KEY"
+        },
+        {
+          "role": "snapshot",
+          "name_suffix": "seen-signer-snapshot",
+          "route_less": true,
+          "secret_binding": "SEEN_SNAPSHOT_SIGNING_KEY"
+        },
+        {
+          "role": "timestamp",
+          "name_suffix": "seen-signer-timestamp",
+          "route_less": true,
+          "secret_binding": "SEEN_TIMESTAMP_SIGNING_KEY"
+        }
+      ]
+    }
+  }
+}

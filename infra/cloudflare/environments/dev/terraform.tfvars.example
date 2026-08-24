@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars (ignored). Enabling resources requires a separately
+# reviewed plan and explicit cloud-phase approval.
+cloudflare_account_id = "00000000000000000000000000000000"
+name_prefix           = "yousef"
+resources_enabled     = false
+access_enabled        = false
+access_auth_domain    = null
+access_owner_email    = null
+access_application_domain = null
+finops_wif_access_enabled  = false
+portfolio_r2_location = "weur"
+seen_r2_location      = "enam"
+
+# Populate only after the imported DNS inventories and assigned nameservers are
+# independently verified. These values do not create or mutate DNS resources.
+zones = {}

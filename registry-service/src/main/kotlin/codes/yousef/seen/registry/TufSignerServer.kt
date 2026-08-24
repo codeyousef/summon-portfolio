@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Configuration for one private, IAM-protected Cloud Run signing service.
  *
  * The process receives exactly one role/key pair plus read-only access to the
- * public metadata bucket. Only the timestamp role also receives conditional
- * update authority for timestamp.json. It has no repository, database,
+ * configured public metadata bucket. Only the timestamp role also receives
+ * provider-native conditional update authority for timestamp.json. It has no repository, database,
  * writer-token, general metadata write authority, or offline-key config.
  */
 data class TufSignerServerConfig(
@@ -162,6 +162,9 @@ private fun roleMaximumExpiry(role: String): Duration = when (role) {
 
 private fun isForbiddenSignerEnvironmentVariable(name: String): Boolean =
     name == "GOOGLE_APPLICATION_CREDENTIALS" ||
+        name == "REGISTRY_OBJECT_STORE_PROVIDER" ||
+        name in REGISTRY_OBJECT_STORE_BUCKET_ENVIRONMENT_NAMES ||
+        name in REGISTRY_R2_ENVIRONMENT_NAMES ||
         name in setOf(
             "REGISTRY_STORAGE_MODE",
             "REGISTRY_FIRESTORE_DATABASE",
@@ -196,8 +199,10 @@ data class TufSignerAuthorizationRequest(
     val commitDeadline: java.time.Instant? = null,
 )
 
-fun interface TufSignerStatePolicyGuard {
+fun interface TufSignerStatePolicyGuard : AutoCloseable {
     fun authorize(request: TufSignerAuthorizationRequest)
+
+    override fun close() = Unit
 }
 
 fun interface TufSignerStatePolicyGuardFactory {
@@ -386,6 +391,7 @@ class TufSignerHttpServer private constructor(
         runCatching { server?.close()?.toCompletionStage()?.toCompletableFuture()?.get(30, TimeUnit.SECONDS) }
         runCatching { vertx.close().toCompletionStage().toCompletableFuture().get(30, TimeUnit.SECONDS) }
         runCatching { service.close() }
+        runCatching { statePolicyGuard.close() }
     }
 
     companion object {
@@ -463,16 +469,22 @@ object TufSignerServerRuntime {
     fun run(
         config: TufSignerServerConfig,
         signerFactory: TufSignerServerSignerFactory = KmsTufSignerServerSignerFactory,
-        statePolicyGuardFactory: TufSignerStatePolicyGuardFactory = GcsTufSignerStatePolicyGuardFactory,
+        statePolicyGuardFactory: TufSignerStatePolicyGuardFactory = RegistryTufSignerStatePolicyGuardFactory,
     ) {
         // Establish the committed-state authorization boundary before opening
         // even a client handle to the role's sole KMS authority.
         val statePolicyGuard = statePolicyGuardFactory.create(config)
-        val signer = signerFactory.create(config)
+        val signer = try {
+            signerFactory.create(config)
+        } catch (failure: Exception) {
+            statePolicyGuard.close()
+            throw failure
+        }
         val server = try {
             TufSignerHttpServer.create(config, signer, statePolicyGuard)
         } catch (failure: Exception) {
             signer.close()
+            statePolicyGuard.close()
             throw failure
         }
         server.use {

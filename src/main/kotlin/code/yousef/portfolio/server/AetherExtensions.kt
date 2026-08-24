@@ -16,9 +16,12 @@ import kotlinx.coroutines.sync.withLock
 import java.net.URLConnection
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import org.slf4j.LoggerFactory
 
 private val summonSsrRenderMutex = Mutex()
+private val summonResponseLogger = LoggerFactory.getLogger("SummonResponse")
 
 /**
  * Workaround for Aether 0.2.0.0 bug - sets Content-Length to avoid Vert.x chunked encoding error.
@@ -30,6 +33,21 @@ suspend fun Exchange.respondHtmlWithLength(statusCode: Int = 200, html: String) 
     val bytes = html.toByteArray(Charsets.UTF_8)
     response.setHeader("Content-Length", bytes.size.toString())
     response.write(bytes)
+    response.end()
+}
+
+/**
+ * Aether 0.5.1.0 does not set Content-Length on an empty redirect response.
+ * Vert.x rejects that response after its Location header has already been
+ * written, and the outer recovery boundary then turns it into a misleading
+ * 500. Keep redirects bodyless and explicit until the framework fix lands.
+ */
+suspend fun Exchange.redirectWithLength(location: String, permanent: Boolean = false) {
+    require(location.startsWith("/") || location.startsWith("https://")) { "unsafe redirect location" }
+    response.statusCode = if (permanent) 301 else 302
+    response.setHeader("Location", location)
+    response.setHeader("Content-Length", "0")
+    response.setHeader("Cache-Control", "no-store")
     response.end()
 }
 
@@ -165,6 +183,7 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
     val callbackContext = CallbackContextElement()
 
     try {
+        val renderStartedAt = System.nanoTime()
         // CRITICAL: Install callback context BEFORE rendering starts
         val html = summonSsrRenderMutex.withLock {
             withContext(callbackContext) {
@@ -178,8 +197,6 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
                             // which handles data-action toggles for HamburgerMenu, Dropdown, etc.
                             renderer.renderSummonDocument(page)
                         } catch (e: Exception) {
-                            System.err.println("ERROR in renderComposableRootWithHydration: ${e.message}")
-                            e.printStackTrace()
                             throw e
                         }
                     }
@@ -188,23 +205,19 @@ suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
                 }
             }
         }
+        response.setHeader("Server-Timing", summonRenderServerTiming(System.nanoTime() - renderStartedAt))
         try {
             respondHtmlWithLength(status, html)
         } catch (e: Exception) {
-            System.err.println("ERROR in respondHtml: ${e.message}")
-            e.printStackTrace()
             throw e
         }
     } catch (e: Exception) {
-        System.err.println("ERROR in respondSummonPage: ${e.message}")
-        e.printStackTrace()
-        // Send error response with Content-Length to avoid Vert.x chunked encoding error
-        val errorBody = "Internal Server Error: ${e.message}\n\nStack Trace:\n${e.stackTraceToString()}"
-        val errorBytes = errorBody.toByteArray(Charsets.UTF_8)
-        response.statusCode = 500
-        response.setHeader("Content-Type", "text/plain")
-        response.setHeader("Content-Length", errorBytes.size.toString())
-        response.write(errorBytes)
-        response.end()
+        respondInternalServerError(summonResponseLogger, "Summon SSR response", e)
     }
+}
+
+internal fun summonRenderServerTiming(durationNanos: Long): String {
+    val boundedNanos = durationNanos.coerceIn(0L, 120_000_000_000L)
+    val durationMs = boundedNanos / 1_000_000.0
+    return "summon_render;dur=${String.format(Locale.ROOT, "%.1f", durationMs)}"
 }

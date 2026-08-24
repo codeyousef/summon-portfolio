@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars (ignored). Production remains inert until one exact
+# saved plan is reviewed and separately approved for apply.
+cloudflare_account_id = "00000000000000000000000000000000"
+name_prefix           = "yousef"
+resources_enabled     = false
+portfolio_r2_location = "weur"
+seen_r2_location      = "enam"
+
+# Populate only after the imported DNS inventories and assigned nameservers are
+# independently verified. These values do not create or mutate DNS resources.
+zones = {}

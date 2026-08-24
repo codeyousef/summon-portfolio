@@ -84,7 +84,7 @@ class PhotographyService(
         val contentType = file.contentType.substringBefore(';').trim().lowercase()
         val extension = extensionFor(contentType, metadata.mediaType)
             ?: return UploadResult.Error(uploadTypeError(metadata.mediaType))
-        val storageKey = assetStore.keyFor(id, extension)
+        val storageKey = assetStore.keyFor(id, extension, file.bytes)
         val photo = PhotographyPhoto(
             id = id,
             title = metadata.title,
@@ -169,7 +169,7 @@ class PhotographyService(
             val contentType = replacementFile.contentType.substringBefore(';').trim().lowercase()
             val extension = extensionFor(contentType, metadata.mediaType)
                 ?: return UpdateResult.Error(uploadTypeError(metadata.mediaType))
-            val storageKey = assetStore.keyFor(id, extension)
+            val storageKey = assetStore.keyFor(id, extension, replacementFile.bytes)
             val photo = basePhoto.copy(
                 sourceKind = PhotographySourceKind.UPLOAD,
                 externalUrl = null,

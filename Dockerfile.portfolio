@@ -1,0 +1,27 @@
+# Build the Kotlin/JVM application without carrying the isolated Seen toolchain
+# into ordinary Portfolio SSR instances.
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /workspace
+
+COPY gradlew /workspace/gradlew
+COPY gradle /workspace/gradle
+RUN chmod +x /workspace/gradlew
+RUN /workspace/gradlew --version || true
+COPY . /workspace
+RUN /workspace/gradlew \
+    -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=768m" \
+    -x test shadowJar --no-daemon --max-workers=2
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+
+COPY --from=build /workspace/build/libs/*-all.jar /app/app.jar
+COPY --from=build /workspace/src/main/resources/ /app/resources/
+
+RUN mkdir -p /app/storage && chmod 755 /app/storage
+
+ENV PORT=8080
+
+VOLUME ["/app/storage"]
+EXPOSE 8080
+CMD ["java","-jar","/app/app.jar"]

@@ -39,6 +39,10 @@ dependencies {
     implementation("com.google.cloud:google-cloud-storage")
     implementation("com.google.cloud:google-cloud-kms")
 
+    implementation(platform("software.amazon.awssdk:bom:2.47.5"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:url-connection-client")
+
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")

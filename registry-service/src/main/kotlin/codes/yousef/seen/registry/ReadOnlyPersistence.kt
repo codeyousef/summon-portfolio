@@ -146,6 +146,7 @@ class ReadOnlyRegistryObjectStorage internal constructor(
         rejectObjectMutation()
 
     override fun getMetadata(filename: String): ByteArray? = delegate.getMetadata(filename)
+    override fun close() = delegate.close()
 }
 
 /**
@@ -164,7 +165,10 @@ class GcsReadOnlyRegistryObjectStorage internal constructor(
     override fun putPublicBlob(digest: String, bytes: ByteArray): Nothing = rejectObjectMutation()
     override fun getPublicBlob(digest: String): ByteArray? {
         IdentityRules.requireDigest(digest)
-        return storage.get(BlobId.of(publicBucket, "$prefix/blobs/sha256/$digest"))?.getContent()
+        return storage.get(BlobId.of(
+            publicBucket,
+            RegistryObjectKeys.contentAddressed(prefix, RegistryBucketRole.PUBLIC, digest),
+        ))?.getContent()
     }
 
     override fun putMetadata(filename: String, bytes: ByteArray): Nothing = rejectObjectMutation()
@@ -178,16 +182,18 @@ class GcsReadOnlyRegistryObjectStorage internal constructor(
     }
 
     companion object {
-        fun create(config: RegistryConfig): GcsReadOnlyRegistryObjectStorage =
-            GcsReadOnlyRegistryObjectStorage(
+        fun create(config: RegistryConfig): GcsReadOnlyRegistryObjectStorage {
+            val buckets = config.effectiveObjectStoreConfig().buckets
+            return GcsReadOnlyRegistryObjectStorage(
                 storage = StorageOptions.newBuilder()
                     .setProjectId(requireNotNull(config.projectId))
                     .build()
                     .service,
-                publicBucket = requireNotNull(config.publicBucket),
-                metadataBucket = requireNotNull(config.metadataBucket),
+                publicBucket = buckets.require(RegistryBucketRole.PUBLIC),
+                metadataBucket = buckets.require(RegistryBucketRole.METADATA),
                 prefix = config.objectPrefix,
             )
+        }
     }
 }
 

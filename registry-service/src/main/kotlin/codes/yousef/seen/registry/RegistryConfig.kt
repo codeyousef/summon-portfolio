@@ -29,6 +29,7 @@ data class RegistryConfig(
     val securityToken: String? = null,
     val securityPrincipal: String = "",
     val serverMode: RegistryServerMode = RegistryServerMode.PUBLIC_API,
+    val objectStoreConfig: RegistryObjectStoreConfig? = null,
 ) {
     val signingOperation: TufSigningOperation?
         get() = when (serverMode) {
@@ -158,11 +159,13 @@ data class RegistryConfig(
             require(localOnlineSigningKeysPkcs8Base64.isEmpty()) {
                 "TUF private keys must never be supplied to a server runtime"
             }
+            effectiveObjectStoreConfig().requireRoles(serverMode.objectStoreRoles)
         } else {
             require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory or gcp" }
             require(projectId == null && quarantineBucket == null && publicBucket == null && metadataBucket == null) {
                 "Memory mode must not receive cloud project or bucket configuration"
             }
+            require(objectStoreConfig == null) { "Memory mode must not receive cloud object storage configuration" }
             require(remoteOnlineSignerTargets.isEmpty()) { "Memory mode cannot use remote signer endpoints" }
             require(localOnlineSigningKeysPkcs8Base64.keys == TufRole.ONLINE.toSet()) {
                 "Memory mode requires distinct local online keys for all TUF roles"
@@ -244,6 +247,9 @@ data class RegistryConfig(
                     env["REGISTRY_SECURITY_PRINCIPAL"] ?: "registry-dev-security"
                 } else "",
                 serverMode = serverMode,
+                objectStoreConfig = if (storageMode == "gcp") {
+                    RegistryObjectStoreConfig.fromEnvironment(env, serverMode.objectStoreRoles)
+                } else null,
             )
         }
     }
@@ -313,6 +319,28 @@ enum class RegistryServerMode(
     }
 }
 
+internal val RegistryServerMode.objectStoreRoles: Set<RegistryBucketRole>
+    get() = when (this) {
+        RegistryServerMode.PUBLIC_API -> setOf(
+            RegistryBucketRole.QUARANTINE,
+            RegistryBucketRole.PUBLIC,
+            RegistryBucketRole.METADATA,
+        )
+        RegistryServerMode.READ_ONLY_PUBLIC_API -> setOf(
+            RegistryBucketRole.PUBLIC,
+            RegistryBucketRole.METADATA,
+        )
+        RegistryServerMode.RELEASE_ACTIONS, RegistryServerMode.SECURITY_ACTIONS ->
+            setOf(RegistryBucketRole.METADATA)
+    }
+
+internal fun RegistryConfig.effectiveObjectStoreConfig(): RegistryObjectStoreConfig =
+    objectStoreConfig ?: RegistryObjectStoreConfig.legacyGcs(
+        quarantineBucket = quarantineBucket,
+        publicBucket = publicBucket,
+        metadataBucket = metadataBucket,
+    )
+
 object TufRole {
     const val RELEASES = "releases"
     const val SECURITY = "security"
@@ -365,9 +393,15 @@ private fun rejectServerEnvironment(
         RegistryServerMode.PUBLIC_API -> setOf(
             "REGISTRY_SECURITY_TOKEN",
             "REGISTRY_SECURITY_PRINCIPAL",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
         )
         RegistryServerMode.READ_ONLY_PUBLIC_API -> setOf(
             "REGISTRY_QUARANTINE_BUCKET",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
             "REGISTRY_WRITER_MODE",
             "REGISTRY_WRITER_TOKEN",
             "REGISTRY_WRITER_PRINCIPAL",
@@ -382,6 +416,9 @@ private fun rejectServerEnvironment(
         RegistryServerMode.RELEASE_ACTIONS -> setOf(
             "REGISTRY_QUARANTINE_BUCKET",
             "REGISTRY_PUBLIC_BUCKET",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
             "REGISTRY_OWNER_ALLOWLIST",
             "REGISTRY_WRITERS_ENABLED",
             "REGISTRY_PUBLIC_DELAY_SECONDS",
@@ -393,6 +430,9 @@ private fun rejectServerEnvironment(
         RegistryServerMode.SECURITY_ACTIONS -> setOf(
             "REGISTRY_QUARANTINE_BUCKET",
             "REGISTRY_PUBLIC_BUCKET",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
             "REGISTRY_WRITER_MODE",
             "REGISTRY_WRITER_TOKEN",
             "REGISTRY_WRITER_PRINCIPAL",
@@ -405,6 +445,17 @@ private fun rejectServerEnvironment(
     }.filter(env::containsKey)
     require(surfaceForbidden.isEmpty()) {
         "${mode.environmentValue} received unrelated configuration: ${surfaceForbidden.sorted().joinToString(", ")}"
+    }
+
+    if (storageMode == "memory") {
+        val cloudObjectConfiguration = env.keys.filter { name ->
+            name == "REGISTRY_OBJECT_STORE_PROVIDER" ||
+                name in REGISTRY_OBJECT_STORE_BUCKET_ENVIRONMENT_NAMES ||
+                name in REGISTRY_R2_ENVIRONMENT_NAMES
+        }
+        require(cloudObjectConfiguration.isEmpty()) {
+            "Memory mode received cloud object storage configuration: ${cloudObjectConfiguration.sorted().joinToString(", ")}"
+        }
     }
 }
 

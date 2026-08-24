@@ -1,0 +1,69 @@
+name: Hybrid infrastructure contracts
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cloudflare-infrastructure-ci.yml'
+      - '.gitignore'
+      - 'infra/cloudflare/**'
+      - 'infra/gcp-finops/**'
+  push:
+    branches: [dev, master]
+    paths:
+      - '.github/workflows/cloudflare-infrastructure-ci.yml'
+      - '.gitignore'
+      - 'infra/cloudflare/**'
+      - 'infra/gcp-finops/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: 1.12.5
+
+      - name: Install contract validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes ripgrep
+
+      - name: Validate ownership and regional contracts
+        run: |
+          bash infra/cloudflare/scripts/validate-contracts.sh
+          bash infra/gcp-finops/scripts/validate-contracts.sh
+
+      - name: Check OpenTofu formatting and syntax
+        run: |
+          tofu fmt -check -recursive infra/cloudflare
+          tofu fmt -check -recursive infra/gcp-finops
+
+      - name: Initialize provider schemas without backends
+        run: |
+          tofu -chdir=infra/cloudflare/state-bootstrap init -backend=false -input=false
+          tofu -chdir=infra/cloudflare/modules/platform init -backend=false -input=false
+          tofu -chdir=infra/cloudflare/environments/dev init -backend=false -input=false
+          tofu -chdir=infra/cloudflare/environments/prod init -backend=false -input=false
+          tofu -chdir=infra/gcp-finops/dev init -backend=false -input=false
+
+      - name: Validate OpenTofu roots
+        run: |
+          tofu -chdir=infra/cloudflare/state-bootstrap validate
+          tofu -chdir=infra/cloudflare/modules/platform validate
+          tofu -chdir=infra/cloudflare/environments/dev validate
+          tofu -chdir=infra/cloudflare/environments/prod validate
+          tofu -chdir=infra/gcp-finops/dev validate
+
+      - name: Test the platform contract with a mock provider
+        run: |
+          tofu -chdir=infra/cloudflare/modules/platform test
+          tofu -chdir=infra/gcp-finops/dev test

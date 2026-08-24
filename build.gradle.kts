@@ -64,4 +64,11 @@ tasks {
         mergeServiceFiles()
         isZip64 = true
     }
+
+    register<JavaExec>("firestoreDevBackfill") {
+        group = "migration"
+        description = "Dry-run or execute the hard-locked (default) -> portfolio-me-dev Firestore backfill"
+        classpath = sourceSets.main.get().runtimeClasspath
+        mainClass.set("code.yousef.firestore.migration.PortfolioFirestoreDevBackfillCli")
+    }
 }

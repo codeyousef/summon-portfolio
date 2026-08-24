@@ -157,6 +157,7 @@ class RegistryResources private constructor(
     override fun close() {
         server?.close()
         onlineSigners.close()
+        storage.close()
         repository.close()
     }
 
@@ -166,7 +167,7 @@ class RegistryResources private constructor(
             clock: Clock = Clock.systemUTC(),
             signingRoles: Set<String> = config.configuredSigningRoles,
             remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
-                { target -> GoogleCloudRunTufIdTokenProvider(target) },
+                ::defaultRemoteTufTokenProvider,
         ): RegistryResources {
             require(signingRoles.all(TufRole.ONLINE::contains)) { "Unknown online signing role" }
             require(signingRoles == config.configuredSigningRoles) {
@@ -190,17 +191,7 @@ class RegistryResources private constructor(
                 repository
             }
             val storage: RegistryObjectStorage = when {
-                config.storageMode == "gcp" && config.serverMode == RegistryServerMode.PUBLIC_API ->
-                    GcsRegistryObjectStorage.create(config)
-                config.storageMode == "gcp" && config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API ->
-                    GcsReadOnlyRegistryObjectStorage.create(config)
-                config.storageMode == "gcp" -> GcsMetadataOnlyRegistryObjectStorage.create(
-                    projectId = requireNotNull(config.projectId),
-                    metadataBucket = requireNotNull(config.metadataBucket),
-                    prefix = config.objectPrefix,
-                    allowImmutableCreates = true,
-                    allowRootPointerWrite = false,
-                )
+                config.storageMode == "gcp" -> createCloudRegistryObjectStorage(config)
                 config.serverMode == RegistryServerMode.PUBLIC_API -> InMemoryRegistryObjectStorage()
                 config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API ->
                     ReadOnlyRegistryObjectStorage(InMemoryRegistryObjectStorage())
@@ -319,6 +310,37 @@ class RegistryResources private constructor(
                 config.serverMode,
                 signingRoles.toSet(),
             )
+        }
+    }
+}
+
+private fun createCloudRegistryObjectStorage(config: RegistryConfig): RegistryObjectStorage {
+    val objectStore = config.effectiveObjectStoreConfig().requireRoles(config.serverMode.objectStoreRoles)
+    return when (objectStore.provider) {
+        RegistryObjectStoreProvider.GCS -> when (config.serverMode) {
+            RegistryServerMode.PUBLIC_API -> GcsRegistryObjectStorage.create(config)
+            RegistryServerMode.READ_ONLY_PUBLIC_API -> GcsReadOnlyRegistryObjectStorage.create(config)
+            RegistryServerMode.RELEASE_ACTIONS, RegistryServerMode.SECURITY_ACTIONS ->
+                GcsMetadataOnlyRegistryObjectStorage.create(
+                    projectId = requireNotNull(config.projectId),
+                    metadataBucket = objectStore.buckets.require(RegistryBucketRole.METADATA),
+                    prefix = config.objectPrefix,
+                    allowImmutableCreates = true,
+                    allowRootPointerWrite = false,
+                )
+        }
+        RegistryObjectStoreProvider.R2 -> {
+            val delegate = S3CompatibleRegistryObjectStorage.create(objectStore, config.objectPrefix)
+            when (config.serverMode) {
+                RegistryServerMode.PUBLIC_API -> delegate
+                RegistryServerMode.READ_ONLY_PUBLIC_API -> ReadOnlyRegistryObjectStorage(delegate)
+                RegistryServerMode.RELEASE_ACTIONS, RegistryServerMode.SECURITY_ACTIONS ->
+                    RestrictedMetadataRegistryObjectStorage(
+                        delegate = delegate,
+                        allowImmutableCreates = true,
+                        allowRootPointerWrite = false,
+                    )
+            }
         }
     }
 }
