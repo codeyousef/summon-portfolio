@@ -13,9 +13,11 @@ check "access_configuration_is_complete_and_dev_only" {
       var.cloudflare_account_id != null &&
       var.access_auth_domain != null &&
       var.access_owner_email != null &&
-      var.access_application_domain != null
+      var.access_identity_provider_id != null &&
+      var.access_application_domain != null &&
+      length(var.access_dev_domains) > 0
     )
-    error_message = "Access requires enabled dev resources plus an account, team domain, owner email, and application hostname."
+    error_message = "Access requires enabled dev resources plus an account, team domain, owner email, existing identity provider, and complete dev hostname set."
   }
 }
 
@@ -30,6 +32,15 @@ check "finops_wif_access_is_complete_and_dev_only" {
       var.access_application_domain != null
     )
     error_message = "The FinOps WIF broker requires the complete enabled dev Access boundary."
+  }
+}
+
+check "dev_access_has_required_route_keys" {
+  assert {
+    condition = !var.access_enabled || alltrue([
+      for key in ["portfolio_apex", "portfolio_worker", "samurai", "samurai_worker"] : contains(keys(var.access_dev_domains), key)
+    ])
+    error_message = "Dev Access requires canonical and direct Worker domains for Portfolio and Samurai."
   }
 }
 

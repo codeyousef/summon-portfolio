@@ -39,6 +39,8 @@ object NoopSamuraiIdentityResolver : SamuraiIdentityResolver {
 class HttpSamuraiIdentityResolver(
     endpoint: String,
     private val bearerToken: String,
+    private val accessClientId: String? = null,
+    private val accessClientSecret: String? = null,
     private val transport: SamuraiIdentityProjectionTransport = JdkSamuraiIdentityProjectionTransport(),
 ) : SamuraiIdentityResolver {
     private val endpoint = validateEndpoint(endpoint)
@@ -48,6 +50,15 @@ class HttpSamuraiIdentityResolver(
         require(bearerToken.length in 32..512 && bearerToken.none(Char::isISOControl)) {
             "FINOPS_IDENTITY_READ_TOKEN must contain 32 to 512 non-control characters"
         }
+        require((accessClientId == null) == (accessClientSecret == null)) {
+            "Samurai identity projection Access credentials must be configured together"
+        }
+        accessClientId?.let {
+            require(it.matches(Regex("^[0-9a-f]{32}\\.access$"))) { "Invalid Cloudflare Access client ID" }
+        }
+        accessClientSecret?.let {
+            require(it.length in 32..512 && it.none(Char::isISOControl)) { "Invalid Cloudflare Access client secret" }
+        }
     }
 
     override fun resolve(userIds: Set<String>): Map<String, SamuraiFinOpsIdentity> {
@@ -55,7 +66,14 @@ class HttpSamuraiIdentityResolver(
         if (safeIds.isEmpty()) return emptyMap()
         return safeIds.chunked(100).flatMap { batch ->
             val query = URLEncoder.encode(batch.joinToString(","), StandardCharsets.UTF_8)
-            val response = transport.get(URI.create("$endpoint?ids=$query"), bearerToken)
+            val response = transport.get(
+                SamuraiIdentityProjectionRequest(
+                    uri = URI.create("$endpoint?ids=$query"),
+                    bearerToken = bearerToken,
+                    accessClientId = accessClientId,
+                    accessClientSecret = accessClientSecret,
+                ),
+            )
             require(response.size <= MAX_IDENTITY_RESPONSE_BYTES) { "Samurai identity response is too large" }
             json.decodeFromString<List<SamuraiFinOpsIdentity>>(response.decodeToString()).also { identities ->
                 val requested = batch.toSet()
@@ -86,8 +104,15 @@ class HttpSamuraiIdentityResolver(
     }
 }
 
+data class SamuraiIdentityProjectionRequest(
+    val uri: URI,
+    val bearerToken: String,
+    val accessClientId: String? = null,
+    val accessClientSecret: String? = null,
+)
+
 fun interface SamuraiIdentityProjectionTransport {
-    fun get(uri: URI, bearerToken: String): ByteArray
+    fun get(request: SamuraiIdentityProjectionRequest): ByteArray
 }
 
 private class JdkSamuraiIdentityProjectionTransport(
@@ -96,14 +121,17 @@ private class JdkSamuraiIdentityProjectionTransport(
         .followRedirects(HttpClient.Redirect.NEVER)
         .build(),
 ) : SamuraiIdentityProjectionTransport {
-    override fun get(uri: URI, bearerToken: String): ByteArray {
+    override fun get(request: SamuraiIdentityProjectionRequest): ByteArray {
+        val builder = HttpRequest.newBuilder(request.uri)
+            .timeout(Duration.ofSeconds(5))
+            .header("authorization", "Bearer ${request.bearerToken}")
+            .header("accept", "application/json")
+        if (request.accessClientId != null && request.accessClientSecret != null) {
+            builder.header("cf-access-client-id", request.accessClientId)
+            builder.header("cf-access-client-secret", request.accessClientSecret)
+        }
         val response = client.send(
-            HttpRequest.newBuilder(uri)
-                .timeout(Duration.ofSeconds(5))
-                .header("authorization", "Bearer $bearerToken")
-                .header("accept", "application/json")
-                .GET()
-                .build(),
+            builder.GET().build(),
             HttpResponse.BodyHandlers.ofInputStream(),
         )
         response.body().use { body ->

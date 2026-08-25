@@ -86,6 +86,8 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 bearerToken = requireNotNull(System.getenv("FINOPS_IDENTITY_READ_TOKEN")?.trim()?.takeIf(String::isNotEmpty)) {
                     "SAMURAI_FINOPS_IDENTITY_URL requires FINOPS_IDENTITY_READ_TOKEN"
                 },
+                accessClientId = System.getenv("SAMURAI_FINOPS_ACCESS_CLIENT_ID")?.trim()?.takeIf(String::isNotEmpty),
+                accessClientSecret = System.getenv("SAMURAI_FINOPS_ACCESS_CLIENT_SECRET")?.trim()?.takeIf(String::isNotEmpty),
             )
         } ?: NoopSamuraiIdentityResolver
     val finOpsRepository = portfolioFirestoreStore?.let { store ->

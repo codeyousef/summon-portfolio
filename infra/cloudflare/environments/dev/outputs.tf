@@ -6,9 +6,23 @@ output "finops_access" {
   value = module.platform.finops_access
 }
 
+output "dev_access" {
+  value = module.platform.dev_access
+}
+
 output "finops_wif_access_client_secret" {
   description = "Sensitive bootstrap value for the dev Worker secret."
   value       = module.platform.finops_wif_access_client_secret
+  sensitive   = true
+}
+
+output "dev_machine_access" {
+  value = module.platform.dev_machine_access
+}
+
+output "dev_machine_access_client_secrets" {
+  description = "Sensitive bootstrap values for exact dev machine boundaries."
+  value       = module.platform.dev_machine_access_client_secrets
   sensitive   = true
 }
 
