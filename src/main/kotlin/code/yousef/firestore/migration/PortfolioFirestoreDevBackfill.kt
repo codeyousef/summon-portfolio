@@ -12,13 +12,21 @@ import com.google.cloud.firestore.FirestoreOptions
 import com.google.cloud.firestore.GeoPoint
 import java.math.BigDecimal
 import java.security.MessageDigest
+import java.time.Duration
 import java.time.Instant
 import java.util.Base64
 import java.util.Date
 
 /**
- * The exact top-level collection contract for the one-time Portfolio database copy.
+ * The exact top-level business-data contract for the Portfolio database copy and parity proof.
  * Subcollections are intentionally unsupported: adding one requires an explicit migration.
+ *
+ * Replication metadata is deliberately not part of [all]. The authority retains an outbox,
+ * source and mirror receipts have different lifecycle states and commit timestamps, and
+ * aggregate-state timestamps are written independently. Requiring byte equality for those
+ * collections would make sustained dual-write parity impossible even when every business
+ * mutation is mirrored correctly. They are monitored through replication-health checks
+ * instead of copied or hashed as business data.
  */
 object PortfolioFirestoreMigrationCollections {
     const val PROOFS = "_portfolio_migration_proofs"
@@ -42,7 +50,6 @@ object PortfolioFirestoreMigrationCollections {
     val all: Set<String> = linkedSetOf<String>().apply {
         addAll(content)
         addAll(PortfolioFirestoreCollections.all)
-        addAll(migrationMetadata)
     }
 }
 
@@ -86,6 +93,28 @@ data class FirestoreMigrationProofResult(
     val parity: FirestoreBackfillParity,
 )
 
+data class FirestorePendingReconciliationResult(
+    val attempted: Int,
+    val markedMirrored: Int,
+    val skipped: Int,
+    val remaining: Int,
+)
+
+data class FirestoreReplicationHealth(
+    val pendingCount: Int,
+    val p99AgeMillis: Long,
+    val maximumAgeMillis: Long,
+    val truncated: Boolean,
+    val futureTimestampCount: Int,
+) {
+    val ready: Boolean
+        get() = !truncated && futureTimestampCount == 0 && p99AgeMillis <= MAXIMUM_PENDING_AGE_MILLIS
+
+    companion object {
+        const val MAXIMUM_PENDING_AGE_MILLIS = 30_000L
+    }
+}
+
 internal data class FirestoreBackfillDocument(
     val id: String,
     val data: Map<String, Any?>,
@@ -118,6 +147,68 @@ internal fun planFirestoreBackfill(
     )
 }
 
+internal fun firestoreBackfillDiscrepancyIds(
+    source: Map<String, FirestoreBackfillDocument>,
+    target: Map<String, FirestoreBackfillDocument>,
+): Set<String> = buildSet {
+    addAll(source.keys - target.keys)
+    addAll(target.keys - source.keys)
+    addAll(
+        (source.keys intersect target.keys).filter { id ->
+            source.getValue(id).hash != target.getValue(id).hash
+        },
+    )
+}
+
+internal fun verifiedPendingTargetReceipt(
+    envelope: MutationEnvelope,
+    sourceAggregate: Map<String, Any?>?,
+    targetAggregate: Map<String, Any?>?,
+    sourceState: Map<String, Any?>?,
+    targetState: Map<String, Any?>?,
+    targetReceipt: Map<String, Any?>?,
+): MutationReceipt? {
+    if (sourceAggregate?.let(FirestoreCanonicalHash::document) !=
+        targetAggregate?.let(FirestoreCanonicalHash::document)
+    ) return null
+    val stateFields = setOf("aggregateType", "aggregateId", "revision", "authorityEpoch", "lastMutationId")
+    val sourceSemanticState = sourceState?.filterKeys(stateFields::contains) ?: return null
+    val targetSemanticState = targetState?.filterKeys(stateFields::contains) ?: return null
+    if (sourceSemanticState != targetSemanticState) return null
+    if (sourceSemanticState["aggregateType"] != envelope.aggregateType ||
+        sourceSemanticState["aggregateId"] != envelope.aggregateId ||
+        sourceSemanticState["authorityEpoch"] != envelope.authorityEpoch.value
+    ) return null
+    val expectedTargetRevision = Math.addExact(envelope.expectedRevision, 1L)
+    val stateRevision = sourceSemanticState["revision"] as? Long ?: return null
+    if (stateRevision < expectedTargetRevision) return null
+    val receipt = targetReceipt ?: return null
+    if (receipt["committedEpoch"] != envelope.authorityEpoch.value || receipt["newRevision"] != expectedTargetRevision) {
+        return null
+    }
+    val commitTime = runCatching { Instant.parse(receipt["firestoreCommitTime"] as? String) }.getOrNull() ?: return null
+    val mirrorState = runCatching { MirrorState.valueOf(receipt["mirrorState"] as? String ?: "") }.getOrNull() ?: return null
+    return MutationReceipt(envelope.id, envelope.authorityEpoch, expectedTargetRevision, commitTime, mirrorState)
+}
+
+internal fun firestoreReplicationHealth(
+    pending: List<MutationEnvelope>,
+    now: Instant,
+    truncated: Boolean,
+): FirestoreReplicationHealth {
+    val ages = pending.map { Duration.between(it.occurredAt, now).toMillis() }.sorted()
+    val futureCount = ages.count { it < 0L }
+    val nonNegativeAges = ages.filter { it >= 0L }
+    val p99Index = ((nonNegativeAges.size * 99 + 99) / 100 - 1).coerceAtLeast(0)
+    return FirestoreReplicationHealth(
+        pendingCount = pending.size,
+        p99AgeMillis = nonNegativeAges.getOrElse(p99Index) { 0L },
+        maximumAgeMillis = nonNegativeAges.lastOrNull() ?: 0L,
+        truncated = truncated,
+        futureTimestampCount = futureCount,
+    )
+}
+
 class PortfolioFirestoreDevBackfill(
     private val source: Firestore,
     private val target: Firestore,
@@ -136,6 +227,7 @@ class PortfolioFirestoreDevBackfill(
         collections = collections.sorted().map { collection ->
             val sourceDocuments = loadCollection(source, collection)
             val targetDocuments = loadCollection(target, collection)
+            refreshBoundedDiscrepancies(collection, sourceDocuments, targetDocuments)
             val plan = planFirestoreBackfill(sourceDocuments, targetDocuments)
             FirestoreBackfillCollectionParity(
                 collection = collection,
@@ -149,6 +241,47 @@ class PortfolioFirestoreDevBackfill(
             )
         },
     )
+
+    /**
+     * Source and target are separate Firestore databases, so their collection scans cannot
+     * share a snapshot timestamp. A mutation mirrored between the two scans otherwise looks
+     * target-only or hash-different. Re-read only the observed discrepancy IDs from both
+     * databases; persistent differences remain visible and still fail closed.
+     *
+     * The bound prevents a genuinely incomplete initial copy from turning into tens of
+     * thousands of point reads. Large divergences belong to [repair], not race settlement.
+     */
+    private fun refreshBoundedDiscrepancies(
+        collection: String,
+        sourceDocuments: LinkedHashMap<String, FirestoreBackfillDocument>,
+        targetDocuments: LinkedHashMap<String, FirestoreBackfillDocument>,
+    ) {
+        repeat(DISCREPANCY_REFRESH_PASSES) {
+            val ids = firestoreBackfillDiscrepancyIds(sourceDocuments, targetDocuments)
+            if (ids.isEmpty() || ids.size > MAX_DISCREPANCY_REFRESH_IDS) return
+            refreshDocuments(source, collection, ids, sourceDocuments)
+            refreshDocuments(target, collection, ids, targetDocuments)
+            if (firestoreBackfillDiscrepancyIds(sourceDocuments, targetDocuments).isEmpty()) return
+        }
+    }
+
+    private fun refreshDocuments(
+        firestore: Firestore,
+        collection: String,
+        ids: Set<String>,
+        documents: LinkedHashMap<String, FirestoreBackfillDocument>,
+    ) {
+        ids.chunked(readPageSize).forEach { chunk ->
+            val references = chunk.map { firestore.collection(collection).document(it) }
+            firestore.getAll(*references.toTypedArray()).get().forEach { snapshot ->
+                if (snapshot.exists()) {
+                    documents[snapshot.id] = FirestoreBackfillDocument(snapshot.id, snapshot.data.orEmpty())
+                } else {
+                    documents.remove(snapshot.id)
+                }
+            }
+        }
+    }
 
     /**
      * Repairs source-only and hash-different documents with full replacement writes.
@@ -202,6 +335,12 @@ class PortfolioFirestoreDevBackfill(
             "Migration proof refused: sourceOnly=${parity.sourceOnlyCount}, " +
                 "targetOnly=${parity.targetOnlyCount}, different=${parity.differingCount}"
         }
+        val replication = replicationHealth()
+        check(replication.ready) {
+            "Migration proof refused: pending=${replication.pendingCount}, " +
+                "p99AgeMillis=${replication.p99AgeMillis}, truncated=${replication.truncated}, " +
+                "futureTimestamps=${replication.futureTimestampCount}"
+        }
         val data = mapOf<String, Any>(
             "schemaVersion" to 1L,
             "proofId" to proofId,
@@ -226,6 +365,51 @@ class PortfolioFirestoreDevBackfill(
         return FirestoreMigrationProofResult(FirestoreMigrationProof(proofId, data), parity)
     }
 
+    fun replicationHealth(now: Instant = Instant.now()): FirestoreReplicationHealth {
+        val pending = FirestoreMutationBackend(source).pending(REPLICATION_HEALTH_LIMIT)
+        return firestoreReplicationHealth(pending, now, truncated = pending.size == REPLICATION_HEALTH_LIMIT)
+    }
+
+    /**
+     * Settles legacy source outbox records only after proving that the mirror already contains
+     * the exact business document, equivalent revision state, and matching target receipt.
+     * This updates source receipt/outbox lifecycle fields only; it cannot write business data.
+     */
+    fun reconcileVerifiedPending(limit: Int = 1_000): FirestorePendingReconciliationResult {
+        require(limit in 1..1_000) { "Pending reconciliation limit must be between 1 and 1000" }
+        check(inspect().ready) { "Pending reconciliation refused: business data is not in exact parity" }
+        val sourceBackend = FirestoreMutationBackend(source)
+        val pending = sourceBackend.pending(limit)
+        var marked = 0
+        pending.forEach { envelope ->
+            val stateId = MutationPayloadHash.sha256(
+                mapOf("aggregateType" to envelope.aggregateType, "aggregateId" to envelope.aggregateId),
+            )
+            val sourceAggregate = source.collection(envelope.aggregateType).document(envelope.aggregateId).get().get()
+            val targetAggregate = target.collection(envelope.aggregateType).document(envelope.aggregateId).get().get()
+            val sourceState = source.collection(FirestoreMutationBackend.AGGREGATE_STATE_COLLECTION).document(stateId).get().get()
+            val targetState = target.collection(FirestoreMutationBackend.AGGREGATE_STATE_COLLECTION).document(stateId).get().get()
+            val targetReceipt = target.collection(FirestoreMutationBackend.RECEIPTS_COLLECTION).document(envelope.id).get().get()
+            val verifiedReceipt = verifiedPendingTargetReceipt(
+                envelope = envelope,
+                sourceAggregate = sourceAggregate.takeIf { it.exists() }?.data,
+                targetAggregate = targetAggregate.takeIf { it.exists() }?.data,
+                sourceState = sourceState.takeIf { it.exists() }?.data,
+                targetState = targetState.takeIf { it.exists() }?.data,
+                targetReceipt = targetReceipt.takeIf { it.exists() }?.data,
+            ) ?: return@forEach
+            sourceBackend.markMirrored(envelope.id, verifiedReceipt)
+            marked++
+        }
+        val remaining = sourceBackend.pending(limit).size
+        return FirestorePendingReconciliationResult(
+            attempted = pending.size,
+            markedMirrored = marked,
+            skipped = pending.size - marked,
+            remaining = remaining,
+        )
+    }
+
     private fun loadCollection(
         firestore: Firestore,
         collection: String,
@@ -247,6 +431,9 @@ class PortfolioFirestoreDevBackfill(
     }
 
     companion object {
+        private const val DISCREPANCY_REFRESH_PASSES = 3
+        private const val MAX_DISCREPANCY_REFRESH_IDS = 1_000
+        private const val REPLICATION_HEALTH_LIMIT = 1_000
         private val COLLECTION_ID = Regex("^[A-Za-z_][A-Za-z0-9_]{0,127}$")
         private val PROOF_ID = Regex("[a-z0-9][a-z0-9._-]{2,127}")
     }
@@ -338,8 +525,12 @@ object PortfolioFirestoreDevBackfillCli {
         val mode = when {
             args.isEmpty() || args.contentEquals(arrayOf("--dry-run")) -> "dry-run"
             args.contentEquals(arrayOf("--execute")) -> "execute"
+            args.contentEquals(arrayOf("--reconcile-pending")) -> "reconcile-pending"
             proofId != null -> "write-proof"
-            else -> error("Usage: firestoreDevBackfill [--dry-run|--execute|--write-proof <unique-proof-id>]")
+            else -> error(
+                "Usage: firestoreDevBackfill " +
+                    "[--dry-run|--execute|--reconcile-pending|--write-proof <unique-proof-id>]",
+            )
         }
         if (mode != "dry-run") {
             require(System.getenv("PORTFOLIO_DEV_FIRESTORE_BACKFILL_CONFIRM") == EXECUTION_CONFIRMATION) {
@@ -353,8 +544,10 @@ object PortfolioFirestoreDevBackfillCli {
         try {
             val backfill = PortfolioFirestoreDevBackfill(source, target)
             val proofResult = if (mode == "write-proof") backfill.writeProof(requireNotNull(proofId)) else null
+            val pendingResult = if (mode == "reconcile-pending") backfill.reconcileVerifiedPending() else null
             val result = when (mode) {
                 "execute" -> backfill.repair()
+                "reconcile-pending" -> FirestoreBackfillRepairResult(0, backfill.inspect())
                 "write-proof" -> FirestoreBackfillRepairResult(0, requireNotNull(proofResult).parity)
                 else -> FirestoreBackfillRepairResult(0, backfill.inspect())
             }
@@ -379,9 +572,25 @@ object PortfolioFirestoreDevBackfillCli {
                     "\tdifferent=${result.parity.differingCount}\twritten=${result.writtenDocuments}" +
                     "\tready=${result.parity.ready}",
             )
+            val replication = backfill.replicationHealth()
+            println(
+                "replication\tpending=${replication.pendingCount}\tp99AgeMillis=${replication.p99AgeMillis}" +
+                    "\tmaximumAgeMillis=${replication.maximumAgeMillis}\ttruncated=${replication.truncated}" +
+                    "\tfutureTimestamps=${replication.futureTimestampCount}\tready=${replication.ready}",
+            )
             if (mode == "write-proof") {
                 val proof = requireNotNull(proofResult).proof
                 println("proof\tid=${proof.id}\tparityHash=${proof.data.getValue("parityHash")}\tready=true")
+            }
+            if (mode == "reconcile-pending") {
+                val pending = requireNotNull(pendingResult)
+                println(
+                    "pending\tattempted=${pending.attempted}\tmarkedMirrored=${pending.markedMirrored}" +
+                        "\tskipped=${pending.skipped}\tremaining=${pending.remaining}",
+                )
+                check(pending.skipped == 0 && replication.ready) {
+                    "Pending reconciliation left unverified or stale replication work"
+                }
             }
             if (mode != "dry-run") check(result.parity.ready) { "Backfill execution ended without exact parity" }
         } finally {
