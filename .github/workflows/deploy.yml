@@ -126,7 +126,7 @@ jobs:
             --firestore-project portfolio-476219 \
             --firestore-database portfolio-me-dev \
             --firestore-write-mode dual \
-            --firestore-migration-proof-id portfolio-me-dev-dual-20260822t2125z-v2 \
+            --firestore-migration-proof-id portfolio-me-dev-parity-20260825t0845z-v1 \
             --photography-write-mode source \
             --photography-upload-bucket portfolio-476219-portfolio-uploads \
             --finops-sharded-rollup-writes-enabled \

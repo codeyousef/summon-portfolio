@@ -64,7 +64,10 @@ verification. Dual mode accepts proofs for at most seven days; a target
 authority cutover requires a proof no older than 24 hours. Generate one only
 after an exact read-only parity scan with
 `firestoreDevBackfill --args='--write-proof <unique-proof-id>'` and the exact
-dev execution confirmation variable.
+dev execution confirmation variable. Operators whose local Application Default
+Credentials cannot refresh may pass a short-lived `gcloud auth
+print-access-token` value through `PORTFOLIO_DEV_FIRESTORE_ACCESS_TOKEN`; the
+CLI keeps it in memory, rejects malformed values, and does not persist it.
 - `FIRESTORE_SERVICE_ACCOUNT_JSON_BASE64` - Optional strict Base64 service-account JSON used in Cloudflare Containers where ADC is unavailable; decoded only in memory and required to match `GOOGLE_CLOUD_PROJECT`
 - `PHOTOGRAPHY_UPLOAD_BUCKET` - Optional GCS bucket for durable photo uploads in production
 - `PHOTOGRAPHY_UPLOAD_PREFIX` - GCS object prefix for photo uploads (default: `photography`)

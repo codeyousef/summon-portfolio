@@ -1,6 +1,7 @@
 package code.yousef.firestore.migration
 
 import code.yousef.firestore.PortfolioFirestoreCollections
+import com.google.auth.oauth2.AccessToken
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.Timestamp
 import com.google.cloud.firestore.Blob
@@ -325,6 +326,7 @@ object PortfolioFirestoreDevBackfillCli {
     private const val SOURCE_DATABASE = "(default)"
     private const val TARGET_DATABASE = "portfolio-me-dev"
     private const val EXECUTION_CONFIRMATION = "portfolio-476219:(default)->portfolio-me-dev"
+    private const val ACCESS_TOKEN_ENV = "PORTFOLIO_DEV_FIRESTORE_ACCESS_TOKEN"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -345,7 +347,7 @@ object PortfolioFirestoreDevBackfillCli {
             }
         }
 
-        val credentials = GoogleCredentials.getApplicationDefault()
+        val credentials = credentials()
         val source = firestore(credentials, SOURCE_DATABASE)
         val target = firestore(credentials, TARGET_DATABASE)
         try {
@@ -386,6 +388,20 @@ object PortfolioFirestoreDevBackfillCli {
             source.close()
             target.close()
         }
+    }
+
+    internal fun credentials(
+        accessToken: String? = System.getenv(ACCESS_TOKEN_ENV),
+        now: Instant = Instant.now(),
+    ): GoogleCredentials {
+        val token = accessToken?.trim().orEmpty()
+        if (token.isEmpty()) return GoogleCredentials.getApplicationDefault()
+        require(token.length in 20..8_192 && token.none(Char::isWhitespace)) {
+            "$ACCESS_TOKEN_ENV is malformed"
+        }
+        return GoogleCredentials.create(
+            AccessToken(token, Date.from(now.plusSeconds(50 * 60L))),
+        )
     }
 
     private fun firestore(credentials: GoogleCredentials, databaseId: String): Firestore = FirestoreOptions.newBuilder()
