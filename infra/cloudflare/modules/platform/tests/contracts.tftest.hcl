@@ -78,13 +78,21 @@ run "reviewed_dev_finops_wif_broker_shape" {
   command = plan
 
   variables {
-    cloudflare_account_id     = "0123456789abcdef0123456789abcdef"
-    environment               = "dev"
-    resources_enabled         = true
-    access_enabled            = true
-    access_auth_domain        = "felidai-studio.cloudflareaccess.com"
-    access_owner_email        = "owner@example.com"
-    access_application_domain = "portfolio-dev.example.com"
+    cloudflare_account_id       = "0123456789abcdef0123456789abcdef"
+    environment                 = "dev"
+    resources_enabled           = true
+    access_enabled              = true
+    access_auth_domain          = "felidai-studio.cloudflareaccess.com"
+    access_owner_email          = "owner@example.com"
+    access_identity_provider_id = "11111111-2222-4333-8444-555555555555"
+    access_application_domain   = "portfolio-dev.example.com"
+    access_dev_domains = {
+      portfolio_apex   = "portfolio-dev.example.com"
+      portfolio_worker = "portfolio-worker.example.workers.dev"
+      ecosystem        = "*.dev.example.com"
+      samurai          = "samurai.dev.example.net"
+      samurai_worker   = "samurai-worker.example.workers.dev"
+    }
     finops_wif_access_enabled = true
   }
 
@@ -101,9 +109,23 @@ run "reviewed_dev_finops_wif_broker_shape" {
 
   assert {
     condition = alltrue([
-      for application in cloudflare_zero_trust_access_application.finops :
-      application.path_cookie_attribute && application.same_site_cookie_attribute == "lax"
+      for application in cloudflare_zero_trust_access_application.dev_sites :
+      !application.path_cookie_attribute &&
+      application.same_site_cookie_attribute == "lax" &&
+      application.auto_redirect_to_identity &&
+      length(application.allowed_idps) == 1 &&
+      contains(application.allowed_idps, "11111111-2222-4333-8444-555555555555")
     ])
-    error_message = "FinOps dashboard and API Access JWTs must be path-scoped and SameSite=Lax so audiences stay isolated and the cross-site Access callback cannot loop."
+    error_message = "Every development hostname must use one hostname-wide owner session and the existing account-member-only identity provider."
+  }
+
+
+  assert {
+    condition = (
+      length(cloudflare_zero_trust_access_application.dev_machine) == 1 &&
+      cloudflare_zero_trust_access_application.dev_machine["portfolio_samurai_identity"].domain == "samurai.dev.example.net/internal/portfolio/finops/identities" &&
+      alltrue([for policy in cloudflare_zero_trust_access_policy.dev_machine : policy.decision == "non_identity"])
+    )
+    error_message = "Machine identity access must be limited to the exact internal Samurai identity-projection route."
   }
 }

@@ -28,7 +28,7 @@ permissions:
 
 env:
   CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-  PORTFOLIO_DEV_ORIGIN: ${{ vars.PORTFOLIO_DEV_ORIGIN || 'https://yousef-portfolio-edge-dev.yousef-d2f.workers.dev' }}
+  PORTFOLIO_DEV_ORIGIN: ${{ vars.PORTFOLIO_DEV_ORIGIN || 'https://dev.yousef.codes' }}
 
 jobs:
   verify:
@@ -161,16 +161,14 @@ jobs:
             echo "- Commit: \`${GITHUB_SHA}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Verify the public dev origin
+      - name: Verify the protected dev origin
         shell: bash
         run: |
           set -euo pipefail
-          response="$(curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 --max-time 30 "${PORTFOLIO_DEV_ORIGIN}/health/ready")"
-          jq -e '
-            .status == "ok" and
-            .environment == "dev" and
-            .ready == true and
-            .firestoreDatabase == "portfolio-me-dev" and
-            .firestoreWriteMode == "dual" and
-            .regionPolicy == ["ME", "WEUR"]
-          ' <<<"${response}" >/dev/null
+          headers="$(mktemp)"
+          trap 'rm -f "${headers}"' EXIT
+          status="$(curl --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 --max-time 30 \
+            --output /dev/null --dump-header "${headers}" --write-out '%{http_code}' \
+            "${PORTFOLIO_DEV_ORIGIN}/health/ready")"
+          [[ "${status}" == "302" ]]
+          tr -d '\r' < "${headers}" | grep -Eiq '^location: https://felidai-studio\.cloudflareaccess\.com/'

@@ -31,10 +31,21 @@ variable "access_owner_email" {
   nullable = true
 }
 
+variable "access_identity_provider_id" {
+  type     = string
+  default  = null
+  nullable = true
+}
+
 variable "access_application_domain" {
   type     = string
   default  = null
   nullable = true
+}
+
+variable "access_dev_domains" {
+  type    = map(string)
+  default = {}
 }
 
 variable "finops_wif_access_enabled" {

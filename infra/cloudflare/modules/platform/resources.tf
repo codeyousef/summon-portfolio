@@ -60,11 +60,11 @@ resource "cloudflare_zero_trust_organization" "studio" {
   }
 }
 
-resource "cloudflare_zero_trust_access_policy" "finops_owner" {
+resource "cloudflare_zero_trust_access_policy" "dev_owner" {
   count = var.resources_enabled && var.access_enabled ? 1 : 0
 
   account_id       = var.cloudflare_account_id
-  name             = "Felidai Studio FinOps owner"
+  name             = "Felidai Studio development owner"
   decision         = "allow"
   session_duration = "12h"
   include = [{
@@ -80,32 +80,90 @@ resource "cloudflare_zero_trust_access_policy" "finops_owner" {
   }
 }
 
-resource "cloudflare_zero_trust_access_application" "finops" {
-  for_each = var.resources_enabled && var.access_enabled ? {
-    dashboard = "/admin/spending*"
-    api       = "/api/admin/finops/*"
-  } : {}
+resource "cloudflare_zero_trust_access_application" "dev_sites" {
+  for_each = var.resources_enabled && var.access_enabled ? var.access_dev_domains : {}
 
   account_id                 = var.cloudflare_account_id
   type                       = "self_hosted"
-  name                       = "Felidai Studio FinOps ${each.key} (${var.environment})"
-  domain                     = "${var.access_application_domain}${each.value}"
+  name                       = "Felidai Studio dev ${replace(each.key, "_", " ")}"
+  domain                     = each.value
   session_duration           = "12h"
   app_launcher_visible       = false
   http_only_cookie_attribute = true
-  # The dashboard and API are distinct Access applications on one hostname.
-  # Scope each JWT to its application path so their different audiences do not
-  # overwrite the same hostname-wide CF_Authorization cookie and cause a login
-  # redirect loop.
-  path_cookie_attribute = true
-  # Access authentication returns from the Cloudflare identity domain via a
-  # top-level navigation. Strict prevents the application token from being
-  # sent on that navigation and Cloudflare documents the resulting symptom as
-  # ERR_TOO_MANY_REDIRECTS. Lax preserves CSRF protection for subrequests while
-  # allowing the authenticated top-level GET callback flow.
+  path_cookie_attribute      = false
   same_site_cookie_attribute = "lax"
+  allowed_idps               = [var.access_identity_provider_id]
+  auto_redirect_to_identity  = true
   policies = [{
-    id         = cloudflare_zero_trust_access_policy.finops_owner[0].id
+    id         = cloudflare_zero_trust_access_policy.dev_owner[0].id
+    precedence = 1
+  }]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+locals {
+  dev_machine_tokens = var.resources_enabled && var.access_enabled ? {
+    portfolio_samurai_identity = "Portfolio to Samurai identity projection"
+  } : {}
+
+  dev_machine_routes = var.resources_enabled && var.access_enabled ? {
+    portfolio_samurai_identity = {
+      domain    = "${var.access_dev_domains["samurai"]}/internal/portfolio/finops/identities"
+      token_key = "portfolio_samurai_identity"
+    }
+  } : {}
+}
+
+resource "cloudflare_zero_trust_access_service_token" "dev_machine" {
+  for_each = local.dev_machine_tokens
+
+  account_id = var.cloudflare_account_id
+  name       = "Felidai Studio ${each.value} (${var.environment})"
+  duration   = "2160h"
+
+  lifecycle {
+    create_before_destroy = true
+    prevent_destroy       = true
+  }
+}
+
+resource "cloudflare_zero_trust_access_policy" "dev_machine" {
+  for_each = local.dev_machine_tokens
+
+  account_id       = var.cloudflare_account_id
+  name             = "Felidai Studio ${each.value} (${var.environment})"
+  decision         = "non_identity"
+  session_duration = "1h"
+  include = [{
+    service_token = {
+      token_id = cloudflare_zero_trust_access_service_token.dev_machine[each.key].id
+    }
+  }]
+
+  depends_on = [cloudflare_zero_trust_organization.studio]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "cloudflare_zero_trust_access_application" "dev_machine" {
+  for_each = local.dev_machine_routes
+
+  account_id                 = var.cloudflare_account_id
+  type                       = "self_hosted"
+  name                       = "Felidai Studio ${replace(each.key, "_", " ")} (${var.environment})"
+  domain                     = each.value.domain
+  session_duration           = "1h"
+  app_launcher_visible       = false
+  http_only_cookie_attribute = true
+  path_cookie_attribute      = true
+  same_site_cookie_attribute = "strict"
+  policies = [{
+    id         = cloudflare_zero_trust_access_policy.dev_machine[each.value.token_key].id
     precedence = 1
   }]
 

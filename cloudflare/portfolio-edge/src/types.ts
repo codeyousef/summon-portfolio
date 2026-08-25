@@ -59,6 +59,8 @@ export interface Env {
   GCP_WIF_SERVICE_ACCOUNT?: string;
   FINOPS_IDENTITY_READ_TOKEN?: string;
   SAMURAI_FINOPS_IDENTITY_URL?: string;
+  SAMURAI_FINOPS_ACCESS_CLIENT_ID?: string;
+  SAMURAI_FINOPS_ACCESS_CLIENT_SECRET?: string;
 }
 
 export interface MutationEnvelope {

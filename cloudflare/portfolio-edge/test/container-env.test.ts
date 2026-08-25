@@ -29,6 +29,8 @@ describe("Portfolio Container environment", () => {
       FINOPS_RECEIPTS: {} as R2Bucket,
       SAMURAI_FINOPS_IDENTITY_URL: "https://samurai.example/internal/portfolio/finops/identities",
       FINOPS_IDENTITY_READ_TOKEN: "identity-read-token-0000000000000000000000000000",
+      SAMURAI_FINOPS_ACCESS_CLIENT_ID: "0123456789abcdef0123456789abcdef.access",
+      SAMURAI_FINOPS_ACCESS_CLIENT_SECRET: "access-secret-00000000000000000000000000000000",
     } as Env);
 
     expect(environment.FIRESTORE_WRITE_MODE).toBe("target");
@@ -58,6 +60,8 @@ describe("Portfolio Container environment", () => {
     expect(environment.FINOPS_RECEIPT_BASE_URL).toBe("https://yousef.codes/internal/finops");
     expect(environment.SAMURAI_FINOPS_IDENTITY_URL).toBe("https://samurai.example/internal/portfolio/finops/identities");
     expect(environment.FINOPS_IDENTITY_READ_TOKEN).toBe("identity-read-token-0000000000000000000000000000");
+    expect(environment.SAMURAI_FINOPS_ACCESS_CLIENT_ID).toBe("0123456789abcdef0123456789abcdef.access");
+    expect(environment.SAMURAI_FINOPS_ACCESS_CLIENT_SECRET).toBe("access-secret-00000000000000000000000000000000");
     expect(environment).not.toHaveProperty("GOOGLE_SERVICE_ACCOUNT_JSON_B64");
     expect(environment).not.toHaveProperty("GOOGLE_APPLICATION_CREDENTIALS");
   });

@@ -43,7 +43,7 @@ variable "resources_enabled" {
 }
 
 variable "access_enabled" {
-  description = "Fail-closed gate for the owner-only dev FinOps Access boundary."
+  description = "Fail-closed gate for the owner-only development Access boundary."
   type        = bool
   default     = false
 }
@@ -64,7 +64,7 @@ variable "access_auth_domain" {
 }
 
 variable "access_owner_email" {
-  description = "The single owner identity allowed through the FinOps Access applications."
+  description = "The single owner identity allowed through development Access applications."
   type        = string
   default     = null
   nullable    = true
@@ -75,6 +75,21 @@ variable "access_owner_email" {
       can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", var.access_owner_email))
     )
     error_message = "access_owner_email must be an email address."
+  }
+}
+
+variable "access_identity_provider_id" {
+  description = "Existing account-member-only Cloudflare identity provider allowed for interactive development access."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      var.access_identity_provider_id == null ||
+      can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.access_identity_provider_id))
+    )
+    error_message = "access_identity_provider_id must be a lowercase UUID."
   }
 }
 
@@ -90,6 +105,19 @@ variable "access_application_domain" {
       can(regex("^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.access_application_domain))
     )
     error_message = "access_application_domain must be a hostname without a scheme or path."
+  }
+}
+
+variable "access_dev_domains" {
+  description = "Complete owner-only dev hostname set. Wildcards cover exactly one subdomain level."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition = alltrue([
+      for domain in values(var.access_dev_domains) : can(regex("^(?:\\*\\.)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", domain))
+    ])
+    error_message = "Every access_dev_domains value must be a hostname or one-level wildcard hostname without a scheme or path."
   }
 }
 
