@@ -1,8 +1,10 @@
 package code.yousef.firestore.migration
 
 import code.yousef.firestore.PortfolioFirestoreCollections
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -89,6 +91,27 @@ class PortfolioFirestoreDevBackfillTest {
 
         assertEquals(FirestoreCanonicalHash.parity(parity), FirestoreCanonicalHash.parity(reordered))
         assertEquals(64, FirestoreCanonicalHash.collectionContract().length)
+    }
+
+    @Test
+    fun `operator access token stays ephemeral and receives a bounded expiry`() {
+        val now = Instant.parse("2026-08-25T08:00:00Z")
+        val token = "ya29.${"a".repeat(80)}"
+
+        val credentials = PortfolioFirestoreDevBackfillCli.credentials(token, now)
+
+        assertEquals(token, credentials.accessToken.tokenValue)
+        assertEquals(now.plusSeconds(50 * 60L), credentials.accessToken.expirationTime.toInstant())
+    }
+
+    @Test
+    fun `operator access token rejects blank short and whitespace-bearing values`() {
+        assertFailsWith<IllegalArgumentException> {
+            PortfolioFirestoreDevBackfillCli.credentials("short", Instant.EPOCH)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            PortfolioFirestoreDevBackfillCli.credentials("ya29.${"a".repeat(40)}\nforged", Instant.EPOCH)
+        }
     }
 
     private fun document(id: String, data: Map<String, Any?>) = FirestoreBackfillDocument(id, data)
