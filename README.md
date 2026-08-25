@@ -57,7 +57,7 @@ Environment variables:
   as a separate operation instead of mutating Firestore during every startup.
 - `FIRESTORE_DATABASE_ID` - Named migration target database (for example `portfolio-me-prod`); defaults to `(default)`
 - `FIRESTORE_WRITE_MODE` - `source` (default), `dual`, or `target`. `dual` and `target` require a named database and an exact migration proof produced after full source/target parity verification
-- `FIRESTORE_MIGRATION_PROOF_ID` - Required in `dual` and `target`; identifies the matching proof documents stored in both databases after the allowlisted data and migration metadata hash exactly
+- `FIRESTORE_MIGRATION_PROOF_ID` - Required in `dual` and `target`; identifies matching proof documents stored in both databases after the allowlisted business data hashes exactly and replication-health checks pass
 
 Migration proofs are create-only and must use a new explicit ID for every
 verification. Dual mode accepts proofs for at most seven days; a target
@@ -68,6 +68,13 @@ dev execution confirmation variable. Operators whose local Application Default
 Credentials cannot refresh may pass a short-lived `gcloud auth
 print-access-token` value through `PORTFOLIO_DEV_FIRESTORE_ACCESS_TOKEN`; the
 CLI keeps it in memory, rejects malformed values, and does not persist it.
+Proof hashes cover business collections, not replication bookkeeping:
+authority outbox records, receipt lifecycle/timestamps, and aggregate-state
+timestamps are intentionally asymmetric. Monitor pending outbox age separately.
+The dev-only `--reconcile-pending` mode settles an old source record only after
+the exact source/target business document, semantic revision state, and target
+receipt prove that it already landed; it never writes business data or deletes
+documents.
 - `FIRESTORE_SERVICE_ACCOUNT_JSON_BASE64` - Optional strict Base64 service-account JSON used in Cloudflare Containers where ADC is unavailable; decoded only in memory and required to match `GOOGLE_CLOUD_PROJECT`
 - `PHOTOGRAPHY_UPLOAD_BUCKET` - Optional GCS bucket for durable photo uploads in production
 - `PHOTOGRAPHY_UPLOAD_PREFIX` - GCS object prefix for photo uploads (default: `photography`)

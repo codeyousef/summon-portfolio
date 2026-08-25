@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 
 class PortfolioFirestoreDevBackfillTest {
     @Test
-    fun `migration collection contract covers content business data and revision metadata`() {
+    fun `migration collection contract covers business data and excludes asymmetric replication metadata`() {
         assertEquals(
             setOf(
                 "projects",
@@ -27,6 +27,11 @@ class PortfolioFirestoreDevBackfillTest {
         assertEquals(
             setOf("_migration_receipts", "_migration_outbox", "_migration_aggregate_state"),
             PortfolioFirestoreMigrationCollections.migrationMetadata,
+        )
+        assertTrue(
+            PortfolioFirestoreMigrationCollections.all
+                .intersect(PortfolioFirestoreMigrationCollections.migrationMetadata)
+                .isEmpty(),
         )
         assertFalse(PortfolioFirestoreMigrationCollections.PROOFS in PortfolioFirestoreMigrationCollections.all)
     }
@@ -53,6 +58,10 @@ class PortfolioFirestoreDevBackfillTest {
         assertEquals(1, plan.targetOnlyCount)
         assertEquals(1, plan.differingCount)
         assertFalse(plan.writes.any { it.id == "target-only" })
+        assertEquals(
+            setOf("missing", "changed", "target-only"),
+            firestoreBackfillDiscrepancyIds(source, target),
+        )
     }
 
     @Test
@@ -62,6 +71,108 @@ class PortfolioFirestoreDevBackfillTest {
 
         assertEquals(FirestoreCanonicalHash.document(first), FirestoreCanonicalHash.document(reordered))
         assertFalse(FirestoreCanonicalHash.document(mapOf("number" to 1L)) == FirestoreCanonicalHash.document(mapOf("number" to 1.0)))
+    }
+
+    @Test
+    fun `pending reconciliation ignores timestamps but requires exact business and revision evidence`() {
+        val envelope = MutationEnvelope.create(
+            id = "pending-0001",
+            aggregateType = "finops_daily_rollups",
+            aggregateId = "rollup-1",
+            expectedRevision = 4,
+            authorityEpoch = AuthorityEpoch.SOURCE,
+            occurredAt = Instant.parse("2026-08-23T05:00:00Z"),
+            payload = mapOf("usdMicros" to 5L),
+            operation = MutationOperation.UPSERT,
+        )
+        val sourceState = mapOf<String, Any?>(
+            "aggregateType" to envelope.aggregateType,
+            "aggregateId" to envelope.aggregateId,
+            "revision" to 8L,
+            "authorityEpoch" to 1L,
+            "lastMutationId" to "later-mutation",
+            "updatedAt" to "source-time",
+        )
+        val targetState = sourceState + ("updatedAt" to "target-time")
+        val receipt = mapOf<String, Any?>(
+            "committedEpoch" to 1L,
+            "newRevision" to 5L,
+            "firestoreCommitTime" to "2026-08-23T05:00:01Z",
+            "mirrorState" to "PENDING",
+        )
+
+        assertEquals(
+            5L,
+            verifiedPendingTargetReceipt(
+                envelope,
+                mapOf("usdMicros" to 8L),
+                mapOf("usdMicros" to 8L),
+                sourceState,
+                targetState,
+                receipt,
+            )?.newRevision,
+        )
+        assertEquals(
+            null,
+            verifiedPendingTargetReceipt(
+                envelope,
+                mapOf("usdMicros" to 8L),
+                mapOf("usdMicros" to 7L),
+                sourceState,
+                targetState,
+                receipt,
+            ),
+        )
+        assertEquals(
+            null,
+            verifiedPendingTargetReceipt(
+                envelope,
+                mapOf("usdMicros" to 8L),
+                mapOf("usdMicros" to 8L),
+                sourceState,
+                targetState + ("revision" to 7L),
+                receipt,
+            ),
+        )
+    }
+
+    @Test
+    fun `replication health enforces pending p99 truncation and future timestamps`() {
+        val now = Instant.parse("2026-08-25T09:00:00Z")
+        fun envelope(id: String, occurredAt: Instant) = MutationEnvelope.create(
+            id = id,
+            aggregateType = "finops_daily_rollups",
+            aggregateId = id,
+            expectedRevision = 0,
+            authorityEpoch = AuthorityEpoch.SOURCE,
+            occurredAt = occurredAt,
+            payload = mapOf("usdMicros" to 1L),
+            operation = MutationOperation.UPSERT,
+        )
+
+        assertTrue(firestoreReplicationHealth(emptyList(), now, truncated = false).ready)
+        assertTrue(
+            firestoreReplicationHealth(
+                listOf(envelope("recent", now.minusSeconds(29))),
+                now,
+                truncated = false,
+            ).ready,
+        )
+        assertFalse(
+            firestoreReplicationHealth(
+                listOf(envelope("stale", now.minusSeconds(31))),
+                now,
+                truncated = false,
+            ).ready,
+        )
+        assertFalse(firestoreReplicationHealth(emptyList(), now, truncated = true).ready)
+        assertFalse(
+            firestoreReplicationHealth(
+                listOf(envelope("future", now.plusSeconds(1))),
+                now,
+                truncated = false,
+            ).ready,
+        )
     }
 
     @Test
