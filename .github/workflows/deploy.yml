@@ -15,6 +15,7 @@ on:
       - 'compiler_seen/**'
       - 'seen_runtime/**'
       - 'seen_std/**'
+      - 'scripts/prepare-seen-release-tools.sh'
       - 'cloudflare/portfolio-edge/**'
   workflow_dispatch:
 
@@ -91,6 +92,9 @@ jobs:
       - name: Install edge dependencies
         working-directory: cloudflare/portfolio-edge
         run: pnpm install --frozen-lockfile
+
+      - name: Prepare pinned Seen playground toolchain
+        run: bash scripts/prepare-seen-release-tools.sh
 
       - name: Validate scoped Cloudflare deployment identity
         env:
