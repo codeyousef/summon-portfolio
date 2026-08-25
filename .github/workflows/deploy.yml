@@ -125,10 +125,23 @@ jobs:
             --container-pool-version "${pool_version}" \
             --firestore-project portfolio-476219 \
             --firestore-database portfolio-me-dev \
-            --firestore-write-mode source \
+            --firestore-write-mode dual \
+            --firestore-migration-proof-id portfolio-me-dev-dual-20260822t2125z-v2 \
             --photography-write-mode source \
             --photography-upload-bucket portfolio-476219-portfolio-uploads \
+            --finops-sharded-rollup-writes-enabled \
             --samurai-finops-identity-url https://samurai.dev.felidai.com/internal/portfolio/finops/identities \
+            --gcp-finops-billing-project felidai-dev \
+            --gcp-finops-billing-dataset felidai_billing_export \
+            --gcp-finops-billing-table gcp_billing_export_v1_01D152_BA0DA4_4CB0D6 \
+            --gcp-finops-billing-location US \
+            --gcp-finops-max-bytes-billed 50000000 \
+            --gcp-wif-access-broker-url https://yousef-portfolio-edge-dev.yousef-d2f.workers.dev/internal/gcp-wif/assertion \
+            --gcp-wif-access-client-id cdf612c82ba55f04dc470713545dbeba.access \
+            --gcp-wif-access-issuer https://felidai-studio.cloudflareaccess.com \
+            --gcp-wif-access-audience 8dd8718afe0dbe674fb70726deb8e9604ec2b6d0bcb6dc30a35740a315b1c9b4 \
+            --gcp-wif-provider-audience //iam.googleapis.com/projects/1021588943934/locations/global/workloadIdentityPools/cloudflare-dev/providers/access-dev \
+            --gcp-wif-service-account finops-reader@felidai-dev.iam.gserviceaccount.com \
             --workers-dev \
             --output "${config}"
 
@@ -158,6 +171,6 @@ jobs:
             .environment == "dev" and
             .ready == true and
             .firestoreDatabase == "portfolio-me-dev" and
-            .firestoreWriteMode == "source" and
+            .firestoreWriteMode == "dual" and
             .regionPolicy == ["ME", "WEUR"]
           ' <<<"${response}" >/dev/null
