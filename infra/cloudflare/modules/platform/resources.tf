@@ -105,6 +105,66 @@ resource "cloudflare_zero_trust_access_application" "dev_sites" {
 }
 
 locals {
+  dev_internal_ai_bypass_routes = var.resources_enabled && var.access_enabled && contains(keys(var.access_dev_domains), "samurai") ? {
+    openrouter = {
+      name   = "Samurai dev OpenRouter internal bypass"
+      domain = "${var.access_dev_domains["samurai"]}/internal/ai/openrouter/*"
+    }
+    catalog = {
+      name   = "Samurai dev AI catalog internal bypass"
+      domain = "${var.access_dev_domains["samurai"]}/internal/ai/catalog/*"
+    }
+    inference = {
+      name   = "Samurai dev AI inference internal bypass"
+      domain = "${var.access_dev_domains["samurai"]}/internal/ai/v1/*"
+    }
+  } : {}
+}
+
+# Access must not turn authenticated Worker-to-Worker calls into GitHub login
+# redirects. These narrowly scoped applications bypass only Access; every route
+# remains fail-closed behind Samurai's bearer and signed-request validation.
+resource "cloudflare_zero_trust_access_policy" "dev_internal_ai_bypass" {
+  for_each = local.dev_internal_ai_bypass_routes
+
+  account_id       = var.cloudflare_account_id
+  name             = "Bypass Access; require Samurai edge authentication"
+  decision         = "bypass"
+  session_duration = "24h"
+  include = [{
+    everyone = {}
+  }]
+
+  depends_on = [cloudflare_zero_trust_organization.studio]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "cloudflare_zero_trust_access_application" "dev_internal_ai_bypass" {
+  for_each = local.dev_internal_ai_bypass_routes
+
+  account_id                 = var.cloudflare_account_id
+  type                       = "self_hosted"
+  name                       = each.value.name
+  domain                     = each.value.domain
+  session_duration           = "24h"
+  app_launcher_visible       = false
+  http_only_cookie_attribute = true
+  path_cookie_attribute      = false
+  auto_redirect_to_identity  = false
+  policies = [{
+    id         = cloudflare_zero_trust_access_policy.dev_internal_ai_bypass[each.key].id
+    precedence = 1
+  }]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+locals {
   dev_machine_tokens = var.resources_enabled && var.access_enabled ? {
     portfolio_samurai_identity = "Portfolio to Samurai identity projection"
   } : {}
