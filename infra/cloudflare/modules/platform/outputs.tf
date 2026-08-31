@@ -132,3 +132,32 @@ output "dev_machine_access_client_secrets" {
   }
   sensitive = true
 }
+
+output "dev_remote_access" {
+  description = "Dev-only Access boundaries for authenticated remote clients and unattended inference."
+  value = {
+    enabled = var.resources_enabled && var.access_enabled && var.environment == "dev"
+    client_routes = {
+      for key, application in cloudflare_zero_trust_access_application.dev_remote_client_bypass : key => {
+        id                        = application.id
+        domain                    = application.domain
+        access_decision           = "bypass"
+        application_auth_required = key != "android_app_links"
+      }
+    }
+    inference = try({
+      application = {
+        id                        = cloudflare_zero_trust_access_application.dev_machine["samurai_remote_inference"].id
+        domain                    = cloudflare_zero_trust_access_application.dev_machine["samurai_remote_inference"].domain
+        audience                  = cloudflare_zero_trust_access_application.dev_machine["samurai_remote_inference"].aud
+        access_decision           = "non_identity"
+        application_auth_required = true
+      }
+      service_token = {
+        id         = cloudflare_zero_trust_access_service_token.dev_machine["samurai_remote_inference"].id
+        client_id  = cloudflare_zero_trust_access_service_token.dev_machine["samurai_remote_inference"].client_id
+        expires_at = cloudflare_zero_trust_access_service_token.dev_machine["samurai_remote_inference"].expires_at
+      }
+    }, null)
+  }
+}

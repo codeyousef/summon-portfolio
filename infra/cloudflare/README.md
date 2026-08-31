@@ -15,7 +15,7 @@ change.
 | --- | --- | --- |
 | R2 bucket identities and reviewed Bucket Locks | OpenTofu | Durable, environment-scoped data resources and immutable-prefix policy |
 | Queue identities and DLQs | OpenTofu | Durable resources shared by Worker releases |
-| FinOps Access applications, policies, and service token | OpenTofu | Exact owner and WIF-broker boundaries require durable reviewable identity policy |
+| Development Access applications, policies, and service tokens | OpenTofu | Exact owner, machine, remote-client, and WIF-broker boundaries require durable reviewable identity policy |
 | Worker versions and bindings | pinned Wrangler | Release artifacts and bindings change together |
 | Durable Object classes/migrations | pinned Wrangler | Class lifecycle must match the deployed Worker code |
 | Workflows and Containers | pinned Wrangler | Both are coupled to Worker exports and container images |
@@ -138,9 +138,43 @@ render it in a plan, or publish it as a workflow artifact. The non-sensitive
 `finops_access.wif_broker` output supplies the client ID and application
 audience required by the Google WIF provider and Worker configuration.
 
+## Dev Samurai remote Access boundary
+
+The Samurai development hostname remains protected by the hostname-wide,
+owner-only GitHub Access application. Four more-specific path applications are
+the only remote exceptions, and Cloudflare evaluates those path applications
+instead of inheriting the hostname-wide policy:
+
+| Development path | Access action | Required application authentication |
+| --- | --- | --- |
+| `/api/remote/*` | Bypass | Samurai account, host, one-time pairing, or mobile credential required by the endpoint |
+| `/ws/remote/*` | Bypass | Samurai host or mobile relay credential |
+| `/.well-known/assetlinks.json` | Bypass | Static Android package/signing-certificate association only; no account data or mutation |
+| `/internal/remote/inference/*` | Service Auth | Dedicated Access service token **and** a scoped Samurai application bearer validated by the SaaS origin |
+
+The two remote API bypasses make non-browser clients routable; they do not make
+the Samurai API public. The single static Android exception is required because
+Android verifies App Links without a browser Access session. Anonymous, expired,
+cross-account, or revoked API credentials must still be rejected by the
+Worker/SaaS boundary. The dedicated inference
+service token cannot access either remote-client path or any other internal
+route, and an Access token alone is insufficient for inference. The Worker also
+rejects this route unless the request origin exactly matches the canonical dev
+custom domain, so an enabled `workers.dev` route cannot bypass Service Auth.
+
+All four applications are derived only when the platform module is enabled
+with `environment = "dev"` and the complete dev Access boundary. The production
+environment does not pass any Access inputs and contract tests require all
+four resources to be absent there. The sensitive inference client secret is
+available only inside `dev_machine_access_client_secrets`; pipe its exact map
+entry directly into the approved Samurai credential destination and never save
+it in tfvars, state-rendered artifacts, or logs.
+
 References:
 
 - [Cloudflare provider](https://registry.terraform.io/providers/cloudflare/cloudflare/latest)
+- [Cloudflare Access application paths](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/)
+- [Cloudflare Access service-token policies](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/common-policies/#authenticate-a-service-using-a-service-token)
 - [Cloudflare R2 remote backend](https://developers.cloudflare.com/terraform/advanced-topics/remote-backend/)
 - [Wrangler configuration](https://developers.cloudflare.com/workers/wrangler/configuration/)
 - [R2 Bucket Locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/)

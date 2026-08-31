@@ -121,4 +121,26 @@ rg -q 'decision[[:space:]]*=[[:space:]]*"non_identity"' \
   "${cloudflare_root}/modules/platform/resources.tf" ||
   fail "the dev WIF broker must use a Service Auth policy"
 
+for remote_path in '/api/remote/*' '/ws/remote/*' '/.well-known/assetlinks.json'; do
+  rg -Fq "${remote_path}" \
+    "${cloudflare_root}/modules/platform/resources.tf" ||
+    fail "the dev remote boundary is missing the exact ${remote_path} application"
+done
+
+rg -Fq '/internal/remote/inference/*' \
+  "${cloudflare_root}/modules/platform/resources.tf" ||
+  fail "remote inference must use its own exact path-scoped Service Auth application"
+
+rg -q 'dev_remote_client_bypass_routes.*var\.environment == "dev"' \
+  "${cloudflare_root}/modules/platform/resources.tf" ||
+  fail "remote client Access exceptions must be impossible outside dev"
+
+rg -q 'var\.access_enabled && var\.environment == "dev"' \
+  "${cloudflare_root}/modules/platform/resources.tf" ||
+  fail "remote inference Service Auth must be impossible outside dev"
+
+rg -q 'application_auth_required[[:space:]]*=[[:space:]]*true' \
+  "${cloudflare_root}/modules/platform/outputs.tf" ||
+  fail "the remote Access output must preserve the Samurai application-auth contract"
+
 printf 'Cloudflare infrastructure contracts are valid.\n'

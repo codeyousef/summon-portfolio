@@ -72,6 +72,15 @@ run "reviewed_production_shape" {
     condition     = length(output.zone_import_contracts) == 2
     error_message = "The reviewed DNS inventory contract must cover both zones without managing them."
   }
+
+  assert {
+    condition = (
+      output.dev_remote_access.enabled == false &&
+      length(cloudflare_zero_trust_access_application.dev_remote_client_bypass) == 0 &&
+      !contains(keys(cloudflare_zero_trust_access_application.dev_machine), "samurai_remote_inference")
+    )
+    error_message = "Production must not provision any honeymoon remote Access exception or service credential."
+  }
 }
 
 run "reviewed_dev_finops_wif_broker_shape" {
@@ -122,10 +131,47 @@ run "reviewed_dev_finops_wif_broker_shape" {
 
   assert {
     condition = (
-      length(cloudflare_zero_trust_access_application.dev_machine) == 1 &&
+      length(cloudflare_zero_trust_access_application.dev_machine) == 2 &&
       cloudflare_zero_trust_access_application.dev_machine["portfolio_samurai_identity"].domain == "samurai.dev.example.net/internal/portfolio/finops/identities" &&
+      cloudflare_zero_trust_access_application.dev_machine["samurai_remote_inference"].domain == "samurai.dev.example.net/internal/remote/inference/*" &&
       alltrue([for policy in cloudflare_zero_trust_access_policy.dev_machine : policy.decision == "non_identity"])
     )
-    error_message = "Machine identity access must be limited to the exact internal Samurai identity-projection route."
+    error_message = "Machine identity access must remain limited to the exact internal identity-projection and remote-inference routes."
+  }
+
+  assert {
+    condition = (
+      cloudflare_zero_trust_access_application.dev_sites["samurai"].domain == "samurai.dev.example.net" &&
+      toset(keys(cloudflare_zero_trust_access_application.dev_remote_client_bypass)) == toset(["api", "websocket", "android_app_links"]) &&
+      toset([for application in cloudflare_zero_trust_access_application.dev_remote_client_bypass : application.domain]) == toset([
+        "samurai.dev.example.net/api/remote/*",
+        "samurai.dev.example.net/ws/remote/*",
+        "samurai.dev.example.net/.well-known/assetlinks.json",
+      ]) &&
+      alltrue([
+        for key, application in cloudflare_zero_trust_access_application.dev_remote_client_bypass :
+        !application.auto_redirect_to_identity &&
+        !application.path_cookie_attribute &&
+        application.policies[0].id == cloudflare_zero_trust_access_policy.dev_remote_client_bypass[key].id
+      ]) &&
+      alltrue([
+        for policy in cloudflare_zero_trust_access_policy.dev_remote_client_bypass :
+        policy.decision == "bypass" && length(policy.include) == 1
+      ])
+    )
+    error_message = "Remote clients and Android App Link verification must bypass only their exact dev paths rather than the hostname-wide GitHub boundary."
+  }
+
+  assert {
+    condition = (
+      contains(keys(cloudflare_zero_trust_access_service_token.dev_machine), "samurai_remote_inference") &&
+      cloudflare_zero_trust_access_service_token.dev_machine["samurai_remote_inference"].duration == "2160h" &&
+      cloudflare_zero_trust_access_application.dev_machine["samurai_remote_inference"].domain == "samurai.dev.example.net/internal/remote/inference/*" &&
+      cloudflare_zero_trust_access_application.dev_machine["samurai_remote_inference"].session_duration == "1h" &&
+      cloudflare_zero_trust_access_policy.dev_machine["samurai_remote_inference"].decision == "non_identity" &&
+      cloudflare_zero_trust_access_policy.dev_machine["samurai_remote_inference"].session_duration == "1h" &&
+      length(cloudflare_zero_trust_access_policy.dev_machine["samurai_remote_inference"].include) == 1
+    )
+    error_message = "Bypassing interactive Access must never weaken Samurai application authentication, and inference must retain both Service Auth and application auth."
   }
 }

@@ -165,16 +165,91 @@ resource "cloudflare_zero_trust_access_application" "dev_internal_ai_bypass" {
 }
 
 locals {
-  dev_machine_tokens = var.resources_enabled && var.access_enabled ? {
-    portfolio_samurai_identity = "Portfolio to Samurai identity projection"
-  } : {}
-
-  dev_machine_routes = var.resources_enabled && var.access_enabled ? {
-    portfolio_samurai_identity = {
-      domain    = "${var.access_dev_domains["samurai"]}/internal/portfolio/finops/identities"
-      token_key = "portfolio_samurai_identity"
+  dev_remote_client_bypass_routes = var.resources_enabled && var.access_enabled && var.environment == "dev" && contains(keys(var.access_dev_domains), "samurai") ? {
+    api = {
+      name   = "Samurai dev remote API application-auth bypass"
+      domain = "${var.access_dev_domains["samurai"]}/api/remote/*"
+    }
+    websocket = {
+      name   = "Samurai dev remote WebSocket application-auth bypass"
+      domain = "${var.access_dev_domains["samurai"]}/ws/remote/*"
+    }
+    android_app_links = {
+      name   = "Samurai dev Android App Link verification"
+      domain = "${var.access_dev_domains["samurai"]}/.well-known/assetlinks.json"
     }
   } : {}
+}
+
+# Remote clients cannot complete an interactive GitHub Access flow. The more
+# specific path applications take precedence over the hostname-wide owner
+# application. The remote routes still require endpoint-specific Samurai
+# authentication. The Android exception is one static, non-secret association
+# document required for OS-level App Link verification before OAuth callback.
+resource "cloudflare_zero_trust_access_policy" "dev_remote_client_bypass" {
+  for_each = local.dev_remote_client_bypass_routes
+
+  account_id       = var.cloudflare_account_id
+  name             = "Bypass Access; require Samurai remote authentication"
+  decision         = "bypass"
+  session_duration = "24h"
+  include = [{
+    everyone = {}
+  }]
+
+  depends_on = [cloudflare_zero_trust_organization.studio]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "cloudflare_zero_trust_access_application" "dev_remote_client_bypass" {
+  for_each = local.dev_remote_client_bypass_routes
+
+  account_id                 = var.cloudflare_account_id
+  type                       = "self_hosted"
+  name                       = each.value.name
+  domain                     = each.value.domain
+  session_duration           = "24h"
+  app_launcher_visible       = false
+  http_only_cookie_attribute = true
+  path_cookie_attribute      = false
+  auto_redirect_to_identity  = false
+  policies = [{
+    id         = cloudflare_zero_trust_access_policy.dev_remote_client_bypass[each.key].id
+    precedence = 1
+  }]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+locals {
+  dev_machine_tokens = merge(
+    var.resources_enabled && var.access_enabled ? {
+      portfolio_samurai_identity = "Portfolio to Samurai identity projection"
+    } : {},
+    var.resources_enabled && var.access_enabled && var.environment == "dev" ? {
+      samurai_remote_inference = "Samurai remote inference"
+    } : {},
+  )
+
+  dev_machine_routes = merge(
+    var.resources_enabled && var.access_enabled ? {
+      portfolio_samurai_identity = {
+        domain    = "${var.access_dev_domains["samurai"]}/internal/portfolio/finops/identities"
+        token_key = "portfolio_samurai_identity"
+      }
+    } : {},
+    var.resources_enabled && var.access_enabled && var.environment == "dev" ? {
+      samurai_remote_inference = {
+        domain    = "${var.access_dev_domains["samurai"]}/internal/remote/inference/*"
+        token_key = "samurai_remote_inference"
+      }
+    } : {},
+  )
 }
 
 resource "cloudflare_zero_trust_access_service_token" "dev_machine" {

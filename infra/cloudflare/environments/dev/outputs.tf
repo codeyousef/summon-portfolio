@@ -26,6 +26,11 @@ output "dev_machine_access_client_secrets" {
   sensitive   = true
 }
 
+output "dev_remote_access" {
+  description = "Dev-only path-specific remote Access contract."
+  value       = module.platform.dev_remote_access
+}
+
 output "authoritative_database" {
   value = module.platform.authoritative_database
 }
