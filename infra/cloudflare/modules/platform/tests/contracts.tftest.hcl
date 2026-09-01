@@ -142,10 +142,11 @@ run "reviewed_dev_finops_wif_broker_shape" {
   assert {
     condition = (
       cloudflare_zero_trust_access_application.dev_sites["samurai"].domain == "samurai.dev.example.net" &&
-      toset(keys(cloudflare_zero_trust_access_application.dev_remote_client_bypass)) == toset(["api", "websocket", "android_app_links"]) &&
+      toset(keys(cloudflare_zero_trust_access_application.dev_remote_client_bypass)) == toset(["api", "websocket", "android_app_links", "paddle_webhook"]) &&
       toset([for application in cloudflare_zero_trust_access_application.dev_remote_client_bypass : application.domain]) == toset([
         "samurai.dev.example.net/api/remote/*",
         "samurai.dev.example.net/ws/remote/*",
+        "samurai.dev.example.net/api/v1/billing/paddle/webhook",
         "samurai.dev.example.net/.well-known/assetlinks.json",
       ]) &&
       alltrue([

@@ -34,6 +34,23 @@ import {
 }
 
 locals {
+  live_dev_paddle_webhook_imports = {
+    application_id = "9aa3ae51-6d84-41a7-a60e-328d2b3ea61d"
+    policy_id      = "b79f96e6-64a9-46a1-b8da-1ede833ea7ab"
+  }
+}
+
+import {
+  to = module.platform.cloudflare_zero_trust_access_policy.dev_remote_client_bypass["paddle_webhook"]
+  id = "${var.cloudflare_account_id}/b79f96e6-64a9-46a1-b8da-1ede833ea7ab"
+}
+
+import {
+  to = module.platform.cloudflare_zero_trust_access_application.dev_remote_client_bypass["paddle_webhook"]
+  id = "accounts/${var.cloudflare_account_id}/9aa3ae51-6d84-41a7-a60e-328d2b3ea61d"
+}
+
+locals {
   live_dev_internal_ai_bypass_imports = {
     openrouter = {
       application_id = "9f2bd9ef-ccad-4fc6-9d48-7e6e68cdc6d0"

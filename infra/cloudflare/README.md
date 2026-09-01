@@ -141,7 +141,7 @@ audience required by the Google WIF provider and Worker configuration.
 ## Dev Samurai remote Access boundary
 
 The Samurai development hostname remains protected by the hostname-wide,
-owner-only GitHub Access application. Four more-specific path applications are
+owner-only GitHub Access application. Five more-specific path applications are
 the only remote exceptions, and Cloudflare evaluates those path applications
 instead of inheriting the hostname-wide policy:
 
@@ -150,9 +150,10 @@ instead of inheriting the hostname-wide policy:
 | `/api/remote/*` | Bypass | Samurai account, host, one-time pairing, or mobile credential required by the endpoint |
 | `/ws/remote/*` | Bypass | Samurai host or mobile relay credential |
 | `/.well-known/assetlinks.json` | Bypass | Static Android package/signing-certificate association only; no account data or mutation |
+| `/api/v1/billing/paddle/webhook` | Bypass | Paddle server-to-server webhook; authenticity comes from the HMAC-SHA256 `Paddle-Signature` header verified by the API origin, not from an Access session |
 | `/internal/remote/inference/*` | Service Auth | Dedicated Access service token **and** a scoped Samurai application bearer validated by the SaaS origin |
 
-The two remote API bypasses make non-browser clients routable; they do not make
+The remote API bypasses make non-browser clients routable; they do not make
 the Samurai API public. The single static Android exception is required because
 Android verifies App Links without a browser Access session. Anonymous, expired,
 cross-account, or revoked API credentials must still be rejected by the

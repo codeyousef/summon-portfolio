@@ -178,6 +178,10 @@ locals {
       name   = "Samurai dev Android App Link verification"
       domain = "${var.access_dev_domains["samurai"]}/.well-known/assetlinks.json"
     }
+    paddle_webhook = {
+      name   = "Samurai dev Paddle webhook bypass"
+      domain = "${var.access_dev_domains["samurai"]}/api/v1/billing/paddle/webhook"
+    }
   } : {}
 }
 
