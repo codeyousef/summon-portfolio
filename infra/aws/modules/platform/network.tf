@@ -105,7 +105,8 @@ resource "aws_vpc_security_group_ingress_rule" "endpoints_from_playground" {
 }
 
 # Image pulls and logs for isolated tasks. Created only when the playground
-# runs, since each interface endpoint is billed hourly.
+# runs, and in one subnet only, since each endpoint ENI is billed hourly;
+# tasks in the other zone reach it across zones.
 resource "aws_vpc_endpoint" "interface" {
   for_each = local.playground_enabled ? toset(["ecr.api", "ecr.dkr", "logs"]) : toset([])
 
@@ -113,7 +114,7 @@ resource "aws_vpc_endpoint" "interface" {
   service_name        = "com.amazonaws.${var.region}.${each.key}"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = [for subnet in aws_subnet.isolated : subnet.id]
+  subnet_ids          = [aws_subnet.isolated[var.availability_zones[0]].id]
   security_group_ids  = [aws_security_group.endpoints[0].id]
 
   tags = { Name = "${local.name}-${each.key}" }
