@@ -86,3 +86,31 @@ Local contract tests need no AWS access:
 tofu -chdir=infra/aws/modules/platform init -backend=false && tofu -chdir=infra/aws/modules/platform test
 tofu -chdir=infra/aws/modules/shared init -backend=false && tofu -chdir=infra/aws/modules/shared test
 ```
+
+## Seen registry
+
+`modules/registry` runs beside the platform in each environment and follows
+[`registry-service/docs/aws-operations.md`](../../registry-service/docs/aws-operations.md).
+Each step is a separately approved phase controlled by the `registry` object
+in the environment tfvars:
+
+1. `enabled` creates the seven DynamoDB tables, six S3 buckets (bucket
+   policies deny unconditional writes to archives, versioned metadata, and
+   the `root.json`/`timestamp.json` pointers), runtime IAM roles, the internal
+   HTTPS ALB, and empty secrets.
+2. `kms_keys_enabled` creates one single-region `ECC_NIST_EDWARDS25519` key per
+   online role. The key policy lets the account administer keys but grants
+   `kms:Sign` only to that role's signer task role, restricted to
+   `ED25519_SHA_512` and `RAW` messages.
+3. `image`, `online_public_keys_hex`, and `trusted_root_v1_sha256` (from the
+   reviewed ceremony) start the APIs, coordinators, jobs, and signers.
+   `signer_image` comes from the separately reviewed `seen-registry-signer`
+   repository.
+4. Schedules are created `DISABLED`; refresh schedules are additionally gated
+   by `refresh_schedules_enabled`.
+
+Production runs only the read-only API, maintenance jobs, and signers. Each
+signer accepts an operation only from the coordinator roles that perform it
+(`signer_caller_bindings` output). Registry and signer endpoints resolve to
+private addresses under `*.registry.<host suffix>`; the SSR gateway receives
+their upstream URLs automatically once the API runs.

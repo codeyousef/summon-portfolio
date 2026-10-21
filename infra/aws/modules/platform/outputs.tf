@@ -52,3 +52,16 @@ output "secret_arns" {
   description = "Empty secrets whose values the operator sets out of band before services start."
   value       = { for name, secret in aws_secretsmanager_secret.app : name => secret.arn }
 }
+
+output "network" {
+  description = "Inputs for stacks that run beside the platform, such as the registry."
+  value = var.resources_enabled ? {
+    vpc_id                 = aws_vpc.main[0].id
+    public_subnet_ids      = [for subnet in aws_subnet.public : subnet.id]
+    isolated_subnet_ids    = [for subnet in aws_subnet.isolated : subnet.id]
+    cluster_arn            = aws_ecs_cluster.main[0].arn
+    zone_id                = data.aws_route53_zone.primary[0].zone_id
+    host_suffix            = local.host_suffix
+    gateway_security_group = aws_security_group.ssr[0].id
+  } : null
+}

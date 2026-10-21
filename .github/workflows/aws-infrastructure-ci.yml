@@ -35,7 +35,7 @@ jobs:
 
       - name: Initialize provider schemas without backends
         run: |
-          for root in state-bootstrap modules/shared modules/platform environments/shared environments/dev environments/prod; do
+          for root in state-bootstrap modules/shared modules/platform modules/registry environments/shared environments/dev environments/prod; do
             tofu -chdir="infra/aws/$root" init -backend=false -input=false
           done
 
@@ -49,3 +49,4 @@ jobs:
         run: |
           tofu -chdir=infra/aws/modules/shared test
           tofu -chdir=infra/aws/modules/platform test
+          tofu -chdir=infra/aws/modules/registry test

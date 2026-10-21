@@ -29,3 +29,18 @@ variable "app_environment" {
   type    = map(string)
   default = {}
 }
+
+variable "registry" {
+  description = "Seen registry phases; each flag is a separately approved step."
+  type = object({
+    enabled                   = optional(bool, false)
+    kms_keys_enabled          = optional(bool, false)
+    image                     = optional(string)
+    signer_image              = optional(string)
+    online_public_keys_hex    = optional(map(string), {})
+    trusted_root_v1_sha256    = optional(string)
+    schedules_enabled         = optional(bool, false)
+    refresh_schedules_enabled = optional(bool, false)
+  })
+  default = {}
+}
