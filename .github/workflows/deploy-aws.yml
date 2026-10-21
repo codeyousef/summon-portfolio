@@ -1,0 +1,177 @@
+name: Deploy portfolio to AWS
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/deploy-aws.yml'
+      - '.dockerignore'
+      - 'Dockerfile'
+      - 'Dockerfile.portfolio'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - 'src/**'
+      - 'scripts/prepare-seen-release-tools.sh'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+      confirm:
+        description: Type "deploy portfolio prod to aws" for prod
+        type: string
+        default: ''
+
+concurrency:
+  group: portfolio-aws-deploy-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+  AWS_ACCOUNT_ID: ${{ vars.AWS_PORTFOLIO_ACCOUNT_ID }}
+  TARGET: ${{ inputs.environment || 'dev' }}
+
+jobs:
+  verify:
+    name: Test portfolio
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Refuse unconfirmed or off-master production deploys
+        if: env.TARGET == 'prod'
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_REF}" == "refs/heads/master" ]] || { echo "Production deploys only from master." >&2; exit 1; }
+          [[ "${CONFIRM}" == "deploy portfolio prod to aws" ]] || { echo "Missing production confirmation." >&2; exit 1; }
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Test portfolio
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
+        run: ./gradlew --no-daemon --max-workers=2 test
+
+  deploy:
+    name: Build, push, and roll out ECS services
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: verify
+    environment: ${{ (inputs.environment || 'dev') == 'prod' && 'portfolio-production' || 'portfolio-development' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Assume the routine deploy identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${AWS_ACCOUNT_ID}" =~ ^[0-9]{12}$ ]] || { echo "Missing variable AWS_PORTFOLIO_ACCOUNT_ID." >&2; exit 1; }
+          token_file="${RUNNER_TEMP}/aws-web-identity-token"
+          curl -fsS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r '.value' > "${token_file}"
+          chmod 600 "${token_file}"
+          {
+            echo "AWS_WEB_IDENTITY_TOKEN_FILE=${token_file}"
+            echo "AWS_ROLE_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:role/portfolio-ci-${TARGET}-deploy"
+            echo "AWS_ROLE_SESSION_NAME=deploy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Log in to ECR
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws sts get-caller-identity --query Arn --output text
+          aws ecr get-login-password --region "${AWS_REGION}" \
+            | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+      - name: Prepare pinned Seen playground toolchain
+        run: bash scripts/prepare-seen-release-tools.sh
+
+      - name: Build and push digest-pinned images
+        id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          tag="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          build() {
+            local repository="$1" dockerfile="$2" output="$3"
+            docker buildx build --file "${dockerfile}" --platform linux/amd64 --provenance=false \
+              --tag "${registry}/${repository}:${tag}" --push \
+              --metadata-file "${RUNNER_TEMP}/${repository}.json" .
+            digest="$(jq -r '."containerimage.digest"' "${RUNNER_TEMP}/${repository}.json")"
+            [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+            echo "${output}=${registry}/${repository}@${digest}" >> "${GITHUB_OUTPUT}"
+          }
+          build portfolio-ssr Dockerfile.portfolio ssr
+          build seen-playground Dockerfile playground
+
+      - name: Roll out services
+        shell: bash
+        env:
+          SSR_IMAGE: ${{ steps.images.outputs.ssr }}
+          PLAYGROUND_IMAGE: ${{ steps.images.outputs.playground }}
+        run: |
+          set -euo pipefail
+          cluster="portfolio-${TARGET}"
+          rollout() {
+            local service="$1" family="$2" container="$3" image="$4"
+            if [[ "$(aws ecs describe-services --cluster "${cluster}" --services "${service}" \
+                  --query 'services[?status==`ACTIVE`] | length(@)' --output text)" != "1" ]]; then
+              echo "Skipping ${service}: not provisioned in ${cluster}."
+              return 0
+            fi
+            # The latest ACTIVE revision carries the reviewed OpenTofu
+            # configuration; only the image changes here.
+            aws ecs describe-task-definition --task-definition "${family}" --query taskDefinition \
+              | jq --arg container "${container}" --arg image "${image}" '
+                  .containerDefinitions |= map(if .name == $container then .image = $image else . end)
+                  | {family, taskRoleArn, executionRoleArn, networkMode, containerDefinitions,
+                     requiresCompatibilities, cpu, memory, runtimePlatform}' \
+              > "${RUNNER_TEMP}/${service}-task.json"
+            revision="$(aws ecs register-task-definition --cli-input-json "file://${RUNNER_TEMP}/${service}-task.json" \
+              --query taskDefinition.taskDefinitionArn --output text)"
+            aws ecs update-service --cluster "${cluster}" --service "${service}" --task-definition "${revision}" \
+              --query service.deployments[0].id --output text
+            echo "${service} -> ${revision}"
+          }
+          rollout app-ssr "portfolio-${TARGET}-app-ssr" ssr "${SSR_IMAGE}"
+          rollout app-playground "portfolio-${TARGET}-app-playground" playground "${PLAYGROUND_IMAGE}"
+          aws ecs wait services-stable --cluster "${cluster}" --services app-ssr
+
+      - name: Verify the public edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${TARGET}" == "prod" ]]; then
+            code="$(curl -sS -o /dev/null -w '%{http_code}' https://www.yousef.codes/health/ready)"
+            [[ "${code}" == "200" ]] || { echo "Production readiness returned ${code}." >&2; exit 1; }
+          else
+            location="$(curl -sS -o /dev/null -w '%{redirect_url}' https://dev.yousef.codes/health/ready)"
+            [[ "${location}" == https://*.amazoncognito.com/* ]] \
+              || { echo "Dev must redirect to the Cognito gate; got '${location}'." >&2; exit 1; }
+          fi

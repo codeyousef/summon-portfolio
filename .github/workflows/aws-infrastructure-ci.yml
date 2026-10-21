@@ -1,0 +1,51 @@
+name: AWS infrastructure contracts
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aws-infrastructure-ci.yml'
+      - '.gitignore'
+      - 'infra/aws/**'
+  push:
+    branches: [dev, master]
+    paths:
+      - '.github/workflows/aws-infrastructure-ci.yml'
+      - '.gitignore'
+      - 'infra/aws/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: 1.12.5
+
+      - name: Check OpenTofu formatting
+        run: tofu fmt -check -recursive infra/aws
+
+      - name: Initialize provider schemas without backends
+        run: |
+          for root in state-bootstrap modules/shared modules/platform environments/shared environments/dev environments/prod; do
+            tofu -chdir="infra/aws/$root" init -backend=false -input=false
+          done
+
+      - name: Validate OpenTofu roots
+        run: |
+          for root in state-bootstrap environments/shared environments/dev environments/prod; do
+            tofu -chdir="infra/aws/$root" validate
+          done
+
+      - name: Run mock-provider contract tests
+        run: |
+          tofu -chdir=infra/aws/modules/shared test
+          tofu -chdir=infra/aws/modules/platform test

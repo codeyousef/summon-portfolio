@@ -1,0 +1,12 @@
+aws_account_id    = "000000000000"
+resources_enabled = false
+
+# Populate from the reviewed Cloudflare zone export. Application hostnames are
+# owned by the dev and prod stacks.
+dns_records = {
+  apex_mx = {
+    name    = "yousef.codes"
+    type    = "MX"
+    records = ["10 mail.example.com."]
+  }
+}
