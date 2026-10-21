@@ -107,6 +107,22 @@ class AwsSignerIdentityTest {
     }
 
     @Test
+    fun `verifier fails closed on duplicated misplaced or foreign STS response elements`() {
+        val good = token()
+        val role = "arn:aws:sts::123456789012:assumed-role/seen-registry-dev-promoter/ecs-task-1"
+        listOf(
+            String(stsResponse(role)).replace("<Arn>", "<Arn>$role</Arn><Arn>"),
+            String(stsResponse(role)).replace("</GetCallerIdentityResult>", "</GetCallerIdentityResult><GetCallerIdentityResult/>"),
+            """<GetCallerIdentityResponse><Arn>$role</Arn></GetCallerIdentityResponse>""",
+            """<AssumeRoleResponse><GetCallerIdentityResult><Arn>$role</Arn></GetCallerIdentityResult></AssumeRoleResponse>""",
+        ).forEach { body ->
+            assertFailsWith<TufSignerCallerVerificationUnavailableException>(body.take(80)) {
+                verifier { _, _, _ -> AwsStsCallerIdentityResponse(200, body.toByteArray()) }.verify(good, target.audience)
+            }
+        }
+    }
+
+    @Test
     fun `assumed role normalization keeps partition account and role only`() {
         assertEquals(
             "arn:aws-us-gov:iam::123456789012:role/r",

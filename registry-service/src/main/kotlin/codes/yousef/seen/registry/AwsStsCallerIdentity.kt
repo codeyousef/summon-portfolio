@@ -1,6 +1,5 @@
 package codes.yousef.seen.registry
 
-import org.w3c.dom.Element
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.http.SdkHttpMethod
@@ -20,8 +19,8 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Base64
-import javax.xml.XMLConstants
-import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.stream.XMLInputFactory
+import javax.xml.stream.XMLStreamConstants
 
 /**
  * AWS replacement for Google-signed OIDC caller tokens between a coordinator
@@ -219,39 +218,63 @@ class AwsStsTufSignerCallerTokenVerifier internal constructor(
         return uri
     }
 
+    // StAX keeps the parse streaming and DTD-free; every element is located by
+    // its exact path so duplicated or misplaced nodes fail closed.
     private fun parseCallerArn(body: ByteArray): String {
-        val factory = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = true
-            setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-            setFeature("http://xml.org/sax/features/external-general-entities", false)
-            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            isXIncludeAware = false
-            isExpandEntityReferences = false
+        val factory = XMLInputFactory.newFactory().apply {
+            setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, true)
+            setProperty(XMLInputFactory.SUPPORT_DTD, false)
+            setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false)
+            setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, false)
         }
-        val document = runCatching { factory.newDocumentBuilder().parse(body.inputStream()) }
-            .getOrElse { failure ->
-                throw TufSignerCallerVerificationUnavailableException("STS response is not valid XML", failure)
+        val path = ArrayDeque<String>()
+        var root: String? = null
+        var results = 0
+        var arns = 0
+        val arn = StringBuilder()
+        runCatching {
+            val reader = factory.createXMLStreamReader(body.inputStream())
+            try {
+                while (reader.hasNext()) {
+                    when (reader.next()) {
+                        XMLStreamConstants.DTD -> throw IllegalStateException("DTD is not allowed")
+                        XMLStreamConstants.START_ELEMENT -> {
+                            if (root == null) root = reader.localName
+                            path.addLast(reader.localName)
+                            when (path.toList()) {
+                                RESULT_PATH -> results++
+                                ARN_PATH -> arns++
+                            }
+                        }
+                        XMLStreamConstants.CHARACTERS, XMLStreamConstants.CDATA ->
+                            if (path.toList() == ARN_PATH) arn.append(reader.text)
+                        XMLStreamConstants.END_ELEMENT -> path.removeLast()
+                    }
+                }
+            } finally {
+                reader.close()
             }
-        val root = document.documentElement
-        if (root.localName != "GetCallerIdentityResponse") {
+        }.getOrElse { failure ->
+            throw TufSignerCallerVerificationUnavailableException("STS response is not valid XML", failure)
+        }
+        if (root != RESPONSE_ELEMENT) {
             throw TufSignerCallerVerificationUnavailableException(
                 "STS response is not a GetCallerIdentity response",
-                IllegalStateException(root.localName),
+                IllegalStateException(root.toString()),
             )
         }
-        val result = root.singleChild("GetCallerIdentityResult")
-        return result.singleChild("Arn").textContent.trim()
+        requireSingle(results, "GetCallerIdentityResult")
+        requireSingle(arns, "Arn")
+        return arn.toString().trim()
     }
 
-    private fun Element.singleChild(name: String): Element {
-        val matches = (0 until childNodes.length).map(childNodes::item)
-            .filterIsInstance<Element>()
-            .filter { it.localName == name }
-        return matches.singleOrNull() ?: throw TufSignerCallerVerificationUnavailableException(
-            "STS response is missing $name",
-            IllegalStateException(name),
-        )
+    private fun requireSingle(count: Int, name: String) {
+        if (count != 1) {
+            throw TufSignerCallerVerificationUnavailableException(
+                "STS response is missing $name",
+                IllegalStateException(name),
+            )
+        }
     }
 
     private fun decode(value: String): String = runCatching { URLDecoder.decode(value, Charsets.UTF_8) }
@@ -271,6 +294,9 @@ class AwsStsTufSignerCallerTokenVerifier internal constructor(
         )
         val OPTIONAL_PARAMETERS = setOf("X-Amz-Security-Token")
         val AMZ_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC)
+        const val RESPONSE_ELEMENT = "GetCallerIdentityResponse"
+        val RESULT_PATH = listOf(RESPONSE_ELEMENT, "GetCallerIdentityResult")
+        val ARN_PATH = RESULT_PATH + "Arn"
     }
 }
 
