@@ -30,9 +30,14 @@ data class TufSignerStateGuardConfig(
     val audience: String,
     val callerEmails: Map<TufSigningOperation, Set<String>>,
     val objectStoreConfig: RegistryObjectStoreConfig? = null,
+    val callerIdentity: TufSignerKeyProvider = TufSignerKeyProvider.GCP_KMS,
 ) {
     init {
         require(BUCKET.matches(metadataBucket)) { "REGISTRY_TUF_SIGNER_METADATA_BUCKET is invalid" }
+        val callerPattern = when (callerIdentity) {
+            TufSignerKeyProvider.GCP_KMS -> CALLER_EMAIL
+            TufSignerKeyProvider.AWS_KMS -> AWS_ROLE_ARN
+        }
         require(PREFIX.matches(objectPrefix)) { "REGISTRY_TUF_SIGNER_OBJECT_PREFIX is invalid" }
         require(SHA256.matches(trustedRootV1Sha256)) { "REGISTRY_TUF_SIGNER_TRUSTED_ROOT_V1_SHA256 is invalid" }
         require(audience.startsWith("https://") && audience.length <= 2048 && audience.none(Char::isWhitespace)) {
@@ -40,7 +45,7 @@ data class TufSignerStateGuardConfig(
         }
         require(
             callerEmails.isNotEmpty() &&
-                callerEmails.values.all { emails -> emails.isNotEmpty() && emails.all(CALLER_EMAIL::matches) },
+                callerEmails.values.all { emails -> emails.isNotEmpty() && emails.all(callerPattern::matches) },
         ) {
             "REGISTRY_TUF_SIGNER_CALLER_BINDINGS is invalid"
         }
@@ -74,6 +79,7 @@ data class TufSignerStateGuardConfig(
                 audience = required("REGISTRY_TUF_SIGNER_AUDIENCE"),
                 callerEmails = bindings.groupBy({ it.first }, { it.second }).mapValues { (_, emails) -> emails.toSet() },
                 objectStoreConfig = signerObjectStoreConfig(env, metadataBucket),
+                callerIdentity = TufSignerKeyProvider.fromEnvironment(env["REGISTRY_TUF_SIGNER_PROVIDER"]),
             )
         }
 
@@ -311,6 +317,9 @@ object RegistryTufSignerStatePolicyGuardFactory : TufSignerStatePolicyGuardFacto
         val guardConfig = requireNotNull(config.stateGuardConfig) {
             "${config.role} signing requires committed metadata state configuration"
         }
+        require(guardConfig.callerIdentity == config.keyProvider) {
+            "TUF signer caller identity scheme must match its key provider"
+        }
         val objectStore = guardConfig.effectiveObjectStoreConfig()
             .requireRoles(setOf(RegistryBucketRole.METADATA))
         val metadata: TufSignerMetadataStore = when (objectStore.provider) {
@@ -344,7 +353,13 @@ object RegistryTufSignerStatePolicyGuardFactory : TufSignerStatePolicyGuardFacto
             repositoryId = config.repositoryId,
             config = guardConfig,
             metadata = metadata,
-            tokenVerifier = GoogleOidcTufSignerCallerTokenVerifier(),
+            tokenVerifier = when (guardConfig.callerIdentity) {
+                TufSignerKeyProvider.GCP_KMS -> GoogleOidcTufSignerCallerTokenVerifier()
+                TufSignerKeyProvider.AWS_KMS -> AwsStsTufSignerCallerTokenVerifier(
+                    region = requireNotNull(config.awsRegion),
+                    timeout = config.signingTimeout,
+                )
+            },
         )
     }
 }
@@ -932,4 +947,4 @@ private fun verifyRawEd25519(publicKey: ByteArray, message: ByteArray, signature
     }
 }
 
-private fun rejectSigning(message: String): Nothing = throw TufSigningRequestException(message)
+internal fun rejectSigning(message: String): Nothing = throw TufSigningRequestException(message)
