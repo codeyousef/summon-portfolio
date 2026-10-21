@@ -558,24 +558,26 @@ class DynamoDbRegistryRepository internal constructor(
 
     override fun close() = client.close()
 
-    private fun packageItem(value: StoredPackage): DynamoItem {
-        val encoded = json.encodeToString(value)
-        return key(value.record.identity) + payload(encoded) + mapOf(ETAG to stringValue(sha256(encoded.toByteArray())))
-    }
+    // Item builders take the exact JSON to store so the GCP data copy can keep
+    // the source bytes verbatim; ordinary writes encode the typed value.
+    internal fun packageItem(value: StoredPackage, encoded: String = json.encodeToString(value)): DynamoItem =
+        key(value.record.identity) + payload(encoded) + mapOf(ETAG to stringValue(sha256(encoded.toByteArray())))
 
-    private fun releaseItem(value: StoredRelease): DynamoItem =
-        key(value.record.`package`, value.record.version) + payload(json.encodeToString(value)) + mapOf(
+    internal fun releaseItem(value: StoredRelease, encoded: String = json.encodeToString(value)): DynamoItem =
+        key(value.record.`package`, value.record.version) + payload(encoded) + mapOf(
             UPLOAD_ID to stringValue(value.uploadId),
             REVISION to numberValue(value.revision),
         )
 
-    private fun uploadItem(value: StoredRelease): DynamoItem = key(value.uploadId) + mapOf(
+    internal fun uploadItem(value: StoredRelease): DynamoItem = key(value.uploadId) + mapOf(
         "release_package" to stringValue(value.record.`package`),
         "release_version" to stringValue(value.record.version),
     )
 
-    private fun idempotencyItem(value: StoredIdempotency): DynamoItem =
-        key(value.scope) + payload(json.encodeToString(value)) + mapOf(
+    internal fun stateItem(version: Long): DynamoItem = key(STATE_METADATA) + mapOf(METADATA_VERSION to numberValue(version))
+
+    internal fun idempotencyItem(value: StoredIdempotency, encoded: String = json.encodeToString(value)): DynamoItem =
+        key(value.scope) + payload(encoded) + mapOf(
             "expires_at" to stringValue(value.expiresAt),
             // DynamoDB TTL deletes lazily; the record is already treated as
             // absent after expiresAt, so this only bounds table growth.
@@ -583,8 +585,8 @@ class DynamoDbRegistryRepository internal constructor(
             WRITE_TOKEN to stringValue(UUID.randomUUID().toString()),
         )
 
-    private fun artifactAttributes(value: ReviewArtifact): DynamoItem = buildMap {
-        putAll(payload(json.encodeToString(value)))
+    private fun artifactAttributes(value: ReviewArtifact, encoded: String): DynamoItem = buildMap {
+        putAll(payload(encoded))
         put("kind", stringValue(value.kind))
         value.packageIdentity?.let { put("package", stringValue(it)) }
         value.version?.let { put("version", stringValue(it)) }
@@ -592,8 +594,8 @@ class DynamoDbRegistryRepository internal constructor(
         put("created_at", stringValue(value.createdAt))
     }
 
-    private fun artifactPuts(value: ReviewArtifact): List<DynamoPut> {
-        val attributes = artifactAttributes(value)
+    internal fun artifactPuts(value: ReviewArtifact, encoded: String = json.encodeToString(value)): List<DynamoPut> {
+        val attributes = artifactAttributes(value, encoded)
         return buildList {
             add(DynamoPut(tables.reviewArtifacts, key(value.artifactId) + attributes, DynamoCondition.Absent(PK)))
             val packageIdentity = value.packageIdentity
@@ -620,7 +622,10 @@ class DynamoDbRegistryRepository internal constructor(
         return mapOf(JSON_GZIP to AttributeValue.fromB(SdkBytes.fromByteArray(compressed)))
     }
 
-    private inline fun <reified T> decode(item: DynamoItem): T {
+    private inline fun <reified T> decode(item: DynamoItem): T = json.decodeFromString(storedJson(item))
+
+    /** The exact JSON text stored in an item, decompressing `json_gz` with a size bound. */
+    internal fun storedJson(item: DynamoItem): String {
         val inline = item[JSON]?.s()
         val encoded = inline ?: item[JSON_GZIP]?.b()?.asByteArray()?.let { compressed ->
             GZIPInputStream(compressed.inputStream()).use { input ->
@@ -637,11 +642,11 @@ class DynamoDbRegistryRepository internal constructor(
                 output.toString(Charsets.UTF_8)
             }
         } ?: error("DynamoDB registry record has no JSON payload")
-        return json.decodeFromString(encoded)
+        return encoded
     }
 
-    private fun key(partition: String): DynamoItem = mapOf(PK to stringValue(partition))
-    private fun key(partition: String, sort: String): DynamoItem =
+    internal fun key(partition: String): DynamoItem = mapOf(PK to stringValue(partition))
+    internal fun key(partition: String, sort: String): DynamoItem =
         mapOf(PK to stringValue(partition), SK to stringValue(sort))
 
     private fun DynamoItem.string(name: String): String =

@@ -113,6 +113,7 @@ used for verification). No API, worker, or job accepts a
 | `serve-tuf-signer` (×4, one per role) | long-running private services | both |
 | `verify-source-once`, `scan-once`, `promote-once` | scheduled one-shot jobs | development only |
 | `refresh-releases-once`, `refresh-security-once` | scheduled one-shot jobs | both, separately gated |
+| `copy-gcp-to-aws` | one-shot data copy job, dry run unless confirmed | development only |
 | `import-offline-bootstrap`, `bootstrap-online`, `import-offline-targets-renewal`, `import-offline-targets-rotation`, `verify-root-chain`, `import-offline-root-rotation`, `recover-expired-*-once` | ephemeral one-shot ceremony jobs | both |
 
 Run one task, zero retries, for every one-shot job. Scheduled jobs follow the
@@ -235,6 +236,67 @@ groups as defence in depth; the token check stays authoritative.
 | scan worker | none beyond DynamoDB and S3; the scanner runs as a local child process |
 
 No runtime calls any Google endpoint in AWS mode.
+
+## Development data copy from GCP
+
+`copy-gcp-to-aws` is a one-shot task that copies the development registry from
+Firestore and GCS to the seven DynamoDB tables and the S3 quarantine, public,
+and metadata buckets. It is development to development only.
+
+- **Dry run by default.** Without `REGISTRY_COPY_CONFIRM` it reads both sides,
+  classifies every record and object, and writes nothing. Writing requires
+  `REGISTRY_COPY_CONFIRM=copy-development-gcp-to-aws`; any other value is
+  rejected.
+- **Read-only source.** It only reads Firestore documents and lists and reads
+  GCS objects. Grant the GCP identity only `roles/datastore.viewer` on the
+  development database and `roles/storage.objectViewer` on the three source
+  buckets.
+- **Create-only target.** DynamoDB items are written with
+  `attribute_not_exists` in one transaction per record (release plus upload
+  pointer, artifact plus index entry). Objects are written with
+  `If-None-Match: *`. An existing identical item or object counts as
+  `already_identical`, so an interrupted copy can be re-run; a different one is
+  a `conflict` and is never overwritten.
+- **Verbatim and verified.** Record JSON text is stored exactly as in
+  Firestore and verified by SHA-256 of canonical JSON read back from DynamoDB.
+  Each Firestore document ID must match its record identity. Objects keep
+  their bytes, content type, and cache policy and are verified by SHA-256 of
+  the bytes read back from S3; public archives must also match the digest in
+  their key. `root.json` and `timestamp.json` are copied last.
+- **State.** Only the metadata version counter is copied. The publication
+  lease is never copied, and a live lease stops the copy: freeze publication
+  first.
+- **Identity guards.** Only `REGISTRY_ENVIRONMENT=development` is accepted. The
+  source database must be `seen-registry-dev`, source bucket names must not be
+  production buckets, target tables use `seen-registry-dev`, target buckets must
+  start with `seen-registry-dev-`, and the source `1.root.json` must name the
+  development environment and repository.
+- **Report.** It prints one line per section with the source count, outcome
+  counts, and target totals, followed by
+  `conflicts=… mismatches=… pending=… parity=…`. Problem lines name only
+  keys, document IDs, and hashes. The task exits non-zero on any conflict or
+  mismatch, and in apply mode unless parity holds.
+
+| Variable | Value |
+| --- | --- |
+| `REGISTRY_ENVIRONMENT` | `development` |
+| `GOOGLE_CLOUD_PROJECT` | the development GCP project |
+| `REGISTRY_COPY_SOURCE_FIRESTORE_DATABASE` | `seen-registry-dev` |
+| `REGISTRY_COPY_SOURCE_{QUARANTINE,PUBLIC,METADATA}_BUCKET` | source GCS buckets |
+| `REGISTRY_{QUARANTINE,PUBLIC,METADATA}_BUCKET` | target S3 buckets |
+| `REGISTRY_OBJECT_PREFIX` | optional, default `v1`, shared by source and target |
+| `REGISTRY_DYNAMODB_TABLE_PREFIX` | optional, must be `seen-registry-dev` |
+| `AWS_REGION` | target region |
+| `FIRESTORE_EXTERNAL_ACCOUNT_JSON_BASE64` | workload identity federation configuration for the read-only GCP identity (contains no key) |
+| `REGISTRY_COPY_CONFIRM` | absent for a dry run; `copy-development-gcp-to-aws` to write |
+
+Every other `REGISTRY_*` variable and any static AWS key is rejected. AWS
+permissions: `dynamodb:GetItem`, `dynamodb:PutItem`, and `dynamodb:Scan` on
+the seven tables; `s3:GetObject`, `s3:PutObject`, and prefix-scoped
+`s3:ListBucket` on the three target buckets. Egress: `firestore.googleapis.com`,
+`storage.googleapis.com`, `sts.googleapis.com`, `iamcredentials.googleapis.com`,
+plus the regional DynamoDB and S3 endpoints. Run the dry run, review the
+report, then run the confirmed copy as a separately approved step.
 
 ## Ceremony changes for AWS online keys
 

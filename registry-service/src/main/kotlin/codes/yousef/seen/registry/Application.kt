@@ -16,6 +16,11 @@ fun main(args: Array<String>) {
         RegistryWorkerRuntime.run(RegistryWorkerConfig.fromEnvironment(mode))
         return
     }
+    if (args.firstOrNull() == RegistryDataCopyConfig.COMMAND) {
+        require(args.size == 1) { "Usage: registry-service ${RegistryDataCopyConfig.COMMAND}" }
+        RegistryDataCopyRuntime.run()
+        return
+    }
     if (args.singleOrNull() == "describe-signing-policy") {
         println(signingPolicyDescription(System.getenv()["REGISTRY_ENVIRONMENT"] ?: "development"))
         return
@@ -80,7 +85,7 @@ fun main(args: Array<String>) {
     }
     val requestedServerMode = args.singleOrNull()?.let(RegistryServerMode::fromArgument)
     require(args.isEmpty() || requestedServerMode != null) {
-        "Usage: registry-service [serve-public-api|serve-read-only-public-api|serve-release-actions|serve-security-actions|serve-tuf-signer|describe-signing-policy|verify-source-once|scan-once|promote-once|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-targets-rotation <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-root-rotation <current-N.root.json> <output-dir>|import-offline-bootstrap|bootstrap-online|import-offline-targets-renewal [<N.targets.json>]|import-offline-targets-rotation <releases|security> [<N.targets.json>]|verify-root-chain|import-offline-root-rotation [<N.root.json>]|refresh-releases-once|refresh-security-once|recover-expired-releases-once|recover-expired-security-once]"
+        "Usage: registry-service [serve-public-api|serve-read-only-public-api|serve-release-actions|serve-security-actions|serve-tuf-signer|describe-signing-policy|verify-source-once|scan-once|promote-once|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-targets-rotation <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-root-rotation <current-N.root.json> <output-dir>|import-offline-bootstrap|bootstrap-online|import-offline-targets-renewal [<N.targets.json>]|import-offline-targets-rotation <releases|security> [<N.targets.json>]|verify-root-chain|import-offline-root-rotation [<N.root.json>]|refresh-releases-once|refresh-security-once|recover-expired-releases-once|recover-expired-security-once|copy-gcp-to-aws]"
     }
     val config = RegistryConfig.fromEnvironment(serverModeOverride = requestedServerMode)
     val resources = RegistryResources.create(config)

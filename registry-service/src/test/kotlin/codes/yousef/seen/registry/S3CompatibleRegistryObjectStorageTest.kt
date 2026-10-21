@@ -139,7 +139,7 @@ class S3CompatibleRegistryObjectStorageTest {
     )
 }
 
-private class FakeS3CompatibleObjectClient : S3CompatibleObjectClient {
+internal class FakeS3CompatibleObjectClient : S3CompatibleObjectClient {
     private data class Entry(
         val bytes: ByteArray,
         val contentType: String,
@@ -212,6 +212,13 @@ private class FakeS3CompatibleObjectClient : S3CompatibleObjectClient {
     override fun close() {
         closed = true
     }
+
+    override fun keys(bucket: String, prefix: String): List<String> = synchronized(values) {
+        values.keys.filter { it.first == bucket && it.second.startsWith(prefix) }.map { it.second }.sorted()
+    }
+
+    /** Number of objects currently stored in [bucket]. */
+    fun objectCount(bucket: String): Int = synchronized(values) { values.keys.count { it.first == bucket } }
 
     fun contains(bucket: String, key: String): Boolean = values.containsKey(bucket to key)
     fun successfulCreates(bucket: String, key: String): Int = createCounts.getOrDefault(bucket to key, 0)

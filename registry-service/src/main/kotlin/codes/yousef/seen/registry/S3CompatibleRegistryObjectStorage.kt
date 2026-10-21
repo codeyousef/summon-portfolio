@@ -10,6 +10,7 @@ import software.amazon.awssdk.retries.DefaultRetryStrategy
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.S3Exception
@@ -56,6 +57,10 @@ internal interface S3CompatibleObjectClient : AutoCloseable {
 
     fun get(bucket: String, key: String): S3CompatibleStoredObject?
     fun delete(bucket: String, key: String)
+
+    /** Every key under [prefix]; used only by the data-copy parity report. */
+    fun keys(bucket: String, prefix: String): List<String> =
+        throw UnsupportedOperationException("Object listing is not supported by this client")
 }
 
 /**
@@ -346,6 +351,10 @@ internal class AwsSdkS3CompatibleObjectClient private constructor(
     override fun delete(bucket: String, key: String) {
         client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build())
     }
+
+    override fun keys(bucket: String, prefix: String): List<String> = client.listObjectsV2Paginator(
+        ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build(),
+    ).contents().map { it.key() }.sorted()
 
     override fun close() = client.close()
 
