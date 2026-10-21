@@ -31,13 +31,52 @@ data class AppConfig(
     val registryPublicHost: String? = null,
     val registryUpstreamUrl: String? = null,
     val registryReleaseActionsUpstreamUrl: String? = null,
-    val registrySecurityActionsUpstreamUrl: String? = null
+    val registrySecurityActionsUpstreamUrl: String? = null,
+    val dataBackendSelection: PortfolioDataBackend = PortfolioDataBackend.FIRESTORE,
+    val dynamoDbDocumentsTable: String? = null,
+    val s3MediaBucket: String? = null,
+    val s3MediaPrefix: String? = null,
+    val s3DocsBucket: String? = null,
+    val s3ReceiptsBucket: String? = null,
+    val s3ReceiptsPrefix: String? = null,
+    val cdnProxyEnabled: Boolean = false,
+    val sqsJobsQueueUrl: String? = null,
+    val sqsJobsVisibilityTimeoutSeconds: Int = 300,
 ) {
+    /** The effective backend; the legacy `USE_LOCAL_STORE=true` flag selects [PortfolioDataBackend.LOCAL]. */
+    val dataBackend: PortfolioDataBackend
+        get() = if (useLocalStore) PortfolioDataBackend.LOCAL else dataBackendSelection
+
     init {
+        require(!useLocalStore || dataBackendSelection != PortfolioDataBackend.DYNAMODB) {
+            "USE_LOCAL_STORE=true conflicts with PORTFOLIO_DATA_BACKEND=dynamodb"
+        }
+        require(dataBackend != PortfolioDataBackend.DYNAMODB || !dynamoDbDocumentsTable.isNullOrBlank()) {
+            "PORTFOLIO_DATA_BACKEND=dynamodb requires PORTFOLIO_DYNAMODB_DOCUMENTS_TABLE"
+        }
+        require(dataBackend != PortfolioDataBackend.DYNAMODB || firestoreWriteMode == FirestoreWriteMode.SOURCE) {
+            "FIRESTORE_WRITE_MODE dual/target replication is not supported with PORTFOLIO_DATA_BACKEND=dynamodb"
+        }
+        require(s3ReceiptsBucket == null || finOpsReceiptBaseUrl == null) {
+            "Configure either PORTFOLIO_S3_RECEIPTS_BUCKET or FINOPS_RECEIPT_BASE_URL, not both"
+        }
+        require(!cdnProxyEnabled || s3MediaBucket != null || s3DocsBucket != null) {
+            "PORTFOLIO_CDN_PROXY_ENABLED=true requires PORTFOLIO_S3_MEDIA_BUCKET or PORTFOLIO_S3_DOCS_BUCKET"
+        }
+        require(sqsJobsVisibilityTimeoutSeconds in 30..43_200) {
+            "PORTFOLIO_SQS_JOBS_VISIBILITY_TIMEOUT_SECONDS must be between 30 and 43200"
+        }
+        sqsJobsQueueUrl?.let { url ->
+            val uri = runCatching { URI(url) }.getOrNull()
+            require(uri != null && uri.host != null && (uri.scheme == "https" || (uri.scheme == "http" && uri.host in LOCAL_PHOTOGRAPHY_HOSTS))) {
+                "PORTFOLIO_SQS_JOBS_QUEUE_URL must be an HTTPS SQS queue URL"
+            }
+        }
         validateFirestoreDatabaseSelection(firestoreDatabaseId, firestoreWriteMode, firestoreMigrationProofId)
         validatePhotographyStorageSelection(
             writeMode = photographyWriteMode,
             r2BaseUrl = photographyR2BaseUrl,
+            s3MediaBucket = s3MediaBucket,
             reverseMirror = photographyR2ReverseMirror,
             sourceBucket = photographyUploadBucket,
         )
@@ -56,9 +95,18 @@ fun loadAppConfig(): AppConfig = loadAppConfig(System.getenv())
 
 internal fun loadAppConfig(env: Map<String, String>): AppConfig {
     val useLocalStore = env["USE_LOCAL_STORE"]?.toBoolean() ?: false
-    
+    val dataBackendSelection = PortfolioDataBackend.parse(env["PORTFOLIO_DATA_BACKEND"])
+    require(!useLocalStore || dataBackendSelection == null || dataBackendSelection == PortfolioDataBackend.LOCAL) {
+        "USE_LOCAL_STORE=true conflicts with PORTFOLIO_DATA_BACKEND=${dataBackendSelection?.environmentValue}"
+    }
+    val effectiveLocal = useLocalStore || dataBackendSelection == PortfolioDataBackend.LOCAL
+
     val projectId = env["GOOGLE_CLOUD_PROJECT"]
-        ?: if (useLocalStore) "local-dev" else error("Missing GOOGLE_CLOUD_PROJECT environment variable")
+        ?: when {
+            effectiveLocal -> "local-dev"
+            dataBackendSelection == PortfolioDataBackend.DYNAMODB -> "aws"
+            else -> error("Missing GOOGLE_CLOUD_PROJECT environment variable")
+        }
         
     val emulatorHost = env["FIRESTORE_EMULATOR_HOST"]
     val firestoreWriteMode = FirestoreWriteMode.parse(env["FIRESTORE_WRITE_MODE"])
@@ -145,11 +193,28 @@ internal fun loadAppConfig(env: Map<String, String>): AppConfig {
         "Registry action routing cannot be enabled without the public host and API upstream URL"
     }
     
+    fun optional(name: String): String? = env[name]?.trim()?.takeIf { it.isNotEmpty() }
+    fun strictBoolean(name: String): Boolean = env[name]?.let { value ->
+        requireNotNull(value.trim().toBooleanStrictOrNull()) { "$name must be 'true' or 'false'" }
+    } ?: false
+
     return AppConfig(
         projectId = projectId,
         emulatorHost = emulatorHost,
         port = port,
-        useLocalStore = useLocalStore,
+        useLocalStore = effectiveLocal,
+        dataBackendSelection = dataBackendSelection ?: PortfolioDataBackend.FIRESTORE,
+        dynamoDbDocumentsTable = optional("PORTFOLIO_DYNAMODB_DOCUMENTS_TABLE"),
+        s3MediaBucket = optional("PORTFOLIO_S3_MEDIA_BUCKET"),
+        s3MediaPrefix = optional("PORTFOLIO_S3_MEDIA_PREFIX"),
+        s3DocsBucket = optional("PORTFOLIO_S3_DOCS_BUCKET"),
+        s3ReceiptsBucket = optional("PORTFOLIO_S3_RECEIPTS_BUCKET"),
+        s3ReceiptsPrefix = optional("PORTFOLIO_S3_RECEIPTS_PREFIX"),
+        cdnProxyEnabled = strictBoolean("PORTFOLIO_CDN_PROXY_ENABLED"),
+        sqsJobsQueueUrl = optional("PORTFOLIO_SQS_JOBS_QUEUE_URL"),
+        sqsJobsVisibilityTimeoutSeconds = optional("PORTFOLIO_SQS_JOBS_VISIBILITY_TIMEOUT_SECONDS")?.let {
+            requireNotNull(it.toIntOrNull()) { "PORTFOLIO_SQS_JOBS_VISIBILITY_TIMEOUT_SECONDS must be an integer" }
+        } ?: 300,
         firestoreDatabaseId = firestoreDatabaseId,
         firestoreWriteMode = firestoreWriteMode,
         firestoreMigrationProofId = firestoreMigrationProofId,
@@ -188,11 +253,15 @@ private fun validatePrivateEdgeUrl(name: String, value: String?) {
 private fun validatePhotographyStorageSelection(
     writeMode: PhotographyAssetWriteMode,
     r2BaseUrl: String?,
+    s3MediaBucket: String?,
     reverseMirror: Boolean,
     sourceBucket: String?,
 ) {
-    require(writeMode == PhotographyAssetWriteMode.SOURCE || r2BaseUrl != null) {
-        "PHOTOGRAPHY_WRITE_MODE=${writeMode.environmentValue} requires PHOTOGRAPHY_R2_BASE_URL"
+    require(r2BaseUrl == null || s3MediaBucket == null) {
+        "Configure either PHOTOGRAPHY_R2_BASE_URL or PORTFOLIO_S3_MEDIA_BUCKET as the photography target, not both"
+    }
+    require(writeMode == PhotographyAssetWriteMode.SOURCE || r2BaseUrl != null || s3MediaBucket != null) {
+        "PHOTOGRAPHY_WRITE_MODE=${writeMode.environmentValue} requires PHOTOGRAPHY_R2_BASE_URL or PORTFOLIO_S3_MEDIA_BUCKET"
     }
     r2BaseUrl?.let { value ->
         val uri = runCatching { URI(value) }.getOrNull()
