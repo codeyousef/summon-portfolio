@@ -54,15 +54,18 @@ output "cloudfront_domain" {
 }
 
 output "certificate_validation_records" {
-  description = "ACM validation CNAMEs to mirror at the current DNS host before delegation."
-  value = {
-    for domain, options in local.certificate_validation_records : domain => {
-      name  = options[0].resource_record_name
-      type  = options[0].resource_record_type
-      value = options[0].resource_record_value
+  description = "ACM validation CNAMEs to mirror at the current DNS host before delegation, keyed by certificate and domain."
+  value = merge([
+    for certificate, resource in local.certificates : {
+      for option in resource.domain_validation_options : "${certificate}:${option.domain_name}" => {
+        name  = option.resource_record_name
+        type  = option.resource_record_type
+        value = option.resource_record_value
+      }
     }
-  }
+  ]...)
 }
+
 
 output "jobs_queue_url" {
   value = var.resources_enabled ? aws_sqs_queue.jobs[0].url : null

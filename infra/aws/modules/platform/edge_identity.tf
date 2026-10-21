@@ -34,24 +34,37 @@ resource "aws_acm_certificate" "origin" {
 }
 
 locals {
-  # ACM issues the same validation CNAME for a domain in every region of an
-  # account, so both certificates share one record per name.
-  certificate_validation_records = var.resources_enabled ? {
-    for option in concat(
-      tolist(aws_acm_certificate.cloudfront[0].domain_validation_options),
-      tolist(aws_acm_certificate.origin[0].domain_validation_options),
-    ) : option.domain_name => option...
-  } : {}
+  certificates = merge(
+    var.resources_enabled ? { cloudfront = aws_acm_certificate.cloudfront[0], origin = aws_acm_certificate.origin[0] } : {},
+  )
 }
 
-resource "aws_route53_record" "certificate_validation" {
-  for_each = local.certificate_validation_records
+# One record set per certificate, keyed by domain name (known at plan time).
+# ACM normally issues the same CNAME for a domain in every region of an
+# account; when it does, both resources upsert the identical record.
+resource "aws_route53_record" "cloudfront_certificate_validation" {
+  for_each = var.resources_enabled ? {
+    for option in aws_acm_certificate.cloudfront[0].domain_validation_options : option.domain_name => option
+  } : {}
 
   zone_id         = data.aws_route53_zone.primary[0].zone_id
-  name            = each.value[0].resource_record_name
-  type            = each.value[0].resource_record_type
+  name            = each.value.resource_record_name
+  type            = each.value.resource_record_type
   ttl             = 300
-  records         = [each.value[0].resource_record_value]
+  records         = [each.value.resource_record_value]
+  allow_overwrite = true
+}
+
+resource "aws_route53_record" "origin_certificate_validation" {
+  for_each = var.resources_enabled ? {
+    for option in aws_acm_certificate.origin[0].domain_validation_options : option.domain_name => option
+  } : {}
+
+  zone_id         = data.aws_route53_zone.primary[0].zone_id
+  name            = each.value.resource_record_name
+  type            = each.value.resource_record_type
+  ttl             = 300
+  records         = [each.value.resource_record_value]
   allow_overwrite = true
 }
 
@@ -60,14 +73,14 @@ resource "aws_acm_certificate_validation" "cloudfront" {
   provider = aws.us_east_1
 
   certificate_arn         = aws_acm_certificate.cloudfront[0].arn
-  validation_record_fqdns = [for record in aws_route53_record.certificate_validation : record.fqdn]
+  validation_record_fqdns = [for record in aws_route53_record.cloudfront_certificate_validation : record.fqdn]
 }
 
 resource "aws_acm_certificate_validation" "origin" {
   count = local.edge
 
   certificate_arn         = aws_acm_certificate.origin[0].arn
-  validation_record_fqdns = [for record in aws_route53_record.certificate_validation : record.fqdn]
+  validation_record_fqdns = [for record in aws_route53_record.origin_certificate_validation : record.fqdn]
 }
 
 resource "aws_route53_record" "hosts" {
