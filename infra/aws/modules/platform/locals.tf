@@ -33,8 +33,11 @@ locals {
     for index, zone in var.availability_zones : zone => cidrsubnet(local.vpc_cidr, 4, index + 8)
   }
 
-  ssr_enabled        = var.resources_enabled && var.images.ssr != null
-  playground_enabled = var.resources_enabled && var.images.playground != null
+  # Listeners, CloudFront, public records, and services need issued certificates.
+  edge_enabled       = var.resources_enabled && var.certificates_validated
+  edge               = local.edge_enabled ? 1 : 0
+  ssr_enabled        = local.edge_enabled && var.images.ssr != null
+  playground_enabled = local.edge_enabled && var.images.playground != null
 
   # The FinOps jobs the Cloudflare Worker ran on cron. EventBridge Scheduler
   # delivers each as a message on the jobs queue.

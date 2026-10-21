@@ -12,6 +12,11 @@ variable "resources_enabled" {
   default = false
 }
 
+variable "certificates_validated" {
+  type    = bool
+  default = false
+}
+
 variable "images" {
   type = object({
     ssr        = optional(string)
@@ -41,6 +46,7 @@ variable "registry" {
   type = object({
     enabled                   = optional(bool, false)
     kms_keys_enabled          = optional(bool, false)
+    certificates_validated    = optional(bool, false)
     image                     = optional(string)
     signer_image              = optional(string)
     online_public_keys_hex    = optional(map(string), {})

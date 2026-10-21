@@ -49,3 +49,8 @@ output "registry" {
     secret_arns            = module.registry.secret_arns
   }
 }
+
+output "certificate_validation_records" {
+  description = "Mirror these at Cloudflare (DNS only) until the zone is delegated to Route 53."
+  value       = merge(module.platform.certificate_validation_records, module.registry.certificate_validation_records)
+}

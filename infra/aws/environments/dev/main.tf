@@ -22,15 +22,16 @@ module "platform" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  aws_account_id       = var.aws_account_id
-  environment          = "dev"
-  region               = var.region
-  resources_enabled    = var.resources_enabled
-  dev_gate_owner_email = var.dev_gate_owner_email
-  images               = var.images
-  use_fargate_spot     = true
-  schedules_enabled    = var.schedules_enabled
-  app_environment      = merge(local.finops_environment, var.app_environment, module.registry.gateway_environment)
+  aws_account_id         = var.aws_account_id
+  environment            = "dev"
+  region                 = var.region
+  resources_enabled      = var.resources_enabled
+  certificates_validated = var.certificates_validated
+  dev_gate_owner_email   = var.dev_gate_owner_email
+  images                 = var.images
+  use_fargate_spot       = true
+  schedules_enabled      = var.schedules_enabled
+  app_environment        = merge(local.finops_environment, var.app_environment, module.registry.gateway_environment)
 }
 
 module "registry" {
@@ -41,6 +42,7 @@ module "registry" {
   region                    = var.region
   enabled                   = var.registry.enabled
   kms_keys_enabled          = var.registry.kms_keys_enabled
+  certificates_validated    = var.registry.certificates_validated
   network                   = module.platform.network
   image                     = var.registry.image
   signer_image              = var.registry.signer_image

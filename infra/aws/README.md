@@ -65,6 +65,23 @@ scheduler-originated execution have been verified.
 Secrets Manager entries are created without values. Set each value out of
 band before starting a service that injects it.
 
+## Environment phases
+
+Each step is its own reviewed plan and apply:
+
+1. `resources_enabled = true`: network, ALB (no listener yet), target groups,
+   Cognito gate, tables, buckets, jobs queue, disabled schedules, empty
+   secrets, and the ACM certificate requests. The
+   `certificate_validation_records` output lists the validation CNAMEs.
+2. Until the zone is delegated, mirror those CNAMEs at Cloudflare as DNS-only
+   records. They do not change live traffic.
+3. `certificates_validated = true` once every certificate is `ISSUED`:
+   listeners and rewrite rules, CloudFront, and Route 53 host records (served
+   only after delegation).
+4. Set secret values, then pinned `images`, to start services.
+5. Back up and copy data, verify parity, then delegate the zone at the
+   registrar.
+
 ## Commands
 
 All commands run against the dedicated account's `portfolio` CLI profile.

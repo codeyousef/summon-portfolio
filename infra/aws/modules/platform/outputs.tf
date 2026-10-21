@@ -41,7 +41,18 @@ output "cluster" {
 }
 
 output "cloudfront_domain" {
-  value = var.resources_enabled ? aws_cloudfront_distribution.site[0].domain_name : null
+  value = local.edge_enabled ? aws_cloudfront_distribution.site[0].domain_name : null
+}
+
+output "certificate_validation_records" {
+  description = "ACM validation CNAMEs to mirror at the current DNS host before delegation."
+  value = {
+    for domain, options in local.certificate_validation_records : domain => {
+      name  = options[0].resource_record_name
+      type  = options[0].resource_record_type
+      value = options[0].resource_record_value
+    }
+  }
 }
 
 output "jobs_queue_url" {

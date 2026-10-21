@@ -28,7 +28,7 @@ resource "aws_cloudfront_origin_access_control" "buckets" {
 locals {
   # Dev media stays behind the Cognito gate: in dev the application serves
   # /cdn/* from S3 through the gated ALB instead of CloudFront reading S3.
-  cdn_buckets = local.is_dev ? {} : { for purpose, spec in local.buckets : purpose => spec if spec.public_via_cdn }
+  cdn_buckets = local.is_dev || !local.edge_enabled ? {} : { for purpose, spec in local.buckets : purpose => spec if spec.public_via_cdn }
 }
 
 # /cdn/media/<key> and /cdn/docs/<key> address bucket objects by <key>,
@@ -49,7 +49,7 @@ resource "aws_cloudfront_function" "strip_cdn_prefix" {
 }
 
 resource "aws_cloudfront_distribution" "site" {
-  count = local.enabled
+  count = local.edge
 
   enabled         = true
   is_ipv6_enabled = true

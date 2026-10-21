@@ -105,6 +105,16 @@ variable "service_sizes" {
   default = {}
 }
 
+variable "certificates_validated" {
+  description = <<-EOT
+    Second edge phase. Until the zone is delegated, ACM validation records must
+    also exist at the current DNS host; set this only after every certificate
+    from certificate_validation_records reports ISSUED.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "use_fargate_spot" {
   description = "Run tasks on Fargate Spot. Appropriate for dev only."
   type        = bool

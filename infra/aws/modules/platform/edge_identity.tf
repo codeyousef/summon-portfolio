@@ -56,7 +56,7 @@ resource "aws_route53_record" "certificate_validation" {
 }
 
 resource "aws_acm_certificate_validation" "cloudfront" {
-  count    = local.enabled
+  count    = local.edge
   provider = aws.us_east_1
 
   certificate_arn         = aws_acm_certificate.cloudfront[0].arn
@@ -64,14 +64,14 @@ resource "aws_acm_certificate_validation" "cloudfront" {
 }
 
 resource "aws_acm_certificate_validation" "origin" {
-  count = local.enabled
+  count = local.edge
 
   certificate_arn         = aws_acm_certificate.origin[0].arn
   validation_record_fqdns = [for record in aws_route53_record.certificate_validation : record.fqdn]
 }
 
 resource "aws_route53_record" "hosts" {
-  for_each = var.resources_enabled ? {
+  for_each = local.edge_enabled ? {
     for pair in setproduct(keys(local.hosts), ["A", "AAAA"]) : "${pair[0]}-${pair[1]}" => {
       host = local.hosts[pair[0]]
       type = pair[1]

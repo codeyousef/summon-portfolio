@@ -59,7 +59,7 @@ resource "aws_lb_target_group" "playground" {
 
 # Unknown hosts are rejected; every served host has an explicit rule.
 resource "aws_lb_listener" "https" {
-  count = local.enabled
+  count = local.edge
 
   load_balancer_arn = aws_lb.main[0].arn
   port              = 443
@@ -127,7 +127,7 @@ locals {
 
 # Worker-only internal API surface; never reachable from the public edge.
 resource "aws_lb_listener_rule" "internal" {
-  count = local.enabled
+  count = local.edge
 
   listener_arn = aws_lb_listener.https[0].arn
   priority     = 10
@@ -152,7 +152,7 @@ resource "aws_lb_listener_rule" "internal" {
 # GitHub delivers signed docs-invalidation webhooks; the application verifies
 # the signature, so this path bypasses the interactive dev gate.
 resource "aws_lb_listener_rule" "github_hook" {
-  count = local.enabled
+  count = local.edge
 
   listener_arn = aws_lb_listener.https[0].arn
   priority     = 11
@@ -170,7 +170,7 @@ resource "aws_lb_listener_rule" "github_hook" {
 }
 
 resource "aws_lb_listener_rule" "rewrite" {
-  for_each = var.resources_enabled ? local.active_rewrite_routes : {}
+  for_each = local.edge_enabled ? local.active_rewrite_routes : {}
 
   listener_arn = aws_lb_listener.https[0].arn
   priority     = each.value.priority
@@ -230,7 +230,7 @@ resource "aws_lb_listener_rule" "rewrite" {
 }
 
 resource "aws_lb_listener_rule" "hosts" {
-  count = var.resources_enabled ? length(local.host_chunks) : 0
+  count = local.edge_enabled ? length(local.host_chunks) : 0
 
   listener_arn = aws_lb_listener.https[0].arn
   priority     = 100 + count.index

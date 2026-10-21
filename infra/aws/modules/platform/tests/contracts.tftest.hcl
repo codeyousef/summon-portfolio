@@ -204,10 +204,11 @@ run "development_is_gated_and_complete" {
   command = plan
 
   variables {
-    environment          = "dev"
-    resources_enabled    = true
-    dev_gate_owner_email = "owner@example.com"
-    use_fargate_spot     = true
+    environment            = "dev"
+    resources_enabled      = true
+    certificates_validated = true
+    dev_gate_owner_email   = "owner@example.com"
+    use_fargate_spot       = true
     images = {
       ssr        = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/portfolio-ssr@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       playground = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/seen-playground@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -278,12 +279,42 @@ run "development_is_gated_and_complete" {
   }
 }
 
+run "certificates_precede_the_edge" {
+  command = plan
+
+  variables {
+    environment          = "dev"
+    resources_enabled    = true
+    dev_gate_owner_email = "owner@example.com"
+    images = {
+      ssr = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/portfolio-ssr@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+
+  assert {
+    condition     = length(aws_acm_certificate.cloudfront) == 1 && length(aws_acm_certificate.origin) == 1
+    error_message = "Certificates are requested in the first edge phase."
+  }
+
+  assert {
+    condition = (
+      length(aws_acm_certificate_validation.origin) == 0 &&
+      length(aws_lb_listener.https) == 0 &&
+      length(aws_cloudfront_distribution.site) == 0 &&
+      length(aws_route53_record.hosts) == 0 &&
+      length(aws_ecs_service.ssr) == 0
+    )
+    error_message = "Nothing may wait on or use certificates before they are validated."
+  }
+}
+
 run "production_shape" {
   command = plan
 
   variables {
-    environment       = "prod"
-    resources_enabled = true
+    environment            = "prod"
+    resources_enabled      = true
+    certificates_validated = true
     images = {
       ssr = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/portfolio-ssr@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }

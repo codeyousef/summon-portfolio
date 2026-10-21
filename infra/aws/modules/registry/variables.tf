@@ -32,6 +32,12 @@ variable "enabled" {
   default     = false
 }
 
+variable "certificates_validated" {
+  description = "Set only after the internal certificate from certificate_validation_records reports ISSUED."
+  type        = bool
+  default     = false
+}
+
 variable "kms_keys_enabled" {
   description = "Separately approved phase that creates the four online Ed25519 signing keys."
   type        = bool

@@ -136,7 +136,7 @@ resource "aws_route53_record" "internal_certificate_validation" {
 }
 
 resource "aws_acm_certificate_validation" "internal" {
-  count = var.enabled ? 1 : 0
+  count = local.edge_ready ? 1 : 0
 
   certificate_arn         = aws_acm_certificate.internal[0].arn
   validation_record_fqdns = [for record in aws_route53_record.internal_certificate_validation : record.fqdn]
@@ -144,7 +144,7 @@ resource "aws_acm_certificate_validation" "internal" {
 
 # Signers require X-Forwarded-Proto: https, so TLS terminates here.
 resource "aws_lb_listener" "internal" {
-  count = var.enabled ? 1 : 0
+  count = local.edge_ready ? 1 : 0
 
   load_balancer_arn = aws_lb.internal[0].arn
   port              = 443

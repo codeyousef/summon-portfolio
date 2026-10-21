@@ -56,3 +56,14 @@ output "schedules" {
 output "secret_arns" {
   value = { for name, secret in aws_secretsmanager_secret.registry : name => secret.arn }
 }
+
+output "certificate_validation_records" {
+  description = "ACM validation CNAME for the internal wildcard, to mirror at the current DNS host before delegation."
+  value = var.enabled ? {
+    for option in aws_acm_certificate.internal[0].domain_validation_options : option.domain_name => {
+      name  = option.resource_record_name
+      type  = option.resource_record_type
+      value = option.resource_record_value
+    }
+  } : {}
+}

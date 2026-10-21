@@ -81,6 +81,7 @@ variables {
   image                  = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/seen-registry@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   signer_image           = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/seen-registry-signer@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
   trusted_root_v1_sha256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  certificates_validated = true
 }
 
 run "inert_by_default" {
