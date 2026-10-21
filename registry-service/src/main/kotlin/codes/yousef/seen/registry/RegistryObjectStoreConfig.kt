@@ -5,12 +5,17 @@ import java.net.URI
 enum class RegistryObjectStoreProvider(val environmentValue: String) {
     GCS("gcs"),
     R2("r2"),
+    /**
+     * Native AWS S3. Credentials come only from the default AWS provider chain
+     * (the ECS task role); the region comes from `AWS_REGION`.
+     */
+    S3("s3"),
     ;
 
     companion object {
         fun fromEnvironment(value: String): RegistryObjectStoreProvider = entries.firstOrNull {
             it.environmentValue == value
-        } ?: throw IllegalArgumentException("REGISTRY_OBJECT_STORE_PROVIDER must be gcs or r2")
+        } ?: throw IllegalArgumentException("REGISTRY_OBJECT_STORE_PROVIDER must be gcs, r2, or s3")
     }
 }
 
@@ -102,6 +107,17 @@ data class RegistryObjectStoreConfig(
                 }
                 buckets.names.forEach(::requireR2BucketName)
             }
+            RegistryObjectStoreProvider.S3 -> {
+                require(endpoint == null && credentials == null) {
+                    "S3 object storage must use the default AWS credential chain and regional endpoint"
+                }
+                val awsRegion = requireNotNull(region) { "AWS_REGION is required for S3 object storage" }
+                require(AWS_REGION_NAME.matches(awsRegion)) { "AWS_REGION is invalid" }
+                require(buckets.names.toSet().size == buckets.names.size) {
+                    "S3 logical bucket roles must use distinct buckets"
+                }
+                buckets.names.forEach(::requireS3BucketName)
+            }
         }
     }
 
@@ -119,9 +135,10 @@ data class RegistryObjectStoreConfig(
         fun fromEnvironment(
             env: Map<String, String>,
             requiredRoles: Set<RegistryBucketRole>,
+            defaultProvider: RegistryObjectStoreProvider = RegistryObjectStoreProvider.GCS,
         ): RegistryObjectStoreConfig {
             val provider = RegistryObjectStoreProvider.fromEnvironment(
-                env["REGISTRY_OBJECT_STORE_PROVIDER"]?.trim()?.ifEmpty { null } ?: "gcs",
+                env["REGISTRY_OBJECT_STORE_PROVIDER"]?.trim()?.ifEmpty { null } ?: defaultProvider.environmentValue,
             )
             val supplied = RegistryBucketRole.entries.mapNotNull { role ->
                 if (!env.containsKey(role.environmentName)) return@mapNotNull null
@@ -162,6 +179,19 @@ data class RegistryObjectStoreConfig(
                         endpoint = endpoint,
                         region = env["REGISTRY_R2_REGION"]?.trim()?.ifEmpty { null } ?: "auto",
                         credentials = RegistryObjectStoreCredentials(accessKeyId, secretAccessKey),
+                    )
+                }
+                RegistryObjectStoreProvider.S3 -> {
+                    val forbidden = R2_ENVIRONMENT_NAMES.filter(env::containsKey)
+                    require(forbidden.isEmpty()) {
+                        "S3 object storage rejects R2 endpoint and static credential configuration: " +
+                            forbidden.sorted().joinToString(", ")
+                    }
+                    RegistryObjectStoreConfig(
+                        provider = provider,
+                        buckets = buckets,
+                        region = env["AWS_REGION"]?.trim()?.ifEmpty { null }
+                            ?: throw IllegalArgumentException("AWS_REGION is required for S3 object storage"),
                     )
                 }
             }.requireRoles(requiredRoles)
@@ -221,6 +251,18 @@ private fun requireObjectPrefix(value: String): String {
             prefix.split('/').none { it == "." || it == ".." },
     ) { "REGISTRY_OBJECT_PREFIX is invalid" }
     return prefix
+}
+
+internal val AWS_REGION_NAME = Regex("^[a-z]{2}(?:-[a-z]+)+-[1-9][0-9]?$")
+private val S3_BUCKET = Regex("^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$")
+
+/** Dots are rejected so virtual-hosted HTTPS certificate validation always applies. */
+private fun requireS3BucketName(value: String) {
+    require(
+        value.length in 3..63 && S3_BUCKET.matches(value) &&
+            !value.startsWith("xn--") && !value.startsWith("sthree-") && !value.endsWith("-s3alias") &&
+            !value.endsWith("--ol-s3") && !value.endsWith("--x-s3"),
+    ) { "S3 bucket name is invalid: $value" }
 }
 
 private fun requireR2BucketName(value: String) {

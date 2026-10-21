@@ -12,7 +12,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class EnforcementServiceTest {
+open class EnforcementServiceTest {
+    protected open fun newRepository(): RegistryRepository = InMemoryRegistryRepository()
+
     @Test
     fun `security reports are append only and concealed from unrelated principals`() {
         val fixture = fixture()
@@ -283,7 +285,7 @@ class EnforcementServiceTest {
         initialAvailability: String = "available",
         ids: EnforcementIdGenerator = CountingEnforcementIds(),
     ): Fixture {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         assertTrue(repository.reserveRelease(activeRelease(initialAvailability)))
         return Fixture(repository, EnforcementService(repository, ENVIRONMENT, FIXED_CLOCK, ids))
     }
@@ -376,7 +378,7 @@ class EnforcementServiceTest {
     )
 
     private data class Fixture(
-        val repository: InMemoryRegistryRepository,
+        val repository: RegistryRepository,
         val service: EnforcementService,
     ) {
         fun release(): StoredRelease = repository.getRelease(PACKAGE, VERSION)!!

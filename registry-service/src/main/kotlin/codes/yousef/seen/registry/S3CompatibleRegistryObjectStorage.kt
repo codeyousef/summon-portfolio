@@ -1,6 +1,7 @@
 package codes.yousef.seen.registry
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient
@@ -58,7 +59,15 @@ internal interface S3CompatibleObjectClient : AutoCloseable {
 }
 
 /**
- * Registry object storage over Cloudflare R2's S3-compatible endpoint.
+ * Registry object storage over Cloudflare R2's S3-compatible endpoint or
+ * native AWS S3.
+ *
+ * Both providers honour `If-None-Match: *` (create-only) and `If-Match: <etag>`
+ * (compare-and-set) on PutObject, which are the only write primitives used for
+ * immutable and pointer objects respectively. On AWS S3 the infrastructure
+ * must additionally enable bucket versioning on the public and metadata
+ * buckets so an operator-level overwrite or delete stays recoverable; see the
+ * registry-service AWS operations notes.
  *
  * Public archives use SHA-256-addressed immutable keys. Versioned TUF objects
  * remain on their protocol-defined filenames and are create-only; root and
@@ -249,8 +258,8 @@ class S3CompatibleRegistryObjectStorage internal constructor(
 
     companion object {
         fun create(config: RegistryObjectStoreConfig, prefix: String): S3CompatibleRegistryObjectStorage {
-            require(config.provider == RegistryObjectStoreProvider.R2) {
-                "S3-compatible storage requires the R2 provider"
+            require(config.provider in S3_API_PROVIDERS) {
+                "S3-compatible storage requires the R2 or S3 provider"
             }
             return S3CompatibleRegistryObjectStorage(
                 client = AwsSdkS3CompatibleObjectClient.create(config),
@@ -325,7 +334,7 @@ internal class AwsSdkS3CompatibleObjectClient private constructor(
             bytes = value.asByteArray(),
             contentType = response.contentType(),
             cacheControl = response.cacheControl(),
-            version = requireNotNull(response.eTag()) { "R2 object ETag is missing" },
+            version = requireNotNull(response.eTag()) { "Object ETag is missing" },
             sha256 = response.metadata()[SHA256_METADATA],
         )
     } catch (_: NoSuchKeyException) {
@@ -361,8 +370,7 @@ internal class AwsSdkS3CompatibleObjectClient private constructor(
             requestTimeout: Duration? = null,
             disableRetries: Boolean = false,
         ): AwsSdkS3CompatibleObjectClient {
-            require(config.provider == RegistryObjectStoreProvider.R2)
-            val credentials = requireNotNull(config.credentials)
+            require(config.provider in S3_API_PROVIDERS)
             val httpClient = UrlConnectionHttpClient.builder().apply {
                 requestTimeout?.let { timeout ->
                     connectionTimeout(timeout)
@@ -370,13 +378,26 @@ internal class AwsSdkS3CompatibleObjectClient private constructor(
                 }
             }
             val builder = S3Client.builder()
-                .endpointOverride(requireNotNull(config.endpoint))
                 .region(Region.of(requireNotNull(config.region)))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(credentials.accessKeyId, credentials.secretAccessKey),
-                ))
                 .httpClientBuilder(httpClient)
-                .forcePathStyle(true)
+            when (config.provider) {
+                RegistryObjectStoreProvider.R2 -> {
+                    val credentials = requireNotNull(config.credentials)
+                    builder
+                        .endpointOverride(requireNotNull(config.endpoint))
+                        .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(credentials.accessKeyId, credentials.secretAccessKey),
+                        ))
+                        .forcePathStyle(true)
+                }
+                RegistryObjectStoreProvider.S3 -> {
+                    // Native S3 never receives static keys: the ECS task role
+                    // (container credential provider) is the only authority.
+                    require(config.credentials == null && config.endpoint == null)
+                    builder.credentialsProvider(DefaultCredentialsProvider.builder().build())
+                }
+                RegistryObjectStoreProvider.GCS -> error("GCS is not an S3 API provider")
+            }
             if (requestTimeout != null || disableRetries) {
                 builder.overrideConfiguration { override ->
                     requestTimeout?.let { timeout ->
@@ -389,6 +410,9 @@ internal class AwsSdkS3CompatibleObjectClient private constructor(
         }
     }
 }
+
+internal val S3_API_PROVIDERS: Set<RegistryObjectStoreProvider> =
+    setOf(RegistryObjectStoreProvider.R2, RegistryObjectStoreProvider.S3)
 
 private fun readBoundedArchive(input: InputStream): ByteArray {
     val output = ByteArrayOutputStream()

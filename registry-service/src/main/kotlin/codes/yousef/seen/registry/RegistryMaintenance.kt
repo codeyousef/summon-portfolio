@@ -188,6 +188,8 @@ data class RegistryMaintenanceConfig(
     val bootstrapRootEnvelopeBase64: String? = null,
     val bootstrapTargetsEnvelopeBase64: String? = null,
     val objectStoreConfig: RegistryObjectStoreConfig? = null,
+    val awsRegion: String? = null,
+    val dynamoDbTablePrefix: String? = null,
 ) {
     init {
         val identity = maintenanceRepositoryIdentity(environment)
@@ -218,9 +220,35 @@ data class RegistryMaintenanceConfig(
             } else {
                 require(firestoreDatabase == null) { "This maintenance phase must not receive Firestore configuration" }
             }
+            require(awsRegion == null && dynamoDbTablePrefix == null) {
+                "GCP maintenance must not receive DynamoDB configuration"
+            }
+            require(effectiveObjectStoreConfig().provider != RegistryObjectStoreProvider.S3) {
+                "GCP maintenance cannot select AWS S3 object storage"
+            }
             effectiveObjectStoreConfig().requireRoles(setOf(RegistryBucketRole.METADATA))
+        } else if (storageMode == STORAGE_MODE_DYNAMODB) {
+            require(projectId == null && firestoreDatabase == null) {
+                "DynamoDB maintenance must not receive GCP project or Firestore configuration"
+            }
+            require(!metadataBucket.isNullOrBlank()) { "REGISTRY_METADATA_BUCKET is required for AWS maintenance" }
+            require(AWS_REGION_NAME.matches(awsRegion.orEmpty())) { "AWS_REGION is required for AWS maintenance" }
+            if (mode.requiresPublicationLease) {
+                require(dynamoDbTablePrefix == DynamoDbRegistryTables.expectedPrefix(environment)) {
+                    "Maintenance DynamoDB table prefix must match the selected environment"
+                }
+            } else {
+                require(dynamoDbTablePrefix == null) { "This maintenance phase must not receive DynamoDB configuration" }
+            }
+            require(objectStoreConfig != null && objectStoreConfig.provider in S3_API_PROVIDERS) {
+                "DynamoDB maintenance requires S3 or R2 object storage"
+            }
+            objectStoreConfig.requireRoles(setOf(RegistryBucketRole.METADATA))
         } else {
-            require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory or gcp" }
+            require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory, gcp, or dynamodb" }
+            require(awsRegion == null && dynamoDbTablePrefix == null) {
+                "Memory maintenance must not receive DynamoDB configuration"
+            }
             require(projectId == null && firestoreDatabase == null && metadataBucket == null) {
                 "Memory maintenance must not receive cloud project, database, or bucket configuration"
             }
@@ -256,7 +284,7 @@ data class RegistryMaintenanceConfig(
                 firestoreDatabase = if (storageMode == "gcp" && mode.requiresPublicationLease) {
                     env["REGISTRY_FIRESTORE_DATABASE"] ?: identity.firestoreDatabase
                 } else null,
-                metadataBucket = env["REGISTRY_METADATA_BUCKET"]?.takeIf { storageMode == "gcp" },
+                metadataBucket = env["REGISTRY_METADATA_BUCKET"]?.takeIf { storageMode in CLOUD_STORAGE_MODES },
                 objectPrefix = env["REGISTRY_OBJECT_PREFIX"]?.trim('/') ?: "v1",
                 onlinePublicKeysHex = TufRole.ONLINE.mapNotNull { role ->
                     env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]?.let { role to it }
@@ -266,8 +294,20 @@ data class RegistryMaintenanceConfig(
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
                 bootstrapTargetsEnvelopeBase64 = env["REGISTRY_BOOTSTRAP_TARGETS_ENVELOPE_BASE64"]
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
-                objectStoreConfig = if (storageMode == "gcp") {
-                    RegistryObjectStoreConfig.fromEnvironment(env, setOf(RegistryBucketRole.METADATA))
+                objectStoreConfig = if (storageMode in CLOUD_STORAGE_MODES) {
+                    RegistryObjectStoreConfig.fromEnvironment(
+                        env,
+                        setOf(RegistryBucketRole.METADATA),
+                        defaultProvider = if (storageMode == STORAGE_MODE_DYNAMODB) {
+                            RegistryObjectStoreProvider.S3
+                        } else {
+                            RegistryObjectStoreProvider.GCS
+                        },
+                    )
+                } else null,
+                awsRegion = env["AWS_REGION"]?.trim()?.takeIf { storageMode == STORAGE_MODE_DYNAMODB },
+                dynamoDbTablePrefix = if (storageMode == STORAGE_MODE_DYNAMODB && mode.requiresPublicationLease) {
+                    env["REGISTRY_DYNAMODB_TABLE_PREFIX"]?.trim() ?: DynamoDbRegistryTables.expectedPrefix(environment)
                 } else null,
             )
         }
@@ -339,6 +379,8 @@ private fun rejectMaintenanceEnvironment(
             name.startsWith("REGISTRY_GITHUB_") ||
             name.startsWith("REGISTRY_GITLAB_") ||
             name.startsWith("REGISTRY_TUF_SIGNER_") ||
+            name.startsWith("REGISTRY_AWS_KMS_") ||
+            (!mode.requiresPublicationLease && name == "REGISTRY_DYNAMODB_TABLE_PREFIX") ||
             (name.startsWith("REGISTRY_BOOTSTRAP_") && name !in allowedBootstrapNames) ||
             (name.startsWith("REGISTRY_KMS_") && name !in allowedPublicKeyNames) ||
             (name.startsWith("REGISTRY_TUF_") && name !in allowedRemoteNames) ||
@@ -351,9 +393,11 @@ private fun rejectMaintenanceEnvironment(
                     "REGISTRY_FIRESTORE_DATABASE",
                     "REGISTRY_METADATA_BUCKET",
                     "REGISTRY_OBJECT_STORE_PROVIDER",
+                    "REGISTRY_DYNAMODB_TABLE_PREFIX",
                 ) + REGISTRY_R2_ENVIRONMENT_NAMES
             ))
     }
+    rejectCrossCloudPersistence(env, env["REGISTRY_STORAGE_MODE"] ?: STORAGE_MODE_GCP)
     require(forbidden.isEmpty()) {
         "${mode.command} rejects unrelated authority and storage configuration: ${forbidden.sorted().joinToString(", ")}"
     }
@@ -444,17 +488,21 @@ class RegistryMaintenanceResources private constructor(
             config: RegistryMaintenanceConfig,
             clock: Clock = Clock.systemUTC(),
             leaseRepositoryFactory: (RegistryMaintenanceConfig) -> RegistryRepository = { maintenance ->
-                if (maintenance.storageMode == "gcp") {
-                    FirestoreRegistryRepository.create(
+                when (maintenance.storageMode) {
+                    STORAGE_MODE_GCP -> FirestoreRegistryRepository.create(
                         projectId = requireNotNull(maintenance.projectId),
                         databaseId = requireNotNull(maintenance.firestoreDatabase),
                     )
-                } else {
-                    InMemoryRegistryRepository()
+                    // Only the state table's publication lease is touched.
+                    STORAGE_MODE_DYNAMODB -> DynamoDbRegistryRepository.create(
+                        region = requireNotNull(maintenance.awsRegion),
+                        tablePrefix = requireNotNull(maintenance.dynamoDbTablePrefix),
+                    )
+                    else -> InMemoryRegistryRepository()
                 }
             },
             metadataStorageFactory: (RegistryMaintenanceConfig) -> RegistryObjectStorage = { maintenance ->
-                if (maintenance.storageMode == "gcp") {
+                if (maintenance.storageMode in CLOUD_STORAGE_MODES) {
                     val objectStore = maintenance.effectiveObjectStoreConfig()
                         .requireRoles(setOf(RegistryBucketRole.METADATA))
                     when (objectStore.provider) {
@@ -465,7 +513,7 @@ class RegistryMaintenanceResources private constructor(
                             allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
                             allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,
                         )
-                        RegistryObjectStoreProvider.R2 -> RestrictedMetadataRegistryObjectStorage(
+                        RegistryObjectStoreProvider.R2, RegistryObjectStoreProvider.S3 -> RestrictedMetadataRegistryObjectStorage(
                             delegate = S3CompatibleRegistryObjectStorage.create(objectStore, maintenance.objectPrefix),
                             allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
                             allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,

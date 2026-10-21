@@ -12,7 +12,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class PromotionWorkerTest {
+open class PromotionWorkerTest {
+    protected open fun newRepository(): RegistryRepository = InMemoryRegistryRepository()
+
     private val now = Instant.parse("2026-07-20T00:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
@@ -149,7 +151,7 @@ class PromotionWorkerTest {
         releaseAttestationSequence: Long = 4,
         workerClock: Clock = clock,
     ): Fixture {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val storage = InMemoryRegistryObjectStorage()
         val bytes = "reviewed archive".encodeToByteArray()
         val archive = sha256(bytes)
@@ -351,7 +353,7 @@ class PromotionWorkerTest {
     )
 
     private class Fixture(
-        val repository: InMemoryRegistryRepository,
+        val repository: RegistryRepository,
         val storage: InMemoryRegistryObjectStorage,
         val worker: PromotionReviewWorker,
         publications: () -> Int,

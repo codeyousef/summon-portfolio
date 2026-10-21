@@ -15,8 +15,8 @@ enum class RegistryWorkerMode(val argument: String) {
 
 data class RegistryWorkerConfig(
     val mode: RegistryWorkerMode,
-    val projectId: String,
-    val firestoreDatabase: String,
+    val projectId: String?,
+    val firestoreDatabase: String?,
     val quarantineBucket: String,
     val publicBucket: String?,
     val metadataBucket: String?,
@@ -31,9 +31,38 @@ data class RegistryWorkerConfig(
     val kmsPublicKeysHex: Map<String, String>,
     val remoteSignerTargets: Map<String, RemoteTufSignerTarget>,
     val objectStoreConfig: RegistryObjectStoreConfig? = null,
+    val storageMode: String = STORAGE_MODE_GCP,
+    val awsRegion: String? = null,
+    val dynamoDbTablePrefix: String? = null,
 ) {
     init {
         require(environment == "development") { "Review workers are development-only" }
+        when (storageMode) {
+            STORAGE_MODE_GCP -> {
+                require(!projectId.isNullOrBlank() && !firestoreDatabase.isNullOrBlank()) {
+                    "GOOGLE_CLOUD_PROJECT and REGISTRY_FIRESTORE_DATABASE are required for ${mode.argument}"
+                }
+                require(awsRegion == null && dynamoDbTablePrefix == null) {
+                    "GCP review workers must not receive DynamoDB configuration"
+                }
+                require(effectiveObjectStoreConfig().provider != RegistryObjectStoreProvider.S3) {
+                    "GCP review workers cannot select AWS S3 object storage"
+                }
+            }
+            STORAGE_MODE_DYNAMODB -> {
+                require(projectId == null && firestoreDatabase == null) {
+                    "DynamoDB review workers must not receive GCP project or Firestore configuration"
+                }
+                require(AWS_REGION_NAME.matches(awsRegion.orEmpty())) { "AWS_REGION is required for ${mode.argument}" }
+                require(dynamoDbTablePrefix == DynamoDbRegistryTables.expectedPrefix(environment)) {
+                    "Review worker DynamoDB table prefix must match the development identity"
+                }
+                require(objectStoreConfig != null && objectStoreConfig.provider in S3_API_PROVIDERS) {
+                    "DynamoDB review workers require S3 or R2 object storage"
+                }
+            }
+            else -> throw IllegalArgumentException("Review workers require REGISTRY_STORAGE_MODE gcp or dynamodb")
+        }
         require(publicDelay >= Duration.ofHours(72)) { "Public review delay must be at least 72 hours" }
         require(objectPrefix.isNotBlank())
         val githubAppConfigured = !githubAppId.isNullOrBlank() && !githubAppPrivateKeyPem.isNullOrBlank()
@@ -69,10 +98,19 @@ data class RegistryWorkerConfig(
             fun token(name: String): String? = env[name]?.trim()?.takeIf(String::isNotEmpty)?.also {
                 require(it.none(Char::isWhitespace)) { "$name must not contain whitespace" }
             }
+            val storageMode = env["REGISTRY_STORAGE_MODE"] ?: STORAGE_MODE_GCP
+            rejectCrossCloudPersistence(env, storageMode)
+            val dynamo = storageMode == STORAGE_MODE_DYNAMODB
             return RegistryWorkerConfig(
                 mode = mode,
-                projectId = required("GOOGLE_CLOUD_PROJECT"),
-                firestoreDatabase = required("REGISTRY_FIRESTORE_DATABASE"),
+                storageMode = storageMode,
+                projectId = if (dynamo) null else required("GOOGLE_CLOUD_PROJECT"),
+                firestoreDatabase = if (dynamo) null else required("REGISTRY_FIRESTORE_DATABASE"),
+                awsRegion = if (dynamo) required("AWS_REGION").trim() else null,
+                dynamoDbTablePrefix = if (dynamo) {
+                    env["REGISTRY_DYNAMODB_TABLE_PREFIX"]?.trim()
+                        ?: DynamoDbRegistryTables.expectedPrefix(env["REGISTRY_ENVIRONMENT"] ?: "development")
+                } else null,
                 quarantineBucket = required("REGISTRY_QUARANTINE_BUCKET"),
                 publicBucket = env["REGISTRY_PUBLIC_BUCKET"]?.takeIf(String::isNotBlank),
                 metadataBucket = env["REGISTRY_METADATA_BUCKET"]?.takeIf(String::isNotBlank),
@@ -88,7 +126,11 @@ data class RegistryWorkerConfig(
                     env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]?.takeIf(String::isNotBlank)?.let { role to it }
                 }.toMap(),
                 remoteSignerTargets = env.remoteSignerTargets(),
-                objectStoreConfig = RegistryObjectStoreConfig.fromEnvironment(env, mode.objectStoreRoles),
+                objectStoreConfig = RegistryObjectStoreConfig.fromEnvironment(
+                    env,
+                    mode.objectStoreRoles,
+                    defaultProvider = if (dynamo) RegistryObjectStoreProvider.S3 else RegistryObjectStoreProvider.GCS,
+                ),
             )
         }
 
@@ -121,17 +163,26 @@ object RegistryWorkerRuntime {
         remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
             ::defaultRemoteTufTokenProvider,
     ): ReviewWorkerOutcome {
-        val repository = FirestoreRegistryRepository.create(config.projectId, config.firestoreDatabase)
+        val repository: RegistryRepository = when (config.storageMode) {
+            STORAGE_MODE_DYNAMODB -> DynamoDbRegistryRepository.create(
+                region = requireNotNull(config.awsRegion),
+                tablePrefix = requireNotNull(config.dynamoDbTablePrefix),
+            )
+            else -> FirestoreRegistryRepository.create(
+                requireNotNull(config.projectId),
+                requireNotNull(config.firestoreDatabase),
+            )
+        }
         val objectStore = config.effectiveObjectStoreConfig().requireRoles(config.mode.objectStoreRoles)
         val storage: RegistryObjectStorage = when (objectStore.provider) {
             RegistryObjectStoreProvider.GCS -> GcsRegistryObjectStorage.create(
-                projectId = config.projectId,
+                projectId = requireNotNull(config.projectId),
                 quarantineBucket = config.quarantineBucket,
                 publicBucket = config.publicBucket ?: config.quarantineBucket,
                 metadataBucket = config.metadataBucket ?: config.quarantineBucket,
                 prefix = config.objectPrefix,
             )
-            RegistryObjectStoreProvider.R2 ->
+            RegistryObjectStoreProvider.R2, RegistryObjectStoreProvider.S3 ->
                 S3CompatibleRegistryObjectStorage.create(objectStore, config.objectPrefix)
         }
         try {

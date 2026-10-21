@@ -96,6 +96,8 @@ private fun signerObjectStoreConfig(
         SIGNER_OBJECT_STORE_ENVIRONMENT_NAMES.forEach { (signerName, canonicalName) ->
             env[signerName]?.let { put(canonicalName, it) }
         }
+        // Native S3 takes its region from the runtime's standard AWS_REGION.
+        env["AWS_REGION"]?.let { put("AWS_REGION", it) }
     }
     return RegistryObjectStoreConfig.fromEnvironment(canonical, setOf(RegistryBucketRole.METADATA))
 }
@@ -110,7 +112,7 @@ private val SIGNER_OBJECT_STORE_ENVIRONMENT_NAMES = mapOf(
 
 data class TufSignerMetadataObject(
     val bytes: ByteArray,
-    /** Provider-native conditional-write token: a GCS generation or R2 ETag. */
+    /** Provider-native conditional-write token: a GCS generation or an R2/S3 ETag. */
     val version: String,
 ) {
     init {
@@ -172,7 +174,7 @@ class GcsTufSignerMetadataStore(
     }
 }
 
-/** Metadata-only signer capability over Cloudflare R2's S3-compatible API. */
+/** Metadata-only signer capability over Cloudflare R2's S3-compatible API or native S3. */
 class S3CompatibleTufSignerMetadataStore internal constructor(
     private val client: S3CompatibleObjectClient,
     private val bucket: String,
@@ -210,8 +212,8 @@ class S3CompatibleTufSignerMetadataStore internal constructor(
             requestTimeout: java.time.Duration,
         ): S3CompatibleTufSignerMetadataStore {
             val objectStore = config.requireRoles(setOf(RegistryBucketRole.METADATA))
-            require(objectStore.provider == RegistryObjectStoreProvider.R2) {
-                "S3-compatible TUF signer metadata storage requires the R2 provider"
+            require(objectStore.provider in S3_API_PROVIDERS) {
+                "S3-compatible TUF signer metadata storage requires the R2 or S3 provider"
             }
             return S3CompatibleTufSignerMetadataStore(
                 client = AwsSdkS3CompatibleObjectClient.create(
@@ -330,7 +332,7 @@ object RegistryTufSignerStatePolicyGuardFactory : TufSignerStatePolicyGuardFacto
                     guardConfig.objectPrefix,
                 )
             }
-            RegistryObjectStoreProvider.R2 -> S3CompatibleTufSignerMetadataStore.create(
+            RegistryObjectStoreProvider.R2, RegistryObjectStoreProvider.S3 -> S3CompatibleTufSignerMetadataStore.create(
                 config = objectStore,
                 prefix = guardConfig.objectPrefix,
                 requestTimeout = config.signingTimeout,
