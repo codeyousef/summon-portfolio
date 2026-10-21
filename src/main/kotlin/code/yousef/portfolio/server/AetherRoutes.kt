@@ -346,7 +346,12 @@ internal fun Router.portfolioRoutes(
                 return@post
             }
 
-            fifthWallTelemetryStore.merge(payload)
+            try {
+                fifthWallTelemetryStore.merge(payload)
+            } catch (_: IllegalArgumentException) {
+                exchange.respondJson(400, mapOf("error" to "Invalid telemetry payload"))
+                return@post
+            }
             exchange.respondJson(
                 202,
                 mapOf(

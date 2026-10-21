@@ -81,9 +81,72 @@ documents.
 - `PHOTOGRAPHY_UPLOAD_DIR` - Local photo upload directory when no bucket is configured
 - `PHOTOGRAPHY_MAX_UPLOAD_BYTES` - Maximum single photo upload size in bytes
 - `PHOTOGRAPHY_WRITE_MODE` - `source` (default), `dual`, or `target`; dual mode requires a GCS source bucket
-- `PHOTOGRAPHY_R2_BASE_URL` - Authenticated Portfolio edge media endpoint; required by dual and target modes
+- `PHOTOGRAPHY_R2_BASE_URL` - Authenticated Portfolio edge media endpoint; dual and target modes require it or `PORTFOLIO_S3_MEDIA_BUCKET` (never both)
 - `PHOTOGRAPHY_R2_REVERSE_MIRROR` - `true` only during a target-mode rollback window with a configured GCS bucket
-- `EDGE_ORIGIN_TOKEN` - Secret bearer token shared only by the Portfolio Container and edge Worker; required for R2 media access
+- `EDGE_ORIGIN_TOKEN` - Secret bearer token shared only by the Portfolio Container and edge Worker; required for R2 media access. Nothing in AWS mode uses it
+
+### AWS mode (opt-in)
+
+Firestore, local files and the Cloudflare edge remain the default. AWS mode is
+selected entirely by environment and uses the AWS SDK default credential chain
+(the ECS task role); the application reads no static AWS keys.
+
+- `PORTFOLIO_DATA_BACKEND` - `firestore` (default), `local` (same as
+  `USE_LOCAL_STORE=true`) or `dynamodb`. `dynamodb` disables Firestore, the
+  `/internal/edge/jobs/*` routes and the `/internal/finops/*` routes
+- `PORTFOLIO_DYNAMODB_DOCUMENTS_TABLE` - Single-table document store: partition
+  key `pk` (collection), sort key `sk` (document id), and two sparse GSIs with
+  projection `ALL`: `order-index` (`opk`, `osk`) for ordered/range pages and
+  `lookup-index` (`lpk`, `sk`) for equality lookups. Document values round-trip
+  exactly (integers vs doubles, timestamps, blobs, nested maps, lists, nulls)
+- `PORTFOLIO_SESSION_BACKEND` - `memory` (default), `edge` (same as
+  `PORTFOLIO_EDGE_SESSIONS_ENABLED=true`) or `dynamodb`
+- `PORTFOLIO_DYNAMODB_SESSIONS_TABLE` - Sessions and job idempotency leases:
+  partition key `pk`, TTL attribute `expires_at` (epoch seconds)
+- `PORTFOLIO_SESSION_COOKIE_SECURE` - Defaults to `true` with DynamoDB sessions
+- `PORTFOLIO_S3_MEDIA_BUCKET` / `PORTFOLIO_S3_MEDIA_PREFIX` - Content-addressed
+  photography media (`sha256/<digest>/<file>`, no prefix by default). Public URLs
+  stay `/cdn/media/<key>`; CloudFront maps them to object key `<key>`
+- `PORTFOLIO_S3_DOCS_BUCKET` - Public docs objects served at `/cdn/docs/<key>`
+- `PORTFOLIO_S3_RECEIPTS_BUCKET` / `PORTFOLIO_S3_RECEIPTS_PREFIX` - Private,
+  immutable FinOps receipts (`sha256/<digest>/uploads/<uploadId>/<file>`)
+- `PORTFOLIO_CDN_PROXY_ENABLED` - `true` only where `/cdn/media/*` and
+  `/cdn/docs/*` must be served by the application (for example an
+  authenticated dev environment); streams from the S3 buckets above
+- `PORTFOLIO_SQS_JOBS_QUEUE_URL` - Long-polled job queue replacing the Worker
+  cron triggers and Queues. Scheduled messages are
+  `{"job":"finops.gcp-billing|finops.cloudflare-billing|finops.stripe|finops.recurring-expenses|finops.reconcile","scheduledAt":"<ISO-8601>"}`;
+  asynchronous work is `{"job":"async.finops.ingest|async.finops.import-run|async.finops.rollups.v2.backfill|async.finops.rollups.v2.reconcile","id":"<unique id>","payload":{...}}`.
+  Jobs are idempotent and leased per `job:scheduledAt` / `job:id`; failures are
+  retried with backoff and dead-lettered by the queue's redrive policy
+- `PORTFOLIO_SQS_JOBS_VISIBILITY_TIMEOUT_SECONDS` - Default `300`; extended
+  while a job runs
+- `PORTFOLIO_ENV` (`dev`/`prod`) and `FINOPS_COVERAGE_START_DATE` - Required by
+  the scheduled FinOps jobs; billing ingestion and reconciliation stay dev-only
+- `GCP_FINOPS_BILLING_PROJECT_ID`, `GCP_FINOPS_BILLING_DATASET`,
+  `GCP_FINOPS_BILLING_TABLE`, `GCP_FINOPS_BILLING_LOCATION`,
+  `GCP_FINOPS_MAX_BYTES_BILLED` - BigQuery billing export
+- `GCP_FINOPS_WIF_CREDENTIAL_CONFIG_JSON` - Google external-account (AWS source)
+  credential configuration; federates from the task role, no Google key
+- `CLOUDFLARE_BILLING_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` - Cloudflare billing
+- `STRIPE_FINOPS_READ_KEY` - Restricted Stripe key for balance transactions
+- `PORTFOLIO_AWS_ENDPOINT_URL` - Local emulator endpoint override only
+
+`/health` (liveness) and `/health/ready` (readiness; probes DynamoDB in AWS
+mode) are served by the application before host routing and sessions.
+
+`firestoreToDynamoBackfill` copies the business-data collections from Firestore
+(read-only) into the DynamoDB documents table and compares exact per-collection
+and overall parity hashes. It is a dry run unless invoked with
+`-PbackfillArgs=--execute` and `PORTFOLIO_DYNAMO_BACKFILL_CONFIRM` set to
+`<project>:<database>-><table>`; it never deletes and refuses DynamoDB-only
+documents. Configure it with `PORTFOLIO_BACKFILL_FIRESTORE_PROJECT`,
+`PORTFOLIO_BACKFILL_FIRESTORE_DATABASE` and `PORTFOLIO_BACKFILL_DYNAMODB_TABLE`.
+
+DynamoDB integration tests use DynamoDB Local in Docker and are skipped when
+Docker is unavailable (set `PORTFOLIO_REQUIRE_DYNAMODB_LOCAL=true` to fail
+instead). The FinOps connector tests compare against vectors generated from the
+original TypeScript connectors by `scripts/finops-connector-golden`.
 
 The checked-in `firestore.indexes.json` contains the ordered migration-outbox
 index and the password-reset invalidation query index. Deploy it independently

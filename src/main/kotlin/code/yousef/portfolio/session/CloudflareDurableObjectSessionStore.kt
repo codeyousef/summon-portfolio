@@ -34,8 +34,9 @@ private const val PORTFOLIO_SESSION_ENTROPY_BYTES = 24
  * encoding. Twenty-four bytes therefore produce the edge contract's exact
  * 32-character identifier while retaining 192 bits of entropy.
  */
-internal fun portfolioSessionConfig(): SessionConfig = SessionConfig(
+internal fun portfolioSessionConfig(secureCookie: Boolean = false): SessionConfig = SessionConfig(
     cookieName = PORTFOLIO_SESSION_COOKIE,
+    secure = secureCookie,
     sessionIdLength = PORTFOLIO_SESSION_ENTROPY_BYTES,
 )
 private const val MAX_CAS_ATTEMPTS = 4
@@ -277,18 +278,57 @@ internal fun mergeSession(
 internal data class PortfolioSessionStoreResources(
     val store: SessionStore,
     val close: () -> Unit,
+    /** True when the application itself issues the browser cookie over HTTPS (AWS). */
+    val secureCookie: Boolean = false,
 )
 
+/** `PORTFOLIO_SESSION_BACKEND`: where Aether sessions are stored. */
+internal enum class PortfolioSessionBackend(val environmentValue: String) {
+    MEMORY("memory"),
+    EDGE("edge"),
+    DYNAMODB("dynamodb"),
+}
+
 internal object PortfolioSessionStoreFactory {
-    fun fromEnvironment(environment: Map<String, String> = System.getenv()): PortfolioSessionStoreResources {
-        val enabled = environment["PORTFOLIO_EDGE_SESSIONS_ENABLED"]?.toBooleanStrictOrNull() ?: false
-        if (!enabled) return PortfolioSessionStoreResources(InMemorySessionStore(), close = {})
-        val endpoint = environment["PORTFOLIO_EDGE_SESSION_BASE_URL"]
-            ?: error("PORTFOLIO_EDGE_SESSION_BASE_URL is required when edge sessions are enabled")
-        val token = environment["EDGE_ORIGIN_TOKEN"]
-            ?: error("EDGE_ORIGIN_TOKEN is required when edge sessions are enabled")
-        val store = CloudflareDurableObjectSessionStore(HttpEdgeSessionTransport(endpoint, token))
-        return PortfolioSessionStoreResources(store, store::close)
+    fun fromEnvironment(
+        environment: Map<String, String> = System.getenv(),
+        dynamoDbClient: () -> software.amazon.awssdk.services.dynamodb.DynamoDbClient = {
+            error("A DynamoDB client is required for DynamoDB sessions")
+        },
+    ): PortfolioSessionStoreResources {
+        val edgeEnabled = environment["PORTFOLIO_EDGE_SESSIONS_ENABLED"]?.let { value ->
+            requireNotNull(value.toBooleanStrictOrNull()) { "PORTFOLIO_EDGE_SESSIONS_ENABLED must be 'true' or 'false'" }
+        } ?: false
+        val backend = when (val raw = environment["PORTFOLIO_SESSION_BACKEND"]?.trim()?.lowercase()?.takeIf(String::isNotEmpty)) {
+            null -> if (edgeEnabled) PortfolioSessionBackend.EDGE else PortfolioSessionBackend.MEMORY
+            else -> PortfolioSessionBackend.entries.firstOrNull { it.environmentValue == raw }
+                ?: error("PORTFOLIO_SESSION_BACKEND must be memory, edge or dynamodb")
+        }
+        require(!edgeEnabled || backend == PortfolioSessionBackend.EDGE) {
+            "PORTFOLIO_EDGE_SESSIONS_ENABLED=true conflicts with PORTFOLIO_SESSION_BACKEND=${backend.environmentValue}"
+        }
+        val secureCookie = environment["PORTFOLIO_SESSION_COOKIE_SECURE"]?.let { value ->
+            requireNotNull(value.toBooleanStrictOrNull()) { "PORTFOLIO_SESSION_COOKIE_SECURE must be 'true' or 'false'" }
+        } ?: (backend == PortfolioSessionBackend.DYNAMODB)
+        return when (backend) {
+            PortfolioSessionBackend.MEMORY -> PortfolioSessionStoreResources(InMemorySessionStore(), close = {}, secureCookie)
+            PortfolioSessionBackend.EDGE -> {
+                val endpoint = environment["PORTFOLIO_EDGE_SESSION_BASE_URL"]
+                    ?: error("PORTFOLIO_EDGE_SESSION_BASE_URL is required when edge sessions are enabled")
+                val token = environment["EDGE_ORIGIN_TOKEN"]
+                    ?: error("EDGE_ORIGIN_TOKEN is required when edge sessions are enabled")
+                val store = CloudflareDurableObjectSessionStore(HttpEdgeSessionTransport(endpoint, token))
+                PortfolioSessionStoreResources(store, store::close, secureCookie)
+            }
+            PortfolioSessionBackend.DYNAMODB -> {
+                val table = environment["PORTFOLIO_DYNAMODB_SESSIONS_TABLE"]?.trim()?.takeIf(String::isNotEmpty)
+                    ?: error("PORTFOLIO_SESSION_BACKEND=dynamodb requires PORTFOLIO_DYNAMODB_SESSIONS_TABLE")
+                // The revision/merge protocol is identical to the Durable Object store;
+                // only the transport differs. The shared DynamoDB client is closed by its owner.
+                val store = CloudflareDurableObjectSessionStore(DynamoDbSessionTransport(dynamoDbClient(), table))
+                PortfolioSessionStoreResources(store, close = {}, secureCookie)
+            }
+        }
     }
 }
 

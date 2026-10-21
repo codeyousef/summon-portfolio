@@ -167,7 +167,8 @@ class FinOpsRoutesE2ETest {
         assertEquals(200, replay.statusCode())
         assertEquals(1, ledgerEntries())
 
-        val export = get("/api/admin/finops/export.csv?limit=1")
+        // Pin the range to the fixture's month; the default range is the current wall-clock month.
+        val export = get("/api/admin/finops/export.csv?limit=1&from=2026-08-01&to=2026-09-01")
         assertEquals(200, export.statusCode())
         assertEquals("1", export.headers().firstValue("X-FinOps-Export-Row-Count").orElse(null))
         assertEquals("true", export.headers().firstValue("X-FinOps-Export-Complete").orElse(null))

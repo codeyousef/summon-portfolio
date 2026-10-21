@@ -1,6 +1,14 @@
 package code.yousef
 
+import code.yousef.aws.AwsClients
+import code.yousef.aws.dynamodb.DynamoDbPortfolioDocumentStore
+import code.yousef.aws.jobs.DynamoDbJobLeaseStore
+import code.yousef.aws.jobs.PortfolioJobRunner
+import code.yousef.aws.jobs.SqsJobConsumer
+import code.yousef.aws.s3.S3CdnProxy
+import code.yousef.aws.s3.S3FinOpsReceiptStore
 import code.yousef.config.AppConfig
+import code.yousef.config.PortfolioDataBackend
 import code.yousef.config.loadAppConfig
 import code.yousef.firestore.FirestoreProvider
 import code.yousef.firestore.PortfolioMetaRepository
@@ -22,6 +30,7 @@ import code.yousef.portfolio.building.server.createBuildingRouter
 import code.yousef.portfolio.contact.ContactService
 import code.yousef.portfolio.contact.FileContactRepository
 import code.yousef.portfolio.content.PortfolioContentService
+import code.yousef.portfolio.content.store.DocumentContentStore
 import code.yousef.portfolio.content.store.FileContentStore
 import code.yousef.portfolio.db.ContentStoreDriver
 import code.yousef.portfolio.docs.*
@@ -41,6 +50,7 @@ import code.yousef.portfolio.finops.HttpEdgeFinOpsReceiptStore
 import code.yousef.portfolio.finops.HttpSamuraiIdentityResolver
 import code.yousef.portfolio.finops.NoopSamuraiIdentityResolver
 import code.yousef.portfolio.ssr.*
+import code.yousef.portfolio.ui.fifthwall.DynamoDbFifthWallTelemetryStore
 import code.yousef.portfolio.ui.fifthwall.FileFifthWallTelemetryStore
 import code.yousef.portfolio.ui.fifthwall.FifthWallTelemetryStore
 import codes.yousef.aether.core.Exchange
@@ -66,14 +76,26 @@ data class ApplicationResources(
 fun buildApplication(appConfig: AppConfig): ApplicationResources {
     val log = LoggerFactory.getLogger("Application")
     log.info("Starting Summon Portfolio with projectId={}, port={}", appConfig.projectId, appConfig.port)
-    val sessionStoreResources = PortfolioSessionStoreFactory.fromEnvironment()
+    // AWS clients are created lazily, only when an AWS-backed feature is configured.
+    val awsClients = AwsClients()
+    val sessionStoreResources = PortfolioSessionStoreFactory.fromEnvironment(dynamoDbClient = { awsClients.dynamoDb })
+    log.info("Data backend={}, session cookie secure={}", appConfig.dataBackend.environmentValue, sessionStoreResources.secureCookie)
 
     // Services
-    val firestoreDatabases = if (appConfig.useLocalStore) null else FirestoreProvider.createDatabases(appConfig)
+    val dynamoDocumentStore = if (appConfig.dataBackend == PortfolioDataBackend.DYNAMODB) {
+        DynamoDbPortfolioDocumentStore(awsClients.dynamoDb, requireNotNull(appConfig.dynamoDbDocumentsTable))
+    } else {
+        null
+    }
+    val firestoreDatabases = if (appConfig.dataBackend == PortfolioDataBackend.FIRESTORE) {
+        FirestoreProvider.createDatabases(appConfig)
+    } else {
+        null
+    }
     firestoreDatabases?.verifyPortfolioMigrationReady()
     val firestore = firestoreDatabases?.authority
     val mutationCoordinator = firestoreDatabases?.mutationCoordinator()
-    val portfolioFirestoreStore = firestoreDatabases?.portfolioStore(mutationCoordinator!!)
+    val portfolioFirestoreStore = dynamoDocumentStore ?: firestoreDatabases?.portfolioStore(mutationCoordinator!!)
     val portfolioMetaService = if (portfolioFirestoreStore != null) {
         PortfolioMetaService(PortfolioMetaRepository(portfolioFirestoreStore))
     } else {
@@ -113,7 +135,14 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             ),
         )
     }
-    val finOpsReceiptStore = appConfig.finOpsReceiptBaseUrl?.let { endpoint ->
+    val finOpsReceiptStore = appConfig.s3ReceiptsBucket?.let { bucket ->
+        S3FinOpsReceiptStore(
+            client = awsClients.s3,
+            bucket = bucket,
+            prefix = appConfig.s3ReceiptsPrefix,
+            maxReceiptBytes = appConfig.finOpsReceiptMaxBytes,
+        )
+    } ?: appConfig.finOpsReceiptBaseUrl?.let { endpoint ->
         HttpEdgeFinOpsReceiptStore(
             endpoint = endpoint,
             bearerToken = requireNotNull(System.getenv("EDGE_ORIGIN_TOKEN")?.trim()?.takeIf(String::isNotEmpty)) {
@@ -123,7 +152,9 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         )
     }
     
-    val contentStore = if (firestore != null) {
+    val contentStore = if (dynamoDocumentStore != null) {
+        DocumentContentStore(dynamoDocumentStore, seedOnInit = appConfig.firestoreSeedOnStart)
+    } else if (firestore != null) {
         code.yousef.firestore.FirestoreContentStore(
             firestore = firestore,
             mutationCoordinator = requireNotNull(mutationCoordinator),
@@ -135,7 +166,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
     
     val contentService = PortfolioContentService(contentStore)
     val contactService = ContactService(FileContactRepository(contentStore))
-    val photoAssetStore = PortfolioPhotoAssetStoreFactory.fromEnvironment(appConfig)
+    val photoAssetStore = PortfolioPhotoAssetStoreFactory.fromEnvironment(appConfig, s3Client = { awsClients.s3 })
     val photographyAssetBackfillService = PortfolioPhotoAssetStoreFactory.backfillFromEnvironment(appConfig)
     val photographyService = PhotographyService(
         contentStore = contentStore,
@@ -242,7 +273,35 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         FirestoreAiProgressStore(portfolioFirestoreStore) else FileAiProgressStore()
     val aiCurriculumCatalog = AiCurriculumCatalog()
     val aiCurriculumRenderer = AiCurriculumRenderer(markdownRenderer, aiCurriculumCatalog, aiProgressStore)
-    val fifthWallTelemetryStore: FifthWallTelemetryStore = FileFifthWallTelemetryStore()
+    val fifthWallTelemetryStore: FifthWallTelemetryStore = dynamoDocumentStore
+        ?.let(::DynamoDbFifthWallTelemetryStore)
+        ?: FileFifthWallTelemetryStore()
+
+    // Background jobs (EventBridge Scheduler + async work) from SQS, replacing Worker crons/Queues.
+    val jobConsumer = appConfig.sqsJobsQueueUrl?.let { queueUrl ->
+        val leaseTable = requireNotNull(System.getenv("PORTFOLIO_DYNAMODB_SESSIONS_TABLE")?.trim()?.takeIf(String::isNotEmpty)) {
+            "PORTFOLIO_SQS_JOBS_QUEUE_URL requires PORTFOLIO_DYNAMODB_SESSIONS_TABLE for job idempotency leases"
+        }
+        val runner = PortfolioJobRunner(
+            finOpsService = finOpsService,
+            rollupBackfillService = finOpsRollupBackfillService,
+            environment = System.getenv(),
+            authoritativeBackend = appConfig.dataBackend == PortfolioDataBackend.DYNAMODB,
+        )
+        SqsJobConsumer(
+            sqs = awsClients.sqs,
+            queueUrl = queueUrl,
+            leases = DynamoDbJobLeaseStore(awsClients.dynamoDb, leaseTable),
+            runner = runner::run,
+            visibilityTimeoutSeconds = appConfig.sqsJobsVisibilityTimeoutSeconds,
+        )
+    }
+    val healthEndpoints = HealthEndpoints(readinessProbe = dynamoDocumentStore?.let { store -> { store.probe() } })
+    val cdnProxy = if (appConfig.cdnProxyEnabled) {
+        S3CdnProxy(awsClients.s3, appConfig.s3MediaBucket, appConfig.s3DocsBucket)
+    } else {
+        null
+    }
 
     // Routers
     val mainRouter = router {
@@ -260,14 +319,23 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             markdownRenderer = markdownRenderer,
             finOpsService = finOpsService,
             finOpsReceiptStore = finOpsReceiptStore,
-            finOpsInternalIngestToken = System.getenv("FINOPS_INTERNAL_INGEST_TOKEN")?.trim()?.takeIf(String::isNotEmpty),
+            // /internal/finops/* served only the Worker -> container hop; in AWS mode the
+            // same work arrives through SQS, so the routes stay disabled (404).
+            finOpsInternalIngestToken = if (appConfig.dataBackend == PortfolioDataBackend.DYNAMODB) {
+                null
+            } else {
+                System.getenv("FINOPS_INTERNAL_INGEST_TOKEN")?.trim()?.takeIf(String::isNotEmpty)
+            },
         )
-        registerPortfolioEdgeJobRoutes(
-            mutationCoordinator = mutationCoordinator,
-            photographyAssetBackfillService = photographyAssetBackfillService,
-            finOpsRollupBackfillService = finOpsRollupBackfillService,
-            photographyMaxAssetBytes = appConfig.photographyMaxUploadBytes,
-        )
+        // Worker -> container job hop; in AWS these jobs arrive through SQS instead.
+        if (appConfig.dataBackend != PortfolioDataBackend.DYNAMODB) {
+            registerPortfolioEdgeJobRoutes(
+                mutationCoordinator = mutationCoordinator,
+                photographyAssetBackfillService = photographyAssetBackfillService,
+                finOpsRollupBackfillService = finOpsRollupBackfillService,
+                photographyMaxAssetBytes = appConfig.photographyMaxUploadBytes,
+            )
+        }
     }
 
     val summonRouter = router {
@@ -409,6 +477,9 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
                 exchange.respondInternalServerError(log, "Unhandled portfolio request", e)
             }
         }
+        // Health checks and the dev CDN origin bypass logging noise, host routing and sessions.
+        use(healthEndpoints::handle)
+        cdnProxy?.let { proxy -> use(proxy::handle) }
         installCallLogging()
         installContentNegotiation()
 
@@ -422,7 +493,12 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
 
         registryGateway?.let { use(it.middleware) }
 
-        use(SessionMiddleware(sessionStoreResources.store, portfolioSessionConfig()).asMiddleware())
+        use(
+            SessionMiddleware(
+                sessionStoreResources.store,
+                portfolioSessionConfig(secureCookie = sessionStoreResources.secureCookie),
+            ).asMiddleware(),
+        )
         
         // Admin Site Middleware (only for main portfolio site, not building subdomain)
         val adminMiddleware: codes.yousef.aether.core.pipeline.Middleware = { exchange, next ->
@@ -474,9 +550,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         use(hostRouter::handle)
     }
     
+    jobConsumer?.start()
+
     return ApplicationResources(pipeline) {
+        jobConsumer?.stop()
         sessionStoreResources.close()
         firestoreDatabases?.close()
+        awsClients.close()
     }
 }
 
@@ -487,7 +567,8 @@ fun main() {
     // Aether buffers request bodies before middleware. Raise the global cap only
     // when a configured route needs it; each registry/receipt route still applies
     // its narrower content and size validation before processing the payload.
-    val config = if (appConfig.registryUpstreamUrl != null || appConfig.finOpsReceiptBaseUrl != null) {
+    val receiptsConfigured = appConfig.finOpsReceiptBaseUrl != null || appConfig.s3ReceiptsBucket != null
+    val config = if (appConfig.registryUpstreamUrl != null || receiptsConfigured) {
         VertxServerConfig(
             port = appConfig.port,
             maxRequestBodySize = maxOf(REGISTRY_GATEWAY_MAX_REQUEST_BYTES, MAX_FINOPS_MANUAL_MULTIPART_BYTES)

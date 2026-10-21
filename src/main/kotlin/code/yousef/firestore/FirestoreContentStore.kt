@@ -9,7 +9,7 @@ import code.yousef.portfolio.content.ContentStore
 import code.yousef.portfolio.content.PortfolioContent
 import code.yousef.portfolio.content.model.*
 import code.yousef.portfolio.content.seed.PortfolioContentSeed
-import code.yousef.portfolio.i18n.LocalizedText
+import code.yousef.portfolio.content.store.PortfolioContentDocuments
 import com.google.cloud.firestore.Firestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -165,15 +165,7 @@ class FirestoreContentStore(
         withContext(Dispatchers.IO) {
             retry {
                 contactSubmissionsCollection.get().get().documents.mapNotNull { doc ->
-                    val data = doc.data ?: return@mapNotNull null
-                    try {
-                        ContactSubmission(
-                            id = doc.id,
-                            contact = data["contact"] as? String ?: return@mapNotNull null,
-                            message = data["message"] as? String ?: "",
-                            createdAt = (data["createdAt"] as? String)?.let { Instant.parse(it) } ?: Instant.now()
-                        )
-                    } catch (e: Exception) { null }
+                    doc.data?.let { PortfolioContentDocuments.contactSubmission(doc.id, it) }
                 }.sortedByDescending { it.createdAt }
             }
         }
@@ -184,11 +176,7 @@ class FirestoreContentStore(
             mutationCoordinator.newUpsert(
                 CONTACT_SUBMISSIONS,
                 submission.id,
-                mapOf(
-                    "contact" to submission.contact,
-                    "message" to submission.message,
-                    "createdAt" to submission.createdAt.toString(),
-                ),
+                with(PortfolioContentDocuments) { submission.toDocument() },
             ),
         )
     }
@@ -259,245 +247,31 @@ class FirestoreContentStore(
         }
     }
 
-    // Conversion extensions
-    private fun com.google.cloud.firestore.DocumentSnapshot.toProject(): Project? {
-        val data = this.data ?: return null
-        return try {
-            Project(
-                id = id,
-                slug = data["slug"] as? String ?: return null,
-                layerLabel = data.toLocalizedText("layerLabel") ?: return null,
-                layerName = data.toLocalizedText("layerName") ?: return null,
-                title = data.toLocalizedText("title") ?: return null,
-                description = data.toLocalizedText("description") ?: return null,
-                category = (data["category"] as? String)?.let {
-                    runCatching { ProjectCategory.valueOf(it) }.getOrNull()
-                } ?: ProjectCategory.WEB,
-                featured = data["featured"] as? Boolean ?: false,
-                order = (data["order"] as? Number)?.toInt() ?: 0,
-                technologies = (data["technologies"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
-                imageUrl = data["imageUrl"] as? String,
-                githubUrl = data["githubUrl"] as? String
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    // Conversion extensions (shared with every document backend)
+    private fun com.google.cloud.firestore.DocumentSnapshot.toProject(): Project? =
+        data?.let { PortfolioContentDocuments.project(id, it) }
 
-    private fun com.google.cloud.firestore.DocumentSnapshot.toService(): Service? {
-        val data = this.data ?: return null
-        return try {
-            Service(
-                id = id,
-                title = data.toLocalizedText("title") ?: return null,
-                description = data.toLocalizedText("description") ?: return null,
-                featured = data["featured"] as? Boolean ?: false,
-                order = (data["order"] as? Number)?.toInt() ?: 0
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    private fun com.google.cloud.firestore.DocumentSnapshot.toService(): Service? =
+        data?.let { PortfolioContentDocuments.service(id, it) }
 
-    private fun com.google.cloud.firestore.DocumentSnapshot.toBlogPost(): BlogPost? {
-        val data = this.data ?: return null
-        return try {
-            BlogPost(
-                id = id,
-                slug = data["slug"] as? String ?: return null,
-                title = data["title"] as? String ?: return null,
-                excerpt = data["excerpt"] as? String ?: "",
-                content = data["content"] as? String ?: "",
-                publishedAt = (data["publishedAt"] as? String)?.let { LocalDate.parse(it) } ?: LocalDate.now(),
-                featured = data["featured"] as? Boolean ?: false,
-                author = data["author"] as? String ?: "Unknown",
-                tags = (data["tags"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    private fun com.google.cloud.firestore.DocumentSnapshot.toBlogPost(): BlogPost? =
+        data?.let { PortfolioContentDocuments.blogPost(id, it) }
 
-    private fun com.google.cloud.firestore.DocumentSnapshot.toTestimonial(): Testimonial? {
-        val data = this.data ?: return null
-        return try {
-            Testimonial(
-                id = id,
-                quote = data.toLocalizedText("quote") ?: return null,
-                author = data["author"] as? String ?: return null,
-                role = data.toLocalizedText("role") ?: return null,
-                company = data.toLocalizedText("company") ?: return null,
-                featured = data["featured"] as? Boolean ?: false,
-                order = (data["order"] as? Number)?.toInt() ?: 0
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    private fun com.google.cloud.firestore.DocumentSnapshot.toTestimonial(): Testimonial? =
+        data?.let { PortfolioContentDocuments.testimonial(id, it) }
 
-    private fun com.google.cloud.firestore.DocumentSnapshot.toHeroContent(): HeroContent? {
-        val data = this.data ?: return null
-        return try {
-            HeroContent(
-                eyebrow = data.toLocalizedText("eyebrow") ?: return null,
-                titlePrimary = data.toLocalizedText("titlePrimary") ?: return null,
-                titleSecondary = data.toLocalizedText("titleSecondary") ?: return null,
-                subtitle = data.toLocalizedText("subtitle") ?: return null,
-                ctaPrimary = data.toLocalizedText("ctaPrimary") ?: return null,
-                ctaSecondary = data.toLocalizedText("ctaSecondary") ?: return null,
-                metrics = (data["metrics"] as? List<*>)?.mapNotNull { it.toHeroMetric() } ?: emptyList()
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    private fun com.google.cloud.firestore.DocumentSnapshot.toHeroContent(): HeroContent? =
+        data?.let(PortfolioContentDocuments::hero)
 
-    private fun com.google.cloud.firestore.DocumentSnapshot.toPhotographyPhoto(): PhotographyPhoto? {
-        val data = this.data ?: return null
-        return try {
-            PhotographyPhoto(
-                id = id,
-                title = data["title"] as? String ?: return null,
-                altText = data["altText"] as? String ?: return null,
-                caption = data["caption"] as? String,
-                takenAt = (data["takenAt"] as? String)?.takeIf { it.isNotBlank() }?.let { LocalDate.parse(it) },
-                order = (data["order"] as? Number)?.toInt() ?: 0,
-                published = data["published"] as? Boolean ?: false,
-                storageKey = data["storageKey"] as? String ?: return null,
-                contentType = data["contentType"] as? String ?: "application/octet-stream",
-                originalFilename = data["originalFilename"] as? String,
-                sizeBytes = (data["sizeBytes"] as? Number)?.toLong() ?: 0L,
-                mediaType = (data["mediaType"] as? String)?.let {
-                    runCatching { PhotographyMediaType.valueOf(it) }.getOrNull()
-                } ?: PhotographyMediaType.PHOTO,
-                sourceKind = (data["sourceKind"] as? String)?.let {
-                    runCatching { PhotographySourceKind.valueOf(it) }.getOrNull()
-                } ?: PhotographySourceKind.UPLOAD,
-                category = data["category"] as? String ?: "Uncategorized",
-                albumTitle = data["albumTitle"] as? String,
-                externalUrl = data["externalUrl"] as? String,
-                thumbnailUrl = data["thumbnailUrl"] as? String,
-                featured = data["featured"] as? Boolean ?: false,
-                uploadedAt = (data["uploadedAt"] as? String)?.let { Instant.parse(it) } ?: Instant.now()
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    private fun com.google.cloud.firestore.DocumentSnapshot.toPhotographyPhoto(): PhotographyPhoto? =
+        data?.let { PortfolioContentDocuments.photographyPhoto(id, it) }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun Map<String, Any>.toLocalizedText(key: String): LocalizedText? {
-        val value = this[key] ?: return null
-        return when (value) {
-            is Map<*, *> -> {
-                val map = value as? Map<String, Any> ?: return null
-                LocalizedText(
-                    en = map["en"] as? String ?: "",
-                    ar = map["ar"] as? String
-                )
-            }
-            is String -> LocalizedText(en = value, ar = null)
-            else -> null
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun Any?.toHeroMetric(): HeroMetric? {
-        val map = this as? Map<String, Any> ?: return null
-        return try {
-            HeroMetric(
-                value = map["value"] as? String ?: return null,
-                label = map.toLocalizedText("label") ?: return null,
-                detail = map.toLocalizedText("detail") ?: return null
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    // Conversion to Map for Firestore
-    private fun Project.toMap(): Map<String, Any?> = mapOf(
-        "slug" to slug,
-        "layerLabel" to layerLabel.toMap(),
-        "layerName" to layerName.toMap(),
-        "title" to title.toMap(),
-        "description" to description.toMap(),
-        "category" to category.name,
-        "featured" to featured,
-        "order" to order,
-        "technologies" to technologies,
-        "imageUrl" to imageUrl,
-        "githubUrl" to githubUrl
-    )
-
-    private fun Service.toMap(): Map<String, Any?> = mapOf(
-        "title" to title.toMap(),
-        "description" to description.toMap(),
-        "featured" to featured,
-        "order" to order
-    )
-
-    private fun BlogPost.toMap(): Map<String, Any?> = mapOf(
-        "slug" to slug,
-        "title" to title,
-        "excerpt" to excerpt,
-        "content" to content,
-        "publishedAt" to publishedAt.toString(),
-        "featured" to featured,
-        "author" to author,
-        "tags" to tags
-    )
-
-    private fun Testimonial.toMap(): Map<String, Any?> = mapOf(
-        "quote" to quote.toMap(),
-        "author" to author,
-        "role" to role.toMap(),
-        "company" to company.toMap(),
-        "featured" to featured,
-        "order" to order
-    )
-
-    private fun HeroContent.toMap(): Map<String, Any?> = mapOf(
-        "eyebrow" to eyebrow.toMap(),
-        "titlePrimary" to titlePrimary.toMap(),
-        "titleSecondary" to titleSecondary.toMap(),
-        "subtitle" to subtitle.toMap(),
-        "ctaPrimary" to ctaPrimary.toMap(),
-        "ctaSecondary" to ctaSecondary.toMap(),
-        "metrics" to metrics.map { it.toMap() }
-    )
-
-    private fun PhotographyPhoto.toMap(): Map<String, Any?> = mapOf(
-        "title" to title,
-        "altText" to altText,
-        "caption" to caption,
-        "takenAt" to takenAt?.toString(),
-        "order" to order,
-        "published" to published,
-        "storageKey" to storageKey,
-        "contentType" to contentType,
-        "originalFilename" to originalFilename,
-        "sizeBytes" to sizeBytes,
-        "mediaType" to mediaType.name,
-        "sourceKind" to sourceKind.name,
-        "category" to category,
-        "albumTitle" to albumTitle,
-        "externalUrl" to externalUrl,
-        "thumbnailUrl" to thumbnailUrl,
-        "featured" to featured,
-        "uploadedAt" to uploadedAt.toString()
-    )
-
-    private fun HeroMetric.toMap(): Map<String, Any?> = mapOf(
-        "value" to value,
-        "label" to label.toMap(),
-        "detail" to detail.toMap()
-    )
-
-    private fun LocalizedText.toMap(): Map<String, Any?> = mapOf(
-        "en" to en,
-        "ar" to ar
-    )
+    private fun Project.toMap(): Map<String, Any?> = with(PortfolioContentDocuments) { toDocument() }
+    private fun Service.toMap(): Map<String, Any?> = with(PortfolioContentDocuments) { toDocument() }
+    private fun BlogPost.toMap(): Map<String, Any?> = with(PortfolioContentDocuments) { toDocument() }
+    private fun Testimonial.toMap(): Map<String, Any?> = with(PortfolioContentDocuments) { toDocument() }
+    private fun HeroContent.toMap(): Map<String, Any?> = with(PortfolioContentDocuments) { toDocument() }
+    private fun PhotographyPhoto.toMap(): Map<String, Any?> = with(PortfolioContentDocuments) { toDocument() }
 
     private companion object {
         const val PROJECTS = "projects"

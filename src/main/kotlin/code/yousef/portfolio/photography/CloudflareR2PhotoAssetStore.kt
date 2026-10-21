@@ -163,14 +163,14 @@ class CloudflareR2PhotoAssetStore internal constructor(
 
     override fun save(storageKey: String, contentType: String, bytes: ByteArray) {
         val key = requireContentAddressedKey(storageKey)
-        val normalizedContentType = requireContentType(contentType)
+        val normalizedContentType = requirePhotoAssetContentType(contentType)
         require(sha256Hex(bytes) == key.digest) { "Photography asset bytes do not match storage-key digest" }
         transport.put(key.key, key.digest, normalizedContentType, bytes)
     }
 
     override fun load(storageKey: String, contentType: String): PhotoAsset? {
         val key = requireContentAddressedKey(storageKey)
-        return transport.get(key.key, key.digest, requireContentType(contentType))
+        return transport.get(key.key, key.digest, requirePhotoAssetContentType(contentType))
     }
 
     override fun delete(storageKey: String) {
@@ -268,6 +268,7 @@ internal object PortfolioPhotoAssetStoreFactory {
     fun fromEnvironment(
         appConfig: AppConfig,
         environment: Map<String, String> = System.getenv(),
+        s3Client: () -> software.amazon.awssdk.services.s3.S3Client = { error("An S3 client is required for S3 photography storage") },
     ): PhotoAssetStore {
         val gcsCredentials = appConfig.gcsCredentials()
         val source = appConfig.photographyUploadBucket?.let { bucket ->
@@ -279,6 +280,21 @@ internal object PortfolioPhotoAssetStoreFactory {
             )
         } ?: LocalPhotoAssetStore(appConfig.photographyUploadDir)
         if (appConfig.photographyWriteMode == PhotographyAssetWriteMode.SOURCE) return source
+
+        appConfig.s3MediaBucket?.let { bucket ->
+            // AWS: S3 replaces R2 as the content-addressed target; no edge token is involved.
+            return MigratingPhotoAssetStore(
+                source = source,
+                target = code.yousef.aws.s3.S3PhotoAssetStore(
+                    client = s3Client(),
+                    bucket = bucket,
+                    prefix = appConfig.s3MediaPrefix,
+                    maxAssetBytes = appConfig.photographyMaxUploadBytes,
+                ),
+                mode = appConfig.photographyWriteMode,
+                reverseMirror = appConfig.photographyR2ReverseMirror,
+            )
+        }
 
         val token = environment["EDGE_ORIGIN_TOKEN"]
             ?: error("EDGE_ORIGIN_TOKEN is required for R2 photography storage")
@@ -338,7 +354,7 @@ internal object PortfolioPhotoAssetStoreFactory {
         }
 }
 
-private fun requireContentType(contentType: String): String {
+internal fun requirePhotoAssetContentType(contentType: String): String {
     val normalized = normalizeContentType(contentType)
     require(normalized in ALLOWED_PHOTO_CONTENT_TYPES) { "Unsupported photography asset content type" }
     return normalized
