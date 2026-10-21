@@ -137,3 +137,6 @@ infra/aws/**/*.tfplan
 infra/aws/**/*.tfstate
 infra/aws/**/*.tfstate.*
 infra/aws/.bin/
+
+# Agent-local worktrees.
+/.claude/worktrees/
