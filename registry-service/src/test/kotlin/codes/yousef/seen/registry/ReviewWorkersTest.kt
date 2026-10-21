@@ -10,7 +10,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class ReviewWorkersTest {
+open class ReviewWorkersTest {
+    protected open fun newRepository(): RegistryRepository = InMemoryRegistryRepository()
+
     private val clock = MutableClock(Instant.parse("2026-07-17T00:00:00Z"))
     private val ids = object : ReviewIdGenerator {
         private var sequence = 0
@@ -226,7 +228,7 @@ class ReviewWorkersTest {
         scanner: PackageScanEngine = PackageScanEngine(::validAttestation),
         sourceTransform: (SourceVerificationResult) -> SourceVerificationResult = { it },
     ): WorkerFixture {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val archive = "a".repeat(64)
         val now = clock.instant().utc()
         repository.createPackage(StoredPackage(
@@ -342,7 +344,7 @@ class ReviewWorkersTest {
     )
 
     private data class WorkerFixture(
-        val repository: InMemoryRegistryRepository,
+        val repository: RegistryRepository,
         val source: SourceReviewWorker,
         val scan: ScanReviewWorker,
         val stateMachine: ReviewStateMachine,

@@ -41,6 +41,9 @@ dependencies {
 
     implementation(platform("software.amazon.awssdk:bom:2.47.5"))
     implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:dynamodb")
+    implementation("software.amazon.awssdk:kms")
+    implementation("software.amazon.awssdk:http-auth-aws")
     implementation("software.amazon.awssdk:url-connection-client")
 
     testImplementation(kotlin("test"))

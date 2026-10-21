@@ -173,10 +173,13 @@ class RegistryResources private constructor(
             require(signingRoles == config.configuredSigningRoles) {
                 "Runtime signing roles must match its validated configuration"
             }
-            val mutableRepository: RegistryRepository = if (config.storageMode == "gcp") {
-                FirestoreRegistryRepository.create(config)
-            } else {
-                InMemoryRegistryRepository()
+            val mutableRepository: RegistryRepository = when (config.storageMode) {
+                STORAGE_MODE_GCP -> FirestoreRegistryRepository.create(config)
+                STORAGE_MODE_DYNAMODB -> DynamoDbRegistryRepository.create(
+                    region = requireNotNull(config.awsRegion),
+                    tablePrefix = requireNotNull(config.dynamoDbTablePrefix),
+                )
+                else -> InMemoryRegistryRepository()
             }
             val repository: RegistryRepository = if (config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API) {
                 ReadOnlyRegistryRepository(mutableRepository)
@@ -191,7 +194,7 @@ class RegistryResources private constructor(
                 repository
             }
             val storage: RegistryObjectStorage = when {
-                config.storageMode == "gcp" -> createCloudRegistryObjectStorage(config)
+                config.usesCloudStorage -> createCloudRegistryObjectStorage(config)
                 config.serverMode == RegistryServerMode.PUBLIC_API -> InMemoryRegistryObjectStorage()
                 config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API ->
                     ReadOnlyRegistryObjectStorage(InMemoryRegistryObjectStorage())
@@ -201,7 +204,7 @@ class RegistryResources private constructor(
                     allowTimestampPointerWrite = true,
                 )
             }
-            val online = if (config.storageMode == "gcp") {
+            val online = if (config.usesCloudStorage) {
                 if (signingRoles.isEmpty()) {
                     publicKeyOnlyOnlineSigners(config.kmsOnlinePublicKeysHex)
                 } else {
@@ -329,7 +332,7 @@ private fun createCloudRegistryObjectStorage(config: RegistryConfig): RegistryOb
                     allowRootPointerWrite = false,
                 )
         }
-        RegistryObjectStoreProvider.R2 -> {
+        RegistryObjectStoreProvider.R2, RegistryObjectStoreProvider.S3 -> {
             val delegate = S3CompatibleRegistryObjectStorage.create(objectStore, config.objectPrefix)
             when (config.serverMode) {
                 RegistryServerMode.PUBLIC_API -> delegate

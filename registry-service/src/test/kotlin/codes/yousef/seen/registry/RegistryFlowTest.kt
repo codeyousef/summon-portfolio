@@ -12,11 +12,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class RegistryFlowTest {
+open class RegistryFlowTest {
+    protected open fun newRepository(): RegistryRepository = InMemoryRegistryRepository()
+
     @Test
     fun `upload completion remains quarantined until source proof and first scan succeed`() {
         val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val storage = InMemoryRegistryObjectStorage()
         val online = testOnlineSigners()
         val config = testConfig()

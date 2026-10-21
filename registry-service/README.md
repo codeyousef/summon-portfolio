@@ -132,6 +132,9 @@ closed instead of escalating its own permissions.
 
 The complete public ceremony, custody, rotation, recovery, audit, and drill
 procedure is in [Signing operations](docs/signing-operations.md).
+The AWS runtime contract (DynamoDB tables, S3 buckets, AWS KMS signers, IAM,
+egress) and the AWS ceremony changes are in
+[Seen registry on AWS](docs/aws-operations.md).
 
 `describe-signing-policy` prints the machine-checkable deployment policy for
 `REGISTRY_ENVIRONMENT` without loading any secret or private-key configuration.

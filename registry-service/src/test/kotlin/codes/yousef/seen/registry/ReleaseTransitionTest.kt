@@ -10,10 +10,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class ReleaseTransitionTest {
+open class ReleaseTransitionTest {
+    protected open fun newRepository(): RegistryRepository = InMemoryRegistryRepository()
+
     @Test
     fun `only one concurrent transition can commit a release revision`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val reserved = storedRelease()
         assertTrue(repository.reserveRelease(reserved))
         val staleCopies = List(8) { repository.getRelease("seen/demo", "1.2.3")!! }
@@ -48,7 +50,7 @@ class ReleaseTransitionTest {
     @Test
     fun `stale upload cannot regress a concurrently completed release`() {
         val clock = MutableClock(Instant.parse("2026-07-16T00:00:00Z"))
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val storage = BlockingFirstQuarantineStorage()
         val config = testConfig()
         val tuf = TufPublisher(
@@ -110,7 +112,7 @@ class ReleaseTransitionTest {
 
     @Test
     fun `stale completion snapshot is rejected after activation`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val reserved = storedRelease()
         assertTrue(repository.reserveRelease(reserved))
         val quarantined = reserved.copy(

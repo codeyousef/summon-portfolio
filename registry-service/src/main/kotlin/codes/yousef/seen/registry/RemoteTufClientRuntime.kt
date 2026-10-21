@@ -74,6 +74,14 @@ internal fun defaultRemoteTufTokenProvider(
     environment: (String) -> String? = System::getenv,
 ): RemoteTufTokenProvider {
     val cloudflareToken = environment("SEEN_SIGNER_CALL_TOKEN")?.trim()?.takeIf(String::isNotEmpty)
+    if (environment("REGISTRY_STORAGE_MODE") == STORAGE_MODE_DYNAMODB) {
+        // AWS deployments authenticate to role-locked signers only with the
+        // task role's presigned STS identity; a static bearer is never accepted.
+        require(cloudflareToken == null) { "AWS runtimes must not receive SEEN_SIGNER_CALL_TOKEN" }
+        val region = environment("AWS_REGION")?.trim()?.takeIf(String::isNotEmpty)
+            ?: throw IllegalArgumentException("AWS_REGION is required for AWS signer caller identity")
+        return AwsStsTufCallerTokenProvider(target, region)
+    }
     return if (cloudflareToken == null) {
         GoogleCloudRunTufIdTokenProvider(target)
     } else {

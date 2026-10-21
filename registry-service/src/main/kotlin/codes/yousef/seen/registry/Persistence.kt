@@ -58,7 +58,7 @@ sealed interface PromotionActivationResult {
     data object AuditCollision : PromotionActivationResult
 }
 
-private fun requireSameRelease(current: StoredRelease, updated: StoredRelease) {
+internal fun requireSameRelease(current: StoredRelease, updated: StoredRelease) {
     require(current.record.`package` == updated.record.`package`) { "Release package cannot change" }
     require(current.record.version == updated.record.version) { "Release version cannot change" }
     require(current.ownerPrincipal == updated.ownerPrincipal) { "Release owner cannot change" }
@@ -102,7 +102,7 @@ private fun requireSameRelease(current: StoredRelease, updated: StoredRelease) {
     }
 }
 
-private fun requireActivationCommit(release: StoredRelease, artifact: ReviewArtifact, json: Json) {
+internal fun requireActivationCommit(release: StoredRelease, artifact: ReviewArtifact, json: Json) {
     require(release.record.state.lifecycle == "active") { "Promotion must commit an active release" }
     require(release.record.state.visibility == "public") { "Promotion must commit a public release" }
     require(release.record.state.availability == "available") { "Promotion must commit an available release" }

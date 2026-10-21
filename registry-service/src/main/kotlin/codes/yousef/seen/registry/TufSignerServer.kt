@@ -38,12 +38,17 @@ data class TufSignerServerConfig(
     val signingTimeout: Duration = Duration.ofSeconds(10),
     val maximumConcurrentRequests: Int = 8,
     val stateGuardConfig: TufSignerStateGuardConfig? = null,
+    val keyProvider: TufSignerKeyProvider = TufSignerKeyProvider.GCP_KMS,
+    val awsKmsKeyArn: String? = null,
+    val awsRegion: String? = null,
 ) {
     val publicKey: ByteArray
         get() = publicKeyHex.hexToBytes()
 
     init {
-        require(CLOUD_RUN_SERVICE.matches(cloudRunService)) { "K_SERVICE is invalid" }
+        require(CLOUD_RUN_SERVICE.matches(cloudRunService)) {
+            if (keyProvider == TufSignerKeyProvider.GCP_KMS) "K_SERVICE is invalid" else "REGISTRY_TUF_SIGNER_SERVICE_NAME is invalid"
+        }
         require(environment in ENVIRONMENTS) { "REGISTRY_ENVIRONMENT must be development or production" }
         val expectedRepositoryId = if (environment == "development") {
             "seen-dev-registry-v1"
@@ -74,14 +79,33 @@ data class TufSignerServerConfig(
             "TUF signer concurrency bound is invalid"
         }
 
-        val match = KMS_KEY_VERSION.matchEntire(kmsKeyVersion)
-            ?: throw IllegalArgumentException("REGISTRY_TUF_SIGNER_KMS_KEY_VERSION is not a concrete Cloud KMS key version")
-        val environmentSuffix = if (environment == "development") "dev" else "prod"
-        require(match.groups[1]?.value == "seen-registry-$environmentSuffix") {
-            "TUF signer key ring is not bound to REGISTRY_ENVIRONMENT"
-        }
-        require(match.groups[2]?.value == "seen-registry-$environmentSuffix-$role") {
-            "TUF signer KMS key is not bound to its configured role"
+        when (keyProvider) {
+            TufSignerKeyProvider.GCP_KMS -> {
+                require(awsKmsKeyArn == null && awsRegion == null) {
+                    "Cloud KMS signers must not receive AWS KMS configuration"
+                }
+                val match = KMS_KEY_VERSION.matchEntire(kmsKeyVersion)
+                    ?: throw IllegalArgumentException("REGISTRY_TUF_SIGNER_KMS_KEY_VERSION is not a concrete Cloud KMS key version")
+                val environmentSuffix = if (environment == "development") "dev" else "prod"
+                require(match.groups[1]?.value == "seen-registry-$environmentSuffix") {
+                    "TUF signer key ring is not bound to REGISTRY_ENVIRONMENT"
+                }
+                require(match.groups[2]?.value == "seen-registry-$environmentSuffix-$role") {
+                    "TUF signer KMS key is not bound to its configured role"
+                }
+            }
+            TufSignerKeyProvider.AWS_KMS -> {
+                require(kmsKeyVersion.isEmpty()) { "AWS KMS signers must not receive a Cloud KMS key version" }
+                val region = requireNotNull(awsRegion) { "AWS_REGION is required for AWS KMS signers" }
+                require(AWS_REGION_NAME.matches(region)) { "AWS_REGION is invalid" }
+                // Key ARNs, never aliases: an alias can be repointed without
+                // changing this reviewed configuration. AWS key IDs carry no
+                // role name, so role binding is the per-role variable name, the
+                // pinned public key verified through GetPublicKey, and IAM.
+                val match = AWS_KMS_KEY_ARN.matchEntire(awsKmsKeyArn.orEmpty())
+                    ?: throw IllegalArgumentException("${awsKmsKeyArnVariable(role)} is not a concrete AWS KMS key ARN")
+                require(match.groupValues[1] == region) { "AWS KMS key region does not match AWS_REGION" }
+            }
         }
     }
 
@@ -107,15 +131,21 @@ data class TufSignerServerConfig(
             } ?: default
 
             val role = required("REGISTRY_TUF_SIGNER_ROLE")
+            val keyProvider = TufSignerKeyProvider.fromEnvironment(env["REGISTRY_TUF_SIGNER_PROVIDER"])
+            rejectCrossProviderSignerEnvironment(env, keyProvider, role)
+            val aws = keyProvider == TufSignerKeyProvider.AWS_KMS
             val minimumVersion = boundedLong("REGISTRY_TUF_SIGNER_MIN_VERSION", 1L)
             val maximumVersion = boundedLong("REGISTRY_TUF_SIGNER_MAX_VERSION", MAXIMUM_METADATA_VERSION)
             val roleExpiry = roleMaximumExpiry(role)
             return TufSignerServerConfig(
-                cloudRunService = required("K_SERVICE"),
+                cloudRunService = required(if (aws) "REGISTRY_TUF_SIGNER_SERVICE_NAME" else "K_SERVICE"),
                 environment = required("REGISTRY_ENVIRONMENT"),
                 repositoryId = required("REGISTRY_REPOSITORY_ID"),
                 role = role,
-                kmsKeyVersion = required("REGISTRY_TUF_SIGNER_KMS_KEY_VERSION"),
+                kmsKeyVersion = if (aws) "" else required("REGISTRY_TUF_SIGNER_KMS_KEY_VERSION"),
+                keyProvider = keyProvider,
+                awsKmsKeyArn = if (aws) required(awsKmsKeyArnVariable(role)) else null,
+                awsRegion = if (aws) required("AWS_REGION") else null,
                 publicKeyHex = required("REGISTRY_TUF_SIGNER_PUBLIC_KEY_HEX"),
                 port = env["PORT"]?.toIntOrNull() ?: 8080,
                 acceptedVersions = minimumVersion..maximumVersion,
@@ -145,10 +175,65 @@ data class TufSignerServerConfig(
         private val CLOUD_RUN_SERVICE = Regex("^[a-z][a-z0-9-]{0,62}$")
         private val ENVIRONMENTS = setOf("development", "production")
         private val PUBLIC_KEY_HEX = Regex("^[0-9a-f]{64}$")
+        private val AWS_KMS_KEY_ARN = Regex(
+            "^arn:aws(?:-[a-z]+)*:kms:([a-z]{2}(?:-[a-z]+)+-[1-9][0-9]?):[0-9]{12}:key/" +
+                "(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|mrk-[0-9a-f]{32})$",
+        )
         private val KMS_KEY_VERSION = Regex(
             "^projects/[a-z0-9][a-z0-9-]{3,62}/locations/[a-z0-9-]{1,63}/keyRings/([A-Za-z0-9_-]{1,63})/" +
                 "cryptoKeys/([A-Za-z0-9_-]{1,63})/cryptoKeyVersions/[1-9][0-9]*$",
         )
+    }
+}
+
+/** Which KMS holds this signer's one online key; also selects the caller-identity scheme. */
+enum class TufSignerKeyProvider(val environmentValue: String) {
+    /** Google Cloud KMS; callers present Google-signed OIDC ID tokens. */
+    GCP_KMS("gcp-kms"),
+    /** AWS KMS ECC_NIST_EDWARDS25519; callers present presigned STS GetCallerIdentity tokens. */
+    AWS_KMS("aws-kms"),
+    ;
+
+    companion object {
+        fun fromEnvironment(value: String?): TufSignerKeyProvider {
+            val selected = value?.trim()?.ifEmpty { null } ?: return GCP_KMS
+            return entries.firstOrNull { it.environmentValue == selected }
+                ?: throw IllegalArgumentException("REGISTRY_TUF_SIGNER_PROVIDER must be gcp-kms or aws-kms")
+        }
+    }
+}
+
+internal fun awsKmsKeyArnVariable(role: String): String = "REGISTRY_AWS_KMS_${role.uppercase()}_KEY_ARN"
+
+private val AWS_STATIC_CREDENTIAL_NAMES = setOf(
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_PROFILE",
+    "AWS_SHARED_CREDENTIALS_FILE",
+    "AWS_CONFIG_FILE",
+)
+
+private fun rejectCrossProviderSignerEnvironment(
+    env: Map<String, String>,
+    provider: TufSignerKeyProvider,
+    role: String,
+) {
+    require(role in TufRole.ONLINE) { "REGISTRY_TUF_SIGNER_ROLE must name one online TUF role" }
+    val ownArn = awsKmsKeyArnVariable(role)
+    val forbidden = env.keys.filter { name ->
+        when (provider) {
+            TufSignerKeyProvider.GCP_KMS ->
+                name.startsWith("REGISTRY_AWS_KMS_") || name == "REGISTRY_TUF_SIGNER_SERVICE_NAME"
+            TufSignerKeyProvider.AWS_KMS ->
+                (name.startsWith("REGISTRY_AWS_KMS_") && name != ownArn) ||
+                    name == "REGISTRY_TUF_SIGNER_KMS_KEY_VERSION" ||
+                    // The ECS task role is the only AWS authority a signer may hold.
+                    name in AWS_STATIC_CREDENTIAL_NAMES
+        }
+    }.sorted()
+    require(forbidden.isEmpty()) {
+        "The ${provider.environmentValue} TUF signer rejects other-role or other-provider key configuration: ${forbidden.joinToString(", ")}"
     }
 }
 
@@ -218,9 +303,17 @@ object FailClosedTufSignerStatePolicyGuardFactory : TufSignerStatePolicyGuardFac
     }
 }
 
-/** Creates a bounded signer with only asymmetricSign authority on the pinned key version. */
+/** Creates a bounded signer with only sign authority on the pinned key (Cloud KMS version or AWS KMS key). */
 object KmsTufSignerServerSignerFactory : TufSignerServerSignerFactory {
     override fun create(config: TufSignerServerConfig): TufSigner {
+        if (config.keyProvider == TufSignerKeyProvider.AWS_KMS) {
+            return AwsKmsEd25519Signer.create(
+                keyArn = requireNotNull(config.awsKmsKeyArn),
+                region = requireNotNull(config.awsRegion),
+                expectedPublicKey = config.publicKey,
+                timeout = config.signingTimeout,
+            )
+        }
         val settings = KeyManagementServiceSettings.newBuilder().apply {
             asymmetricSignSettings().setSimpleTimeoutNoRetriesDuration(config.signingTimeout)
         }.build()
@@ -262,6 +355,14 @@ class TufSignerHttpServer private constructor(
         val operation = request.singleHeader(JdkRemoteTufHttpTransport.OPERATION_HEADER)
             ?.let { runCatching { TufSigningOperation.parse(it) }.getOrNull() }
         when {
+            // Unauthenticated liveness for load-balancer target health checks.
+            // It reveals nothing and never touches KMS or metadata.
+            request.path() == HEALTH_PATH && request.method() == HttpMethod.GET -> {
+                val response = request.response()
+                response.statusCode = 204
+                response.putHeader("Cache-Control", "no-store")
+                response.end()
+            }
             request.path() != SIGN_PATH -> reject(request.response(), 404)
             request.method() != HttpMethod.POST -> reject(request.response(), 405, "Allow" to "POST")
             request.singleHeader("X-Forwarded-Proto") != "https" -> reject(request.response(), 400)
@@ -396,6 +497,7 @@ class TufSignerHttpServer private constructor(
 
     companion object {
         const val SIGN_PATH = "/sign"
+        const val HEALTH_PATH = "/healthz"
         private const val SIGNATURE_BYTES = 64
 
         fun create(
