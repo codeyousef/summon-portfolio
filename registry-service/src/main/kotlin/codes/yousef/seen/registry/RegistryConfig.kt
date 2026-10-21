@@ -220,6 +220,7 @@ data class RegistryConfig(
             serverModeOverride: RegistryServerMode? = null,
         ): RegistryConfig {
             rejectCoordinatorKeyVersions(env)
+            rejectMaintenanceEnvelope(env, "Server runtime")
             val serverMode = serverModeOverride ?: RegistryServerMode.fromEnvironment(
                 env["REGISTRY_SERVER_MODE"] ?: RegistryServerMode.PUBLIC_API.environmentValue,
             )

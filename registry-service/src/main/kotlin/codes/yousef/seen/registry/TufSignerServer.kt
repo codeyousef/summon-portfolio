@@ -120,6 +120,7 @@ data class TufSignerServerConfig(
 
     companion object {
         fun fromEnvironment(env: Map<String, String> = System.getenv()): TufSignerServerConfig {
+            rejectMaintenanceEnvelope(env, "The TUF signer process")
             val forbidden = env.keys.filter(::isForbiddenSignerEnvironmentVariable).sorted()
             require(forbidden.isEmpty()) {
                 "The TUF signer process rejects unrelated authority or persistence configuration: ${forbidden.joinToString(", ")}"

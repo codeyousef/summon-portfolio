@@ -93,6 +93,7 @@ data class RegistryWorkerConfig(
     companion object {
         fun fromEnvironment(mode: RegistryWorkerMode, env: Map<String, String> = System.getenv()): RegistryWorkerConfig {
             rejectCoordinatorKeyVersions(env)
+            rejectMaintenanceEnvelope(env, mode.argument)
             fun required(name: String): String = env[name]?.takeIf(String::isNotBlank)
                 ?: error("$name is required for ${mode.argument}")
             fun token(name: String): String? = env[name]?.trim()?.takeIf(String::isNotEmpty)?.also {

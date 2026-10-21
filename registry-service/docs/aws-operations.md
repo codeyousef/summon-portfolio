@@ -118,6 +118,33 @@ used for verification). No API, worker, or job accepts a
 Run one task, zero retries, for every one-shot job. Scheduled jobs follow the
 existing schedule-activation rules in `infra/registry/AGENTS.md`.
 
+### Signed-envelope input on ECS
+
+ECS cannot mount the signed envelope as a file, so the three importers accept
+it from one environment variable instead of the file argument:
+
+| Command (container arguments) | Envelope |
+| --- | --- |
+| `import-offline-targets-renewal` | the signed `N+1.targets.json` |
+| `import-offline-targets-rotation releases` or `… security` | the signed `N+1.targets.json` |
+| `import-offline-root-rotation` | the signed `N+1.root.json` |
+
+- Set `REGISTRY_MAINTENANCE_ENVELOPE_BASE64` to the strict, padded standard
+  Base64 of the exact signed bytes (no line breaks, at most 1 MiB decoded).
+  The bytes are decoded only in memory and are verified exactly as a file
+  input would be.
+- Supplying both the file argument and the variable, or neither, fails before
+  any cloud client is opened. The file form is unchanged for GCP.
+- Only these three commands accept the variable. Every server, signer,
+  worker, other maintenance job, data-copy job and offline preparation
+  command rejects any `REGISTRY_MAINTENANCE_*` variable.
+- Deliver it like the bootstrap envelopes: a numeric-versioned secret reference
+  injected only into that one-shot task definition, never `latest`, removed
+  with the task definition after verified success. The envelope is public
+  signed metadata, but it is still transferred only through the reviewed
+  ceremony path, and its SHA-256 is compared with the ceremony record before
+  the task runs.
+
 ### Health
 
 - Public, read-only, and action APIs: `GET /health` (liveness). The public and

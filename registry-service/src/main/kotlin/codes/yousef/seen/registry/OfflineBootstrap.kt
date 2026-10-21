@@ -18,6 +18,7 @@ data class OfflineBootstrapConfig(
 ) {
     companion object {
         fun fromEnvironment(env: Map<String, String> = System.getenv()): OfflineBootstrapConfig {
+            rejectMaintenanceEnvelope(env, "Offline ceremony preparation")
             fun csv(name: String) = env[name].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
             fun public(role: String) = requireNotNull(env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]) {
                 "Missing online public key for $role"
@@ -43,6 +44,7 @@ data class OfflineTargetsRenewalConfig(
 ) {
     companion object {
         fun fromEnvironment(env: Map<String, String> = System.getenv()): OfflineTargetsRenewalConfig {
+            rejectMaintenanceEnvelope(env, "Offline ceremony preparation")
             fun csv(name: String) = env[name].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
             fun public(role: String) = requireNotNull(env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]) {
                 "Missing online public key for $role"
@@ -65,6 +67,7 @@ data class OfflineTargetsRotationConfig(
 ) {
     companion object {
         fun fromEnvironment(env: Map<String, String> = System.getenv()): OfflineTargetsRotationConfig {
+            rejectMaintenanceEnvelope(env, "Offline ceremony preparation")
             fun csv(name: String) = env[name].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
             fun public(role: String) = requireNotNull(env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]) {
                 "Missing replacement online public key for $role"
@@ -93,6 +96,7 @@ data class OfflineRootRotationConfig(
 ) {
     companion object {
         fun fromEnvironment(env: Map<String, String> = System.getenv()): OfflineRootRotationConfig {
+            rejectMaintenanceEnvelope(env, "Offline ceremony preparation")
             fun csv(name: String) = env[name].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
             return OfflineRootRotationConfig(
                 environment = env["REGISTRY_ENVIRONMENT"] ?: "development",

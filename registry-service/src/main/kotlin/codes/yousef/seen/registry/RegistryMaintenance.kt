@@ -14,6 +14,8 @@ enum class RegistryMaintenanceMode(
     val allowImmutableMetadataCreates: Boolean,
     val allowRootPointerWrite: Boolean,
     val requiresBootstrapEnvelopes: Boolean = false,
+    /** True only for the signed-envelope importers that may read REGISTRY_MAINTENANCE_ENVELOPE_BASE64. */
+    val acceptsEnvelopeInput: Boolean = false,
 ) {
     IMPORT_OFFLINE_BOOTSTRAP(
         command = "import-offline-bootstrap",
@@ -39,6 +41,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = false,
+        acceptsEnvelopeInput = true,
     ),
     TARGETS_ROTATION_RELEASES(
         command = "import-offline-targets-rotation",
@@ -47,6 +50,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = false,
+        acceptsEnvelopeInput = true,
     ),
     TARGETS_ROTATION_SECURITY(
         command = "import-offline-targets-rotation",
@@ -55,6 +59,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = false,
+        acceptsEnvelopeInput = true,
     ),
     ROOT_VERIFY(
         command = "verify-root-chain",
@@ -71,6 +76,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = true,
+        acceptsEnvelopeInput = true,
     ),
     REFRESH_RELEASES(
         command = "refresh-releases-once",
@@ -127,27 +133,29 @@ data class RegistryMaintenanceInvocation(
                 RegistryMaintenanceInvocation(RegistryMaintenanceMode.ONLINE_BOOTSTRAP)
             }
             "import-offline-targets-renewal" -> {
-                require(args.size == 2) { "Usage: registry-service import-offline-targets-renewal <N.targets.json>" }
-                RegistryMaintenanceInvocation(RegistryMaintenanceMode.TARGETS_RENEWAL, Path.of(args[1]))
+                require(args.size in 1..2) {
+                    "Usage: registry-service import-offline-targets-renewal [<N.targets.json>]"
+                }
+                RegistryMaintenanceInvocation(RegistryMaintenanceMode.TARGETS_RENEWAL, args.getOrNull(1)?.let(Path::of))
             }
             "import-offline-targets-rotation" -> {
-                require(args.size == 3) {
-                    "Usage: registry-service import-offline-targets-rotation <releases|security> <N.targets.json>"
+                require(args.size in 2..3) {
+                    "Usage: registry-service import-offline-targets-rotation <releases|security> [<N.targets.json>]"
                 }
                 val mode = when (args[1]) {
                     TufRole.RELEASES -> RegistryMaintenanceMode.TARGETS_ROTATION_RELEASES
                     TufRole.SECURITY -> RegistryMaintenanceMode.TARGETS_ROTATION_SECURITY
                     else -> throw IllegalArgumentException("Targets rotation role must be releases or security")
                 }
-                RegistryMaintenanceInvocation(mode, Path.of(args[2]))
+                RegistryMaintenanceInvocation(mode, args.getOrNull(2)?.let(Path::of))
             }
             "verify-root-chain" -> {
                 require(args.size == 1) { "Usage: registry-service verify-root-chain" }
                 RegistryMaintenanceInvocation(RegistryMaintenanceMode.ROOT_VERIFY)
             }
             "import-offline-root-rotation" -> {
-                require(args.size == 2) { "Usage: registry-service import-offline-root-rotation <N.root.json>" }
-                RegistryMaintenanceInvocation(RegistryMaintenanceMode.ROOT_IMPORT, Path.of(args[1]))
+                require(args.size in 1..2) { "Usage: registry-service import-offline-root-rotation [<N.root.json>]" }
+                RegistryMaintenanceInvocation(RegistryMaintenanceMode.ROOT_IMPORT, args.getOrNull(1)?.let(Path::of))
             }
             "refresh-releases-once" -> {
                 require(args.size == 1) { "Usage: registry-service refresh-releases-once" }
@@ -190,9 +198,14 @@ data class RegistryMaintenanceConfig(
     val objectStoreConfig: RegistryObjectStoreConfig? = null,
     val awsRegion: String? = null,
     val dynamoDbTablePrefix: String? = null,
+    val maintenanceEnvelopeBase64: String? = null,
 ) {
     init {
         val identity = maintenanceRepositoryIdentity(environment)
+        require(maintenanceEnvelopeBase64 == null || mode.acceptsEnvelopeInput) {
+            "Only the signed-envelope importers may receive $MAINTENANCE_ENVELOPE_VARIABLE"
+        }
+        maintenanceEnvelopeBase64?.let(::decodeMaintenanceEnvelope)
         require(repositoryId == identity.repositoryId && registryOrigin == identity.registryOrigin) {
             "Maintenance repository ID and origin must match the selected environment"
         }
@@ -294,6 +307,7 @@ data class RegistryMaintenanceConfig(
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
                 bootstrapTargetsEnvelopeBase64 = env["REGISTRY_BOOTSTRAP_TARGETS_ENVELOPE_BASE64"]
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
+                maintenanceEnvelopeBase64 = env[MAINTENANCE_ENVELOPE_VARIABLE]?.takeIf { mode.acceptsEnvelopeInput },
                 objectStoreConfig = if (storageMode in CLOUD_STORAGE_MODES) {
                     RegistryObjectStoreConfig.fromEnvironment(
                         env,
@@ -375,6 +389,8 @@ private fun rejectMaintenanceEnvironment(
 
     val forbidden = env.keys.filter { name ->
         name in exactAlwaysForbidden ||
+            (name == MAINTENANCE_ENVELOPE_VARIABLE && !mode.acceptsEnvelopeInput) ||
+            (name.startsWith("REGISTRY_MAINTENANCE_") && name != MAINTENANCE_ENVELOPE_VARIABLE) ||
             name.startsWith("REGISTRY_OFFLINE_") ||
             name.startsWith("REGISTRY_GITHUB_") ||
             name.startsWith("REGISTRY_GITLAB_") ||
@@ -591,6 +607,8 @@ object RegistryMaintenanceRuntime {
         invocation: RegistryMaintenanceInvocation,
         config: RegistryMaintenanceConfig = RegistryMaintenanceConfig.fromEnvironment(invocation.mode),
     ) {
+        // Resolve and validate the signed envelope before opening any cloud client.
+        val input = if (invocation.mode.acceptsEnvelopeInput) resolveMaintenanceInput(invocation, config) else null
         try {
             RegistryMaintenanceResources.create(config).use { resources ->
                 when (invocation.mode) {
@@ -604,7 +622,7 @@ object RegistryMaintenanceRuntime {
                     RegistryMaintenanceMode.ONLINE_BOOTSTRAP ->
                         println("online_transaction_version=${resources.bootstrapOnline()}")
                     RegistryMaintenanceMode.TARGETS_RENEWAL -> {
-                        val candidate = readInput(invocation)
+                        val candidate = requireNotNull(input)
                         val result = resources.importTargetsRenewal(candidate)
                         println("targets_version=${result.targetsVersion}")
                         println("targets_sha256=${sha256(candidate)}")
@@ -612,7 +630,7 @@ object RegistryMaintenanceRuntime {
                     }
                     RegistryMaintenanceMode.TARGETS_ROTATION_RELEASES,
                     RegistryMaintenanceMode.TARGETS_ROTATION_SECURITY -> {
-                        val candidate = readInput(invocation)
+                        val candidate = requireNotNull(input)
                         val result = resources.importTargetsRotation(candidate)
                         println("targets_version=${result.targetsVersion}")
                         println("targets_sha256=${sha256(candidate)}")
@@ -622,7 +640,7 @@ object RegistryMaintenanceRuntime {
                     RegistryMaintenanceMode.ROOT_VERIFY ->
                         println("root_version=${resources.verifyRootChain()}")
                     RegistryMaintenanceMode.ROOT_IMPORT -> {
-                        val candidate = readInput(invocation)
+                        val candidate = requireNotNull(input)
                         val result = resources.importRootRotation(candidate)
                         println("root_version=${result.rootVersion}")
                         println("root_sha256=${sha256(candidate)}")
@@ -649,6 +667,50 @@ object RegistryMaintenanceRuntime {
         }
     }
 
-    private fun readInput(invocation: RegistryMaintenanceInvocation): ByteArray =
-        Files.readAllBytes(requireNotNull(invocation.input))
+}
+
+internal const val MAINTENANCE_ENVELOPE_VARIABLE = "REGISTRY_MAINTENANCE_ENVELOPE_BASE64"
+
+/** Every runtime except the signed-envelope importers rejects maintenance envelope input. */
+internal fun rejectMaintenanceEnvelope(env: Map<String, String>, runtime: String) {
+    val supplied = env.keys.filter { it.startsWith("REGISTRY_MAINTENANCE_") }.sorted()
+    require(supplied.isEmpty()) { "$runtime rejects maintenance envelope configuration: ${supplied.joinToString(", ")}" }
+}
+
+/** Matches the TUF signer's metadata object bound; envelopes are kilobytes in practice. */
+internal const val MAXIMUM_MAINTENANCE_ENVELOPE_BYTES = 1024 * 1024
+private val STRICT_BASE64 = Regex("^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$")
+
+/** Strict, padded, size-capped Base64 decoded only in memory. */
+internal fun decodeMaintenanceEnvelope(encoded: String): ByteArray {
+    require(encoded.isNotEmpty() && encoded.length <= (MAXIMUM_MAINTENANCE_ENVELOPE_BYTES + 2) / 3 * 4) {
+        "$MAINTENANCE_ENVELOPE_VARIABLE is empty or exceeds its size bound"
+    }
+    require(STRICT_BASE64.matches(encoded)) { "$MAINTENANCE_ENVELOPE_VARIABLE must be strict padded Base64" }
+    val decoded = Base64.getDecoder().decode(encoded)
+    require(decoded.isNotEmpty() && decoded.size <= MAXIMUM_MAINTENANCE_ENVELOPE_BYTES) {
+        "$MAINTENANCE_ENVELOPE_VARIABLE is empty or exceeds its size bound"
+    }
+    return decoded
+}
+
+/** Exactly one input source: the file argument (GCP volume) or the env envelope (ECS). */
+internal fun resolveMaintenanceInput(
+    invocation: RegistryMaintenanceInvocation,
+    config: RegistryMaintenanceConfig,
+): ByteArray {
+    require(invocation.mode == config.mode) { "Maintenance invocation and configuration modes differ" }
+    require(invocation.mode.acceptsEnvelopeInput) { "${invocation.mode.command} takes no signed envelope" }
+    val file = invocation.input
+    val envelope = config.maintenanceEnvelopeBase64
+    require(file == null || envelope == null) {
+        "Supply the signed envelope either as a file argument or as $MAINTENANCE_ENVELOPE_VARIABLE, not both"
+    }
+    return when {
+        file != null -> Files.readAllBytes(file)
+        envelope != null -> decodeMaintenanceEnvelope(envelope)
+        else -> throw IllegalArgumentException(
+            "${invocation.mode.command} requires a file argument or $MAINTENANCE_ENVELOPE_VARIABLE",
+        )
+    }
 }
