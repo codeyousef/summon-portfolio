@@ -258,6 +258,21 @@ run "development_is_gated_and_complete" {
   }
 
   assert {
+    condition     = toset([for index in aws_dynamodb_table.app["documents"].global_secondary_index : index.name]) == toset(["order-index", "lookup-index"])
+    error_message = "The documents table needs the application's order and lookup indexes."
+  }
+
+  assert {
+    condition     = aws_dynamodb_table.app["sessions"].ttl[0].attribute_name == "expires_at"
+    error_message = "Sessions and job leases expire through TTL on expires_at."
+  }
+
+  assert {
+    condition     = aws_lb_target_group.ssr[0].stickiness[0].enabled
+    error_message = "SSR needs sticky sessions while Fifth Wall state is in process memory."
+  }
+
+  assert {
     condition     = length(aws_lb_listener_rule.rewrite) == 6
     error_message = "Seen and the four ecosystem rewrite routes must be reproduced."
   }

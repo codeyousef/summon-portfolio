@@ -159,6 +159,9 @@ run "development_shape" {
       "security=arn:aws:iam::123456789012:role/portfolio-dev-app-registry-security-actions-task",
       "security=arn:aws:iam::123456789012:role/portfolio-dev-app-registry-security-recovery-task",
       "security=arn:aws:iam::123456789012:role/portfolio-dev-app-registry-security-refresh-task",
+      "targets-renewal=arn:aws:iam::123456789012:role/portfolio-dev-app-registry-targets-renewal-task",
+      "targets-rotation:releases=arn:aws:iam::123456789012:role/portfolio-dev-app-registry-targets-rotation-releases-task",
+      "targets-rotation:security=arn:aws:iam::123456789012:role/portfolio-dev-app-registry-targets-rotation-security-task",
     ]))
     error_message = "The timestamp signer must accept exactly the coordinators that publish."
   }
@@ -227,4 +230,62 @@ run "rejects_wrong_signer_repository" {
   }
 
   expect_failures = [var.signer_image]
+}
+
+run "development_copy_job_is_isolated" {
+  command = plan
+
+  variables {
+    environment = "dev"
+    enabled     = true
+    data_copy = {
+      gcp_project = "seen-registry-dev-476219"
+      source_buckets = {
+        quarantine = "seen-registry-dev-quarantine"
+        public     = "seen-registry-dev-blobs"
+        metadata   = "seen-registry-dev-metadata"
+      }
+    }
+  }
+
+  assert {
+    condition     = length([for variable in jsondecode(aws_ecs_task_definition.runtime["gcp-copy"].container_definitions)[0].environment : variable.name if variable.name == "REGISTRY_STORAGE_MODE"]) == 0
+    error_message = "The copy job must receive only its own variables."
+  }
+
+  assert {
+    condition     = output.runtimes["gcp-copy"].command == ["copy-gcp-to-aws"] && length(output.schedules) == 3
+    error_message = "The copy job runs only on demand."
+  }
+}
+
+run "production_refuses_the_copy_job" {
+  command = plan
+
+  variables {
+    environment = "prod"
+    enabled     = true
+    data_copy = {
+      gcp_project = "seen-registry-dev-476219"
+      source_buckets = {
+        quarantine = "seen-registry-dev-quarantine"
+        public     = "seen-registry-dev-blobs"
+        metadata   = "seen-registry-dev-metadata"
+      }
+    }
+    network = {
+      vpc_id                 = "vpc-0123456789abcdef0"
+      public_subnet_ids      = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+      isolated_subnet_ids    = ["subnet-0123456789abcdef2", "subnet-0123456789abcdef3"]
+      cluster_arn            = "arn:aws:ecs:eu-north-1:123456789012:cluster/portfolio-prod"
+      zone_id                = "Z0000000000000000000"
+      host_suffix            = "yousef.codes"
+      gateway_security_group = "sg-0123456789abcdef0"
+    }
+  }
+
+  assert {
+    condition     = !contains(keys(output.runtimes), "gcp-copy")
+    error_message = "Production must never run the GCP copy job."
+  }
 }

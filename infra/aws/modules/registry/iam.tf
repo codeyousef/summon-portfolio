@@ -72,6 +72,7 @@ locals {
     r     = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:DescribeTable"]
     rw    = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:ConditionCheckItem", "dynamodb:DescribeTable"]
     lease = ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:DescribeTable"]
+    copy  = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan", "dynamodb:DescribeTable"]
   }
 
   bucket_arn = { for role in local.bucket_roles : role => "arn:aws:s3:::${local.bucket_names[role]}" }
@@ -152,19 +153,33 @@ data "aws_iam_policy_document" "runtime" {
     }
   }
 
-  # Versioned-metadata writers never move the pointers; only root importers
-  # write root.json and only the timestamp signer writes timestamp.json.
   dynamic "statement" {
-    for_each = contains(local.runtimes[each.key].grants, "m:put") || contains(local.runtimes[each.key].grants, "m:root") ? [1] : []
+    for_each = contains(local.runtimes[each.key].grants, "m:timestamp") ? [1] : []
 
     content {
-      sid     = "DenyForeignPointerWrites"
-      effect  = "Deny"
-      actions = ["s3:PutObject"]
-      resources = concat(
-        [local.metadata_pointer_arns["timestamp.json"]],
+      sid       = "WriteTimestampPointer"
+      actions   = ["s3:PutObject"]
+      resources = [local.metadata_pointer_arns["timestamp.json"]]
+    }
+  }
+
+  # Versioned-metadata writers never move the pointers; only root importers
+  # write root.json, and only the timestamp signer (or the one-shot copy)
+  # writes timestamp.json.
+  dynamic "statement" {
+    for_each = {
+      for denied in [concat(
+        contains(local.runtimes[each.key].grants, "m:timestamp") ? [] : [local.metadata_pointer_arns["timestamp.json"]],
         contains(local.runtimes[each.key].grants, "m:root") ? [] : [local.metadata_pointer_arns["root.json"]],
-      )
+      )] : "pointers" => denied
+      if length(denied) > 0 && (contains(local.runtimes[each.key].grants, "m:put") || contains(local.runtimes[each.key].grants, "m:root"))
+    }
+
+    content {
+      sid       = "DenyForeignPointerWrites"
+      effect    = "Deny"
+      actions   = ["s3:PutObject"]
+      resources = statement.value
     }
   }
 

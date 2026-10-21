@@ -261,6 +261,68 @@ locals {
       secrets   = []
       extra_env = {}
     }
+    # Ceremony imports read REGISTRY_MAINTENANCE_ENVELOPE_BASE64 supplied for
+    # one approved run; nothing schedules them.
+    "targets-renewal" = {
+      kind      = "job"
+      command   = ["import-offline-targets-renewal"]
+      envs      = ["dev", "prod"]
+      host      = null
+      operation = "targets-renewal"
+      roles     = ["snapshot", "timestamp"]
+      tables    = { state = "lease" }
+      grants    = ["m:r", "m:put"]
+      cpu       = 256
+      memory    = 1024
+      schedule  = null
+      secrets   = []
+      extra_env = {}
+    }
+    "targets-rotation-releases" = {
+      kind      = "job"
+      command   = ["import-offline-targets-rotation", "releases"]
+      envs      = ["dev", "prod"]
+      host      = null
+      operation = "targets-rotation:releases"
+      roles     = ["releases", "snapshot", "timestamp"]
+      tables    = { state = "lease" }
+      grants    = ["m:r", "m:put"]
+      cpu       = 256
+      memory    = 1024
+      schedule  = null
+      secrets   = []
+      extra_env = {}
+    }
+    "targets-rotation-security" = {
+      kind      = "job"
+      command   = ["import-offline-targets-rotation", "security"]
+      envs      = ["dev", "prod"]
+      host      = null
+      operation = "targets-rotation:security"
+      roles     = ["security", "snapshot", "timestamp"]
+      tables    = { state = "lease" }
+      grants    = ["m:r", "m:put"]
+      cpu       = 256
+      memory    = 1024
+      schedule  = null
+      secrets   = []
+      extra_env = {}
+    }
+    "root-import" = {
+      kind      = "job"
+      command   = ["import-offline-root-rotation"]
+      envs      = ["dev", "prod"]
+      host      = null
+      operation = null
+      roles     = []
+      tables    = { state = "lease" }
+      grants    = ["m:r", "m:put", "m:root"]
+      cpu       = 256
+      memory    = 1024
+      schedule  = null
+      secrets   = []
+      extra_env = {}
+    }
     "root-verifier" = {
       kind      = "job"
       command   = ["verify-root-chain"]
@@ -278,7 +340,30 @@ locals {
     }
   }
 
-  runtimes = { for name, runtime in local.runtime_catalog : name => runtime if contains(runtime.envs, var.environment) }
+  # Development-only GCP -> AWS copy. It accepts only its own variables, so it
+  # bypasses the standard runtime environment below.
+  copy_catalog = local.is_dev && var.data_copy != null ? {
+    "gcp-copy" = {
+      kind      = "job"
+      command   = ["copy-gcp-to-aws"]
+      envs      = ["dev"]
+      host      = null
+      operation = null
+      roles     = []
+      tables    = { for table in keys(local.tables) : table => "copy" }
+      grants    = ["q:r", "q:put", "p:r", "p:put", "m:r", "m:put", "m:root", "m:timestamp"]
+      cpu       = 1024
+      memory    = 2048
+      schedule  = null
+      secrets   = ["FIRESTORE_EXTERNAL_ACCOUNT_JSON_BASE64"]
+      extra_env = {}
+    }
+  } : {}
+
+  runtimes = merge(
+    { for name, runtime in local.runtime_catalog : name => runtime if contains(runtime.envs, var.environment) },
+    local.copy_catalog,
+  )
 
   services = { for name, runtime in local.runtimes : name => runtime if runtime.kind == "service" }
   jobs     = { for name, runtime in local.runtimes : name => runtime if runtime.kind == "job" }
@@ -311,8 +396,22 @@ locals {
     REGISTRY_OBJECT_PREFIX         = local.object_prefix
   }
 
+  copy_environment = var.data_copy == null ? {} : {
+    REGISTRY_ENVIRONMENT                    = "development"
+    GOOGLE_CLOUD_PROJECT                    = var.data_copy.gcp_project
+    REGISTRY_COPY_SOURCE_FIRESTORE_DATABASE = var.data_copy.firestore_database
+    REGISTRY_COPY_SOURCE_QUARANTINE_BUCKET  = var.data_copy.source_buckets.quarantine
+    REGISTRY_COPY_SOURCE_PUBLIC_BUCKET      = var.data_copy.source_buckets.public
+    REGISTRY_COPY_SOURCE_METADATA_BUCKET    = var.data_copy.source_buckets.metadata
+    REGISTRY_QUARANTINE_BUCKET              = local.bucket_names.quarantine
+    REGISTRY_PUBLIC_BUCKET                  = local.bucket_names.public
+    REGISTRY_METADATA_BUCKET                = local.bucket_names.metadata
+    REGISTRY_DYNAMODB_TABLE_PREFIX          = local.prefix
+    REGISTRY_OBJECT_PREFIX                  = local.object_prefix
+  }
+
   runtime_environment = {
-    for name, runtime in local.runtimes : name => merge(
+    for name, runtime in local.runtimes : name => name == "gcp-copy" ? tomap(local.copy_environment) : tomap(merge(
       local.identity_environment,
       local.public_key_environment,
       {
@@ -326,7 +425,7 @@ locals {
         }
       ]...),
       runtime.extra_env,
-    )
+    ))
   }
 
   runtime_secret_names = toset(flatten([for runtime in values(local.runtimes) : runtime.secrets]))

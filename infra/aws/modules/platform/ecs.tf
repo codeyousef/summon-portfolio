@@ -129,6 +129,7 @@ data "aws_iam_policy_document" "ssr_task" {
       "dynamodb:PutItem",
       "dynamodb:Query",
       "dynamodb:Scan",
+      "dynamodb:TransactWriteItems",
       "dynamodb:UpdateItem",
     ]
     resources = flatten([
@@ -175,6 +176,8 @@ locals {
       PORTFOLIO_S3_DOCS_BUCKET           = local.bucket_names.docs
       PORTFOLIO_S3_RECEIPTS_BUCKET       = local.bucket_names.receipts
       PORTFOLIO_SQS_JOBS_QUEUE_URL       = var.resources_enabled ? aws_sqs_queue.jobs[0].url : ""
+      PORTFOLIO_ENV                      = var.environment
+      PHOTOGRAPHY_WRITE_MODE             = "target"
       PORTFOLIO_CDN_PROXY_ENABLED        = tostring(local.is_dev)
       FIRESTORE_SEED_ON_START            = "false"
     },

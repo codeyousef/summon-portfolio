@@ -117,3 +117,31 @@ variable "access_service_token_client_id" {
     error_message = "access_service_token_client_id must be a Cloudflare Access service-token client ID."
   }
 }
+
+variable "aws_federation_enabled" {
+  description = "Separately approved gate for the AWS Portfolio dev workload identity pool."
+  type        = bool
+  default     = false
+}
+
+variable "aws_account_id" {
+  description = "Dedicated Portfolio AWS account trusted by the AWS pool."
+  type        = string
+  default     = "266629879950"
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "aws_account_id must be a 12-digit AWS account ID."
+  }
+}
+
+variable "aws_role_name" {
+  description = "The only ECS task role allowed to impersonate finops-reader."
+  type        = string
+  default     = "portfolio-dev-app-ssr-task"
+
+  validation {
+    condition     = can(regex("^portfolio-dev-app-[a-z0-9-]+-task$", var.aws_role_name))
+    error_message = "aws_role_name must be a Portfolio dev application task role."
+  }
+}

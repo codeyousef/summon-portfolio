@@ -47,6 +47,15 @@ variable "registry" {
     trusted_root_v1_sha256    = optional(string)
     schedules_enabled         = optional(bool, false)
     refresh_schedules_enabled = optional(bool, false)
+    data_copy = optional(object({
+      gcp_project        = string
+      firestore_database = optional(string, "seen-registry-dev")
+      source_buckets = object({
+        quarantine = string
+        public     = string
+        metadata   = string
+      })
+    }))
   })
   default = {}
 }

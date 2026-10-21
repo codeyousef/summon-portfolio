@@ -65,3 +65,53 @@ run "reviewed_dev_shape" {
     error_message = "The Worker handoff must retain the standard export table and 50 MB query cap."
   }
 }
+
+run "aws_federation_trusts_only_the_ssr_task_role" {
+  command = plan
+
+  variables {
+    resources_enabled              = true
+    aws_federation_enabled         = true
+    billing_account_id             = "ABCDEF-123456-ABCDEF"
+    billing_source_dataset_id      = "existing_billing_export"
+    access_issuer                  = "https://felidai-studio.cloudflareaccess.com"
+    access_application_audience    = "aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd"
+    access_service_token_client_id = "0123456789abcdef0123456789abcdef.access"
+  }
+
+  assert {
+    condition = (
+      google_iam_workload_identity_pool_provider.aws_portfolio[0].aws[0].account_id == "266629879950" &&
+      strcontains(google_iam_workload_identity_pool_provider.aws_portfolio[0].attribute_condition, "assumed-role/portfolio-dev-app-ssr-task/")
+    )
+    error_message = "The AWS pool must accept only the Portfolio dev SSR task role."
+  }
+
+  assert {
+    condition     = google_service_account_iam_member.aws_wif_user[0].role == "roles/iam.workloadIdentityUser"
+    error_message = "The AWS task may only impersonate finops-reader."
+  }
+
+  assert {
+    condition     = length(google_iam_workload_identity_pool.cloudflare) == 1
+    error_message = "The Cloudflare federation stays independent during the migration."
+  }
+}
+
+run "aws_federation_is_separately_gated" {
+  command = plan
+
+  variables {
+    resources_enabled              = true
+    billing_account_id             = "ABCDEF-123456-ABCDEF"
+    billing_source_dataset_id      = "existing_billing_export"
+    access_issuer                  = "https://felidai-studio.cloudflareaccess.com"
+    access_application_audience    = "aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd"
+    access_service_token_client_id = "0123456789abcdef0123456789abcdef.access"
+  }
+
+  assert {
+    condition     = length(google_iam_workload_identity_pool.aws_portfolio) == 0 && output.aws_finops_credential_config == null
+    error_message = "Enabling the existing FinOps root must not create the AWS federation."
+  }
+}

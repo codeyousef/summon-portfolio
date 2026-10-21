@@ -21,6 +21,14 @@ resource "aws_lb_target_group" "ssr" {
   vpc_id               = aws_vpc.main[0].id
   deregistration_delay = 30
 
+  # Fifth Wall game state lives in process memory, so a viewer must keep
+  # reaching the same task.
+  stickiness {
+    type            = "lb_cookie"
+    enabled         = true
+    cookie_duration = 86400
+  }
+
   health_check {
     path                = "/health/ready"
     matcher             = "200"

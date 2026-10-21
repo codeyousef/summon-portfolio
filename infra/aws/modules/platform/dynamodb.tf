@@ -7,12 +7,18 @@ locals {
   # Key schema and secondary indexes follow the application's DynamoDB
   # adapters (PORTFOLIO_DATA_BACKEND=dynamodb).
   tables = {
+    # pk = collection, sk = document id. Both indexes are sparse: order-index
+    # serves ordered collection reads and lookup-index equality lookups.
     documents = {
       hash_key      = "pk"
       range_key     = "sk"
       ttl_attribute = null
-      indexes       = {}
+      indexes = {
+        "order-index"  = { hash_key = "opk", range_key = "osk" }
+        "lookup-index" = { hash_key = "lpk", range_key = "sk" }
+      }
     }
+    # Sessions (session:*) and job idempotency leases (job:*).
     sessions = {
       hash_key      = "pk"
       range_key     = null

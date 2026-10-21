@@ -15,3 +15,8 @@ output "worker_configuration" {
     authoritative_database = "firestore"
   } : null
 }
+
+output "aws_finops_credential_config" {
+  description = "Value for GCP_FINOPS_WIF_CREDENTIAL_CONFIG_JSON on the AWS SSR task."
+  value       = local.aws_credential_config
+}

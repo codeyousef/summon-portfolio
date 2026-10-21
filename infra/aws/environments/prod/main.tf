@@ -14,6 +14,10 @@ module "platform" {
   schedules_enabled = var.schedules_enabled
   app_environment   = merge(var.app_environment, module.registry.gateway_environment)
 
+  # FinOps billing ingestion is development-only; production needs only the
+  # docs token.
+  app_secret_names = ["GITHUB_TOKEN"]
+
   service_sizes = {
     ssr_desired_count = 2
   }

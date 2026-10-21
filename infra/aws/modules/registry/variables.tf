@@ -141,3 +141,29 @@ variable "log_retention_days" {
   type    = number
   default = 90
 }
+
+variable "data_copy" {
+  description = <<-EOF
+    Development-only GCP source for the one-shot registry copy job. The task
+    reads GCP through a read-only federated identity whose configuration is
+    stored in the FIRESTORE_EXTERNAL_ACCOUNT_JSON_BASE64 secret, and writes
+    only when REGISTRY_COPY_CONFIRM is supplied for one approved run.
+  EOF
+  type = object({
+    gcp_project        = string
+    firestore_database = optional(string, "seen-registry-dev")
+    source_buckets = object({
+      quarantine = string
+      public     = string
+      metadata   = string
+    })
+  })
+  default = null
+
+  validation {
+    condition = var.data_copy == null || alltrue([
+      for bucket in values(var.data_copy.source_buckets) : !strcontains(bucket, "prod")
+    ])
+    error_message = "The copy job reads development buckets only."
+  }
+}
