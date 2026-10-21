@@ -1,0 +1,173 @@
+name: Deploy Seen registry to AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+      component:
+        description: routine builds and rolls out APIs and jobs; signer-build pushes a signer image for review; signer-rollout deploys a reviewed signer digest
+        type: choice
+        options: [routine, signer-build, signer-rollout]
+        default: routine
+      signer_digest:
+        description: Reviewed sha256 digest for signer-rollout
+        type: string
+        default: ''
+      confirm:
+        description: Type "deploy seen registry <environment> <component>"
+        type: string
+        default: ''
+
+concurrency:
+  group: seen-registry-aws-${{ inputs.environment }}-${{ inputs.component }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+  AWS_ACCOUNT_ID: ${{ vars.AWS_PORTFOLIO_ACCOUNT_ID }}
+  TARGET: ${{ inputs.environment }}
+  COMPONENT: ${{ inputs.component }}
+
+jobs:
+  deploy:
+    name: ${{ inputs.component }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Signer images and rollouts use the separately protected signer identity.
+    environment: >-
+      ${{ inputs.component == 'routine'
+          && (inputs.environment == 'prod' && 'portfolio-production' || 'portfolio-development')
+          || format('portfolio-aws-{0}-signer', inputs.environment) }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check inputs
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          SIGNER_DIGEST: ${{ inputs.signer_digest }}
+        run: |
+          set -euo pipefail
+          [[ "${CONFIRM}" == "deploy seen registry ${TARGET} ${COMPONENT}" ]] || { echo "Missing confirmation." >&2; exit 1; }
+          if [[ "${TARGET}" == "prod" ]]; then
+            [[ "${GITHUB_REF}" == "refs/heads/master" ]] || { echo "Production deploys only from master." >&2; exit 1; }
+          fi
+          if [[ "${COMPONENT}" == "signer-rollout" ]]; then
+            [[ "${SIGNER_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "signer-rollout needs a reviewed sha256 digest." >&2; exit 1; }
+          fi
+          [[ "${AWS_ACCOUNT_ID}" =~ ^[0-9]{12}$ ]] || { echo "Missing variable AWS_PORTFOLIO_ACCOUNT_ID." >&2; exit 1; }
+
+      - name: Check out source
+        if: inputs.component != 'signer-rollout'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        if: inputs.component != 'signer-rollout'
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Test and package the registry
+        if: inputs.component != 'signer-rollout'
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
+        run: ./gradlew -p registry-service --no-daemon --max-workers=2 test shadowJar
+
+      - name: Assume the deploy identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          kind="deploy"
+          [[ "${COMPONENT}" == signer-* ]] && kind="signer-deploy"
+          token_file="${RUNNER_TEMP}/aws-web-identity-token"
+          curl -fsS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r '.value' > "${token_file}"
+          chmod 600 "${token_file}"
+          {
+            echo "AWS_WEB_IDENTITY_TOKEN_FILE=${token_file}"
+            echo "AWS_ROLE_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:role/portfolio-ci-${TARGET}-${kind}"
+            echo "AWS_ROLE_SESSION_NAME=registry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Build and push the image
+        id: image
+        if: inputs.component != 'signer-rollout'
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          repository="seen-registry"
+          [[ "${COMPONENT}" == "signer-build" ]] && repository="seen-registry-signer"
+          aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${registry}"
+          tag="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker buildx build --file registry-service/Dockerfile --platform linux/amd64 --provenance=false \
+            --build-arg "VCS_REF=${GITHUB_SHA}" \
+            --tag "${registry}/${repository}:${tag}" --push \
+            --metadata-file "${RUNNER_TEMP}/image.json" .
+          digest="$(jq -r '."containerimage.digest"' "${RUNNER_TEMP}/image.json")"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "image=${registry}/${repository}@${digest}" >> "${GITHUB_OUTPUT}"
+          echo "### ${repository} ${digest}" >> "${GITHUB_STEP_SUMMARY}"
+          if [[ "${COMPONENT}" == "signer-build" ]]; then
+            echo "Review this digest, then run signer-rollout with it." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Roll out task definitions and services
+        if: inputs.component != 'signer-build'
+        shell: bash
+        env:
+          ROUTINE_IMAGE: ${{ steps.image.outputs.image }}
+          SIGNER_DIGEST: ${{ inputs.signer_digest }}
+        run: |
+          set -euo pipefail
+          cluster="portfolio-${TARGET}"
+          if [[ "${COMPONENT}" == "routine" ]]; then
+            prefix="portfolio-${TARGET}-app-registry-"
+            image="${ROUTINE_IMAGE}"
+            container="registry"
+          else
+            prefix="portfolio-${TARGET}-signer-"
+            image="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/seen-registry-signer@${SIGNER_DIGEST}"
+            container="signer"
+            aws ecr describe-images --repository-name seen-registry-signer --image-ids "imageDigest=${SIGNER_DIGEST}" >/dev/null
+          fi
+          families="$(aws ecs list-task-definition-families --family-prefix "${prefix}" --status ACTIVE --query 'families[]' --output text)"
+          [[ -n "${families}" ]] || { echo "No ${prefix}* task definitions are provisioned." >&2; exit 1; }
+          services=()
+          for family in ${families}; do
+            aws ecs describe-task-definition --task-definition "${family}" --query taskDefinition \
+              | jq --arg container "${container}" --arg image "${image}" '
+                  .containerDefinitions |= map(if .name == $container then .image = $image else . end)
+                  | {family, taskRoleArn, executionRoleArn, networkMode, containerDefinitions,
+                     requiresCompatibilities, cpu, memory, runtimePlatform}' \
+              > "${RUNNER_TEMP}/task.json"
+            revision="$(aws ecs register-task-definition --cli-input-json "file://${RUNNER_TEMP}/task.json" \
+              --query taskDefinition.taskDefinitionArn --output text)"
+            echo "${family} -> ${revision}"
+            if [[ "${COMPONENT}" == "routine" ]]; then
+              service="app-registry-${family#"${prefix}"}"
+            else
+              service="signer-${family#"${prefix}"}"
+            fi
+            # Jobs have no service; schedulers run the latest ACTIVE revision.
+            if [[ "$(aws ecs describe-services --cluster "${cluster}" --services "${service}" \
+                  --query 'services[?status==`ACTIVE`] | length(@)' --output text)" == "1" ]]; then
+              aws ecs update-service --cluster "${cluster}" --service "${service}" --task-definition "${revision}" >/dev/null
+              services+=("${service}")
+            fi
+          done
+          if (( ${#services[@]} > 0 )); then
+            aws ecs wait services-stable --cluster "${cluster}" --services "${services[@]}"
+          fi

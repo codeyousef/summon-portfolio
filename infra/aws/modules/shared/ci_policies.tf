@@ -195,7 +195,7 @@ data "aws_iam_policy_document" "ci_deploy" {
 
   statement {
     sid       = "ReadTaskDefinitions"
-    actions   = ["ecs:DescribeTaskDefinition", "ecs:ListTaskDefinitions", "ecs:DescribeClusters"]
+    actions   = ["ecs:DescribeTaskDefinition", "ecs:ListTaskDefinitionFamilies", "ecs:ListTaskDefinitions", "ecs:DescribeClusters"]
     resources = ["*"]
   }
 
