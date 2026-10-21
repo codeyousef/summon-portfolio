@@ -1,0 +1,1147 @@
+{
+  "now": "2026-10-21T05:11:00.000Z",
+  "canonical": [
+    {
+      "input": {
+        "b": 1,
+        "a": [
+          true,
+          false,
+          null,
+          "x"
+        ],
+        "c": {
+          "z": 0.1,
+          "y": 0,
+          "x": 1e+21,
+          "w": 1e-7,
+          "v": 123456789012,
+          "u": 0.000001
+        }
+      },
+      "output": "{\"a\":[true,false,null,\"x\"],\"b\":1,\"c\":{\"u\":0.000001,\"v\":123456789012,\"w\":1e-7,\"x\":1e+21,\"y\":0,\"z\":0.1}}"
+    },
+    {
+      "input": {
+        "x_ZoneName": "a",
+        "ZoneName": "b",
+        "SkuPriceId": "c",
+        "ServiceName": "d",
+        "BilledCost": 0.0123,
+        "BillingCurrency": "USD"
+      },
+      "output": "{\"BilledCost\":0.0123,\"BillingCurrency\":\"USD\",\"ServiceName\":\"d\",\"SkuPriceId\":\"c\",\"x_ZoneName\":\"a\",\"ZoneName\":\"b\"}"
+    },
+    {
+      "input": {
+        "source": 1,
+        "sourceHash": 2,
+        "sourceRecordId": 3,
+        "Source": 4,
+        "a-b": 5,
+        "a_b": 6,
+        "ab": 7,
+        "A1": 8,
+        "a1": 9,
+        "": 10
+      },
+      "output": "{\"\":10,\"a_b\":6,\"a-b\":5,\"a1\":9,\"A1\":8,\"ab\":7,\"source\":1,\"Source\":4,\"sourceHash\":2,\"sourceRecordId\":3}"
+    },
+    {
+      "input": {
+        "text": "quote\" back\\ nl\n tab\t ctl\u0001 bell\u0007 unié  emoji😀 lone\ud800"
+      },
+      "output": "{\"text\":\"quote\\\" back\\\\ nl\\n tab\\t ctl\\u0001 bell\\u0007 unié  emoji😀 lone\\ud800\"}"
+    },
+    {
+      "input": [
+        1.5,
+        2.25,
+        -3,
+        100,
+        1e+300,
+        5e-324,
+        0.30000000000000004
+      ],
+      "output": "[1.5,2.25,-3,100,1e+300,5e-324,0.30000000000000004]"
+    }
+  ],
+  "decimalMicros": [
+    [
+      "5.5",
+      5500000
+    ],
+    [
+      "0.0000005",
+      1
+    ],
+    [
+      "-1.0000005",
+      -1000001
+    ],
+    [
+      "1e-7",
+      0
+    ],
+    [
+      "12.345678901",
+      12345679
+    ],
+    [
+      "3",
+      3000000
+    ]
+  ],
+  "gcp": {
+    "fields": [
+      "source_record_id",
+      "billing_account_id",
+      "invoice_month",
+      "project_id",
+      "service",
+      "sku",
+      "incurred_at",
+      "export_time",
+      "currency",
+      "signed_original_micros",
+      "signed_usd_micros",
+      "line_kind",
+      "cost_type"
+    ],
+    "rows": [
+      [
+        "1111111111111111111111111111111111111111111111111111111111111111",
+        "AAAA-BBBB",
+        "202610",
+        "seen-prod-123",
+        "Compute Engine",
+        "N2 core",
+        "2026-10-10T01:00:00.000Z",
+        "2026-10-19T03:00:00.000Z",
+        "USD",
+        "1234567",
+        "1234567",
+        "cost",
+        "regular"
+      ],
+      [
+        "2222222222222222222222222222222222222222222222222222222222222222",
+        "AAAA-BBBB",
+        "202610",
+        "portfolio-476219",
+        "Cloud Run",
+        "CPU",
+        "2026-10-11T00:00:00.000Z",
+        "2026-10-19T03:00:00.000Z",
+        "EUR",
+        "-50000",
+        "-54000",
+        "credit",
+        "credit"
+      ],
+      [
+        "ABCDEF0000000000000000000000000000000000000000000000000000000000",
+        "AAAA-BBBB",
+        "2026-10",
+        "samurai-ai",
+        "Vertex AI",
+        "Tokens\tin",
+        "2026-10-12T00:00:00.000Z",
+        "2026-10-20T03:00:00.000Z",
+        "USD",
+        "99",
+        "99",
+        "cost",
+        "TAX"
+      ]
+    ],
+    "pages": [
+      {
+        "jobComplete": true,
+        "jobReference": {
+          "projectId": "billing-proj",
+          "jobId": "job-1",
+          "location": "EU"
+        },
+        "schema": {
+          "fields": [
+            {
+              "name": "source_record_id"
+            },
+            {
+              "name": "billing_account_id"
+            },
+            {
+              "name": "invoice_month"
+            },
+            {
+              "name": "project_id"
+            },
+            {
+              "name": "service"
+            },
+            {
+              "name": "sku"
+            },
+            {
+              "name": "incurred_at"
+            },
+            {
+              "name": "export_time"
+            },
+            {
+              "name": "currency"
+            },
+            {
+              "name": "signed_original_micros"
+            },
+            {
+              "name": "signed_usd_micros"
+            },
+            {
+              "name": "line_kind"
+            },
+            {
+              "name": "cost_type"
+            }
+          ]
+        },
+        "rows": [
+          {
+            "f": [
+              {
+                "v": "1111111111111111111111111111111111111111111111111111111111111111"
+              },
+              {
+                "v": "AAAA-BBBB"
+              },
+              {
+                "v": "202610"
+              },
+              {
+                "v": "seen-prod-123"
+              },
+              {
+                "v": "Compute Engine"
+              },
+              {
+                "v": "N2 core"
+              },
+              {
+                "v": "2026-10-10T01:00:00.000Z"
+              },
+              {
+                "v": "2026-10-19T03:00:00.000Z"
+              },
+              {
+                "v": "USD"
+              },
+              {
+                "v": "1234567"
+              },
+              {
+                "v": "1234567"
+              },
+              {
+                "v": "cost"
+              },
+              {
+                "v": "regular"
+              }
+            ]
+          },
+          {
+            "f": [
+              {
+                "v": "2222222222222222222222222222222222222222222222222222222222222222"
+              },
+              {
+                "v": "AAAA-BBBB"
+              },
+              {
+                "v": "202610"
+              },
+              {
+                "v": "portfolio-476219"
+              },
+              {
+                "v": "Cloud Run"
+              },
+              {
+                "v": "CPU"
+              },
+              {
+                "v": "2026-10-11T00:00:00.000Z"
+              },
+              {
+                "v": "2026-10-19T03:00:00.000Z"
+              },
+              {
+                "v": "EUR"
+              },
+              {
+                "v": "-50000"
+              },
+              {
+                "v": "-54000"
+              },
+              {
+                "v": "credit"
+              },
+              {
+                "v": "credit"
+              }
+            ]
+          }
+        ],
+        "pageToken": "page-2",
+        "totalBytesProcessed": "1024"
+      },
+      {
+        "jobComplete": true,
+        "jobReference": {
+          "projectId": "billing-proj",
+          "jobId": "job-1",
+          "location": "EU"
+        },
+        "schema": {
+          "fields": [
+            {
+              "name": "source_record_id"
+            },
+            {
+              "name": "billing_account_id"
+            },
+            {
+              "name": "invoice_month"
+            },
+            {
+              "name": "project_id"
+            },
+            {
+              "name": "service"
+            },
+            {
+              "name": "sku"
+            },
+            {
+              "name": "incurred_at"
+            },
+            {
+              "name": "export_time"
+            },
+            {
+              "name": "currency"
+            },
+            {
+              "name": "signed_original_micros"
+            },
+            {
+              "name": "signed_usd_micros"
+            },
+            {
+              "name": "line_kind"
+            },
+            {
+              "name": "cost_type"
+            }
+          ]
+        },
+        "rows": [
+          {
+            "f": [
+              {
+                "v": "ABCDEF0000000000000000000000000000000000000000000000000000000000"
+              },
+              {
+                "v": "AAAA-BBBB"
+              },
+              {
+                "v": "2026-10"
+              },
+              {
+                "v": "samurai-ai"
+              },
+              {
+                "v": "Vertex AI"
+              },
+              {
+                "v": "Tokens\tin"
+              },
+              {
+                "v": "2026-10-12T00:00:00.000Z"
+              },
+              {
+                "v": "2026-10-20T03:00:00.000Z"
+              },
+              {
+                "v": "USD"
+              },
+              {
+                "v": "99"
+              },
+              {
+                "v": "99"
+              },
+              {
+                "v": "cost"
+              },
+              {
+                "v": "TAX"
+              }
+            ]
+          }
+        ],
+        "totalBytesProcessed": "1024"
+      }
+    ],
+    "sent": [
+      {
+        "id": "gcp:1111111111111111111111111111111111111111",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "seen",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-10T01:00:00.000Z",
+        "payloadSha256": "f3edb0e24225ff0ecfbab273a6d1abec9553a97d79eb0a92884d202fa5f29a49",
+        "payload": {
+          "entry": {
+            "id": "gcp:1111111111111111111111111111111111111111",
+            "source": "gcp",
+            "sourceRecordId": "line:1111111111111111111111111111111111111111111111111111111111111111",
+            "direction": "EXPENSE",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 1234567,
+              "scale": 6
+            },
+            "usdMicros": 1234567,
+            "incurredAt": 1791594000000,
+            "invoiceMonth": "2026-10",
+            "project": "seen",
+            "environment": "dev",
+            "vendor": "google-cloud",
+            "service": "Compute Engine",
+            "sku": "N2 core",
+            "status": "FINALIZED",
+            "reconciliationKey": "gcp:AAAA-BBBB:2026-10:seen-prod-123:Compute Engine",
+            "sourceHash": "4ce653ba1a08df72c354ef12920d69f4c1e9539a2c781f2ff301cd24496c2f69",
+            "metadata": {
+              "costClass": "cloud_platform",
+              "gcpProjectId": "seen-prod-123",
+              "gcpLineKind": "cost",
+              "gcpCostType": "regular",
+              "exportTime": "2026-10-19T03:00:00.000Z"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "gcp:2222222222222222222222222222222222222222",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "portfolio",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-11T00:00:00.000Z",
+        "payloadSha256": "2efbdf5e4d6a8b475b09dd5bc94a40239cb0a39d8ae022f810fb37fb7ec3dc3b",
+        "payload": {
+          "entry": {
+            "id": "gcp:2222222222222222222222222222222222222222",
+            "source": "gcp",
+            "sourceRecordId": "line:2222222222222222222222222222222222222222222222222222222222222222",
+            "direction": "CREDIT",
+            "amount": {
+              "currency": "EUR",
+              "minorUnits": 50000,
+              "scale": 6
+            },
+            "usdMicros": 54000,
+            "incurredAt": 1791676800000,
+            "invoiceMonth": "2026-10",
+            "project": "portfolio",
+            "environment": "dev",
+            "vendor": "google-cloud",
+            "service": "Cloud Run",
+            "sku": "CPU",
+            "status": "FINALIZED",
+            "reconciliationKey": "gcp:AAAA-BBBB:2026-10:portfolio-476219:Cloud Run",
+            "sourceHash": "654191ecc66306fa3c9dfd07415d574c3090e4936df29911ee9dc0c366186e9b",
+            "metadata": {
+              "costClass": "cloud_platform",
+              "gcpProjectId": "portfolio-476219",
+              "gcpLineKind": "credit",
+              "gcpCostType": "credit",
+              "exportTime": "2026-10-19T03:00:00.000Z"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "gcp:abcdef0000000000000000000000000000000000",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-12T00:00:00.000Z",
+        "payloadSha256": "90419b3b98a18c1f0b6fd75172a35b0fc160fa266f2de7ceea836a9be7b5b5da",
+        "payload": {
+          "entry": {
+            "id": "gcp:abcdef0000000000000000000000000000000000",
+            "source": "gcp",
+            "sourceRecordId": "line:abcdef0000000000000000000000000000000000000000000000000000000000",
+            "direction": "TAX",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 99,
+              "scale": 6
+            },
+            "usdMicros": 99,
+            "incurredAt": 1791763200000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "google-cloud",
+            "service": "Vertex AI",
+            "sku": "Tokens in",
+            "status": "FINALIZED",
+            "reconciliationKey": "gcp:AAAA-BBBB:2026-10:samurai-ai:Vertex AI",
+            "sourceHash": "39fb01bf3304b679346cfb6ed0242fc7f98338326c887c618a69953f7ebdbd5a",
+            "metadata": {
+              "costClass": "cloud_platform",
+              "gcpProjectId": "samurai-ai",
+              "gcpLineKind": "cost",
+              "gcpCostType": "tax",
+              "exportTime": "2026-10-20T03:00:00.000Z"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "import:gcp:2026-10-22:2f75cd0848ef87bd",
+        "aggregateType": "finops.import.run",
+        "aggregateId": "gcp",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-21T05:11:00.000Z",
+        "payloadSha256": "adbe4c652062fe82a52b1fbec02452520a41ec65cd22fa5301a29e0c00022eba",
+        "payload": {
+          "id": "import:gcp:2026-10-22:2f75cd0848ef87bd",
+          "source": "gcp",
+          "fromDate": "2026-09-17",
+          "toDateExclusive": "2026-10-22",
+          "sourceRecords": 3,
+          "entries": 3,
+          "sourceHash": "2f75cd0848ef87bd62189275eec6439d10f9e7a50c20808f58eefc71e665fc39",
+          "status": "succeeded",
+          "completedAt": 1792559460000
+        }
+      }
+    ]
+  },
+  "cloudflare": {
+    "accountId": "0123456789abcdef0123456789abcdef",
+    "accountSubscriptions": [
+      {
+        "id": "acct-sub-1",
+        "currency": "USD",
+        "price": 20,
+        "current_period_start": "2026-10-01T00:00:00Z",
+        "frequency": "monthly",
+        "state": "Paid",
+        "rate_plan": {
+          "id": "workers_paid",
+          "public_name": "Workers Paid"
+        }
+      },
+      {
+        "id": "acct-sub-2",
+        "currency": "EUR",
+        "price": 5,
+        "current_period_start": "2026-10-01T00:00:00Z"
+      },
+      {
+        "id": "acct-sub-3",
+        "current_period_start": "2026-10-01T00:00:00Z",
+        "rate_plan": {
+          "id": "free"
+        }
+      }
+    ],
+    "zones": [
+      {
+        "id": "fedcba9876543210fedcba9876543210",
+        "name": "yousef.codes"
+      }
+    ],
+    "zoneSubscriptions": [
+      {
+        "id": "zone-sub-1",
+        "price": "5.5",
+        "currency": "USD",
+        "current_period_start": "2026-10-01T00:00:00.000Z",
+        "frequency": "monthly",
+        "rate_plan": {
+          "id": "pro",
+          "scope": "zone"
+        }
+      }
+    ],
+    "usage": [
+      {
+        "BilledCost": 0.0123,
+        "BillingCurrency": "USD",
+        "ChargePeriodStart": "2026-10-02T00:00:00Z",
+        "x_ZoneName": "felidai.com",
+        "ZoneName": "ignored",
+        "ServiceName": "Workers AI",
+        "x_ZoneId": "zone-x",
+        "SkuPriceId": "sku-1"
+      },
+      {
+        "EffectiveCost": "-1.0000005",
+        "ChargePeriodStart": "2026-10-03T00:00:00Z",
+        "x_ProductFamilyName": "Seen Registry",
+        "PricingUnit": "requests"
+      },
+      {
+        "ListCost": 0,
+        "ChargePeriodStart": "2026-10-03T00:00:00Z"
+      }
+    ],
+    "sent": [
+      {
+        "id": "cloudflare:b1513d75675df4f28151534a5a64765b3ffefab1",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "shared",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-01T00:00:00.000Z",
+        "payloadSha256": "f72aed78bb8f995ac98b2bbc2c35489d8d4b6691bae6bd2557894b59a22292e0",
+        "payload": {
+          "entry": {
+            "id": "cloudflare:b1513d75675df4f28151534a5a64765b3ffefab1",
+            "source": "cloudflare",
+            "sourceRecordId": "subscription:account:account:acct-sub-1:2026-10-01T00:00:00.000Z",
+            "direction": "EXPENSE",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 20000000,
+              "scale": 6
+            },
+            "usdMicros": 20000000,
+            "incurredAt": 1790812800000,
+            "invoiceMonth": "2026-10",
+            "project": "shared",
+            "environment": "dev",
+            "vendor": "cloudflare",
+            "service": "Workers Paid",
+            "sku": "workers_paid",
+            "status": "ACCRUED",
+            "reconciliationKey": "cloudflare:2026-10:account",
+            "sourceHash": "aa55f4eefda7095cfd94e2a29c5e51b6f241bc0032179aad6cacd0aa930beed1",
+            "metadata": {
+              "costClass": "cloud_platform",
+              "cloudflareScope": "account",
+              "coverage": "subscription"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "cloudflare:eee72393240a8368e3519450c0cb5558e46fd1a0",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "portfolio",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-01T00:00:00.000Z",
+        "payloadSha256": "a5479de96e3c8e66460990ef9005a7c0d6c6781e0cbb3c4ccae727b6225e26c7",
+        "payload": {
+          "entry": {
+            "id": "cloudflare:eee72393240a8368e3519450c0cb5558e46fd1a0",
+            "source": "cloudflare",
+            "sourceRecordId": "subscription:zone:fedcba9876543210fedcba9876543210:zone-sub-1:2026-10-01T00:00:00.000Z",
+            "direction": "EXPENSE",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 5500000,
+              "scale": 6
+            },
+            "usdMicros": 5500000,
+            "incurredAt": 1790812800000,
+            "invoiceMonth": "2026-10",
+            "project": "portfolio",
+            "environment": "dev",
+            "vendor": "cloudflare",
+            "service": "pro",
+            "sku": "pro",
+            "status": "ACCRUED",
+            "reconciliationKey": "cloudflare:2026-10:fedcba9876543210fedcba9876543210",
+            "sourceHash": "f1f5a42a2d62e514e3ecc608583459c37e6bcd86c4a4dd0bf66bf73b3da9d5f6",
+            "metadata": {
+              "costClass": "cloud_platform",
+              "cloudflareScope": "zone",
+              "coverage": "subscription"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "cloudflare:67984da96ae0bfdecf8bf44873e3a8be5346f6b2",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-02T00:00:00.000Z",
+        "payloadSha256": "20bc2031434659f8a90d38318b6f04be4627f922467756de201cebbd243139bd",
+        "payload": {
+          "entry": {
+            "id": "cloudflare:67984da96ae0bfdecf8bf44873e3a8be5346f6b2",
+            "source": "cloudflare",
+            "sourceRecordId": "usage:dc7e798f56c58ff76579ac9883fcfc373247e36f64839d69",
+            "direction": "EXPENSE",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 12300,
+              "scale": 6
+            },
+            "usdMicros": 12300,
+            "incurredAt": 1790899200000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "cloudflare",
+            "service": "Workers AI",
+            "sku": "sku-1",
+            "status": "ACCRUED",
+            "reconciliationKey": "cloudflare:2026-10:zone-x",
+            "sourceHash": "dc7e798f56c58ff76579ac9883fcfc373247e36f64839d696536f03f121213c6",
+            "metadata": {
+              "costClass": "cloud_platform",
+              "cloudflareScope": "usage",
+              "coverage": "restricted-usage-api"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "cloudflare:40f15a6ec44fb20eef6acba8af4d0b539efab767",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "seen",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-03T00:00:00.000Z",
+        "payloadSha256": "53ec08b59bd22abc4bf5efb694173b7c204ce1ee09e0a109aa2c13cdc29f1f37",
+        "payload": {
+          "entry": {
+            "id": "cloudflare:40f15a6ec44fb20eef6acba8af4d0b539efab767",
+            "source": "cloudflare",
+            "sourceRecordId": "usage:749e24f9d9f9e5f89fba18e97d9fd126a5bac20ed7c10468",
+            "direction": "CREDIT",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 1000001,
+              "scale": 6
+            },
+            "usdMicros": 1000001,
+            "incurredAt": 1790985600000,
+            "invoiceMonth": "2026-10",
+            "project": "seen",
+            "environment": "dev",
+            "vendor": "cloudflare",
+            "service": "Seen Registry",
+            "sku": "requests",
+            "status": "ACCRUED",
+            "reconciliationKey": "cloudflare:2026-10:account",
+            "sourceHash": "749e24f9d9f9e5f89fba18e97d9fd126a5bac20ed7c1046859792432f485e9fd",
+            "metadata": {
+              "costClass": "cloud_platform",
+              "cloudflareScope": "usage",
+              "coverage": "restricted-usage-api"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "import:cloudflare:2026-10-22:99fdb3fd13d2af13",
+        "aggregateType": "finops.import.run",
+        "aggregateId": "cloudflare",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-21T05:11:00.000Z",
+        "payloadSha256": "64a43556c2a90184143233121fd783ef0d4be09b4effaa7f700aa4bb76a92427",
+        "payload": {
+          "id": "import:cloudflare:2026-10-22:99fdb3fd13d2af13",
+          "source": "cloudflare",
+          "fromDate": "2026-10-01",
+          "toDateExclusive": "2026-10-22",
+          "sourceRecords": 7,
+          "entries": 4,
+          "sourceHash": "99fdb3fd13d2af131b4d94e27a94ee934a183ae86aa7941abb03393188ce1ff7",
+          "status": "partial",
+          "completedAt": 1792559460000,
+          "failureCode": "unsupported_currency"
+        }
+      }
+    ]
+  },
+  "stripe": {
+    "key": "rk_test_aaaaaaaaaaaaaaaaaaaaaaaa",
+    "pages": [
+      {
+        "object": "list",
+        "has_more": true,
+        "data": [
+          {
+            "id": "txn_1",
+            "amount": 2500,
+            "fee": 103,
+            "currency": "usd",
+            "created": 1792000000,
+            "type": "charge",
+            "reporting_category": "charge",
+            "source": {
+              "id": "ch_1",
+              "metadata": {
+                "samurai_user_id": " user-42 "
+              }
+            }
+          },
+          {
+            "id": "txn_2",
+            "amount": -1000,
+            "fee": 0,
+            "currency": "usd",
+            "created": 1792100000,
+            "type": "refund",
+            "reporting_category": "refund",
+            "source": "re_1"
+          }
+        ]
+      },
+      {
+        "object": "list",
+        "has_more": false,
+        "data": [
+          {
+            "id": "txn_3",
+            "amount": -50000,
+            "fee": 0,
+            "currency": "usd",
+            "created": 1792200000,
+            "type": "payout",
+            "reporting_category": "payout",
+            "source": {
+              "id": "po_1",
+              "metadata": {
+                "samurai_user_id": "user-42"
+              }
+            }
+          },
+          {
+            "id": "txn_4",
+            "amount": 900,
+            "fee": 30,
+            "currency": "eur",
+            "created": 1792300000,
+            "type": "charge",
+            "reporting_category": "charge",
+            "source": null
+          },
+          {
+            "id": "txn_5",
+            "amount": 700,
+            "fee": -20,
+            "currency": "usd",
+            "created": 1792400000,
+            "type": "adjustment"
+          }
+        ]
+      }
+    ],
+    "sent": [
+      {
+        "id": "stripe:45fa2846c90e3766c2f279ac4a19d551886fd2eb",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-14T17:46:40.000Z",
+        "payloadSha256": "4f90001f5f0c28ccfd9dd30c4a5f8f780a41bbf0a144bb404c57c00e149ab3b0",
+        "payload": {
+          "entry": {
+            "id": "stripe:45fa2846c90e3766c2f279ac4a19d551886fd2eb",
+            "source": "stripe",
+            "sourceRecordId": "txn_1",
+            "direction": "REVENUE",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 2500,
+              "scale": 2
+            },
+            "usdMicros": 25000000,
+            "incurredAt": 1792000000000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "stripe",
+            "service": "payments",
+            "sku": "charge",
+            "status": "FINALIZED",
+            "reconciliationKey": "stripe:2026-10",
+            "sourceHash": "53ccf22aa051b3149fed7b8de4c8e9fbc5a3e4ff3a1a77915bde41d9c995d9be",
+            "metadata": {
+              "accountingClass": "revenue",
+              "stripeType": "charge",
+              "stripeReportingCategory": "charge"
+            }
+          },
+          "allocations": [
+            {
+              "id": "allocation:050c9cec71e5badad816cdbad6ffe9f39d36f191",
+              "entryId": "stripe:45fa2846c90e3766c2f279ac4a19d551886fd2eb",
+              "project": "samurai",
+              "userId": "user-42",
+              "allocatedUsdMicros": 25000000,
+              "method": "DIRECT"
+            }
+          ]
+        }
+      },
+      {
+        "id": "stripe-fee:45fa2846c90e3766c2f279ac4a19d551886fd2eb",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-14T17:46:40.000Z",
+        "payloadSha256": "abfd2d6799f1e1be292d4156d158a4d2245b55d52563094d8613b7af7fb2f4ca",
+        "payload": {
+          "entry": {
+            "id": "stripe-fee:45fa2846c90e3766c2f279ac4a19d551886fd2eb",
+            "source": "stripe",
+            "sourceRecordId": "txn_1:fee",
+            "direction": "FEE",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 103,
+              "scale": 2
+            },
+            "usdMicros": 1030000,
+            "incurredAt": 1792000000000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "stripe",
+            "service": "payment-processing",
+            "sku": "charge",
+            "status": "FINALIZED",
+            "reconciliationKey": "stripe:2026-10",
+            "sourceHash": "7e83876ef0bead799f0d72c82f5111ceca0b203d03e6a755d88e46f1c815874c",
+            "metadata": {
+              "accountingClass": "expense",
+              "stripeParentId": "txn_1"
+            }
+          },
+          "allocations": [
+            {
+              "id": "allocation:5dab9da2a9844d005222345a8b9c83eb6eb7b45d",
+              "entryId": "stripe-fee:45fa2846c90e3766c2f279ac4a19d551886fd2eb",
+              "project": "samurai",
+              "userId": "user-42",
+              "allocatedUsdMicros": 1030000,
+              "method": "DIRECT"
+            }
+          ]
+        }
+      },
+      {
+        "id": "stripe:c89659ea8059cd61e02f26acfde762a772e9f23c",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-15T21:33:20.000Z",
+        "payloadSha256": "6f784bf6bb054d2014eff3760efb85371623dccdb7fb8771276922b8e1939952",
+        "payload": {
+          "entry": {
+            "id": "stripe:c89659ea8059cd61e02f26acfde762a772e9f23c",
+            "source": "stripe",
+            "sourceRecordId": "txn_2",
+            "direction": "REFUND",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 1000,
+              "scale": 2
+            },
+            "usdMicros": 10000000,
+            "incurredAt": 1792100000000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "stripe",
+            "service": "payments",
+            "sku": "refund",
+            "status": "FINALIZED",
+            "reconciliationKey": "stripe:2026-10",
+            "sourceHash": "c8b98335d3e8d00b30e1bfa71470377c1bbea93510b5297fd5c5a7110e87035f",
+            "metadata": {
+              "accountingClass": "revenue",
+              "stripeType": "refund",
+              "stripeReportingCategory": "refund"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "stripe:936f5706b64259a9f426537fa4a3322abfe41ead",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-17T01:20:00.000Z",
+        "payloadSha256": "7167f2e8f464b4b696cfdc9e50715b398286aba4fd1c92438c3a4d50a5099adf",
+        "payload": {
+          "entry": {
+            "id": "stripe:936f5706b64259a9f426537fa4a3322abfe41ead",
+            "source": "stripe",
+            "sourceRecordId": "txn_3",
+            "direction": "ADJUSTMENT",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 50000,
+              "scale": 2
+            },
+            "usdMicros": 500000000,
+            "incurredAt": 1792200000000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "stripe",
+            "service": "payouts",
+            "sku": "payout",
+            "status": "FINALIZED",
+            "reconciliationKey": "stripe:2026-10",
+            "sourceHash": "cfe9069af2c65e4344088b73132bca37137faeba8a7a2d94008a44454315b132",
+            "metadata": {
+              "accountingClass": "cash_transfer",
+              "stripeType": "payout",
+              "stripeReportingCategory": "payout"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "stripe:704792f7567ea2a38a70a78dba0f46887ad77c37",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-19T08:53:20.000Z",
+        "payloadSha256": "82a75f2f3d4b0c7c44c4e97e7be5da634cbeedd46ff2fee7ef6bb5b2533cd7bc",
+        "payload": {
+          "entry": {
+            "id": "stripe:704792f7567ea2a38a70a78dba0f46887ad77c37",
+            "source": "stripe",
+            "sourceRecordId": "txn_5",
+            "direction": "REVENUE",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 700,
+              "scale": 2
+            },
+            "usdMicros": 7000000,
+            "incurredAt": 1792400000000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "stripe",
+            "service": "payments",
+            "sku": "adjustment",
+            "status": "FINALIZED",
+            "reconciliationKey": "stripe:2026-10",
+            "sourceHash": "3abeed0cfa9f5fd99c179dea4eaf482dcba0e63a82c616b4101e3c0822859e13",
+            "metadata": {
+              "accountingClass": "revenue",
+              "stripeType": "adjustment",
+              "stripeReportingCategory": "adjustment"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "stripe-fee:704792f7567ea2a38a70a78dba0f46887ad77c37",
+        "aggregateType": "finops.ingest",
+        "aggregateId": "samurai",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-19T08:53:20.000Z",
+        "payloadSha256": "41889f8ad2a5be93f09ccae01e25f097c4d09921b24944c2ef511fd677f039d2",
+        "payload": {
+          "entry": {
+            "id": "stripe-fee:704792f7567ea2a38a70a78dba0f46887ad77c37",
+            "source": "stripe",
+            "sourceRecordId": "txn_5:fee",
+            "direction": "CREDIT",
+            "amount": {
+              "currency": "USD",
+              "minorUnits": 20,
+              "scale": 2
+            },
+            "usdMicros": 200000,
+            "incurredAt": 1792400000000,
+            "invoiceMonth": "2026-10",
+            "project": "samurai",
+            "environment": "dev",
+            "vendor": "stripe",
+            "service": "payment-processing",
+            "sku": "adjustment",
+            "status": "FINALIZED",
+            "reconciliationKey": "stripe:2026-10",
+            "sourceHash": "f465068363a96530dd38851feaebdc9d218fd640ca2004a2d9f13476da813ea4",
+            "metadata": {
+              "accountingClass": "expense",
+              "stripeParentId": "txn_5"
+            }
+          },
+          "allocations": []
+        }
+      },
+      {
+        "id": "import:stripe:2026-10-22:aaa1c3d9c2d0258c",
+        "aggregateType": "finops.import.run",
+        "aggregateId": "stripe",
+        "expectedRevision": 0,
+        "authorityEpoch": 1,
+        "occurredAt": "2026-10-21T05:11:00.000Z",
+        "payloadSha256": "05dda8ee0dfbe1cde6fb24bcd46b9d00e8100f21b358c75f97c19be0c34ede7c",
+        "payload": {
+          "id": "import:stripe:2026-10-22:aaa1c3d9c2d0258c",
+          "source": "stripe",
+          "fromDate": "2026-09-17",
+          "toDateExclusive": "2026-10-22",
+          "sourceRecords": 5,
+          "entries": 6,
+          "sourceHash": "aaa1c3d9c2d0258cb778b3889885983a19028f10d06b1c0e9f916ee54e53ae90",
+          "status": "partial",
+          "completedAt": 1792559460000,
+          "failureCode": "unsupported_currency"
+        }
+      }
+    ]
+  },
+  "exportCoverage": {
+    "complete": true,
+    "latestExportAt": 1792465200000,
+    "minimumExpectedAt": 1792368000000
+  }
+}
