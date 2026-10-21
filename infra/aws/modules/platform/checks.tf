@@ -33,9 +33,19 @@ check "playground_requires_ssr" {
   }
 }
 
-check "host_chunks_fit_rule_limits" {
+check "rules_fit_condition_limits" {
   assert {
-    condition     = alltrue([for chunk in local.host_chunks : length(chunk) <= 5])
-    error_message = "ALB host conditions accept at most five values per rule."
+    condition = alltrue(concat(
+      [for rule in values(local.path_rules) : length(rule.hosts) + length(rule.paths) <= 5],
+      [for hosts in local.host_rule_sets : length(hosts) <= 5],
+    ))
+    error_message = "ALB rules accept at most five condition values."
+  }
+}
+
+check "priorities_stay_in_the_environment_range" {
+  assert {
+    condition     = alltrue([for rule in values(local.path_rules) : rule.priority >= local.priority_base && rule.priority < local.priority_base + 100])
+    error_message = "Path rule priorities must stay inside this environment's range on the shared listener."
   }
 }

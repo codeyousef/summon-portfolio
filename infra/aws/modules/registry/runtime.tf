@@ -100,7 +100,7 @@ resource "aws_vpc_security_group_egress_rule" "signer_https" {
 }
 
 resource "aws_lb" "internal" {
-  count = var.enabled ? 1 : 0
+  count = local.active ? 1 : 0
 
   name                       = "${local.name}-registry"
   load_balancer_type         = "application"
@@ -164,7 +164,7 @@ resource "aws_lb_listener" "internal" {
 }
 
 resource "aws_route53_record" "internal" {
-  for_each = var.enabled ? local.internal_hosts : {}
+  for_each = local.active ? local.internal_hosts : {}
 
   zone_id = var.network.zone_id
   name    = each.value

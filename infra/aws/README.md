@@ -14,6 +14,7 @@ certificates are the only resources created in `us-east-1`.
 | --- | --- | --- | --- |
 | `state-bootstrap/` | local `.state/` (ignored, keep encrypted offline) | operator | S3 state bucket, account budget |
 | `environments/shared/` | `state/shared/` | operator only | `yousef.codes` Route 53 zone and non-application records, ECR repositories, GitHub OIDC provider and CI roles |
+| `environments/edge/` | `state/edge/` | operator only | shared VPC, subnets, VPC endpoints, public ALB and its default listener (both environments) |
 | `environments/dev/` | `state/dev/` | operator or `portfolio-ci-dev-apply` | dev platform |
 | `environments/prod/` | `state/prod/` | `portfolio-ci-prod-apply` after protected review | prod platform |
 
@@ -34,6 +35,14 @@ viewer ─▶ CloudFront ─┬─▶ /cdn/media/*, /cdn/docs/*  ─▶ S3 (prod
                                               └─ served hosts           → SSR
 ```
 
+Dev and prod share one VPC and one public ALB to save cost. Each environment
+attaches its own certificate to the shared listener (SNI) and owns rules in
+its own priority range (dev 100-299, prod 1000-1199). Every rule is scoped to
+that environment's hosts, so a prod path rule can never serve a dev request
+past the gate; unknown hosts get the listener's 404. Environment apply
+identities can still change the shared listener, which is the accepted cost of
+sharing it.
+
 CloudFront forwards the viewer `Host`, so the Kotlin host map works unchanged
 and the ALB certificate covers the same names as the CloudFront certificate.
 The ALB rewrites reproduce `cloudflare/portfolio-edge/src/routing.ts`.
@@ -49,6 +58,10 @@ serves `/cdn/*` behind the gate.
 | --- | --- | --- | --- |
 | `app-ssr` | `portfolio-ssr` (`Dockerfile.portfolio`) | public subnets, inbound only from the ALB, HTTPS egress | app tables, media/docs/receipts objects, jobs queue |
 | `app-playground` | `seen-playground` (`Dockerfile`) | isolated subnets, ECR/Logs endpoints only | none |
+
+In dev the playground (`playground_running`) and the registry runtimes
+(`registry.running`) default to off; their data, identities, and keys persist
+while stopped.
 
 Services use digest-pinned images. OpenTofu registers the initial task
 definition; later rollouts register new revisions through the protected deploy
@@ -69,7 +82,10 @@ band before starting a service that injects it.
 
 Each step is its own reviewed plan and apply:
 
-1. `resources_enabled = true`: network, ALB (no listener yet), target groups,
+0. Apply `environments/edge` with `resources_enabled`, mirror its validation
+   CNAME, then apply `certificates_validated` (and `isolated_endpoints_enabled`
+   when a playground will run).
+1. `resources_enabled = true`: target groups,
    Cognito gate, tables, buckets, jobs queue, disabled schedules, empty
    secrets, and the ACM certificate requests. The
    `certificate_validation_records` output lists the validation CNAMEs.

@@ -38,6 +38,12 @@ variable "certificates_validated" {
   default     = false
 }
 
+variable "running" {
+  description = "Run the internal ALB, services, and jobs. Data, identities, keys, and the certificate persist when false."
+  type        = bool
+  default     = true
+}
+
 variable "kms_keys_enabled" {
   description = "Separately approved phase that creates the four online Ed25519 signing keys."
   type        = bool

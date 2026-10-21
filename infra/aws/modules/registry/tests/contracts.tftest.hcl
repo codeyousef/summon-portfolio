@@ -290,3 +290,31 @@ run "production_refuses_the_copy_job" {
     error_message = "Production must never run the GCP copy job."
   }
 }
+
+run "development_on_demand_keeps_data_only" {
+  command = plan
+
+  variables {
+    environment      = "dev"
+    enabled          = true
+    kms_keys_enabled = true
+    running          = false
+  }
+
+  assert {
+    condition = (
+      length(aws_dynamodb_table.registry) == 7 &&
+      length(aws_kms_key.signing) == 4 &&
+      length(aws_lb.internal) == 0 &&
+      length(aws_ecs_service.registry) == 0 &&
+      length(aws_ecs_service.signer) == 0 &&
+      length(output.schedules) == 0
+    )
+    error_message = "Stopping the dev registry keeps data and keys but removes the ALB, services, and schedules."
+  }
+
+  assert {
+    condition     = length(output.gateway_environment) == 0
+    error_message = "The gateway must not point at a stopped registry."
+  }
+}

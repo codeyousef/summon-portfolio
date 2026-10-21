@@ -60,7 +60,7 @@ resource "aws_cloudfront_distribution" "site" {
 
   origin {
     origin_id   = "alb"
-    domain_name = aws_lb.main[0].dns_name
+    domain_name = data.aws_lb.edge[0].dns_name
 
     custom_origin_config {
       http_port                = 80

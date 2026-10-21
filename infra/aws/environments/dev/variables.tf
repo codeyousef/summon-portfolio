@@ -46,6 +46,7 @@ variable "registry" {
   type = object({
     enabled                   = optional(bool, false)
     kms_keys_enabled          = optional(bool, false)
+    running                   = optional(bool, false)
     certificates_validated    = optional(bool, false)
     image                     = optional(string)
     signer_image              = optional(string)
@@ -64,4 +65,10 @@ variable "registry" {
     }))
   })
   default = {}
+}
+
+variable "playground_running" {
+  description = "Run the dev Seen playground task. Off by default to save cost."
+  type        = bool
+  default     = false
 }

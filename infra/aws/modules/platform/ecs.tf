@@ -243,7 +243,7 @@ resource "aws_ecs_service" "ssr" {
   }
 
   network_configuration {
-    subnets          = [for subnet in aws_subnet.public : subnet.id]
+    subnets          = data.aws_subnets.public[0].ids
     security_groups  = [aws_security_group.ssr[0].id]
     assign_public_ip = true
   }
@@ -265,7 +265,7 @@ resource "aws_ecs_service" "ssr" {
     ignore_changes = [task_definition]
   }
 
-  depends_on = [aws_lb_listener.https]
+  depends_on = [aws_lb_listener_rule.hosts]
 }
 
 resource "aws_ecs_task_definition" "playground" {
@@ -323,8 +323,8 @@ resource "aws_ecs_service" "playground" {
   }
 
   network_configuration {
-    subnets          = [for subnet in aws_subnet.isolated : subnet.id]
-    security_groups  = [aws_security_group.playground[0].id]
+    subnets          = data.aws_subnets.isolated[0].ids
+    security_groups  = [aws_security_group.playground[0].id, data.aws_security_group.isolated_clients[0].id]
     assign_public_ip = false
   }
 
@@ -343,5 +343,5 @@ resource "aws_ecs_service" "playground" {
     ignore_changes = [task_definition]
   }
 
-  depends_on = [aws_lb_listener.https, aws_vpc_endpoint.interface]
+  depends_on = [aws_lb_listener_rule.paths, data.aws_vpc_endpoint.isolated]
 }

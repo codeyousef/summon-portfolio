@@ -1,16 +1,3 @@
-resource "aws_lb" "main" {
-  count = local.enabled
-
-  name                       = local.name
-  load_balancer_type         = "application"
-  internal                   = false
-  security_groups            = [aws_security_group.alb[0].id]
-  subnets                    = [for subnet in aws_subnet.public : subnet.id]
-  drop_invalid_header_fields = true
-  enable_deletion_protection = !local.is_dev
-  idle_timeout               = 120
-}
-
 resource "aws_lb_target_group" "ssr" {
   count = local.enabled
 
@@ -18,7 +5,7 @@ resource "aws_lb_target_group" "ssr" {
   port                 = 8080
   protocol             = "HTTP"
   target_type          = "ip"
-  vpc_id               = aws_vpc.main[0].id
+  vpc_id               = data.aws_vpc.edge[0].id
   deregistration_delay = 30
 
   # Fifth Wall game state lives in process memory, so a viewer must keep
@@ -45,7 +32,7 @@ resource "aws_lb_target_group" "playground" {
   port                 = 8080
   protocol             = "HTTP"
   target_type          = "ip"
-  vpc_id               = aws_vpc.main[0].id
+  vpc_id               = data.aws_vpc.edge[0].id
   deregistration_delay = 15
 
   health_check {
@@ -57,123 +44,84 @@ resource "aws_lb_target_group" "playground" {
   }
 }
 
-# Unknown hosts are rejected; every served host has an explicit rule.
-resource "aws_lb_listener" "https" {
+# The shared listener selects this environment's certificate by SNI.
+resource "aws_lb_listener_certificate" "origin" {
   count = local.edge
 
-  load_balancer_arn = aws_lb.main[0].arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = aws_acm_certificate_validation.origin[0].certificate_arn
-
-  default_action {
-    type = "fixed-response"
-
-    fixed_response {
-      content_type = "text/plain"
-      message_body = "Not found"
-      status_code  = "404"
-    }
-  }
+  listener_arn    = data.aws_lb_listener.edge[0].arn
+  certificate_arn = aws_acm_certificate_validation.origin[0].certificate_arn
 }
 
 locals {
-  # Mirrors cloudflare/portfolio-edge/src/routing.ts. Path routes apply to
-  # every host, exactly as the Worker classified them before host dispatch.
-  rewrite_routes = merge(
-    {
-      seen = {
-        priority  = 20
-        paths     = ["/seen", "/seen/*"]
-        target    = "playground"
-        host      = "seen.${local.host_suffix}"
-        url_regex = "^/seen/?(.*)$"
-      }
-      seen_tools = {
-        priority  = 21
-        paths     = ["/playground", "/playground/*", "/api/seen/run", "/api/seen/run/*"]
-        target    = "playground"
-        host      = "seen.${local.host_suffix}"
-        url_regex = ""
-      }
-    },
-    {
-      for index, project in local.ecosystem_projects : project => {
-        priority  = 30 + index
+  # Dev and prod share one listener, so every rule is scoped to this
+  # environment's hosts and uses its own priority range. Dev's wildcard sorts
+  # ahead of every prod rule.
+  priority_base = local.is_dev ? 100 : 1000
+
+  host_condition_sets = local.is_dev ? [[local.hosts.main, "*.${local.host_suffix}"]] : chunklist(local.host_names, 3)
+
+  # Mirrors cloudflare/portfolio-edge/src/routing.ts. Each route has at most
+  # two path values so a host chunk plus paths fits the five-value limit.
+  path_routes = concat(
+    [
+      # Worker-only internal API surface; never reachable from the public edge.
+      { key = "internal", paths = ["/internal/*"], action = "not-found", target = null, auth = false, host = "", url_regex = "" },
+      # GitHub signs docs-invalidation webhooks; the application verifies them.
+      { key = "github-hook", paths = ["/__hooks/github"], action = "forward", target = "ssr", auth = false, host = "", url_regex = "" },
+    ],
+    local.playground_enabled ? [
+      { key = "seen", paths = ["/seen", "/seen/*"], action = "forward", target = "playground", auth = true, host = "seen.${local.host_suffix}", url_regex = "^/seen/?(.*)$" },
+      { key = "playground", paths = ["/playground", "/playground/*"], action = "forward", target = "playground", auth = true, host = "seen.${local.host_suffix}", url_regex = "" },
+      { key = "seen-run", paths = ["/api/seen/run", "/api/seen/run/*"], action = "forward", target = "playground", auth = true, host = "seen.${local.host_suffix}", url_regex = "" },
+    ] : [],
+    [
+      for project in local.ecosystem_projects : {
+        key       = project
         paths     = ["/${project}", "/${project}/*"]
+        action    = "forward"
         target    = "ssr"
+        auth      = true
         host      = "${project}.${local.host_suffix}"
         url_regex = "^/${project}/?(.*)$"
       }
-    },
+    ],
   )
 
-  # The playground rules exist only while the playground runs; until then
-  # those paths fall through to SSR like any other dynamic route.
-  active_rewrite_routes = {
-    for key, route in local.rewrite_routes : key => route
-    if route.target == "ssr" || local.playground_enabled
+  route_order = ["internal", "github-hook", "seen", "playground", "seen-run", "summon", "materia", "sigil", "aether"]
+
+  path_rules = {
+    for pair in setproduct(local.path_routes, range(length(local.host_condition_sets))) :
+    "${pair[0].key}-${pair[1]}" => merge(pair[0], {
+      hosts    = local.host_condition_sets[pair[1]]
+      priority = local.priority_base + index(local.route_order, pair[0].key) * 10 + pair[1]
+    })
   }
+
+  host_rule_sets = local.is_dev ? local.host_condition_sets : chunklist(local.host_names, 5)
 
   target_group_arns = merge(
     var.resources_enabled ? { ssr = aws_lb_target_group.ssr[0].arn } : {},
     local.playground_enabled ? { playground = aws_lb_target_group.playground[0].arn } : {},
   )
 
-  # ALB rules accept at most five condition values, so hosts are chunked.
-  host_chunks = chunklist(local.host_names, 4)
+  dev_gate = local.is_dev && var.resources_enabled ? {
+    user_pool_arn       = aws_cognito_user_pool.dev_gate[0].arn
+    user_pool_client_id = aws_cognito_user_pool_client.dev_gate[0].id
+    user_pool_domain    = aws_cognito_user_pool_domain.dev_gate[0].domain
+  } : null
 }
 
-# Worker-only internal API surface; never reachable from the public edge.
-resource "aws_lb_listener_rule" "internal" {
-  count = local.edge
+resource "aws_lb_listener_rule" "paths" {
+  for_each = local.edge_enabled ? local.path_rules : {}
 
-  listener_arn = aws_lb_listener.https[0].arn
-  priority     = 10
-
-  condition {
-    path_pattern {
-      values = ["/internal/*"]
-    }
-  }
-
-  action {
-    type = "fixed-response"
-
-    fixed_response {
-      content_type = "text/plain"
-      message_body = "Not found"
-      status_code  = "404"
-    }
-  }
-}
-
-# GitHub delivers signed docs-invalidation webhooks; the application verifies
-# the signature, so this path bypasses the interactive dev gate.
-resource "aws_lb_listener_rule" "github_hook" {
-  count = local.edge
-
-  listener_arn = aws_lb_listener.https[0].arn
-  priority     = 11
-
-  condition {
-    path_pattern {
-      values = ["/__hooks/github"]
-    }
-  }
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ssr[0].arn
-  }
-}
-
-resource "aws_lb_listener_rule" "rewrite" {
-  for_each = local.edge_enabled ? local.active_rewrite_routes : {}
-
-  listener_arn = aws_lb_listener.https[0].arn
+  listener_arn = data.aws_lb_listener.edge[0].arn
   priority     = each.value.priority
+
+  condition {
+    host_header {
+      values = each.value.hosts
+    }
+  }
 
   condition {
     path_pattern {
@@ -181,13 +129,17 @@ resource "aws_lb_listener_rule" "rewrite" {
     }
   }
 
-  transform {
-    type = "host-header-rewrite"
+  dynamic "transform" {
+    for_each = each.value.host == "" ? [] : [each.value.host]
 
-    host_header_rewrite_config {
-      rewrite {
-        regex   = "^.*$"
-        replace = each.value.host
+    content {
+      type = "host-header-rewrite"
+
+      host_header_rewrite_config {
+        rewrite {
+          regex   = "^.*$"
+          replace = transform.value
+        }
       }
     }
   }
@@ -208,49 +160,67 @@ resource "aws_lb_listener_rule" "rewrite" {
   }
 
   dynamic "action" {
-    for_each = local.is_dev ? [1] : []
+    for_each = each.value.auth && local.dev_gate != null ? [local.dev_gate] : []
 
     content {
       type = "authenticate-cognito"
 
       authenticate_cognito {
-        user_pool_arn              = aws_cognito_user_pool.dev_gate[0].arn
-        user_pool_client_id        = aws_cognito_user_pool_client.dev_gate[0].id
-        user_pool_domain           = aws_cognito_user_pool_domain.dev_gate[0].domain
+        user_pool_arn              = action.value.user_pool_arn
+        user_pool_client_id        = action.value.user_pool_client_id
+        user_pool_domain           = action.value.user_pool_domain
         on_unauthenticated_request = "authenticate"
         session_timeout            = 43200
       }
     }
   }
 
-  action {
-    type             = "forward"
-    target_group_arn = local.target_group_arns[each.value.target]
-  }
-}
+  dynamic "action" {
+    for_each = each.value.action == "not-found" ? [1] : []
 
-resource "aws_lb_listener_rule" "hosts" {
-  count = local.edge_enabled ? length(local.host_chunks) : 0
+    content {
+      type = "fixed-response"
 
-  listener_arn = aws_lb_listener.https[0].arn
-  priority     = 100 + count.index
-
-  condition {
-    host_header {
-      values = local.host_chunks[count.index]
+      fixed_response {
+        content_type = "text/plain"
+        message_body = "Not found"
+        status_code  = "404"
+      }
     }
   }
 
   dynamic "action" {
-    for_each = local.is_dev ? [1] : []
+    for_each = each.value.action == "forward" ? [each.value.target] : []
+
+    content {
+      type             = "forward"
+      target_group_arn = local.target_group_arns[action.value]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "hosts" {
+  count = local.edge_enabled ? length(local.host_rule_sets) : 0
+
+  listener_arn = data.aws_lb_listener.edge[0].arn
+  priority     = local.priority_base + 100 + count.index
+
+  condition {
+    host_header {
+      values = local.host_rule_sets[count.index]
+    }
+  }
+
+  dynamic "action" {
+    for_each = local.dev_gate == null ? [] : [local.dev_gate]
 
     content {
       type = "authenticate-cognito"
 
       authenticate_cognito {
-        user_pool_arn              = aws_cognito_user_pool.dev_gate[0].arn
-        user_pool_client_id        = aws_cognito_user_pool_client.dev_gate[0].id
-        user_pool_domain           = aws_cognito_user_pool_domain.dev_gate[0].domain
+        user_pool_arn              = action.value.user_pool_arn
+        user_pool_client_id        = action.value.user_pool_client_id
+        user_pool_domain           = action.value.user_pool_domain
         on_unauthenticated_request = "authenticate"
         session_timeout            = 43200
       }

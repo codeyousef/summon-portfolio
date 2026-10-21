@@ -23,16 +23,6 @@ locals {
 
   host_names = sort(values(local.hosts))
 
-  vpc_cidr = coalesce(var.vpc_cidr, local.is_dev ? "10.80.0.0/16" : "10.81.0.0/16")
-
-  public_subnets = {
-    for index, zone in var.availability_zones : zone => cidrsubnet(local.vpc_cidr, 4, index)
-  }
-
-  isolated_subnets = {
-    for index, zone in var.availability_zones : zone => cidrsubnet(local.vpc_cidr, 4, index + 8)
-  }
-
   # Listeners, CloudFront, public records, and services need issued certificates.
   edge_enabled       = var.resources_enabled && var.certificates_validated
   edge               = local.edge_enabled ? 1 : 0

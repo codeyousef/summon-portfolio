@@ -41,29 +41,6 @@ variable "zone_name" {
   default     = "yousef.codes"
 }
 
-variable "vpc_cidr" {
-  description = "VPC CIDR. Dev and prod must not overlap."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition     = var.vpc_cidr == null || can(cidrnetmask(var.vpc_cidr))
-    error_message = "vpc_cidr must be a valid IPv4 CIDR."
-  }
-}
-
-variable "availability_zones" {
-  description = "Two eu-north-1 availability zones."
-  type        = list(string)
-  default     = ["eu-north-1a", "eu-north-1b"]
-
-  validation {
-    condition     = length(var.availability_zones) == 2
-    error_message = "Exactly two availability zones are required."
-  }
-}
-
 variable "dev_gate_owner_email" {
   description = "Only Cognito user allowed through the development gate. Supply it through the ignored tfvars file."
   type        = string

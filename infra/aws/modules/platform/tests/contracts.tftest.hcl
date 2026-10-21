@@ -5,6 +5,37 @@ mock_provider "aws" {
     }
   }
 
+  mock_data "aws_vpc" {
+    defaults = {
+      id = "vpc-0123456789abcdef0"
+    }
+  }
+
+  mock_data "aws_subnets" {
+    defaults = {
+      ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+    }
+  }
+
+  mock_data "aws_security_group" {
+    defaults = {
+      id = "sg-0123456789abcdef0"
+    }
+  }
+
+  mock_data "aws_lb" {
+    defaults = {
+      arn      = "arn:aws:elasticloadbalancing:eu-north-1:123456789012:loadbalancer/app/portfolio-edge/0123456789abcdef"
+      dns_name = "portfolio-edge-123456789.eu-north-1.elb.amazonaws.com"
+    }
+  }
+
+  mock_data "aws_lb_listener" {
+    defaults = {
+      arn = "arn:aws:elasticloadbalancing:eu-north-1:123456789012:listener/app/portfolio-edge/0123456789abcdef/0123456789abcdef"
+    }
+  }
+
   mock_resource "aws_iam_role" {
     defaults = {
       arn = "arn:aws:iam::123456789012:role/mock"
@@ -195,7 +226,7 @@ run "development_is_inert_by_default" {
   }
 
   assert {
-    condition     = length(aws_vpc.main) == 0 && length(aws_cloudfront_distribution.site) == 0
+    condition     = length(data.aws_vpc.edge) == 0 && length(aws_cloudfront_distribution.site) == 0
     error_message = "No network or edge resources may exist while the gate is closed."
   }
 }
@@ -254,12 +285,12 @@ run "development_is_gated_and_complete" {
   }
 
   assert {
-    condition     = length(aws_vpc_endpoint.interface) == 3
-    error_message = "The isolated playground needs ECR and Logs interface endpoints."
+    condition     = length(data.aws_vpc_endpoint.isolated) == 3
+    error_message = "The isolated playground requires the edge's ECR and Logs interface endpoints."
   }
 
   assert {
-    condition     = toset([for index in aws_dynamodb_table.app["documents"].global_secondary_index : index.name]) == toset(["order-index", "lookup-index"])
+    condition     = output.table_indexes.documents == { "lookup-index" = ["lpk", "sk"], "order-index" = ["opk", "osk"] }
     error_message = "The documents table needs the application's order and lookup indexes."
   }
 
@@ -274,8 +305,24 @@ run "development_is_gated_and_complete" {
   }
 
   assert {
-    condition     = length(aws_lb_listener_rule.rewrite) == 6
-    error_message = "Seen and the four ecosystem rewrite routes must be reproduced."
+    condition     = length(aws_lb_listener_rule.paths) == 9
+    error_message = "Internal, hook, three Seen, and four ecosystem routes must be reproduced."
+  }
+
+  assert {
+    condition = alltrue([
+      for rule in values(output.path_rules) :
+      rule.priority < 1000 && contains(rule.hosts, "*.dev.yousef.codes")
+    ])
+    error_message = "Dev rules must stay host-scoped and ahead of every production rule."
+  }
+
+  assert {
+    condition = alltrue([
+      for key, rule in aws_lb_listener_rule.paths :
+      output.path_rules[key].auth == (length([for action in rule.action : action if action.type == "authenticate-cognito"]) == 1)
+    ])
+    error_message = "Every gated dev route must authenticate through Cognito."
   }
 }
 
@@ -299,7 +346,8 @@ run "certificates_precede_the_edge" {
   assert {
     condition = (
       length(aws_acm_certificate_validation.origin) == 0 &&
-      length(aws_lb_listener.https) == 0 &&
+      length(aws_lb_listener_certificate.origin) == 0 &&
+      length(aws_lb_listener_rule.paths) == 0 &&
       length(aws_cloudfront_distribution.site) == 0 &&
       length(aws_route53_record.hosts) == 0 &&
       length(aws_ecs_service.ssr) == 0
@@ -341,13 +389,21 @@ run "production_shape" {
   }
 
   assert {
-    condition     = length(aws_lb_listener_rule.rewrite) == 4
-    error_message = "Without a playground image the Seen routes fall through to SSR."
+    condition     = length(aws_lb_listener_rule.paths) == 18
+    error_message = "Without a playground the six remaining routes repeat for each of three host chunks."
   }
 
   assert {
-    condition     = aws_lb.main[0].enable_deletion_protection
-    error_message = "The production ALB must be deletion protected."
+    condition = alltrue([
+      for rule in values(output.path_rules) :
+      rule.priority >= 1000 && !anytrue([for host in rule.hosts : strcontains(host, "*")])
+    ])
+    error_message = "Production rules use exact hosts in their own priority range."
+  }
+
+  assert {
+    condition     = alltrue([for rule in aws_lb_listener_rule.paths : alltrue([for action in rule.action : action.type != "authenticate-cognito"])])
+    error_message = "Production is public."
   }
 }
 

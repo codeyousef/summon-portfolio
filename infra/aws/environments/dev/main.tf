@@ -42,6 +42,7 @@ module "registry" {
   region                    = var.region
   enabled                   = var.registry.enabled
   kms_keys_enabled          = var.registry.kms_keys_enabled
+  running                   = var.registry.running
   certificates_validated    = var.registry.certificates_validated
   network                   = module.platform.network
   image                     = var.registry.image

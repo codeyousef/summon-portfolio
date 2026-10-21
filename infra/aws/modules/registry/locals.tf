@@ -8,7 +8,8 @@ locals {
 
   kms_ready = var.enabled && var.kms_keys_enabled
   # Runtimes need the ceremony's public keys; signers also need the pinned root.
-  edge_ready    = var.enabled && var.certificates_validated
+  active        = var.enabled && var.running
+  edge_ready    = local.active && var.certificates_validated
   routine_ready = local.edge_ready && var.image != null && length(var.online_public_keys_hex) == 4
   signers_ready = local.edge_ready && local.kms_ready && var.signer_image != null && length(var.online_public_keys_hex) == 4 && var.trusted_root_v1_sha256 != null
 
