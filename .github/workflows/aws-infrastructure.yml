@@ -1,0 +1,205 @@
+name: Plan and apply AWS infrastructure
+
+# One saved plan per run. The plan identity writes it to the private state
+# bucket; the operator reviews that exact object locally
+# (infra/aws/scripts/review-saved-plan.sh) before approving the protected
+# apply job, which applies it only if its digest still matches. No plan
+# content is written to the log or to a workflow artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: OpenTofu environment root
+        type: choice
+        options: [dev, prod]
+        default: dev
+      apply:
+        description: Apply the saved plan after protected review
+        type: boolean
+        default: false
+      confirm:
+        description: Type "apply saved <environment> plan" when apply is enabled
+        type: string
+        default: ''
+
+concurrency:
+  group: portfolio-aws-infrastructure-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+  AWS_ACCOUNT_ID: ${{ vars.AWS_PORTFOLIO_ACCOUNT_ID }}
+  TARGET: ${{ inputs.environment }}
+  TOFU_VERSION: 1.12.5
+  STATE_BUCKET: yousef-portfolio-tofu-state
+
+jobs:
+  plan:
+    name: Create saved plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: portfolio-aws-${{ inputs.environment }}-plan
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      plan-key: ${{ steps.plan.outputs.plan-key }}
+      plan-sha256: ${{ steps.plan.outputs.plan-sha256 }}
+    steps:
+      - name: Validate the run contract
+        shell: bash
+        env:
+          APPLY: ${{ inputs.apply }}
+          CONFIRM: ${{ inputs.confirm }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          set -euo pipefail
+          [[ "${AWS_ACCOUNT_ID}" =~ ^[0-9]{12}$ ]] || { echo "Missing variable AWS_PORTFOLIO_ACCOUNT_ID." >&2; exit 1; }
+          [[ "${REPOSITORY_ID}" == "1091564909" ]]
+          [[ "${WORKFLOW_SHA}" == "${GITHUB_SHA}" ]]
+          case "${TARGET}" in
+            prod) [[ "${GITHUB_REF}" == "refs/heads/master" ]] || { echo "Production plans only from master." >&2; exit 1; } ;;
+            dev) [[ "${GITHUB_REF}" == "refs/heads/dev" ]] || { echo "Development plans only from dev." >&2; exit 1; } ;;
+            *) echo "Unsupported environment." >&2; exit 1 ;;
+          esac
+          if [[ "${APPLY}" == "true" ]]; then
+            [[ "${CONFIRM}" == "apply saved ${TARGET} plan" ]] || { echo "Missing apply confirmation." >&2; exit 1; }
+          fi
+
+      - name: Check out the exact workflow commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Assume the read-only plan identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          token_file="${RUNNER_TEMP}/aws-web-identity-token"
+          curl -fsS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r '.value' > "${token_file}"
+          chmod 600 "${token_file}"
+          {
+            echo "AWS_WEB_IDENTITY_TOKEN_FILE=${token_file}"
+            echo "AWS_ROLE_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:role/portfolio-ci-${TARGET}-plan"
+            echo "AWS_ROLE_SESSION_NAME=plan-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Write backend and variables
+        shell: bash
+        env:
+          TFVARS_B64: ${{ secrets.PORTFOLIO_AWS_TFVARS_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          root="infra/aws/environments/${TARGET}"
+          [[ -n "${TFVARS_B64}" ]] || { echo "Environment secret PORTFOLIO_AWS_TFVARS_B64 is not configured." >&2; exit 1; }
+          printf '%s' "${TFVARS_B64}" | base64 --decode > "${root}/terraform.tfvars"
+          cp "${root}/backend.hcl.example" "${root}/backend.hcl"
+
+      - name: Create and store the saved plan
+        id: plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          root="infra/aws/environments/${TARGET}"
+          tofu -chdir="${root}" init -input=false -backend-config=backend.hcl > /dev/null
+          # Plan output can contain configuration values; keep it off the log.
+          if ! tofu -chdir="${root}" plan -input=false -lock-timeout=5m -out=saved.tfplan > "${RUNNER_TEMP}/plan.log" 2>&1; then
+            echo "tofu plan failed; rerun locally to inspect the error." >&2
+            exit 1
+          fi
+          tofu -chdir="${root}" show -json saved.tfplan > "${RUNNER_TEMP}/plan.json"
+          [[ "$(jq -r '.errored // false' "${RUNNER_TEMP}/plan.json")" == "false" ]] || { echo "The plan errored." >&2; exit 1; }
+          key="plans/${TARGET}/${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tfplan"
+          digest="$(sha256sum "${root}/saved.tfplan" | cut -d' ' -f1)"
+          aws s3api put-object --bucket "${STATE_BUCKET}" --key "${key}" --body "${root}/saved.tfplan" \
+            --if-none-match '*' --region "${AWS_REGION}" > /dev/null
+          echo "plan-key=${key}" >> "${GITHUB_OUTPUT}"
+          echo "plan-sha256=${digest}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "### Saved ${TARGET} plan"
+            echo
+            echo "Object: \`s3://${STATE_BUCKET}/${key}\`"
+            echo
+            echo "SHA-256: \`${digest}\`"
+            echo
+            echo "| Action | Resources |"
+            echo "| --- | --- |"
+            jq -r '[.resource_changes[]?.change.actions | join("+")] | group_by(.) | map("| \(.[0]) | \(length) |") | .[]' "${RUNNER_TEMP}/plan.json"
+            echo
+            echo "Review locally: \`infra/aws/scripts/review-saved-plan.sh ${TARGET} ${key} ${digest}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          rm -f "${RUNNER_TEMP}/plan.json" "${RUNNER_TEMP}/plan.log" "${root}/saved.tfplan" "${root}/terraform.tfvars"
+
+  apply:
+    name: Apply the reviewed saved plan
+    if: inputs.apply
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: portfolio-aws-${{ inputs.environment }}-apply
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PLAN_KEY: ${{ needs.plan.outputs.plan-key }}
+      PLAN_SHA256: ${{ needs.plan.outputs.plan-sha256 }}
+    steps:
+      - name: Check out the exact workflow commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Assume the apply identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          token_file="${RUNNER_TEMP}/aws-web-identity-token"
+          curl -fsS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r '.value' > "${token_file}"
+          chmod 600 "${token_file}"
+          {
+            echo "AWS_WEB_IDENTITY_TOKEN_FILE=${token_file}"
+            echo "AWS_ROLE_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:role/portfolio-ci-${TARGET}-apply"
+            echo "AWS_ROLE_SESSION_NAME=apply-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Apply only the digest-matched saved plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          root="infra/aws/environments/${TARGET}"
+          [[ "${PLAN_KEY}" == "plans/${TARGET}/${GITHUB_SHA}-${GITHUB_RUN_ID}-"*".tfplan" ]]
+          [[ "${PLAN_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+          cp "${root}/backend.hcl.example" "${root}/backend.hcl"
+          tofu -chdir="${root}" init -input=false -backend-config=backend.hcl > /dev/null
+          aws s3api get-object --bucket "${STATE_BUCKET}" --key "${PLAN_KEY}" --region "${AWS_REGION}" "${root}/saved.tfplan" > /dev/null
+          echo "${PLAN_SHA256}  ${root}/saved.tfplan" | sha256sum --check --quiet
+          # Apply output repeats planned values; keep it off the log.
+          if ! tofu -chdir="${root}" apply -input=false -lock-timeout=5m saved.tfplan > "${RUNNER_TEMP}/apply.log" 2>&1; then
+            grep -E '^(Error|│ Error):' "${RUNNER_TEMP}/apply.log" | sed 's/:.*//' | sort | uniq -c >&2 || true
+            echo "tofu apply failed; inspect the state and rerun the plan." >&2
+            exit 1
+          fi
+          grep -E '^Apply complete!' "${RUNNER_TEMP}/apply.log"
+          aws s3api delete-object --bucket "${STATE_BUCKET}" --key "${PLAN_KEY}" --region "${AWS_REGION}" > /dev/null
+          rm -f "${RUNNER_TEMP}/apply.log" "${root}/saved.tfplan"

@@ -113,6 +113,22 @@ Saved plans, rendered plans, backend files, and tfvars are ignored and must
 never be committed, uploaded as plaintext artifacts, or printed to public
 logs.
 
+Production plans and applies run only through the `Plan and apply AWS
+infrastructure` workflow from `master`, on the separate
+`portfolio-ci-prod-plan` and `portfolio-ci-prod-apply` identities. Each
+protected environment holds the root's variables as the
+`PORTFOLIO_AWS_TFVARS_B64` secret. The plan job stores its saved plan at
+`plans/<env>/` in the state bucket and reports only the object key, its
+SHA-256, and per-action resource counts. Review that exact plan before
+approving the apply job:
+
+```bash
+infra/aws/scripts/review-saved-plan.sh prod plans/prod/<sha>-<run>-<attempt>.tfplan <sha256>
+```
+
+The apply job applies the object only if its digest matches the plan job's
+output, then deletes it.
+
 Local contract tests need no AWS access:
 
 ```bash

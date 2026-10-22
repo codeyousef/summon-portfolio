@@ -63,6 +63,14 @@ data "aws_iam_policy_document" "ci_state" {
       "${local.state_bucket_arn}/state/${each.value.environment}/*.tflock",
     ]
   }
+
+  # The plan job stores its saved plan here instead of in a workflow artifact;
+  # the apply job fetches that exact object, checks its digest, and removes it.
+  statement {
+    sid       = each.value.kind == "apply" ? "ConsumeSavedPlans" : "StoreSavedPlans"
+    actions   = each.value.kind == "apply" ? ["s3:GetObject", "s3:DeleteObject"] : ["s3:PutObject"]
+    resources = ["${local.state_bucket_arn}/plans/${each.value.environment}/*"]
+  }
 }
 
 data "aws_iam_policy_document" "ci_guardrails" {
@@ -128,7 +136,20 @@ data "aws_iam_policy_document" "ci_guardrails" {
     actions = ["s3:PutObject", "s3:DeleteObject"]
     not_resources = [
       "${local.state_bucket_arn}/state/${each.value.environment}/*",
+      "${local.state_bucket_arn}/plans/${each.value.environment}/*",
     ]
+  }
+
+  # Only the plan identity may create a saved plan for its apply to consume.
+  dynamic "statement" {
+    for_each = each.value.kind == "apply" ? [1] : []
+
+    content {
+      sid       = "DenyWritingSavedPlans"
+      effect    = "Deny"
+      actions   = ["s3:PutObject"]
+      resources = ["${local.state_bucket_arn}/plans/*"]
+    }
   }
 }
 

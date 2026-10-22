@@ -78,6 +78,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
       days_after_initiation = 7
     }
   }
+
+  # Saved plans that were never applied.
+  rule {
+    id     = "expire-unapplied-saved-plans"
+    status = "Enabled"
+
+    filter {
+      prefix = "plans/"
+    }
+
+    expiration {
+      days = 7
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+  }
 }
 
 data "aws_iam_policy_document" "state" {
