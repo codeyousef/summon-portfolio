@@ -244,6 +244,7 @@ data "aws_iam_policy_document" "signing_key" {
       "kms:DisableKey",
       "kms:EnableKey",
       "kms:GetKeyPolicy",
+      "kms:GetKeyRotationStatus",
       "kms:GetPublicKey",
       "kms:ListAliases",
       "kms:ListResourceTags",
