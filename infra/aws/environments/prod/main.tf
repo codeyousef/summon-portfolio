@@ -44,5 +44,7 @@ module "registry" {
   schedules_enabled         = var.registry.schedules_enabled
   refresh_schedules_enabled = var.registry.refresh_schedules_enabled
   api_lambda_enabled        = var.registry.api_lambda_enabled
+  signer_lambda_enabled     = var.registry.signer_lambda_enabled
+  signer_lambda_serving     = var.registry.signer_lambda_serving
   api_lambda_serving        = var.registry.api_lambda_serving
 }

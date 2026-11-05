@@ -133,6 +133,18 @@ variable "schedules_enabled" {
   default     = false
 }
 
+variable "signer_lambda_enabled" {
+  description = "Create the TUF signers on Lambda."
+  type        = bool
+  default     = false
+}
+
+variable "signer_lambda_serving" {
+  description = "Send coordinator signing calls to the Lambda signers."
+  type        = bool
+  default     = false
+}
+
 variable "api_lambda_enabled" {
   description = "Create the read-only API on Lambda."
   type        = bool
