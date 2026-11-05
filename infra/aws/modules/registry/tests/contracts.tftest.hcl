@@ -233,6 +233,14 @@ run "production_is_read_only" {
     condition     = contains(keys(local.runtime_environment["online-bootstrap"]), "REGISTRY_DYNAMODB_TABLE_PREFIX")
     error_message = "Jobs with a publication lease need the table prefix."
   }
+
+  assert {
+    condition = alltrue([
+      for name in ["online-bootstrap", "targets-renewal", "release-refresh"] :
+      local.runtimes[name].tables.releases == "r" && local.runtimes[name].tables.state == "lease"
+    ])
+    error_message = "Publishing coordinators read releases and hold only the state lease."
+  }
 }
 
 run "rejects_wrong_signer_repository" {

@@ -169,7 +169,7 @@ transactions are authorized by `PutItem` on each table. No runtime needs
 | release / security actions | all five actions on every table except release-uploads (read only) | metadata: read, `PutObject` on versioned metadata (never `root.json` or `timestamp.json`) |
 | source / scan workers | all five actions on packages, releases, review-artifacts, review-artifact-index | quarantine: read |
 | promote worker | all five actions on every table | quarantine: read, `DeleteObject`; public: read, `PutObject`; metadata: read, `PutObject` on versioned metadata |
-| refresh, recovery, bootstrap-online, targets import, root import | state: `GetItem`, `UpdateItem` | metadata: read, `PutObject` on versioned metadata; root import also `root.json` |
+| refresh, recovery, bootstrap-online, targets import, root import | state: `GetItem`, `UpdateItem`; packages, releases, review-artifacts, review-artifact-index: `GetItem`, `Query`, `Scan` | metadata: read, `PutObject` on versioned metadata; root import also `root.json` |
 | import-offline-bootstrap | none | metadata: read, `PutObject` on versioned metadata and `root.json` |
 | verify-root-chain | none | metadata: read |
 
