@@ -1,0 +1,10 @@
+aws_account_id       = "000000000000"
+resources_enabled    = false
+dev_gate_owner_email = "owner@example.com"
+schedules_enabled    = false
+
+# Set after images are pushed, pinned by digest:
+# images = {
+#   ssr        = "000000000000.dkr.ecr.eu-north-1.amazonaws.com/portfolio-ssr@sha256:<digest>"
+#   playground = "000000000000.dkr.ecr.eu-north-1.amazonaws.com/seen-playground@sha256:<digest>"
+# }

@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "__SIGNER_SCRIPT_NAME__",
+  "main": "src/signers/__SIGNER_ROLE__.ts",
+  "compatibility_date": "2026-08-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "SEEN_ENVIRONMENT": "__RUNTIME_ENVIRONMENT__",
+    "SEEN_REPOSITORY_ID": "__REPOSITORY_ID__",
+    "SEEN_SIGNER_ROLE": "__SIGNER_ROLE__",
+    "SEEN_SIGNER_KEY_ID": "__SIGNER_KEY_ID__",
+    "SEEN_SIGNER_AUDIENCE": "https://seen-signer-__SIGNER_ROLE__.internal"
+  },
+  "secrets": {
+    "required": ["__SIGNING_KEY_BINDING__", "SEEN_SIGNER_CALL_TOKEN"]
+  },
+  "services": [
+    { "binding": "SEEN_SIGNER_GUARD", "service": "__SIGNER_GUARD_SERVICE__" }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SEEN_SIGNING_ORDER",
+        "class_name": "SeenSigningOrderDO",
+        "script_name": "__EDGE_SCRIPT_NAME__"
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "enabled": true, "invocation_logs": true, "persist": true },
+    "traces": { "enabled": true, "persist": true }
+  }
+}

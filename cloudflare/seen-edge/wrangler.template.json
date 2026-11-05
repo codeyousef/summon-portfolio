@@ -1,0 +1,121 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "__SCRIPT_NAME__",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "placement": {
+    "mode": "smart"
+  },
+  "vars": {
+    "SEEN_ENVIRONMENT": "__RUNTIME_ENVIRONMENT__",
+    "SEEN_REPOSITORY_ID": "__REPOSITORY_ID__",
+    "SEEN_REGISTRY_ORIGIN": "__REGISTRY_ORIGIN__",
+    "SEEN_OBJECT_PREFIX": "v1",
+    "FIRESTORE_PROJECT_ID": "__FIRESTORE_PROJECT_ID__",
+    "FIRESTORE_DATABASE_ID": "__FIRESTORE_DATABASE_ID__",
+    "SEEN_QUARANTINE_BUCKET_NAME": "__SEEN_QUARANTINE_BUCKET__",
+    "SEEN_PUBLIC_BUCKET_NAME": "__SEEN_PUBLIC_BUCKET__",
+    "SEEN_METADATA_BUCKET_NAME": "__SEEN_METADATA_BUCKET__",
+    "SEEN_R2_ENDPOINT": "__SEEN_R2_ENDPOINT__",
+    "SEEN_RELEASES_PUBLIC_KEY_HEX": "__RELEASES_PUBLIC_KEY_HEX__",
+    "SEEN_SECURITY_PUBLIC_KEY_HEX": "__SECURITY_PUBLIC_KEY_HEX__",
+    "SEEN_SNAPSHOT_PUBLIC_KEY_HEX": "__SNAPSHOT_PUBLIC_KEY_HEX__",
+    "SEEN_TIMESTAMP_PUBLIC_KEY_HEX": "__TIMESTAMP_PUBLIC_KEY_HEX__"
+  },
+  "secrets": {
+    "required": [
+      "SEEN_INTERNAL_API_TOKEN",
+      "FIRESTORE_SERVICE_ACCOUNT_JSON_BASE64",
+      "SEEN_PROMOTION_R2_ACCESS_KEY_ID",
+      "SEEN_PROMOTION_R2_SECRET_ACCESS_KEY",
+      "SEEN_MAINTENANCE_R2_ACCESS_KEY_ID",
+      "SEEN_MAINTENANCE_R2_SECRET_ACCESS_KEY",
+      "SEEN_SIGNER_CALL_TOKEN"
+    ]
+  },
+  "r2_buckets": [
+    { "binding": "SEEN_QUARANTINE", "bucket_name": "__SEEN_QUARANTINE_BUCKET__" },
+    { "binding": "SEEN_PUBLIC", "bucket_name": "__SEEN_PUBLIC_BUCKET__" },
+    { "binding": "SEEN_METADATA", "bucket_name": "__SEEN_METADATA_BUCKET__" },
+    { "binding": "SEEN_PRIVATE", "bucket_name": "__SEEN_PRIVATE_BUCKET__" },
+    { "binding": "SEEN_EVIDENCE", "bucket_name": "__SEEN_EVIDENCE_BUCKET__" },
+    { "binding": "SEEN_BACKUP", "bucket_name": "__SEEN_BACKUP_BUCKET__" }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "SEEN_OPERATIONS_QUEUE", "queue": "__SEEN_OPERATIONS_QUEUE__" },
+      { "binding": "SEEN_OPERATIONS_DLQ", "queue": "__SEEN_OPERATIONS_DLQ__" }
+    ],
+    "consumers": [
+      {
+        "queue": "__SEEN_OPERATIONS_QUEUE__",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "retry_delay": 10,
+        "dead_letter_queue": "__SEEN_OPERATIONS_DLQ__"
+      }
+    ]
+  },
+  "services": [
+    { "binding": "SEEN_RELEASES_SIGNER", "service": "__RELEASES_SIGNER_SCRIPT__" },
+    { "binding": "SEEN_SECURITY_SIGNER", "service": "__SECURITY_SIGNER_SCRIPT__" },
+    { "binding": "SEEN_SNAPSHOT_SIGNER", "service": "__SNAPSHOT_SIGNER_SCRIPT__" },
+    { "binding": "SEEN_TIMESTAMP_SIGNER", "service": "__TIMESTAMP_SIGNER_SCRIPT__" }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "SEEN_RESERVATIONS", "class_name": "SeenReservationDO" },
+      { "name": "SEEN_PROMOTIONS", "class_name": "SeenPromotionDO" },
+      { "name": "SEEN_SIGNING_ORDER", "class_name": "SeenSigningOrderDO" },
+      { "name": "SEEN_REGISTRY_JOBS", "class_name": "SeenRegistryJobContainer" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "SeenReservationDO",
+        "SeenPromotionDO",
+        "SeenSigningOrderDO",
+        "SeenRegistryJobContainer"
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "name": "__SEEN_REGISTRY_JOBS_CONTAINER__",
+      "class_name": "SeenRegistryJobContainer",
+      "image": "../../registry-service/Dockerfile",
+      "image_build_context": "../..",
+      "instance_type": "basic",
+      "max_instances": 8,
+      "rollout_active_grace_period": 3600,
+      "rollout_step_percentage": [25, 50, 100],
+      "constraints": {
+        "regions": ["ENAM", "WNAM"]
+      }
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "SEEN_PROMOTION_WORKFLOW",
+      "name": "__SEEN_PROMOTION_WORKFLOW__",
+      "class_name": "SeenPromotionWorkflow"
+    },
+    {
+      "binding": "SEEN_MAINTENANCE_WORKFLOW",
+      "name": "__SEEN_MAINTENANCE_WORKFLOW__",
+      "class_name": "SeenMaintenanceWorkflow"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "enabled": true, "invocation_logs": true, "persist": true },
+    "traces": { "enabled": true, "persist": true }
+  }
+}

@@ -3,6 +3,7 @@ package code.yousef.portfolio.photography
 import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.StorageOptions
+import com.google.auth.oauth2.GoogleCredentials
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
@@ -25,6 +26,7 @@ data class PhotoAsset(
 
 interface PhotoAssetStore {
     fun keyFor(photoId: String, extension: String): String
+    fun keyFor(photoId: String, extension: String, bytes: ByteArray): String = keyFor(photoId, extension)
     fun save(storageKey: String, contentType: String, bytes: ByteArray)
     fun load(storageKey: String, contentType: String): PhotoAsset?
     fun delete(storageKey: String)
@@ -63,16 +65,25 @@ class LocalPhotoAssetStore(
 
 class GcsPhotoAssetStore(
     private val bucket: String,
-    prefix: String
+    prefix: String,
+    credentials: GoogleCredentials? = null,
+    projectId: String? = null,
 ) : PhotoAssetStore {
-    private val storage = StorageOptions.getDefaultInstance().service
+    private val storage = StorageOptions.newBuilder()
+        .also { builder ->
+            credentials?.let(builder::setCredentials)
+            projectId?.let(builder::setProjectId)
+        }
+        .build()
+        .service
     private val normalizedPrefix = prefix.trim('/').takeIf { it.isNotEmpty() }
 
     override fun keyFor(photoId: String, extension: String): String =
         listOfNotNull(normalizedPrefix, "$photoId.$extension").joinToString("/")
 
     override fun save(storageKey: String, contentType: String, bytes: ByteArray) {
-        val blobInfo = BlobInfo.newBuilder(BlobId.of(bucket, storageKey))
+        val objectKey = gcsCandidateKeys(normalizedPrefix, storageKey).last()
+        val blobInfo = BlobInfo.newBuilder(BlobId.of(bucket, objectKey))
             .setContentType(contentType)
             .build()
         storage.create(blobInfo, bytes)
@@ -86,14 +97,24 @@ class GcsPhotoAssetStore(
     }
 
     override fun delete(storageKey: String) {
-        storage.delete(BlobId.of(bucket, storageKey))
+        gcsCandidateKeys(normalizedPrefix, storageKey).forEach { key ->
+            storage.delete(BlobId.of(bucket, key))
+        }
     }
 
     private fun candidateKeys(storageKey: String): List<String> {
-        val normalized = storageKey.trim('/')
-        val prefixed = normalizedPrefix
-            ?.takeIf { normalized.isNotBlank() && !normalized.startsWith("$it/") }
-            ?.let { "$it/$normalized" }
-        return listOfNotNull(normalized.takeIf { it.isNotBlank() }, prefixed).distinct()
+        return gcsCandidateKeys(normalizedPrefix, storageKey)
     }
+}
+
+internal fun gcsCandidateKeys(prefix: String?, storageKey: String): List<String> {
+    val normalized = storageKey.trim('/')
+    require(normalized.isNotBlank() && !normalized.split('/').any { it == ".." }) { "Invalid GCS storage key" }
+    require(prefix == null || (prefix.isNotBlank() && !prefix.split('/').any { it == ".." })) {
+        "Invalid GCS storage prefix"
+    }
+    val prefixed = prefix
+        ?.takeIf { !normalized.startsWith("$it/") }
+        ?.let { "$it/$normalized" }
+    return listOfNotNull(normalized, prefixed).distinct()
 }

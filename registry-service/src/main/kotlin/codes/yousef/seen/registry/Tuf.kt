@@ -999,7 +999,7 @@ class TufPublisher(
         requireBootstrap()
         val now = clock.instant()
         // Capture the public pointer before attempting the lease. The final
-        // generation-CAS fences this publisher even if the lease expires while
+        // Provider-native version CAS fences this publisher even if the lease expires while
         // KMS or object storage is stalled.
         val expectedTimestamp = storage.getMetadata("timestamp.json")
         val current = runCatching(::readOnlineState).getOrNull()
@@ -1277,7 +1277,7 @@ class TufPublisher(
 
         val committedTimestamp = if (online.timestamp.commitsTimestampPointer) {
             // The remote timestamp authority returns a signature only after its
-            // own generation-CAS. Coordinators intentionally have no mutable
+            // own provider-native version CAS. Coordinators intentionally have no mutable
             // metadata write path in this mode.
             storage.getMetadata("timestamp.json")?.takeIf(timestamp::contentEquals)
         } else if (storage.replaceMetadataIfUnchanged("timestamp.json", expectedTimestamp, timestamp)) {

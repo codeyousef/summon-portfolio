@@ -1,0 +1,247 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "_migration_outbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "mirrorState", "order": "ASCENDING" },
+        { "fieldPath": "aggregateType", "order": "ASCENDING" },
+        { "fieldPath": "aggregateId", "order": "ASCENDING" },
+        { "fieldPath": "expectedRevision", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "building_password_reset_tokens",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "username", "order": "ASCENDING" },
+        { "fieldPath": "used", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_cost_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "project", "order": "ASCENDING" },
+        { "fieldPath": "incurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_cost_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "incurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_cost_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "incurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_cost_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "incurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_cost_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "incurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_cost_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "project", "order": "ASCENDING" },
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "incurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_cost_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "invoiceMonth", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "vendor", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_allocations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "entryId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_allocation_entry_projections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dimensionType", "order": "ASCENDING" },
+        { "fieldPath": "dimensionValue", "order": "ASCENDING" },
+        { "fieldPath": "incurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "project", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "project", "order": "ASCENDING" },
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_user_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_user_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_user_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_user_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_user_daily_rollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_user_daily_rollups_v2",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_reconciliations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "project", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_reconciliations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_reconciliations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_reconciliations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finops_reconciliations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "project", "order": "ASCENDING" },
+        { "fieldPath": "environment", "order": "ASCENDING" },
+        { "fieldPath": "vendor", "order": "ASCENDING" },
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "dayStart", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

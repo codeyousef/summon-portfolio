@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (ignored), then replace the values for one reviewed
+# bootstrap plan. Never put API or R2 credentials in this file.
+cloudflare_account_id = "00000000000000000000000000000000"
+state_bucket_enabled  = false
+state_bucket_name     = "yousef-cloudflare-tofu-state"
+state_bucket_location = "enam"

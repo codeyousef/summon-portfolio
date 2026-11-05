@@ -640,12 +640,15 @@ private class TestSignerMetadataStore(
     var commitCalls: Int = 0
 
     override fun get(filename: String): TufSignerMetadataObject? = objects[filename]?.let {
-        TufSignerMetadataObject(it.copyOf(), if (filename == "timestamp.json") requireNotNull(timestampGeneration) else 1L)
+        TufSignerMetadataObject(
+            it.copyOf(),
+            if (filename == "timestamp.json") requireNotNull(timestampGeneration).toString() else "1",
+        )
     }
 
-    override fun commitTimestamp(expectedGeneration: Long?, bytes: ByteArray): Boolean {
+    override fun commitTimestamp(expectedVersion: String?, bytes: ByteArray): Boolean {
         commitCalls += 1
-        if (rejectCommits || expectedGeneration != timestampGeneration) return false
+        if (rejectCommits || expectedVersion != timestampGeneration?.toString()) return false
         objects["timestamp.json"] = bytes.copyOf()
         timestampGeneration = (timestampGeneration ?: 0L) + 1L
         return true

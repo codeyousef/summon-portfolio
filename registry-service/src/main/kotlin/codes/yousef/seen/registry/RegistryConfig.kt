@@ -29,7 +29,14 @@ data class RegistryConfig(
     val securityToken: String? = null,
     val securityPrincipal: String = "",
     val serverMode: RegistryServerMode = RegistryServerMode.PUBLIC_API,
+    val objectStoreConfig: RegistryObjectStoreConfig? = null,
+    val awsRegion: String? = null,
+    val dynamoDbTablePrefix: String? = null,
 ) {
+    /** True for every mode backed by real cloud persistence (Firestore or DynamoDB). */
+    val usesCloudStorage: Boolean
+        get() = storageMode in CLOUD_STORAGE_MODES
+
     val signingOperation: TufSigningOperation?
         get() = when (serverMode) {
             RegistryServerMode.PUBLIC_API, RegistryServerMode.READ_ONLY_PUBLIC_API -> null
@@ -113,16 +120,33 @@ data class RegistryConfig(
                 require(securityPrincipal.isNotBlank()) { "REGISTRY_SECURITY_PRINCIPAL must not be blank" }
             }
         }
-        if (storageMode == "gcp") {
-            require(!projectId.isNullOrBlank()) { "GOOGLE_CLOUD_PROJECT is required for GCP storage" }
+        if (usesCloudStorage) {
             require(!metadataBucket.isNullOrBlank()) { "REGISTRY_METADATA_BUCKET is required" }
-            val expectedFirestoreDatabase = if (environment == "production") {
-                "seen-registry-prod"
+            if (storageMode == STORAGE_MODE_GCP) {
+                require(!projectId.isNullOrBlank()) { "GOOGLE_CLOUD_PROJECT is required for GCP storage" }
+                val expectedFirestoreDatabase = if (environment == "production") {
+                    "seen-registry-prod"
+                } else {
+                    "seen-registry-dev"
+                }
+                require(firestoreDatabase == expectedFirestoreDatabase) {
+                    "Registry environment and Firestore database must match the official deployment identity"
+                }
+                require(awsRegion == null && dynamoDbTablePrefix == null) {
+                    "GCP storage must not receive DynamoDB configuration"
+                }
+                require(effectiveObjectStoreConfig().provider != RegistryObjectStoreProvider.S3) {
+                    "GCP storage cannot select AWS S3 object storage"
+                }
             } else {
-                "seen-registry-dev"
-            }
-            require(firestoreDatabase == expectedFirestoreDatabase) {
-                "Registry environment and Firestore database must match the official deployment identity"
+                require(projectId == null) { "DynamoDB storage must not receive GOOGLE_CLOUD_PROJECT" }
+                require(AWS_REGION_NAME.matches(awsRegion.orEmpty())) { "AWS_REGION is required for DynamoDB storage" }
+                require(dynamoDbTablePrefix == DynamoDbRegistryTables.expectedPrefix(environment)) {
+                    "Registry environment and DynamoDB table prefix must match the official deployment identity"
+                }
+                require(objectStoreConfig != null && objectStoreConfig.provider in S3_API_PROVIDERS) {
+                    "DynamoDB storage requires S3 or R2 object storage"
+                }
             }
             when (serverMode) {
                 RegistryServerMode.PUBLIC_API -> require(!quarantineBucket.isNullOrBlank() && !publicBucket.isNullOrBlank()) {
@@ -158,11 +182,16 @@ data class RegistryConfig(
             require(localOnlineSigningKeysPkcs8Base64.isEmpty()) {
                 "TUF private keys must never be supplied to a server runtime"
             }
+            effectiveObjectStoreConfig().requireRoles(serverMode.objectStoreRoles)
         } else {
-            require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory or gcp" }
+            require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory, gcp, or dynamodb" }
+            require(awsRegion == null && dynamoDbTablePrefix == null) {
+                "Memory mode must not receive DynamoDB configuration"
+            }
             require(projectId == null && quarantineBucket == null && publicBucket == null && metadataBucket == null) {
                 "Memory mode must not receive cloud project or bucket configuration"
             }
+            require(objectStoreConfig == null) { "Memory mode must not receive cloud object storage configuration" }
             require(remoteOnlineSignerTargets.isEmpty()) { "Memory mode cannot use remote signer endpoints" }
             require(localOnlineSigningKeysPkcs8Base64.keys == TufRole.ONLINE.toSet()) {
                 "Memory mode requires distinct local online keys for all TUF roles"
@@ -191,11 +220,13 @@ data class RegistryConfig(
             serverModeOverride: RegistryServerMode? = null,
         ): RegistryConfig {
             rejectCoordinatorKeyVersions(env)
+            rejectMaintenanceEnvelope(env, "Server runtime")
             val serverMode = serverModeOverride ?: RegistryServerMode.fromEnvironment(
                 env["REGISTRY_SERVER_MODE"] ?: RegistryServerMode.PUBLIC_API.environmentValue,
             )
-            val storageMode = env["REGISTRY_STORAGE_MODE"] ?: "gcp"
+            val storageMode = env["REGISTRY_STORAGE_MODE"] ?: STORAGE_MODE_GCP
             rejectServerEnvironment(env, serverMode, storageMode)
+            val dynamo = storageMode == STORAGE_MODE_DYNAMODB
             return RegistryConfig(
                 environment = env["REGISTRY_ENVIRONMENT"] ?: "development",
                 repositoryId = env["REGISTRY_REPOSITORY_ID"] ?: "seen-dev-registry-v1",
@@ -244,6 +275,18 @@ data class RegistryConfig(
                     env["REGISTRY_SECURITY_PRINCIPAL"] ?: "registry-dev-security"
                 } else "",
                 serverMode = serverMode,
+                objectStoreConfig = if (storageMode in CLOUD_STORAGE_MODES) {
+                    RegistryObjectStoreConfig.fromEnvironment(
+                        env,
+                        serverMode.objectStoreRoles,
+                        defaultProvider = if (dynamo) RegistryObjectStoreProvider.S3 else RegistryObjectStoreProvider.GCS,
+                    )
+                } else null,
+                awsRegion = env["AWS_REGION"]?.trim()?.takeIf { dynamo },
+                dynamoDbTablePrefix = if (dynamo) {
+                    env["REGISTRY_DYNAMODB_TABLE_PREFIX"]?.trim()
+                        ?: DynamoDbRegistryTables.expectedPrefix(env["REGISTRY_ENVIRONMENT"] ?: "development")
+                } else null,
             )
         }
     }
@@ -313,6 +356,28 @@ enum class RegistryServerMode(
     }
 }
 
+internal val RegistryServerMode.objectStoreRoles: Set<RegistryBucketRole>
+    get() = when (this) {
+        RegistryServerMode.PUBLIC_API -> setOf(
+            RegistryBucketRole.QUARANTINE,
+            RegistryBucketRole.PUBLIC,
+            RegistryBucketRole.METADATA,
+        )
+        RegistryServerMode.READ_ONLY_PUBLIC_API -> setOf(
+            RegistryBucketRole.PUBLIC,
+            RegistryBucketRole.METADATA,
+        )
+        RegistryServerMode.RELEASE_ACTIONS, RegistryServerMode.SECURITY_ACTIONS ->
+            setOf(RegistryBucketRole.METADATA)
+    }
+
+internal fun RegistryConfig.effectiveObjectStoreConfig(): RegistryObjectStoreConfig =
+    objectStoreConfig ?: RegistryObjectStoreConfig.legacyGcs(
+        quarantineBucket = quarantineBucket,
+        publicBucket = publicBucket,
+        metadataBucket = metadataBucket,
+    )
+
 object TufRole {
     const val RELEASES = "releases"
     const val SECURITY = "security"
@@ -323,10 +388,38 @@ object TufRole {
 
 private fun Map<String, String>.csv(name: String): List<String> = this[name].orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
 
+internal const val STORAGE_MODE_GCP = "gcp"
+internal const val STORAGE_MODE_DYNAMODB = "dynamodb"
+internal val CLOUD_STORAGE_MODES: Set<String> = setOf(STORAGE_MODE_GCP, STORAGE_MODE_DYNAMODB)
+
+/** Firestore-only names that a DynamoDB runtime must never receive, and vice versa. */
+internal val GCP_PERSISTENCE_ENVIRONMENT_NAMES: Set<String> = setOf(
+    "GOOGLE_CLOUD_PROJECT",
+    "REGISTRY_FIRESTORE_DATABASE",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "FIRESTORE_EXTERNAL_ACCOUNT_JSON_BASE64",
+    "FIRESTORE_SERVICE_ACCOUNT_JSON_BASE64",
+)
+internal val DYNAMODB_PERSISTENCE_ENVIRONMENT_NAMES: Set<String> = setOf("REGISTRY_DYNAMODB_TABLE_PREFIX")
+
+internal fun rejectCrossCloudPersistence(env: Map<String, String>, storageMode: String) {
+    val forbidden = when (storageMode) {
+        STORAGE_MODE_DYNAMODB -> GCP_PERSISTENCE_ENVIRONMENT_NAMES
+        else -> DYNAMODB_PERSISTENCE_ENVIRONMENT_NAMES
+    }.filter(env::containsKey)
+    require(forbidden.isEmpty()) {
+        "REGISTRY_STORAGE_MODE=$storageMode rejects other-cloud persistence configuration: ${forbidden.sorted().joinToString(", ")}"
+    }
+}
+
 internal fun rejectCoordinatorKeyVersions(env: Map<String, String>) {
     val supplied = TufRole.ONLINE.filter { role -> env.containsKey("REGISTRY_KMS_${role.uppercase()}_KEY_VERSION") }
     require(supplied.isEmpty()) {
         "Coordinator and API runtimes must not receive KMS key versions; configure role-locked signer URLs instead"
+    }
+    val awsKeys = env.keys.filter { it.startsWith("REGISTRY_AWS_KMS_") }
+    require(awsKeys.isEmpty()) {
+        "Coordinator and API runtimes must not receive AWS KMS key identifiers; configure role-locked signer URLs instead"
     }
 }
 
@@ -365,9 +458,15 @@ private fun rejectServerEnvironment(
         RegistryServerMode.PUBLIC_API -> setOf(
             "REGISTRY_SECURITY_TOKEN",
             "REGISTRY_SECURITY_PRINCIPAL",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
         )
         RegistryServerMode.READ_ONLY_PUBLIC_API -> setOf(
             "REGISTRY_QUARANTINE_BUCKET",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
             "REGISTRY_WRITER_MODE",
             "REGISTRY_WRITER_TOKEN",
             "REGISTRY_WRITER_PRINCIPAL",
@@ -382,6 +481,9 @@ private fun rejectServerEnvironment(
         RegistryServerMode.RELEASE_ACTIONS -> setOf(
             "REGISTRY_QUARANTINE_BUCKET",
             "REGISTRY_PUBLIC_BUCKET",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
             "REGISTRY_OWNER_ALLOWLIST",
             "REGISTRY_WRITERS_ENABLED",
             "REGISTRY_PUBLIC_DELAY_SECONDS",
@@ -393,6 +495,9 @@ private fun rejectServerEnvironment(
         RegistryServerMode.SECURITY_ACTIONS -> setOf(
             "REGISTRY_QUARANTINE_BUCKET",
             "REGISTRY_PUBLIC_BUCKET",
+            RegistryBucketRole.PRIVATE.environmentName,
+            RegistryBucketRole.EVIDENCE.environmentName,
+            RegistryBucketRole.BACKUP.environmentName,
             "REGISTRY_WRITER_MODE",
             "REGISTRY_WRITER_TOKEN",
             "REGISTRY_WRITER_PRINCIPAL",
@@ -405,6 +510,18 @@ private fun rejectServerEnvironment(
     }.filter(env::containsKey)
     require(surfaceForbidden.isEmpty()) {
         "${mode.environmentValue} received unrelated configuration: ${surfaceForbidden.sorted().joinToString(", ")}"
+    }
+
+    rejectCrossCloudPersistence(env, storageMode)
+    if (storageMode == "memory") {
+        val cloudObjectConfiguration = env.keys.filter { name ->
+            name == "REGISTRY_OBJECT_STORE_PROVIDER" ||
+                name in REGISTRY_OBJECT_STORE_BUCKET_ENVIRONMENT_NAMES ||
+                name in REGISTRY_R2_ENVIRONMENT_NAMES
+        }
+        require(cloudObjectConfiguration.isEmpty()) {
+            "Memory mode received cloud object storage configuration: ${cloudObjectConfiguration.sorted().joinToString(", ")}"
+        }
     }
 }
 

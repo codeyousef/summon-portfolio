@@ -1,0 +1,5 @@
+aws_account_id     = "000000000000"
+bootstrap_enabled  = false
+state_bucket_name  = "yousef-portfolio-tofu-state"
+monthly_budget_usd = 150
+budget_alert_email = "owner@example.com"

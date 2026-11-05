@@ -1,48 +1,31 @@
-name: Seen registry validation and image publication
+name: Validate Seen Cloudflare migration
 
 on:
   pull_request:
     paths:
-      - .github/workflows/deploy-seen-registry-infrastructure.yml
-      - .github/workflows/operate-seen-registry-production.yml
       - .github/workflows/deploy-seen-registry.yml
-      - infra/registry/**
+      - cloudflare/seen-edge/**
       - registry-service/**
-      - scripts/operate-seen-registry-production.sh
-      - scripts/test-operate-seen-registry-production.sh
-      - scripts/lint-seen-registry-iam-conditions.sh
-      - scripts/test-lint-seen-registry-iam-conditions.sh
   push:
     branches: [dev, master]
     paths:
-      - .github/workflows/deploy-seen-registry-infrastructure.yml
-      - .github/workflows/operate-seen-registry-production.yml
       - .github/workflows/deploy-seen-registry.yml
-      - infra/registry/**
+      - cloudflare/seen-edge/**
       - registry-service/**
-      - scripts/operate-seen-registry-production.sh
-      - scripts/test-operate-seen-registry-production.sh
-      - scripts/lint-seen-registry-iam-conditions.sh
-      - scripts/test-lint-seen-registry-iam-conditions.sh
   workflow_dispatch:
 
 concurrency:
-  group: seen-registry-${{ github.workflow }}-${{ github.ref }}
+  group: seen-cloudflare-validation-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
-env:
-  GCP_PROJECT_ID: portfolio-476219
-  GCP_REGION: us-central1
-  ARTIFACT_REPOSITORY: seen-registry
-
 jobs:
   validate:
-    name: Validate registry code and infrastructure
+    name: Validate the registry and fail-closed Cloudflare edge
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -58,134 +41,6 @@ jobs:
           cache-dependency-path: |
             registry-service/*.gradle.kts
             registry-service/gradle.properties
-
-      - name: Set up OpenTofu
-        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
-        with:
-          tofu_version: 1.12.4
-
-      - name: Check shell syntax
-        run: |
-          bash -n registry-service/scripts/provision-development-owner.sh
-          bash -n scripts/lint-seen-registry-iam-conditions.sh
-          bash -n scripts/operate-seen-registry-production.sh
-          bash -n scripts/test-lint-seen-registry-iam-conditions.sh
-          bash -n scripts/test-operate-seen-registry-production.sh
-
-      - name: Test IAM-condition saved-plan linting
-        run: bash scripts/test-lint-seen-registry-iam-conditions.sh
-
-      - name: Test protected production operation contracts
-        run: bash scripts/test-operate-seen-registry-production.sh
-
-      - name: Test protected infrastructure recovery guard
-        shell: bash
-        run: |
-          set -euo pipefail
-          infrastructure_workflow=.github/workflows/deploy-seen-registry-infrastructure.yml
-          extract_job_step() {
-            local job_name="$1"
-            local step_name="$2"
-            awk -v job_name="${job_name}" -v step_name="${step_name}" '
-              /^  [[:alnum:]_-]+:$/ {
-                current_job = $0
-                sub(/^  /, "", current_job)
-                sub(/:$/, "", current_job)
-              }
-              current_job == job_name && $0 == "      - name: " step_name {
-                if (found) {
-                  exit 2
-                }
-                found = 1
-                capture = 1
-              }
-              capture && $0 != "      - name: " step_name && $0 ~ /^      - / {
-                capture = 0
-              }
-              capture {
-                print
-              }
-              END {
-                if (!found) {
-                  exit 1
-                }
-              }
-            ' "${infrastructure_workflow}"
-          }
-          assert_step_line_once() {
-            local step_block="$1"
-            local expected_line="$2"
-            local match_count
-            match_count="$(
-              awk -v expected_line="${expected_line}" '
-                $0 == expected_line {
-                  count += 1
-                }
-                END {
-                  print count + 0
-                }
-              ' <<< "${step_block}"
-            )"
-            test "${match_count}" -eq 1
-          }
-          grep -Fq 'assert_bootstrap_boolean "project_executor_handoff_complete" true' "${infrastructure_workflow}"
-          grep -Fq 'assert_bootstrap_boolean "production_foundation_applied" true' "${infrastructure_workflow}"
-          grep -Fq 'assert_bootstrap_boolean "project_creator_owner_removed" true' "${infrastructure_workflow}"
-          grep -Fq 'assert_bootstrap_boolean "enable_state_bucket_iam_reconciliation" true' "${infrastructure_workflow}"
-          grep -Fq 'assert_bootstrap_boolean "temporary_human_state_bucket_policy_access_verified" true' "${infrastructure_workflow}"
-          grep -Fq 'assert_bootstrap_boolean "temporary_human_state_bucket_policy_access_removed" true' "${infrastructure_workflow}"
-          for rejected_input in \
-            enable_organization_policy_admin_lease \
-            enable_project_policy_admin_lease \
-            enable_temporary_human_state_migration_access \
-            enable_temporary_human_state_bucket_policy_access \
-            approve_temporary_human_state_bucket_policy_access_removal \
-            adopt_project_creator_owner \
-            approve_project_creator_owner_removal; do
-            grep -Fq "assert_bootstrap_boolean \"${rejected_input}\" false" "${infrastructure_workflow}"
-          done
-          for rejected_expiry in \
-            policy_admin_lease_expiry \
-            temporary_human_state_migration_access_expiry \
-            temporary_human_state_bucket_policy_access_expiry \
-            project_creator_owner_member; do
-            grep -Fq "assert_bootstrap_null \"${rejected_expiry}\"" "${infrastructure_workflow}"
-          done
-          plan_setup_gcloud_step="$(extract_job_step plan 'Set up the IAM condition linter')"
-          apply_setup_gcloud_step="$(extract_job_step apply 'Set up the project IAM handoff verifier')"
-          for setup_gcloud_step in "${plan_setup_gcloud_step}" "${apply_setup_gcloud_step}"; do
-            assert_step_line_once "${setup_gcloud_step}" \
-              '        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3'
-            assert_step_line_once "${setup_gcloud_step}" "          version: '576.0.0'"
-          done
-          assert_step_line_once "${plan_setup_gcloud_step}" '          install_components: alpha'
-          grep -Fq "bash scripts/lint-seen-registry-iam-conditions.sh \"\${TF_ROOT}\" \"\${PLAN_DIR}/plan.tfplan\" steady" "${infrastructure_workflow}"
-          test "$(grep -Fc "gcloud projects get-iam-policy \"\${PROD_PROJECT_ID}\"" "${infrastructure_workflow}")" -eq 2
-          test "$(grep -Fc '(.bindings | type) == "array"' "${infrastructure_workflow}")" -eq 2
-          test "$(grep -Fc 'all(.members[]; type == "string")' "${infrastructure_workflow}")" -eq 2
-          test "$(grep -Fc 'select(.role == "roles/owner" or .role == "roles/editor")' "${infrastructure_workflow}")" -eq 2
-          grep -Fq 'name: Set up the project IAM handoff verifier' "${infrastructure_workflow}"
-          saved_plan_step="$(extract_job_step plan 'Create saved plan and review record')"
-          assert_step_line_once "${saved_plan_step}" \
-            "          if ! tofu -chdir=\"\${TF_ROOT}\" show -no-color \"\${PLAN_DIR}/plan.tfplan\" > \"\${PLAN_DIR}/review.txt\" 2>/dev/null; then"
-          assert_step_line_once "${saved_plan_step}" \
-            '            echo "The production plan review could not be rendered safely" >&2'
-          test "$(grep -Fc "chmod 0700 \"\${PLAN_DIR}\"" "${infrastructure_workflow}")" -eq 2
-          grep -Fq "chmod 0600 \"\${PLAN_DIR}/metadata.json\" \"\${PLAN_DIR}/plan.tfplan\" \"\${PLAN_DIR}/review.txt\"" "${infrastructure_workflow}"
-          grep -Fq "\"\${PLAN_DIR}/plan.tfplan\" > \"\${apply_log}\" 2>&1" "${infrastructure_workflow}"
-          grep -Fq 'Unable to apply the verified saved plan' "${infrastructure_workflow}"
-          target_prefix='-tar'"get"
-          exclude_prefix='-excl'"ude"
-          for prohibited_flag in \
-            "${target_prefix}" \
-            "${target_prefix}-file" \
-            "${exclude_prefix}" \
-            "${exclude_prefix}-file"; do
-            if grep -Fq -- "${prohibited_flag}" "${infrastructure_workflow}"; then
-              echo "The protected production workflow must always create a complete plan" >&2
-              exit 1
-            fi
-          done
 
       - name: Test and package the isolated registry
         env:
@@ -197,278 +52,35 @@ jobs:
             --max-workers=2 \
             test shadowJar
 
-      - name: Validate OpenTofu roots and tests
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Enable pinned pnpm
+        run: corepack enable
+
+      - name: Install Seen edge dependencies
+        working-directory: cloudflare/seen-edge
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate the Cloudflare edge contract
+        working-directory: cloudflare/seen-edge
+        run: |
+          pnpm run config:check
+          pnpm run check
+          pnpm test
+
+      - name: Enforce the signer and recovery deployment gate
         shell: bash
         run: |
           set -euo pipefail
-          tofu fmt -check -recursive infra/registry
-          for environment in dev prod prod-bootstrap; do
-            root="infra/registry/environments/${environment}"
-            tofu -chdir="${root}" init -backend=false -input=false
-            tofu -chdir="${root}" validate
-            tofu -chdir="${root}" test
-          done
-
-          bootstrap_root="infra/registry/environments/prod-bootstrap"
-          bootstrap_main="${bootstrap_root}/main.tf"
-          service_account_dependent_resources=(
-            "google_project_iam_member.infrastructure_plan"
-            "google_project_iam_member.infrastructure_apply"
-            "google_project_iam_member.material_key_versions"
-            "google_project_iam_member.material_secret_versions"
-            "google_project_iam_member.infrastructure_project_iam"
-            "google_project_iam_member.infrastructure_kms_policy_setter"
-            "google_project_iam_member.infrastructure_secret_policy_setter"
-            "google_project_iam_member.infrastructure_registry_storage_policy_setter"
-            "google_project_iam_member.infrastructure_state_storage_policy_setter"
-            "google_project_iam_member.infrastructure_run_policy_setter"
-            "google_organization_iam_member.infrastructure_read"
-            "google_billing_account_iam_member.infrastructure_read"
-            "google_project_iam_member.infrastructure_control_project"
-            "google_storage_bucket_iam_policy.state"
-          )
-          for resource in "${service_account_dependent_resources[@]}"; do
-            resource_type="${resource%%.*}"
-            resource_name="${resource#*.}"
-            declaration="resource \"${resource_type}\" \"${resource_name}\" {"
-            awk -v declaration="${declaration}" '
-              $0 == declaration {
-                in_block = 1
-                found_block = 1
-                next
-              }
-              in_block && $0 == "  depends_on = [" {
-                in_dependencies = 1
-                next
-              }
-              in_dependencies && $0 == "    google_service_account.infrastructure," {
-                found_dependency = 1
-              }
-              in_dependencies && $0 == "  ]" {
-                in_dependencies = 0
-              }
-              in_block && $0 == "}" {
-                in_block = 0
-                in_dependencies = 0
-              }
-              END {
-                exit !(found_block && found_dependency)
-              }
-            ' "${bootstrap_main}"
-          done
-
-          module_root="infra/registry/modules/environment"
-          tofu -chdir="${module_root}" init -backend=false -input=false
-          tofu -chdir="${module_root}" validate
-          tofu -chdir="${module_root}" test
-
-  publish-development-image:
-    name: Publish immutable development image
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    environment: seen-registry-development-image
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-    steps:
-      - name: Check out source
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          persist-credentials: false
-
-      - name: Validate workload identity configuration
-        env:
-          PROVIDER: ${{ vars.GCP_REGISTRY_WORKLOAD_IDENTITY_PROVIDER }}
-          PUBLISHER: ${{ vars.GCP_REGISTRY_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${PROVIDER}" || { echo "GCP_REGISTRY_WORKLOAD_IDENTITY_PROVIDER is not configured" >&2; exit 1; }
-          test -n "${PUBLISHER}" || { echo "GCP_REGISTRY_IMAGE_PUBLISHER_SERVICE_ACCOUNT is not configured" >&2; exit 1; }
-
-      - name: Set up Java
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
-          cache-dependency-path: |
-            registry-service/*.gradle.kts
-            registry-service/gradle.properties
-
-      - name: Build registry artifact
-        env:
-          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
-        run: |
-          ./gradlew \
-            -p registry-service \
-            --no-daemon \
-            --max-workers=2 \
-            shadowJar
-
-      - name: Build candidate image locally
-        shell: bash
-        run: |
-          set -euo pipefail
-          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
-          docker build \
-            --file registry-service/Dockerfile \
-            --build-arg "VCS_REF=${GITHUB_SHA}" \
-            --tag "${image_name}:${GITHUB_SHA}" \
-            .
-
-      - name: Authenticate with GitHub OIDC
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ vars.GCP_REGISTRY_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.GCP_REGISTRY_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
-          version: '576.0.0'
-
-      - name: Authenticate Docker to Artifact Registry
-        shell: bash
-        run: |
-          set -euo pipefail
-          gcloud auth print-access-token | \
-            docker login \
-              --username oauth2accesstoken \
-              --password-stdin \
-              "https://${GCP_REGION}-docker.pkg.dev"
-
-      - name: Publish image
-        id: image
-        shell: bash
-        run: |
-          set -euo pipefail
-          image_name="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
-          image_tag="${image_name}:${GITHUB_SHA}"
-          docker push "${image_tag}"
-          digest="$(gcloud artifacts docker images describe "${image_tag}" --format='value(image_summary.digest)')"
-          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Artifact Registry did not return an immutable digest" >&2; exit 1; }
-          echo "name=${image_name}" >> "${GITHUB_OUTPUT}"
-          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
-          echo "uri=${image_name}@${digest}" >> "${GITHUB_OUTPUT}"
-          echo "Published image: ${image_name}@${digest}" >> "${GITHUB_STEP_SUMMARY}"
-
-      - name: Attest image provenance
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
-        with:
-          subject-name: ${{ steps.image.outputs.name }}
-          subject-digest: ${{ steps.image.outputs.digest }}
-          push-to-registry: true
-
-  publish-production-candidate-image:
-    name: Publish immutable production candidate image
-    if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/master' &&
-      vars.SEEN_REGISTRY_PROD_IMAGE_PUBLISH_ENABLED == 'true'
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    environment: seen-registry-production-image
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-    env:
-      PROD_PROJECT_ID: ${{ vars.GCP_REGISTRY_PROD_PROJECT_ID }}
-      PROD_PROVIDER: ${{ vars.GCP_REGISTRY_PROD_WORKLOAD_IDENTITY_PROVIDER }}
-      PROD_PUBLISHER: ${{ vars.GCP_REGISTRY_PROD_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
-    steps:
-      - name: Check out source
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          persist-credentials: false
-
-      - name: Validate production image publication inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "${PROD_PROJECT_ID}" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]
-          test "${PROD_PROJECT_ID}" != "portfolio-476219"
-          [[ "${PROD_PROVIDER}" =~ ^projects/[1-9][0-9]*/locations/global/workloadIdentityPools/[a-z0-9-]+/providers/[a-z0-9-]+$ ]]
-          test "${PROD_PUBLISHER}" = "seen-registry-prod-image-pub@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
-
-      - name: Set up Java
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
-          cache-dependency-path: |
-            registry-service/*.gradle.kts
-            registry-service/gradle.properties
-
-      - name: Build registry artifact
-        env:
-          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2
-        run: |
-          ./gradlew \
-            -p registry-service \
-            --no-daemon \
-            --max-workers=2 \
-            shadowJar
-
-      - name: Build production candidate image locally
-        shell: bash
-        run: |
-          set -euo pipefail
-          image_name="${GCP_REGION}-docker.pkg.dev/${PROD_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
-          docker build \
-            --file registry-service/Dockerfile \
-            --build-arg "VCS_REF=${GITHUB_SHA}" \
-            --tag "${image_name}:${GITHUB_SHA}" \
-            .
-
-      - name: Authenticate with production GitHub OIDC
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ env.PROD_PROVIDER }}
-          service_account: ${{ env.PROD_PUBLISHER }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-        with:
-          project_id: ${{ env.PROD_PROJECT_ID }}
-          version: '576.0.0'
-
-      - name: Authenticate Docker to Artifact Registry
-        shell: bash
-        run: |
-          set -euo pipefail
-          gcloud auth print-access-token | \
-            docker login \
-              --username oauth2accesstoken \
-              --password-stdin \
-              "https://${GCP_REGION}-docker.pkg.dev"
-
-      - name: Publish immutable production candidate
-        id: production-image
-        shell: bash
-        run: |
-          set -euo pipefail
-          image_name="${GCP_REGION}-docker.pkg.dev/${PROD_PROJECT_ID}/${ARTIFACT_REPOSITORY}/seen-registry"
-          image_tag="${image_name}:${GITHUB_SHA}"
-          docker push "${image_tag}"
-          digest="$(gcloud artifacts docker images describe "${image_tag}" --project "${PROD_PROJECT_ID}" --format='value(image_summary.digest)')"
-          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Artifact Registry did not return an immutable digest" >&2; exit 1; }
-          echo "name=${image_name}" >> "${GITHUB_OUTPUT}"
-          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
-          echo "uri=${image_name}@${digest}" >> "${GITHUB_OUTPUT}"
-          echo "Published production candidate: ${image_name}@${digest}" >> "${GITHUB_STEP_SUMMARY}"
-          echo "This candidate is not deployed. Application and signer use require separate digest review and a complete saved OpenTofu plan." >> "${GITHUB_STEP_SUMMARY}"
-
-      - name: Attest production candidate provenance
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
-        with:
-          subject-name: ${{ steps.production-image.outputs.name }}
-          subject-digest: ${{ steps.production-image.outputs.digest }}
-          push-to-registry: true
+          readme=cloudflare/seen-edge/README.md
+          grep -Fq 'Deployment remains blocked until all of the following' "${readme}"
+          grep -Fq 'SEEN_SIGNER_GUARD' "${readme}"
+          grep -Fq 'complete promotion/maintenance recovery exercise' "${readme}"
+          prohibited_pattern='wrangler '"deploy"'|wrangler secret '"put"'|gcloud run '"deploy"'|docker\\.'"pkg\\.dev"
+          if rg -n "${prohibited_pattern}" .github/workflows/deploy-seen-registry.yml; then
+            echo 'Seen deployment must remain fail-closed until every tracked signer/recovery gate passes' >&2
+            exit 1
+          fi

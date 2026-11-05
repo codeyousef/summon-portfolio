@@ -50,6 +50,17 @@ dependencies {
     implementation(libs.google.cloud.storage)
     implementation(libs.google.auth.oauth2.http)
 
+    // AWS SDK v2: DynamoDB, S3 and SQS over the JDK URL connection client only.
+    implementation(platform(libs.aws.sdk.bom))
+    listOf(libs.aws.sdk.dynamodb, libs.aws.sdk.s3, libs.aws.sdk.sqs).forEach { module ->
+        implementation(module) {
+            exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+            exclude(group = "software.amazon.awssdk", module = "apache-client")
+            exclude(group = "software.amazon.awssdk", module = "apache5-client")
+        }
+    }
+    implementation(libs.aws.sdk.url.connection.client)
+
     // Apache POI for Excel (.xlsx) import
     implementation(libs.poi.ooxml)
 
@@ -63,5 +74,20 @@ tasks {
     shadowJar {
         mergeServiceFiles()
         isZip64 = true
+    }
+
+    register<JavaExec>("firestoreDevBackfill") {
+        group = "migration"
+        description = "Dry-run or execute the hard-locked (default) -> portfolio-me-dev Firestore backfill"
+        classpath = sourceSets.main.get().runtimeClasspath
+        mainClass.set("code.yousef.firestore.migration.PortfolioFirestoreDevBackfillCli")
+    }
+
+    register<JavaExec>("firestoreToDynamoBackfill") {
+        group = "migration"
+        description = "Dry-run (default) or execute the read-only Firestore -> DynamoDB documents backfill with parity proof"
+        classpath = sourceSets.main.get().runtimeClasspath
+        mainClass.set("code.yousef.aws.migration.FirestoreToDynamoBackfillCli")
+        args = (project.findProperty("backfillArgs") as String?)?.split(' ')?.filter(String::isNotBlank).orEmpty()
     }
 }

@@ -13,6 +13,10 @@ REGISTRY_ENVIRONMENT=production \
   java -jar seen-registry-service.jar describe-signing-policy
 ```
 
+AWS deployments (DynamoDB, S3, AWS KMS Ed25519 signers) keep this boundary;
+their runtime contract and the ceremony steps for delegating to AWS KMS online
+keys are in [Seen registry on AWS](aws-operations.md).
+
 The policy is root 2-of-3 and top-level targets 2-of-2 offline, with
 distinct one-key online roles for releases, security, snapshot, and timestamp.
 Production must use separate keys, identities, storage, and trust roots; never

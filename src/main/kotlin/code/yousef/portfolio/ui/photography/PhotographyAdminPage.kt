@@ -3,6 +3,7 @@ package code.yousef.portfolio.ui.photography
 import code.yousef.portfolio.content.model.PhotographyMediaType
 import code.yousef.portfolio.content.model.PhotographyPhoto
 import code.yousef.portfolio.content.model.PhotographySourceKind
+import code.yousef.portfolio.photography.parseContentAddressedPhotoKey
 import codes.yousef.summon.annotation.Composable
 import codes.yousef.summon.components.display.Image
 import codes.yousef.summon.components.display.Text
@@ -493,7 +494,11 @@ private fun PhotographySourceKind.label(): String =
     }
 
 private fun PhotographyPhoto.uploadAssetHref(): String =
-    "/uploads/photography/${uploadAssetRef().urlPathSegment()}"
+    if (parseContentAddressedPhotoKey(storageKey) != null) {
+        "/cdn/media/$storageKey"
+    } else {
+        "/uploads/photography/${uploadAssetRef().urlPathSegment()}"
+    }
 
 private fun PhotographyPhoto.uploadAssetRef(): String =
     storageKey.replace('\\', '/').substringAfterLast('/').takeIf { it.isNotBlank() } ?: id

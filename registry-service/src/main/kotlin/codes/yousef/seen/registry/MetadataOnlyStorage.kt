@@ -130,6 +130,8 @@ class RestrictedMetadataRegistryObjectStorage(
         requireReadableMetadata(filename)
         return delegate.getMetadata(filename)
     }
+
+    override fun close() = delegate.close()
 }
 
 private fun unsupportedPackageStorage(): Nothing =
@@ -140,6 +142,8 @@ private fun requireVersionedMetadata(filename: String) {
         "Only immutable versioned TUF metadata can be created"
     }
 }
+
+internal fun isVersionedMetadata(filename: String): Boolean = VERSIONED_METADATA_FILENAME.matches(filename)
 
 internal fun requireReadableMetadata(filename: String) {
     require(filename == ROOT_POINTER || filename == TIMESTAMP_POINTER || VERSIONED_METADATA_FILENAME.matches(filename)) {

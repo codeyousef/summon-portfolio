@@ -14,7 +14,9 @@ RUN /workspace/gradlew --version || true
 COPY . /workspace
 
 # Build the server (hydration assets now embedded in Summon 0.4.8.9+)
-RUN /workspace/gradlew -x test shadowJar --no-daemon
+RUN /workspace/gradlew \
+    -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=768m" \
+    -x test shadowJar --no-daemon --max-workers=2
 
 # Runtime stage
 FROM eclipse-temurin:21-jre

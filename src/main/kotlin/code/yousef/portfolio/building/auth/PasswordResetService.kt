@@ -1,5 +1,8 @@
 package code.yousef.portfolio.building.auth
 
+import code.yousef.firestore.PortfolioFirestoreCollections
+import code.yousef.firestore.PortfolioFirestoreStore
+import code.yousef.firestore.sourcePortfolioFirestoreStore
 import com.google.cloud.firestore.Firestore
 import org.slf4j.LoggerFactory
 import java.security.SecureRandom
@@ -11,10 +14,16 @@ import java.util.*
  * Admin generates a reset link, shares it via secure channel (WhatsApp, Signal, etc.).
  */
 class PasswordResetService(
-    private val firestore: Firestore,
+    private val store: PortfolioFirestoreStore,
     private val authProvider: BuildingAuthProvider,
-    private val collectionName: String = "building_password_reset_tokens"
+    private val collectionName: String = PortfolioFirestoreCollections.BUILDING_PASSWORD_RESET_TOKENS,
 ) {
+    constructor(
+        firestore: Firestore,
+        authProvider: BuildingAuthProvider,
+        collectionName: String = PortfolioFirestoreCollections.BUILDING_PASSWORD_RESET_TOKENS,
+    ) : this(sourcePortfolioFirestoreStore(firestore), authProvider, collectionName)
+
     private val log = LoggerFactory.getLogger(PasswordResetService::class.java)
     private val secureRandom = SecureRandom()
     
@@ -46,13 +55,12 @@ class PasswordResetService(
             return null
         }
         
-        // Invalidate any existing tokens for this user
-        invalidateTokensForUser(username)
-        
-        val token = generateToken()
-        val expireTime = System.currentTimeMillis() + (TOKEN_VALIDITY_HOURS * 60 * 60 * 1000)
-        
         try {
+            // Invalidate before publishing the replacement token. Any failure is fail-closed.
+            invalidateTokensForUser(username)
+
+            val token = generateToken()
+            val expireTime = System.currentTimeMillis() + (TOKEN_VALIDITY_HOURS * 60 * 60 * 1000)
             val data = mapOf(
                 "token" to token,
                 "username" to username,
@@ -60,7 +68,7 @@ class PasswordResetService(
                 "used" to false,
                 "createdAt" to System.currentTimeMillis()
             )
-            firestore.collection(collectionName).document(token).set(data).get()
+            store.upsert(collectionName, token, data)
             log.info("Created password reset token for user '$username', expires at ${Date(expireTime)}")
             return token
         } catch (e: Exception) {
@@ -77,17 +85,16 @@ class PasswordResetService(
      */
     fun validateToken(token: String): String? {
         return try {
-            val docRef = firestore.collection(collectionName).document(token)
-            val snapshot = docRef.get().get()
-            
-            if (!snapshot.exists()) {
+            val document = store.get(collectionName, token)
+
+            if (document == null) {
                 log.warn("Token validation failed: token not found")
                 return null
             }
-            
-            val data = snapshot.data ?: return null
+
+            val data = document.data
             val used = data["used"] as? Boolean ?: true
-            val expireTime = data["expireTime"] as? Long ?: 0
+            val expireTime = (data["expireTime"] as? Number)?.toLong() ?: 0
             val username = data["username"] as? String
             
             when {
@@ -120,11 +127,12 @@ class PasswordResetService(
      */
     fun consumeToken(token: String) {
         try {
-            val docRef = firestore.collection(collectionName).document(token)
-            docRef.update("used", true).get()
+            check(store.get(collectionName, token) != null) { "Reset token does not exist" }
+            store.merge(collectionName, token, mapOf("used" to true))
             log.info("Token consumed successfully")
         } catch (e: Exception) {
             log.error("Failed to consume token", e)
+            throw e
         }
     }
     
@@ -133,20 +141,21 @@ class PasswordResetService(
      */
     private fun invalidateTokensForUser(username: String) {
         try {
-            val tokens = firestore.collection(collectionName)
-                .whereEqualTo("username", username)
-                .whereEqualTo("used", false)
-                .get().get()
-            
-            tokens.documents.forEach { doc ->
-                doc.reference.update("used", true).get()
+            val tokens = store.whereEqualTo(
+                collection = collectionName,
+                filters = mapOf("username" to username, "used" to false),
+            )
+
+            tokens.forEach { document ->
+                store.merge(collectionName, document.id, mapOf("used" to true))
             }
-            
-            if (tokens.documents.isNotEmpty()) {
-                log.info("Invalidated ${tokens.documents.size} existing tokens for user '$username'")
+
+            if (tokens.isNotEmpty()) {
+                log.info("Invalidated ${tokens.size} existing tokens for user '$username'")
             }
         } catch (e: Exception) {
             log.error("Failed to invalidate existing tokens for user '$username'", e)
+            throw e
         }
     }
     
@@ -155,16 +164,18 @@ class PasswordResetService(
      */
     fun cleanupExpiredTokens() {
         try {
-            val expired = firestore.collection(collectionName)
-                .whereLessThan("expireTime", System.currentTimeMillis())
-                .get().get()
-            
-            expired.documents.forEach { doc ->
-                doc.reference.delete().get()
+            val expired = store.whereLessThan(
+                collection = collectionName,
+                field = "expireTime",
+                value = System.currentTimeMillis(),
+            )
+
+            expired.forEach { document ->
+                store.delete(collectionName, document.id)
             }
-            
-            if (expired.documents.isNotEmpty()) {
-                log.info("Cleaned up ${expired.documents.size} expired tokens")
+
+            if (expired.isNotEmpty()) {
+                log.info("Cleaned up ${expired.size} expired tokens")
             }
         } catch (e: Exception) {
             log.error("Failed to cleanup expired tokens", e)

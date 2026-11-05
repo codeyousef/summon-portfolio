@@ -32,6 +32,32 @@ class RemoteSignerRuntimeWiringTest {
     }
 
     @Test
+    fun `Cloudflare service-binding token is pinned to one exact signer endpoint`() {
+        val endpoint = URI.create("https://seen-signer-releases.internal/sign")
+        val target = RemoteTufSignerTarget(endpoint, "https://seen-signer-releases.internal")
+        val token = "s".repeat(32)
+        val provider = defaultRemoteTufTokenProvider(target) { name ->
+            token.takeIf { name == "SEEN_SIGNER_CALL_TOKEN" }
+        }
+
+        assertIs<CloudflareServiceBindingTufTokenProvider>(provider)
+        assertEquals(token, provider.accessToken(endpoint))
+        assertFailsWith<RemoteTufSigningException> {
+            provider.accessToken(URI.create("https://seen-signer-security.internal/sign"))
+        }
+    }
+
+    @Test
+    fun `Cloudflare signer token rejects weak secrets before any request`() {
+        val endpoint = URI.create("https://seen-signer-releases.internal/sign")
+        val target = RemoteTufSignerTarget(endpoint, "https://seen-signer-releases.internal")
+
+        assertFailsWith<IllegalArgumentException> {
+            CloudflareServiceBindingTufTokenProvider(target, "short")
+        }
+    }
+
+    @Test
     fun `public API rejects every signer URL private key and key version`() {
         val public = gcpEnvironment()
         assertEquals(emptyMap(), RegistryConfig.fromEnvironment(public).remoteOnlineSignerTargets)

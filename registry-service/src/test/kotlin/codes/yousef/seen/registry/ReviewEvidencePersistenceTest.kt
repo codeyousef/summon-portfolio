@@ -11,10 +11,12 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class ReviewEvidencePersistenceTest {
+open class ReviewEvidencePersistenceTest {
+    protected open fun newRepository(): RegistryRepository = InMemoryRegistryRepository()
+
     @Test
     fun `review artifacts are append-only ordered and subject scoped`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val first = artifact("prf_0000000000000001", "source-proof", 1)
         val second = artifact("scn_0000000000000002", "scan-attestation", 2)
         val other = artifact("aud_0000000000000003", "audit-event", 3, identity = "seen/other")
@@ -30,7 +32,7 @@ class ReviewEvidencePersistenceTest {
 
     @Test
     fun `reviewed evidence cannot be replaced by a later transition`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val initial = reviewRelease().copy(
             review = ReviewEvidenceState(
                 validatedArchiveSha256 = "a".repeat(64),
@@ -51,7 +53,7 @@ class ReviewEvidencePersistenceTest {
 
     @Test
     fun `compare and set permits one evidence binding winner`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val initial = reviewRelease()
         assertTrue(repository.reserveRelease(initial))
         val left = initial.copy(review = initial.review.copy(firstSourceProofId = "prf_0000000000000001"), revision = 1)
@@ -63,7 +65,7 @@ class ReviewEvidencePersistenceTest {
 
     @Test
     fun `promotion activation commits release audit and catalog as one transaction`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val claimed = claimedPromotionRelease()
         val activated = activatedPromotionRelease(claimed)
         val audit = activationAudit(activated)
@@ -80,7 +82,7 @@ class ReviewEvidencePersistenceTest {
 
     @Test
     fun `activation audit collision leaves release and catalog uncommitted`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val claimed = claimedPromotionRelease()
         val activated = activatedPromotionRelease(claimed)
         val audit = activationAudit(activated)
@@ -98,7 +100,7 @@ class ReviewEvidencePersistenceTest {
 
     @Test
     fun `missing catalog package leaves release and activation audit uncommitted`() {
-        val repository = InMemoryRegistryRepository()
+        val repository = newRepository()
         val claimed = claimedPromotionRelease()
         val activated = activatedPromotionRelease(claimed)
         val audit = activationAudit(activated)

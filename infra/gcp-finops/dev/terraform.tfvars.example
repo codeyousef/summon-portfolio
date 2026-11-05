@@ -1,0 +1,12 @@
+# Copy to the ignored terraform.tfvars only after the dev Cloudflare Access
+# broker apply has produced the exact non-secret client ID and application
+# audience. This root can manage only felidai-dev.
+resources_enabled              = false
+project_id                     = "felidai-dev"
+billing_account_id             = null
+billing_dataset_id             = "billing_export"
+billing_source_dataset_id      = null
+billing_dataset_location       = "US"
+access_issuer                  = "https://felidai-studio.cloudflareaccess.com"
+access_application_audience    = null
+access_service_token_client_id = null

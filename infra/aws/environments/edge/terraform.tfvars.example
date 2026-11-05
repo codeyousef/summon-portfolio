@@ -1,0 +1,4 @@
+aws_account_id             = "000000000000"
+resources_enabled          = false
+certificates_validated     = false
+isolated_endpoints_enabled = false

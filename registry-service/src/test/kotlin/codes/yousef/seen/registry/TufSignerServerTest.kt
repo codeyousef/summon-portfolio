@@ -35,6 +35,29 @@ class TufSignerServerConfigTest {
     }
 
     @Test
+    fun `loads a signer scoped R2 metadata capability without exposing its credential`() {
+        val environment = baseEnvironment() + mapOf(
+            "REGISTRY_TUF_SIGNER_OBJECT_STORE_PROVIDER" to "r2",
+            "REGISTRY_TUF_SIGNER_R2_ENDPOINT" to
+                "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com",
+            "REGISTRY_TUF_SIGNER_R2_REGION" to "auto",
+            "REGISTRY_TUF_SIGNER_R2_ACCESS_KEY_ID" to "signer-access-value",
+            "REGISTRY_TUF_SIGNER_R2_SECRET_ACCESS_KEY" to "signer-secret-value",
+        )
+
+        val config = TufSignerServerConfig.fromEnvironment(environment)
+        val objectStore = requireNotNull(config.stateGuardConfig?.objectStoreConfig)
+
+        assertEquals(RegistryObjectStoreProvider.R2, objectStore.provider)
+        assertEquals(setOf(RegistryBucketRole.METADATA), objectStore.buckets.roles)
+        assertTrue(!config.toString().contains("signer-access-value"))
+        assertTrue(!config.toString().contains("signer-secret-value"))
+        assertFailsWith<IllegalArgumentException> {
+            TufSignerServerConfig.fromEnvironment(environment - "REGISTRY_TUF_SIGNER_R2_SECRET_ACCESS_KEY")
+        }
+    }
+
+    @Test
     fun `fails closed when any signer identity or authority field is absent`() {
         listOf(
             "K_SERVICE",
@@ -106,6 +129,8 @@ class TufSignerServerConfigTest {
             "REGISTRY_OFFLINE_ROOT_SIGNING_KEYS_PKCS8_BASE64" to "offline-key",
             "REGISTRY_WRITER_TOKEN" to "publisher-secret",
             "REGISTRY_METADATA_BUCKET" to "metadata-bucket",
+            "REGISTRY_OBJECT_STORE_PROVIDER" to "r2",
+            "REGISTRY_R2_SECRET_ACCESS_KEY" to "r2-secret",
             "GOOGLE_APPLICATION_CREDENTIALS" to "/secret/service-account.json",
         ).forEach { extra ->
             val failure = assertFailsWith<IllegalArgumentException>(extra.first) {

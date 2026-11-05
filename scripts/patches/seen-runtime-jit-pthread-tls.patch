@@ -1,0 +1,73 @@
+--- a/seen_runtime.c
++++ b/seen_runtime.c
+@@ -11250,8 +11250,42 @@
+ 
+ #if defined(_WIN32)
+ static __declspec(thread) int64_t seen_pfor_depth = 0;
++
++static int64_t seen_pfor_get_depth(void) {
++    return seen_pfor_depth;
++}
++
++static void seen_pfor_add_depth(int64_t delta) {
++    seen_pfor_depth += delta;
++}
+ #else
+-static _Thread_local int64_t seen_pfor_depth = 0;
++// The standalone compiler currently builds its ORC/lli runtime object without
++// -fPIC. A C _Thread_local here therefore produces R_X86_64_TPOFF32, which ORC
++// cannot materialize. pthread-specific storage preserves the required nested
++// parallel-for semantics without any ELF TLS relocations. If key setup fails,
++// fail safely into sequential execution instead of risking nested deadlock.
++static pthread_key_t seen_pfor_depth_key;
++static pthread_once_t seen_pfor_depth_once = PTHREAD_ONCE_INIT;
++static int seen_pfor_depth_key_status = -1;
++
++static void seen_pfor_create_depth_key(void) {
++    seen_pfor_depth_key_status = pthread_key_create(&seen_pfor_depth_key, NULL);
++}
++
++static int64_t seen_pfor_get_depth(void) {
++    if (pthread_once(&seen_pfor_depth_once, seen_pfor_create_depth_key) != 0 ||
++        seen_pfor_depth_key_status != 0) {
++        return 1;
++    }
++    return (int64_t)(intptr_t)pthread_getspecific(seen_pfor_depth_key);
++}
++
++static void seen_pfor_add_depth(int64_t delta) {
++    int64_t depth = seen_pfor_get_depth();
++    if (seen_pfor_depth_key_status != 0) return;
++    (void)pthread_setspecific(seen_pfor_depth_key,
++        (void *)(intptr_t)(depth + delta));
++}
+ #endif
+ 
+ int64_t seen_get_num_cores(void);
+@@ -11270,7 +11304,7 @@
+ #endif
+ 
+ static void seen_pfor_run_chunk_v2(SeenPForArgsV2 *a) {
+-    seen_pfor_depth += 1;
++    seen_pfor_add_depth(1);
+     for (int64_t i = a->start; i < a->end; i++) {
+         int64_t error = a->body(i, a->env);
+         if (error == 0) continue;
+@@ -11282,7 +11316,7 @@
+             a->drop_error(error);
+         }
+     }
+-    seen_pfor_depth -= 1;
++    seen_pfor_add_depth(-1);
+ }
+ 
+ static void* seen_pfor_worker(void* arg) {
+@@ -11297,7 +11331,7 @@
+     int64_t range = end - start;
+     if (range <= 0 || !body) return 0;
+ 
+-    if (seen_pfor_depth > 0) {
++    if (seen_pfor_get_depth() > 0) {
+         SeenPForArgsV2 nested = {
+             body, env, drop_error, start, end, -1, 0
+         };

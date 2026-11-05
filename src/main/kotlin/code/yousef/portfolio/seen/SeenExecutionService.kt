@@ -102,7 +102,7 @@ class SeenExecutionService(
             log.error("Seen execution failed", e)
             return ExecutionResult(
                 output = "",
-                error = "Internal error: ${e.message}",
+                error = "Internal execution error",
                 exitCode = -1,
                 compileTimeMs = 0,
                 runTimeMs = 0

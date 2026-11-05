@@ -397,7 +397,7 @@ class RoleLockedTufSigningService(
     }
 }
 
-private const val ED25519_PUBLIC_KEY_BYTES = 32
+internal const val ED25519_PUBLIC_KEY_BYTES = 32
 private const val ED25519_SIGNATURE_BYTES = 64
 private val ABSOLUTE_MAXIMUM_REMOTE_TIMEOUT: Duration = Duration.ofSeconds(30)
 
@@ -436,7 +436,7 @@ private fun positiveLong(value: JsonObject, name: String, message: String): Long
     return parsed
 }
 
-private fun verifyEd25519(publicKey: ByteArray, message: ByteArray, signature: ByteArray): Boolean {
+internal fun verifyEd25519(publicKey: ByteArray, message: ByteArray, signature: ByteArray): Boolean {
     if (publicKey.size != ED25519_PUBLIC_KEY_BYTES || signature.size != ED25519_SIGNATURE_BYTES) return false
     return Ed25519Signer().run {
         init(false, Ed25519PublicKeyParameters(publicKey))

@@ -1,5 +1,9 @@
 package code.yousef.portfolio.building.repo
 
+import code.yousef.firestore.PortfolioFirestoreCollections
+import code.yousef.firestore.PortfolioFirestoreDocument
+import code.yousef.firestore.PortfolioFirestoreStore
+import code.yousef.firestore.sourcePortfolioFirestoreStore
 import code.yousef.portfolio.building.model.*
 import com.google.cloud.firestore.Firestore
 import kotlinx.coroutines.Dispatchers
@@ -10,415 +14,259 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
- * Firestore repository for building management data.
- * Collections: buildings, units, tenants, leases, payments
+ * Migration-aware Firestore repository for building management data.
+ * Reads use the configured authority; every mutation is durably mirrored by the shared
+ * Portfolio Firestore migration store.
  */
-class BuildingRepository(private val firestore: Firestore) {
+class BuildingRepository(
+    private val store: PortfolioFirestoreStore,
+) {
+    constructor(firestore: Firestore) : this(sourcePortfolioFirestoreStore(firestore))
+
     private val log = LoggerFactory.getLogger(BuildingRepository::class.java)
     private val lock = ReentrantLock()
 
-    private val buildingsCollection = firestore.collection("buildings")
-    private val unitsCollection = firestore.collection("building_units")
-    private val tenantsCollection = firestore.collection("building_tenants")
-    private val leasesCollection = firestore.collection("building_leases")
-    private val paymentsCollection = firestore.collection("building_payments")
+    fun listBuildings(): List<Building> = read {
+        store.list(PortfolioFirestoreCollections.BUILDINGS).mapNotNull { it.toBuilding() }
+    }
 
-    // ============ Buildings ============
-    
-    fun listBuildings(): List<Building> = runBlocking {
-        withContext(Dispatchers.IO) {
-            buildingsCollection.get().get().documents.mapNotNull { doc ->
-                try {
-                    Building(
-                        id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        address = doc.getString("address") ?: "",
-                        createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
-                    )
-                } catch (e: Exception) {
-                    log.error("Failed to parse building ${doc.id}", e)
-                    null
-                }
-            }
+    fun getBuilding(id: String): Building? = read {
+        store.get(PortfolioFirestoreCollections.BUILDINGS, id)?.toBuilding()
+    }
+
+    fun upsertBuilding(building: Building) = mutate {
+        store.upsert(
+            PortfolioFirestoreCollections.BUILDINGS,
+            building.id,
+            mapOf(
+                "name" to building.name,
+                "address" to building.address,
+                "createdAt" to building.createdAt,
+            ),
+        )
+    }
+
+    fun deleteBuilding(id: String) = mutate {
+        store.delete(PortfolioFirestoreCollections.BUILDINGS, id)
+    }
+
+    fun listApartments(): List<Apartment> = read {
+        store.list(PortfolioFirestoreCollections.BUILDING_UNITS).mapNotNull { it.toApartment() }
+    }
+
+    fun listApartmentsByBuilding(buildingId: String): List<Apartment> = read {
+        store.whereEqualTo(
+            collection = PortfolioFirestoreCollections.BUILDING_UNITS,
+            filters = mapOf("buildingId" to buildingId),
+        ).mapNotNull { it.toApartment() }
+    }
+
+    fun getApartment(id: String): Apartment? = read {
+        store.get(PortfolioFirestoreCollections.BUILDING_UNITS, id)?.toApartment()
+    }
+
+    fun upsertApartment(apartment: Apartment) = mutate {
+        store.upsert(
+            PortfolioFirestoreCollections.BUILDING_UNITS,
+            apartment.id,
+            mapOf(
+                "buildingId" to apartment.buildingId,
+                "unitNumber" to apartment.unitNumber,
+                "floor" to apartment.floor,
+                "notes" to apartment.notes,
+            ),
+        )
+    }
+
+    fun deleteApartment(id: String) = mutate {
+        store.delete(PortfolioFirestoreCollections.BUILDING_UNITS, id)
+    }
+
+    fun listTenants(): List<Tenant> = read {
+        store.list(PortfolioFirestoreCollections.BUILDING_TENANTS).mapNotNull { it.toTenant() }
+    }
+
+    fun getTenant(id: String): Tenant? = read {
+        store.get(PortfolioFirestoreCollections.BUILDING_TENANTS, id)?.toTenant()
+    }
+
+    fun upsertTenant(tenant: Tenant) = mutate {
+        store.upsert(
+            PortfolioFirestoreCollections.BUILDING_TENANTS,
+            tenant.id,
+            mapOf(
+                "name" to tenant.name,
+                "phone" to tenant.phone,
+                "email" to tenant.email,
+                "nationalId" to tenant.nationalId,
+                "notes" to tenant.notes,
+            ),
+        )
+    }
+
+    fun deleteTenant(id: String) = mutate {
+        store.delete(PortfolioFirestoreCollections.BUILDING_TENANTS, id)
+    }
+
+    fun listLeases(): List<Lease> = read {
+        store.list(PortfolioFirestoreCollections.BUILDING_LEASES).mapNotNull { it.toLease() }
+    }
+
+    fun getLeaseByUnit(unitId: String): Lease? = read {
+        store.whereEqualTo(
+            collection = PortfolioFirestoreCollections.BUILDING_LEASES,
+            filters = mapOf("unitId" to unitId),
+        ).mapNotNull { it.toLease() }
+            .maxByOrNull(Lease::endDate)
+    }
+
+    fun upsertLease(lease: Lease) = mutate {
+        store.upsert(
+            PortfolioFirestoreCollections.BUILDING_LEASES,
+            lease.id,
+            mapOf(
+                "unitId" to lease.unitId,
+                "tenantId" to lease.tenantId,
+                "annualRent" to lease.annualRent,
+                "startDate" to lease.startDate,
+                "endDate" to lease.endDate,
+                "notes" to lease.notes,
+            ),
+        )
+    }
+
+    fun deleteLease(id: String) = mutate {
+        store.delete(PortfolioFirestoreCollections.BUILDING_LEASES, id)
+    }
+
+    fun listPayments(): List<Payment> = read {
+        store.list(PortfolioFirestoreCollections.BUILDING_PAYMENTS).mapNotNull { it.toPayment() }
+    }
+
+    fun listPaymentsByLease(leaseId: String): List<Payment> = read {
+        store.whereEqualTo(
+            collection = PortfolioFirestoreCollections.BUILDING_PAYMENTS,
+            filters = mapOf("leaseId" to leaseId),
+        ).mapNotNull { it.toPayment() }
+            .sortedBy(Payment::paymentNumber)
+    }
+
+    fun upsertPayment(payment: Payment) = mutate {
+        store.upsert(
+            PortfolioFirestoreCollections.BUILDING_PAYMENTS,
+            payment.id,
+            mapOf(
+                "leaseId" to payment.leaseId,
+                "paymentNumber" to payment.paymentNumber,
+                "amount" to payment.amount,
+                "periodStart" to payment.periodStart,
+                "periodEnd" to payment.periodEnd,
+                "dueDate" to payment.dueDate,
+                "paidDate" to payment.paidDate,
+                "status" to payment.status.name,
+                "notes" to payment.notes,
+            ),
+        )
+    }
+
+    fun deletePayment(id: String) = mutate {
+        store.delete(PortfolioFirestoreCollections.BUILDING_PAYMENTS, id)
+    }
+
+    fun clearAllData() = mutate {
+        // Preserve dependency order while making every delete replayable and idempotent.
+        listOf(
+            PortfolioFirestoreCollections.BUILDING_PAYMENTS,
+            PortfolioFirestoreCollections.BUILDING_LEASES,
+            PortfolioFirestoreCollections.BUILDING_TENANTS,
+            PortfolioFirestoreCollections.BUILDING_UNITS,
+            PortfolioFirestoreCollections.BUILDINGS,
+        ).forEach { collection ->
+            store.list(collection).forEach { document -> store.delete(collection, document.id) }
         }
     }
 
-    fun getBuilding(id: String): Building? = runBlocking {
-        withContext(Dispatchers.IO) {
-            val doc = buildingsCollection.document(id).get().get()
-            if (doc.exists()) {
-                Building(
-                    id = doc.id,
-                    name = doc.getString("name") ?: "",
-                    address = doc.getString("address") ?: "",
-                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
-                )
-            } else null
-        }
+    private fun mutate(block: () -> Unit) = lock.withLock {
+        runBlocking { withContext(Dispatchers.IO) { block() } }
     }
 
-    fun upsertBuilding(building: Building) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    buildingsCollection.document(building.id).set(
-                        mapOf(
-                            "name" to building.name,
-                            "address" to building.address,
-                            "createdAt" to building.createdAt
-                        )
-                    ).get()
-                }
-            }
-        }
+    private fun <T> read(block: () -> T): T = runBlocking {
+        withContext(Dispatchers.IO) { block() }
     }
 
-    fun deleteBuilding(id: String) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    buildingsCollection.document(id).delete().get()
-                }
-            }
-        }
+    private fun PortfolioFirestoreDocument.toBuilding(): Building? = parse("building") {
+        Building(
+            id = id,
+            name = string("name"),
+            address = string("address"),
+            createdAt = long("createdAt") ?: System.currentTimeMillis(),
+        )
     }
 
-    // ============ Apartments (Units) ============
-    
-    fun listApartments(): List<Apartment> = runBlocking {
-        withContext(Dispatchers.IO) {
-            unitsCollection.get().get().documents.mapNotNull { doc ->
-                try {
-                    Apartment(
-                        id = doc.id,
-                        buildingId = doc.getString("buildingId") ?: "",
-                        unitNumber = doc.getString("unitNumber") ?: "",
-                        floor = doc.getLong("floor")?.toInt(),
-                        notes = doc.getString("notes") ?: ""
-                    )
-                } catch (e: Exception) {
-                    log.error("Failed to parse apartment ${doc.id}", e)
-                    null
-                }
-            }
-        }
+    private fun PortfolioFirestoreDocument.toApartment(): Apartment? = parse("apartment") {
+        Apartment(
+            id = id,
+            buildingId = string("buildingId"),
+            unitNumber = string("unitNumber"),
+            floor = long("floor")?.toInt(),
+            notes = string("notes"),
+        )
     }
 
-    fun listApartmentsByBuilding(buildingId: String): List<Apartment> = runBlocking {
-        withContext(Dispatchers.IO) {
-            unitsCollection.whereEqualTo("buildingId", buildingId).get().get().documents.mapNotNull { doc ->
-                try {
-                    Apartment(
-                        id = doc.id,
-                        buildingId = doc.getString("buildingId") ?: "",
-                        unitNumber = doc.getString("unitNumber") ?: "",
-                        floor = doc.getLong("floor")?.toInt(),
-                        notes = doc.getString("notes") ?: ""
-                    )
-                } catch (e: Exception) {
-                    log.error("Failed to parse apartment ${doc.id}", e)
-                    null
-                }
-            }
-        }
+    private fun PortfolioFirestoreDocument.toTenant(): Tenant? = parse("tenant") {
+        Tenant(
+            id = id,
+            name = string("name"),
+            phone = string("phone"),
+            email = string("email"),
+            nationalId = string("nationalId"),
+            notes = string("notes"),
+        )
     }
 
-    fun getApartment(id: String): Apartment? = runBlocking {
-        withContext(Dispatchers.IO) {
-            val doc = unitsCollection.document(id).get().get()
-            if (doc.exists()) {
-                Apartment(
-                    id = doc.id,
-                    buildingId = doc.getString("buildingId") ?: "",
-                    unitNumber = doc.getString("unitNumber") ?: "",
-                    floor = doc.getLong("floor")?.toInt(),
-                    notes = doc.getString("notes") ?: ""
-                )
-            } else null
-        }
+    private fun PortfolioFirestoreDocument.toLease(): Lease? = parse("lease") {
+        Lease(
+            id = id,
+            unitId = string("unitId"),
+            tenantId = string("tenantId"),
+            annualRent = number("annualRent")?.toDouble() ?: 0.0,
+            startDate = string("startDate"),
+            endDate = string("endDate"),
+            notes = string("notes"),
+        )
     }
 
-    fun upsertApartment(apartment: Apartment) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    unitsCollection.document(apartment.id).set(
-                        mapOf(
-                            "buildingId" to apartment.buildingId,
-                            "unitNumber" to apartment.unitNumber,
-                            "floor" to apartment.floor,
-                            "notes" to apartment.notes
-                        )
-                    ).get()
-                }
-            }
-        }
+    private fun PortfolioFirestoreDocument.toPayment(): Payment? = parse("payment") {
+        Payment(
+            id = id,
+            leaseId = string("leaseId"),
+            paymentNumber = number("paymentNumber")?.toInt() ?: 1,
+            amount = number("amount")?.toDouble() ?: 0.0,
+            periodStart = string("periodStart"),
+            periodEnd = string("periodEnd"),
+            dueDate = string("dueDate"),
+            paidDate = data["paidDate"] as? String,
+            status = runCatching {
+                PaymentStatus.valueOf(string("status", PaymentStatus.PENDING.name))
+            }.getOrDefault(PaymentStatus.PENDING),
+            notes = string("notes"),
+        )
     }
 
-    fun deleteApartment(id: String) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    unitsCollection.document(id).delete().get()
-                }
-            }
-        }
+    private inline fun <T> PortfolioFirestoreDocument.parse(
+        kind: String,
+        block: PortfolioFirestoreDocument.() -> T,
+    ): T? = try {
+        block()
+    } catch (failure: Exception) {
+        log.error("Failed to parse $kind $id", failure)
+        null
     }
 
-    // ============ Tenants ============
-    
-    fun listTenants(): List<Tenant> = runBlocking {
-        withContext(Dispatchers.IO) {
-            tenantsCollection.get().get().documents.mapNotNull { doc ->
-                try {
-                    Tenant(
-                        id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        phone = doc.getString("phone") ?: "",
-                        email = doc.getString("email") ?: "",
-                        nationalId = doc.getString("nationalId") ?: "",
-                        notes = doc.getString("notes") ?: ""
-                    )
-                } catch (e: Exception) {
-                    log.error("Failed to parse tenant ${doc.id}", e)
-                    null
-                }
-            }
-        }
-    }
+    private fun PortfolioFirestoreDocument.string(key: String, default: String = ""): String =
+        data[key] as? String ?: default
 
-    fun getTenant(id: String): Tenant? = runBlocking {
-        withContext(Dispatchers.IO) {
-            val doc = tenantsCollection.document(id).get().get()
-            if (doc.exists()) {
-                Tenant(
-                    id = doc.id,
-                    name = doc.getString("name") ?: "",
-                    phone = doc.getString("phone") ?: "",
-                    email = doc.getString("email") ?: "",
-                    nationalId = doc.getString("nationalId") ?: "",
-                    notes = doc.getString("notes") ?: ""
-                )
-            } else null
-        }
-    }
+    private fun PortfolioFirestoreDocument.long(key: String): Long? = number(key)?.toLong()
 
-    fun upsertTenant(tenant: Tenant) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    tenantsCollection.document(tenant.id).set(
-                        mapOf(
-                            "name" to tenant.name,
-                            "phone" to tenant.phone,
-                            "email" to tenant.email,
-                            "nationalId" to tenant.nationalId,
-                            "notes" to tenant.notes
-                        )
-                    ).get()
-                }
-            }
-        }
-    }
-
-    fun deleteTenant(id: String) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    tenantsCollection.document(id).delete().get()
-                }
-            }
-        }
-    }
-
-    // ============ Leases ============
-    
-    fun listLeases(): List<Lease> = runBlocking {
-        withContext(Dispatchers.IO) {
-            leasesCollection.get().get().documents.mapNotNull { doc ->
-                try {
-                    Lease(
-                        id = doc.id,
-                        unitId = doc.getString("unitId") ?: "",
-                        tenantId = doc.getString("tenantId") ?: "",
-                        annualRent = doc.getDouble("annualRent") ?: 0.0,
-                        startDate = doc.getString("startDate") ?: "",
-                        endDate = doc.getString("endDate") ?: "",
-                        notes = doc.getString("notes") ?: ""
-                    )
-                } catch (e: Exception) {
-                    log.error("Failed to parse lease ${doc.id}", e)
-                    null
-                }
-            }
-        }
-    }
-
-    fun getLeaseByUnit(unitId: String): Lease? = runBlocking {
-        withContext(Dispatchers.IO) {
-            leasesCollection.whereEqualTo("unitId", unitId).get().get().documents
-                .sortedByDescending { it.getString("endDate") ?: "" }
-                .firstOrNull()?.let { doc ->
-                    Lease(
-                        id = doc.id,
-                        unitId = doc.getString("unitId") ?: "",
-                        tenantId = doc.getString("tenantId") ?: "",
-                        annualRent = doc.getDouble("annualRent") ?: 0.0,
-                        startDate = doc.getString("startDate") ?: "",
-                        endDate = doc.getString("endDate") ?: "",
-                        notes = doc.getString("notes") ?: ""
-                    )
-                }
-        }
-    }
-
-    fun upsertLease(lease: Lease) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    leasesCollection.document(lease.id).set(
-                        mapOf(
-                            "unitId" to lease.unitId,
-                            "tenantId" to lease.tenantId,
-                            "annualRent" to lease.annualRent,
-                            "startDate" to lease.startDate,
-                            "endDate" to lease.endDate,
-                            "notes" to lease.notes
-                        )
-                    ).get()
-                }
-            }
-        }
-    }
-
-    fun deleteLease(id: String) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    leasesCollection.document(id).delete().get()
-                }
-            }
-        }
-    }
-
-    // ============ Payments ============
-    
-    fun listPayments(): List<Payment> = runBlocking {
-        withContext(Dispatchers.IO) {
-            paymentsCollection.get().get().documents.mapNotNull { doc ->
-                try {
-                    Payment(
-                        id = doc.id,
-                        leaseId = doc.getString("leaseId") ?: "",
-                        paymentNumber = doc.getLong("paymentNumber")?.toInt() ?: 1,
-                        amount = doc.getDouble("amount") ?: 0.0,
-                        periodStart = doc.getString("periodStart") ?: "",
-                        periodEnd = doc.getString("periodEnd") ?: "",
-                        dueDate = doc.getString("dueDate") ?: "",
-                        paidDate = doc.getString("paidDate"),
-                        status = try {
-                            PaymentStatus.valueOf(doc.getString("status") ?: "PENDING")
-                        } catch (_: Exception) {
-                            PaymentStatus.PENDING
-                        },
-                        notes = doc.getString("notes") ?: ""
-                    )
-                } catch (e: Exception) {
-                    log.error("Failed to parse payment ${doc.id}", e)
-                    null
-                }
-            }
-        }
-    }
-
-    fun listPaymentsByLease(leaseId: String): List<Payment> = runBlocking {
-        withContext(Dispatchers.IO) {
-            paymentsCollection.whereEqualTo("leaseId", leaseId).get().get().documents.mapNotNull { doc ->
-                try {
-                    Payment(
-                        id = doc.id,
-                        leaseId = doc.getString("leaseId") ?: "",
-                        paymentNumber = doc.getLong("paymentNumber")?.toInt() ?: 1,
-                        amount = doc.getDouble("amount") ?: 0.0,
-                        periodStart = doc.getString("periodStart") ?: "",
-                        periodEnd = doc.getString("periodEnd") ?: "",
-                        dueDate = doc.getString("dueDate") ?: "",
-                        paidDate = doc.getString("paidDate"),
-                        status = try {
-                            PaymentStatus.valueOf(doc.getString("status") ?: "PENDING")
-                        } catch (_: Exception) {
-                            PaymentStatus.PENDING
-                        },
-                        notes = doc.getString("notes") ?: ""
-                    )
-                } catch (e: Exception) {
-                    log.error("Failed to parse payment ${doc.id}", e)
-                    null
-                }
-            }.sortedBy { it.paymentNumber }
-        }
-    }
-
-    fun upsertPayment(payment: Payment) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    paymentsCollection.document(payment.id).set(
-                        mapOf(
-                            "leaseId" to payment.leaseId,
-                            "paymentNumber" to payment.paymentNumber,
-                            "amount" to payment.amount,
-                            "periodStart" to payment.periodStart,
-                            "periodEnd" to payment.periodEnd,
-                            "dueDate" to payment.dueDate,
-                            "paidDate" to payment.paidDate,
-                            "status" to payment.status.name,
-                            "notes" to payment.notes
-                        )
-                    ).get()
-                }
-            }
-        }
-    }
-
-    fun deletePayment(id: String) {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    paymentsCollection.document(id).delete().get()
-                }
-            }
-        }
-    }
-
-    // ============ Batch operations ============
-
-    fun clearAllData() {
-        lock.withLock {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    // Delete all payments
-                    paymentsCollection.get().get().documents.forEach { doc ->
-                        doc.reference.delete().get()
-                    }
-                    // Delete all leases
-                    leasesCollection.get().get().documents.forEach { doc ->
-                        doc.reference.delete().get()
-                    }
-                    // Delete all tenants
-                    tenantsCollection.get().get().documents.forEach { doc ->
-                        doc.reference.delete().get()
-                    }
-                    // Delete all units
-                    unitsCollection.get().get().documents.forEach { doc ->
-                        doc.reference.delete().get()
-                    }
-                    // Delete all buildings
-                    buildingsCollection.get().get().documents.forEach { doc ->
-                        doc.reference.delete().get()
-                    }
-                }
-            }
-        }
-    }
+    private fun PortfolioFirestoreDocument.number(key: String): Number? = data[key] as? Number
 }

@@ -14,6 +14,8 @@ enum class RegistryMaintenanceMode(
     val allowImmutableMetadataCreates: Boolean,
     val allowRootPointerWrite: Boolean,
     val requiresBootstrapEnvelopes: Boolean = false,
+    /** True only for the signed-envelope importers that may read REGISTRY_MAINTENANCE_ENVELOPE_BASE64. */
+    val acceptsEnvelopeInput: Boolean = false,
 ) {
     IMPORT_OFFLINE_BOOTSTRAP(
         command = "import-offline-bootstrap",
@@ -39,6 +41,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = false,
+        acceptsEnvelopeInput = true,
     ),
     TARGETS_ROTATION_RELEASES(
         command = "import-offline-targets-rotation",
@@ -47,6 +50,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = false,
+        acceptsEnvelopeInput = true,
     ),
     TARGETS_ROTATION_SECURITY(
         command = "import-offline-targets-rotation",
@@ -55,6 +59,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = false,
+        acceptsEnvelopeInput = true,
     ),
     ROOT_VERIFY(
         command = "verify-root-chain",
@@ -71,6 +76,7 @@ enum class RegistryMaintenanceMode(
         requiresPublicationLease = true,
         allowImmutableMetadataCreates = true,
         allowRootPointerWrite = true,
+        acceptsEnvelopeInput = true,
     ),
     REFRESH_RELEASES(
         command = "refresh-releases-once",
@@ -127,27 +133,29 @@ data class RegistryMaintenanceInvocation(
                 RegistryMaintenanceInvocation(RegistryMaintenanceMode.ONLINE_BOOTSTRAP)
             }
             "import-offline-targets-renewal" -> {
-                require(args.size == 2) { "Usage: registry-service import-offline-targets-renewal <N.targets.json>" }
-                RegistryMaintenanceInvocation(RegistryMaintenanceMode.TARGETS_RENEWAL, Path.of(args[1]))
+                require(args.size in 1..2) {
+                    "Usage: registry-service import-offline-targets-renewal [<N.targets.json>]"
+                }
+                RegistryMaintenanceInvocation(RegistryMaintenanceMode.TARGETS_RENEWAL, args.getOrNull(1)?.let(Path::of))
             }
             "import-offline-targets-rotation" -> {
-                require(args.size == 3) {
-                    "Usage: registry-service import-offline-targets-rotation <releases|security> <N.targets.json>"
+                require(args.size in 2..3) {
+                    "Usage: registry-service import-offline-targets-rotation <releases|security> [<N.targets.json>]"
                 }
                 val mode = when (args[1]) {
                     TufRole.RELEASES -> RegistryMaintenanceMode.TARGETS_ROTATION_RELEASES
                     TufRole.SECURITY -> RegistryMaintenanceMode.TARGETS_ROTATION_SECURITY
                     else -> throw IllegalArgumentException("Targets rotation role must be releases or security")
                 }
-                RegistryMaintenanceInvocation(mode, Path.of(args[2]))
+                RegistryMaintenanceInvocation(mode, args.getOrNull(2)?.let(Path::of))
             }
             "verify-root-chain" -> {
                 require(args.size == 1) { "Usage: registry-service verify-root-chain" }
                 RegistryMaintenanceInvocation(RegistryMaintenanceMode.ROOT_VERIFY)
             }
             "import-offline-root-rotation" -> {
-                require(args.size == 2) { "Usage: registry-service import-offline-root-rotation <N.root.json>" }
-                RegistryMaintenanceInvocation(RegistryMaintenanceMode.ROOT_IMPORT, Path.of(args[1]))
+                require(args.size in 1..2) { "Usage: registry-service import-offline-root-rotation [<N.root.json>]" }
+                RegistryMaintenanceInvocation(RegistryMaintenanceMode.ROOT_IMPORT, args.getOrNull(1)?.let(Path::of))
             }
             "refresh-releases-once" -> {
                 require(args.size == 1) { "Usage: registry-service refresh-releases-once" }
@@ -187,9 +195,17 @@ data class RegistryMaintenanceConfig(
     val remoteOnlineSignerTargets: Map<String, RemoteTufSignerTarget>,
     val bootstrapRootEnvelopeBase64: String? = null,
     val bootstrapTargetsEnvelopeBase64: String? = null,
+    val objectStoreConfig: RegistryObjectStoreConfig? = null,
+    val awsRegion: String? = null,
+    val dynamoDbTablePrefix: String? = null,
+    val maintenanceEnvelopeBase64: String? = null,
 ) {
     init {
         val identity = maintenanceRepositoryIdentity(environment)
+        require(maintenanceEnvelopeBase64 == null || mode.acceptsEnvelopeInput) {
+            "Only the signed-envelope importers may receive $MAINTENANCE_ENVELOPE_VARIABLE"
+        }
+        maintenanceEnvelopeBase64?.let(::decodeMaintenanceEnvelope)
         require(repositoryId == identity.repositoryId && registryOrigin == identity.registryOrigin) {
             "Maintenance repository ID and origin must match the selected environment"
         }
@@ -217,11 +233,39 @@ data class RegistryMaintenanceConfig(
             } else {
                 require(firestoreDatabase == null) { "This maintenance phase must not receive Firestore configuration" }
             }
+            require(awsRegion == null && dynamoDbTablePrefix == null) {
+                "GCP maintenance must not receive DynamoDB configuration"
+            }
+            require(effectiveObjectStoreConfig().provider != RegistryObjectStoreProvider.S3) {
+                "GCP maintenance cannot select AWS S3 object storage"
+            }
+            effectiveObjectStoreConfig().requireRoles(setOf(RegistryBucketRole.METADATA))
+        } else if (storageMode == STORAGE_MODE_DYNAMODB) {
+            require(projectId == null && firestoreDatabase == null) {
+                "DynamoDB maintenance must not receive GCP project or Firestore configuration"
+            }
+            require(!metadataBucket.isNullOrBlank()) { "REGISTRY_METADATA_BUCKET is required for AWS maintenance" }
+            require(AWS_REGION_NAME.matches(awsRegion.orEmpty())) { "AWS_REGION is required for AWS maintenance" }
+            if (mode.requiresPublicationLease) {
+                require(dynamoDbTablePrefix == DynamoDbRegistryTables.expectedPrefix(environment)) {
+                    "Maintenance DynamoDB table prefix must match the selected environment"
+                }
+            } else {
+                require(dynamoDbTablePrefix == null) { "This maintenance phase must not receive DynamoDB configuration" }
+            }
+            require(objectStoreConfig != null && objectStoreConfig.provider in S3_API_PROVIDERS) {
+                "DynamoDB maintenance requires S3 or R2 object storage"
+            }
+            objectStoreConfig.requireRoles(setOf(RegistryBucketRole.METADATA))
         } else {
-            require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory or gcp" }
+            require(storageMode == "memory") { "REGISTRY_STORAGE_MODE must be memory, gcp, or dynamodb" }
+            require(awsRegion == null && dynamoDbTablePrefix == null) {
+                "Memory maintenance must not receive DynamoDB configuration"
+            }
             require(projectId == null && firestoreDatabase == null && metadataBucket == null) {
                 "Memory maintenance must not receive cloud project, database, or bucket configuration"
             }
+            require(objectStoreConfig == null) { "Memory maintenance must not receive cloud object storage configuration" }
         }
         if (mode.requiresBootstrapEnvelopes) {
             require(!bootstrapRootEnvelopeBase64.isNullOrBlank() && !bootstrapTargetsEnvelopeBase64.isNullOrBlank()) {
@@ -253,7 +297,7 @@ data class RegistryMaintenanceConfig(
                 firestoreDatabase = if (storageMode == "gcp" && mode.requiresPublicationLease) {
                     env["REGISTRY_FIRESTORE_DATABASE"] ?: identity.firestoreDatabase
                 } else null,
-                metadataBucket = env["REGISTRY_METADATA_BUCKET"]?.takeIf { storageMode == "gcp" },
+                metadataBucket = env["REGISTRY_METADATA_BUCKET"]?.takeIf { storageMode in CLOUD_STORAGE_MODES },
                 objectPrefix = env["REGISTRY_OBJECT_PREFIX"]?.trim('/') ?: "v1",
                 onlinePublicKeysHex = TufRole.ONLINE.mapNotNull { role ->
                     env["REGISTRY_KMS_${role.uppercase()}_PUBLIC_KEY_HEX"]?.let { role to it }
@@ -263,10 +307,29 @@ data class RegistryMaintenanceConfig(
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
                 bootstrapTargetsEnvelopeBase64 = env["REGISTRY_BOOTSTRAP_TARGETS_ENVELOPE_BASE64"]
                     ?.takeIf { mode.requiresBootstrapEnvelopes },
+                maintenanceEnvelopeBase64 = env[MAINTENANCE_ENVELOPE_VARIABLE]?.takeIf { mode.acceptsEnvelopeInput },
+                objectStoreConfig = if (storageMode in CLOUD_STORAGE_MODES) {
+                    RegistryObjectStoreConfig.fromEnvironment(
+                        env,
+                        setOf(RegistryBucketRole.METADATA),
+                        defaultProvider = if (storageMode == STORAGE_MODE_DYNAMODB) {
+                            RegistryObjectStoreProvider.S3
+                        } else {
+                            RegistryObjectStoreProvider.GCS
+                        },
+                    )
+                } else null,
+                awsRegion = env["AWS_REGION"]?.trim()?.takeIf { storageMode == STORAGE_MODE_DYNAMODB },
+                dynamoDbTablePrefix = if (storageMode == STORAGE_MODE_DYNAMODB && mode.requiresPublicationLease) {
+                    env["REGISTRY_DYNAMODB_TABLE_PREFIX"]?.trim() ?: DynamoDbRegistryTables.expectedPrefix(environment)
+                } else null,
             )
         }
     }
 }
+
+private fun RegistryMaintenanceConfig.effectiveObjectStoreConfig(): RegistryObjectStoreConfig =
+    objectStoreConfig ?: RegistryObjectStoreConfig.legacyGcs(metadataBucket = metadataBucket)
 
 private data class MaintenanceRepositoryIdentity(
     val repositoryId: String,
@@ -296,6 +359,9 @@ private fun rejectMaintenanceEnvironment(
         "REGISTRY_SERVER_MODE",
         "REGISTRY_QUARANTINE_BUCKET",
         "REGISTRY_PUBLIC_BUCKET",
+        "REGISTRY_PRIVATE_BUCKET",
+        "REGISTRY_EVIDENCE_BUCKET",
+        "REGISTRY_BACKUP_BUCKET",
         "REGISTRY_WRITER_MODE",
         "REGISTRY_WRITER_TOKEN",
         "REGISTRY_WRITER_PRINCIPAL",
@@ -323,22 +389,31 @@ private fun rejectMaintenanceEnvironment(
 
     val forbidden = env.keys.filter { name ->
         name in exactAlwaysForbidden ||
+            (name == MAINTENANCE_ENVELOPE_VARIABLE && !mode.acceptsEnvelopeInput) ||
+            (name.startsWith("REGISTRY_MAINTENANCE_") && name != MAINTENANCE_ENVELOPE_VARIABLE) ||
             name.startsWith("REGISTRY_OFFLINE_") ||
             name.startsWith("REGISTRY_GITHUB_") ||
             name.startsWith("REGISTRY_GITLAB_") ||
             name.startsWith("REGISTRY_TUF_SIGNER_") ||
+            name.startsWith("REGISTRY_AWS_KMS_") ||
+            (!mode.requiresPublicationLease && name == "REGISTRY_DYNAMODB_TABLE_PREFIX") ||
             (name.startsWith("REGISTRY_BOOTSTRAP_") && name !in allowedBootstrapNames) ||
             (name.startsWith("REGISTRY_KMS_") && name !in allowedPublicKeyNames) ||
             (name.startsWith("REGISTRY_TUF_") && name !in allowedRemoteNames) ||
             name.contains("PRIVATE_KEY") ||
             name.contains("PKCS8") ||
             (!mode.requiresPublicationLease && name == "REGISTRY_FIRESTORE_DATABASE") ||
-            (env["REGISTRY_STORAGE_MODE"] == "memory" && name in setOf(
-                "GOOGLE_CLOUD_PROJECT",
-                "REGISTRY_FIRESTORE_DATABASE",
-                "REGISTRY_METADATA_BUCKET",
+            (env["REGISTRY_STORAGE_MODE"] == "memory" && name in (
+                setOf(
+                    "GOOGLE_CLOUD_PROJECT",
+                    "REGISTRY_FIRESTORE_DATABASE",
+                    "REGISTRY_METADATA_BUCKET",
+                    "REGISTRY_OBJECT_STORE_PROVIDER",
+                    "REGISTRY_DYNAMODB_TABLE_PREFIX",
+                ) + REGISTRY_R2_ENVIRONMENT_NAMES
             ))
     }
+    rejectCrossCloudPersistence(env, env["REGISTRY_STORAGE_MODE"] ?: STORAGE_MODE_GCP)
     require(forbidden.isEmpty()) {
         "${mode.command} rejects unrelated authority and storage configuration: ${forbidden.sorted().joinToString(", ")}"
     }
@@ -420,6 +495,7 @@ class RegistryMaintenanceResources private constructor(
 
     override fun close() {
         onlineSigners.close()
+        storage.close()
         repository?.close()
     }
 
@@ -428,24 +504,40 @@ class RegistryMaintenanceResources private constructor(
             config: RegistryMaintenanceConfig,
             clock: Clock = Clock.systemUTC(),
             leaseRepositoryFactory: (RegistryMaintenanceConfig) -> RegistryRepository = { maintenance ->
-                if (maintenance.storageMode == "gcp") {
-                    FirestoreRegistryRepository.create(
+                when (maintenance.storageMode) {
+                    STORAGE_MODE_GCP -> FirestoreRegistryRepository.create(
                         projectId = requireNotNull(maintenance.projectId),
                         databaseId = requireNotNull(maintenance.firestoreDatabase),
                     )
-                } else {
-                    InMemoryRegistryRepository()
+                    // Only the state table's publication lease is touched.
+                    STORAGE_MODE_DYNAMODB -> DynamoDbRegistryRepository.create(
+                        region = requireNotNull(maintenance.awsRegion),
+                        tablePrefix = requireNotNull(maintenance.dynamoDbTablePrefix),
+                    )
+                    else -> InMemoryRegistryRepository()
                 }
             },
             metadataStorageFactory: (RegistryMaintenanceConfig) -> RegistryObjectStorage = { maintenance ->
-                if (maintenance.storageMode == "gcp") {
-                    GcsMetadataOnlyRegistryObjectStorage.create(
-                        projectId = requireNotNull(maintenance.projectId),
-                        metadataBucket = requireNotNull(maintenance.metadataBucket),
-                        prefix = maintenance.objectPrefix,
-                        allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
-                        allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,
-                    )
+                if (maintenance.storageMode in CLOUD_STORAGE_MODES) {
+                    val objectStore = maintenance.effectiveObjectStoreConfig()
+                        .requireRoles(setOf(RegistryBucketRole.METADATA))
+                    when (objectStore.provider) {
+                        RegistryObjectStoreProvider.GCS -> GcsMetadataOnlyRegistryObjectStorage.create(
+                            projectId = requireNotNull(maintenance.projectId),
+                            metadataBucket = objectStore.buckets.require(RegistryBucketRole.METADATA),
+                            prefix = maintenance.objectPrefix,
+                            allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
+                            allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,
+                        )
+                        RegistryObjectStoreProvider.R2, RegistryObjectStoreProvider.S3 -> RestrictedMetadataRegistryObjectStorage(
+                            delegate = S3CompatibleRegistryObjectStorage.create(objectStore, maintenance.objectPrefix),
+                            allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
+                            allowRootPointerWrite = maintenance.mode.allowRootPointerWrite,
+                            // Match the GCS authority boundary: the isolated timestamp signer,
+                            // never a coordinator or maintenance job, commits timestamp.json.
+                            allowTimestampPointerWrite = false,
+                        )
+                    }
                 } else {
                     RestrictedMetadataRegistryObjectStorage(
                         allowImmutableCreates = maintenance.mode.allowImmutableMetadataCreates,
@@ -471,7 +563,7 @@ class RegistryMaintenanceResources private constructor(
                 }
             },
             remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
-                { target -> GoogleCloudRunTufIdTokenProvider(target) },
+                ::defaultRemoteTufTokenProvider,
         ): RegistryMaintenanceResources {
             val storage = metadataStorageFactory(config)
             val online = onlineSignersFactory(config, remoteTokenProviderFactory)
@@ -515,6 +607,8 @@ object RegistryMaintenanceRuntime {
         invocation: RegistryMaintenanceInvocation,
         config: RegistryMaintenanceConfig = RegistryMaintenanceConfig.fromEnvironment(invocation.mode),
     ) {
+        // Resolve and validate the signed envelope before opening any cloud client.
+        val input = if (invocation.mode.acceptsEnvelopeInput) resolveMaintenanceInput(invocation, config) else null
         try {
             RegistryMaintenanceResources.create(config).use { resources ->
                 when (invocation.mode) {
@@ -528,7 +622,7 @@ object RegistryMaintenanceRuntime {
                     RegistryMaintenanceMode.ONLINE_BOOTSTRAP ->
                         println("online_transaction_version=${resources.bootstrapOnline()}")
                     RegistryMaintenanceMode.TARGETS_RENEWAL -> {
-                        val candidate = readInput(invocation)
+                        val candidate = requireNotNull(input)
                         val result = resources.importTargetsRenewal(candidate)
                         println("targets_version=${result.targetsVersion}")
                         println("targets_sha256=${sha256(candidate)}")
@@ -536,7 +630,7 @@ object RegistryMaintenanceRuntime {
                     }
                     RegistryMaintenanceMode.TARGETS_ROTATION_RELEASES,
                     RegistryMaintenanceMode.TARGETS_ROTATION_SECURITY -> {
-                        val candidate = readInput(invocation)
+                        val candidate = requireNotNull(input)
                         val result = resources.importTargetsRotation(candidate)
                         println("targets_version=${result.targetsVersion}")
                         println("targets_sha256=${sha256(candidate)}")
@@ -546,7 +640,7 @@ object RegistryMaintenanceRuntime {
                     RegistryMaintenanceMode.ROOT_VERIFY ->
                         println("root_version=${resources.verifyRootChain()}")
                     RegistryMaintenanceMode.ROOT_IMPORT -> {
-                        val candidate = readInput(invocation)
+                        val candidate = requireNotNull(input)
                         val result = resources.importRootRotation(candidate)
                         println("root_version=${result.rootVersion}")
                         println("root_sha256=${sha256(candidate)}")
@@ -573,6 +667,50 @@ object RegistryMaintenanceRuntime {
         }
     }
 
-    private fun readInput(invocation: RegistryMaintenanceInvocation): ByteArray =
-        Files.readAllBytes(requireNotNull(invocation.input))
+}
+
+internal const val MAINTENANCE_ENVELOPE_VARIABLE = "REGISTRY_MAINTENANCE_ENVELOPE_BASE64"
+
+/** Every runtime except the signed-envelope importers rejects maintenance envelope input. */
+internal fun rejectMaintenanceEnvelope(env: Map<String, String>, runtime: String) {
+    val supplied = env.keys.filter { it.startsWith("REGISTRY_MAINTENANCE_") }.sorted()
+    require(supplied.isEmpty()) { "$runtime rejects maintenance envelope configuration: ${supplied.joinToString(", ")}" }
+}
+
+/** Matches the TUF signer's metadata object bound; envelopes are kilobytes in practice. */
+internal const val MAXIMUM_MAINTENANCE_ENVELOPE_BYTES = 1024 * 1024
+private val STRICT_BASE64 = Regex("^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$")
+
+/** Strict, padded, size-capped Base64 decoded only in memory. */
+internal fun decodeMaintenanceEnvelope(encoded: String): ByteArray {
+    require(encoded.isNotEmpty() && encoded.length <= (MAXIMUM_MAINTENANCE_ENVELOPE_BYTES + 2) / 3 * 4) {
+        "$MAINTENANCE_ENVELOPE_VARIABLE is empty or exceeds its size bound"
+    }
+    require(STRICT_BASE64.matches(encoded)) { "$MAINTENANCE_ENVELOPE_VARIABLE must be strict padded Base64" }
+    val decoded = Base64.getDecoder().decode(encoded)
+    require(decoded.isNotEmpty() && decoded.size <= MAXIMUM_MAINTENANCE_ENVELOPE_BYTES) {
+        "$MAINTENANCE_ENVELOPE_VARIABLE is empty or exceeds its size bound"
+    }
+    return decoded
+}
+
+/** Exactly one input source: the file argument (GCP volume) or the env envelope (ECS). */
+internal fun resolveMaintenanceInput(
+    invocation: RegistryMaintenanceInvocation,
+    config: RegistryMaintenanceConfig,
+): ByteArray {
+    require(invocation.mode == config.mode) { "Maintenance invocation and configuration modes differ" }
+    require(invocation.mode.acceptsEnvelopeInput) { "${invocation.mode.command} takes no signed envelope" }
+    val file = invocation.input
+    val envelope = config.maintenanceEnvelopeBase64
+    require(file == null || envelope == null) {
+        "Supply the signed envelope either as a file argument or as $MAINTENANCE_ENVELOPE_VARIABLE, not both"
+    }
+    return when {
+        file != null -> Files.readAllBytes(file)
+        envelope != null -> decodeMaintenanceEnvelope(envelope)
+        else -> throw IllegalArgumentException(
+            "${invocation.mode.command} requires a file argument or $MAINTENANCE_ENVELOPE_VARIABLE",
+        )
+    }
 }

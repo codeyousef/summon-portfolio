@@ -16,6 +16,11 @@ fun main(args: Array<String>) {
         RegistryWorkerRuntime.run(RegistryWorkerConfig.fromEnvironment(mode))
         return
     }
+    if (args.firstOrNull() == RegistryDataCopyConfig.COMMAND) {
+        require(args.size == 1) { "Usage: registry-service ${RegistryDataCopyConfig.COMMAND}" }
+        RegistryDataCopyRuntime.run()
+        return
+    }
     if (args.singleOrNull() == "describe-signing-policy") {
         println(signingPolicyDescription(System.getenv()["REGISTRY_ENVIRONMENT"] ?: "development"))
         return
@@ -80,7 +85,7 @@ fun main(args: Array<String>) {
     }
     val requestedServerMode = args.singleOrNull()?.let(RegistryServerMode::fromArgument)
     require(args.isEmpty() || requestedServerMode != null) {
-        "Usage: registry-service [serve-public-api|serve-read-only-public-api|serve-release-actions|serve-security-actions|serve-tuf-signer|describe-signing-policy|verify-source-once|scan-once|promote-once|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-targets-rotation <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-root-rotation <current-N.root.json> <output-dir>|import-offline-bootstrap|bootstrap-online|import-offline-targets-renewal <N.targets.json>|import-offline-targets-rotation <releases|security> <N.targets.json>|verify-root-chain|import-offline-root-rotation <N.root.json>|refresh-releases-once|refresh-security-once|recover-expired-releases-once|recover-expired-security-once]"
+        "Usage: registry-service [serve-public-api|serve-read-only-public-api|serve-release-actions|serve-security-actions|serve-tuf-signer|describe-signing-policy|verify-source-once|scan-once|promote-once|prepare-offline-bootstrap <output-dir>|prepare-offline-targets-renewal <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-targets-rotation <trusted-root.json> <current-N.targets.json> <output-dir>|prepare-offline-root-rotation <current-N.root.json> <output-dir>|import-offline-bootstrap|bootstrap-online|import-offline-targets-renewal [<N.targets.json>]|import-offline-targets-rotation <releases|security> [<N.targets.json>]|verify-root-chain|import-offline-root-rotation [<N.root.json>]|refresh-releases-once|refresh-security-once|recover-expired-releases-once|recover-expired-security-once|copy-gcp-to-aws]"
     }
     val config = RegistryConfig.fromEnvironment(serverModeOverride = requestedServerMode)
     val resources = RegistryResources.create(config)
@@ -157,6 +162,7 @@ class RegistryResources private constructor(
     override fun close() {
         server?.close()
         onlineSigners.close()
+        storage.close()
         repository.close()
     }
 
@@ -166,16 +172,19 @@ class RegistryResources private constructor(
             clock: Clock = Clock.systemUTC(),
             signingRoles: Set<String> = config.configuredSigningRoles,
             remoteTokenProviderFactory: (RemoteTufSignerTarget) -> RemoteTufTokenProvider =
-                { target -> GoogleCloudRunTufIdTokenProvider(target) },
+                ::defaultRemoteTufTokenProvider,
         ): RegistryResources {
             require(signingRoles.all(TufRole.ONLINE::contains)) { "Unknown online signing role" }
             require(signingRoles == config.configuredSigningRoles) {
                 "Runtime signing roles must match its validated configuration"
             }
-            val mutableRepository: RegistryRepository = if (config.storageMode == "gcp") {
-                FirestoreRegistryRepository.create(config)
-            } else {
-                InMemoryRegistryRepository()
+            val mutableRepository: RegistryRepository = when (config.storageMode) {
+                STORAGE_MODE_GCP -> FirestoreRegistryRepository.create(config)
+                STORAGE_MODE_DYNAMODB -> DynamoDbRegistryRepository.create(
+                    region = requireNotNull(config.awsRegion),
+                    tablePrefix = requireNotNull(config.dynamoDbTablePrefix),
+                )
+                else -> InMemoryRegistryRepository()
             }
             val repository: RegistryRepository = if (config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API) {
                 ReadOnlyRegistryRepository(mutableRepository)
@@ -190,17 +199,7 @@ class RegistryResources private constructor(
                 repository
             }
             val storage: RegistryObjectStorage = when {
-                config.storageMode == "gcp" && config.serverMode == RegistryServerMode.PUBLIC_API ->
-                    GcsRegistryObjectStorage.create(config)
-                config.storageMode == "gcp" && config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API ->
-                    GcsReadOnlyRegistryObjectStorage.create(config)
-                config.storageMode == "gcp" -> GcsMetadataOnlyRegistryObjectStorage.create(
-                    projectId = requireNotNull(config.projectId),
-                    metadataBucket = requireNotNull(config.metadataBucket),
-                    prefix = config.objectPrefix,
-                    allowImmutableCreates = true,
-                    allowRootPointerWrite = false,
-                )
+                config.usesCloudStorage -> createCloudRegistryObjectStorage(config)
                 config.serverMode == RegistryServerMode.PUBLIC_API -> InMemoryRegistryObjectStorage()
                 config.serverMode == RegistryServerMode.READ_ONLY_PUBLIC_API ->
                     ReadOnlyRegistryObjectStorage(InMemoryRegistryObjectStorage())
@@ -210,7 +209,7 @@ class RegistryResources private constructor(
                     allowTimestampPointerWrite = true,
                 )
             }
-            val online = if (config.storageMode == "gcp") {
+            val online = if (config.usesCloudStorage) {
                 if (signingRoles.isEmpty()) {
                     publicKeyOnlyOnlineSigners(config.kmsOnlinePublicKeysHex)
                 } else {
@@ -319,6 +318,37 @@ class RegistryResources private constructor(
                 config.serverMode,
                 signingRoles.toSet(),
             )
+        }
+    }
+}
+
+private fun createCloudRegistryObjectStorage(config: RegistryConfig): RegistryObjectStorage {
+    val objectStore = config.effectiveObjectStoreConfig().requireRoles(config.serverMode.objectStoreRoles)
+    return when (objectStore.provider) {
+        RegistryObjectStoreProvider.GCS -> when (config.serverMode) {
+            RegistryServerMode.PUBLIC_API -> GcsRegistryObjectStorage.create(config)
+            RegistryServerMode.READ_ONLY_PUBLIC_API -> GcsReadOnlyRegistryObjectStorage.create(config)
+            RegistryServerMode.RELEASE_ACTIONS, RegistryServerMode.SECURITY_ACTIONS ->
+                GcsMetadataOnlyRegistryObjectStorage.create(
+                    projectId = requireNotNull(config.projectId),
+                    metadataBucket = objectStore.buckets.require(RegistryBucketRole.METADATA),
+                    prefix = config.objectPrefix,
+                    allowImmutableCreates = true,
+                    allowRootPointerWrite = false,
+                )
+        }
+        RegistryObjectStoreProvider.R2, RegistryObjectStoreProvider.S3 -> {
+            val delegate = S3CompatibleRegistryObjectStorage.create(objectStore, config.objectPrefix)
+            when (config.serverMode) {
+                RegistryServerMode.PUBLIC_API -> delegate
+                RegistryServerMode.READ_ONLY_PUBLIC_API -> ReadOnlyRegistryObjectStorage(delegate)
+                RegistryServerMode.RELEASE_ACTIONS, RegistryServerMode.SECURITY_ACTIONS ->
+                    RestrictedMetadataRegistryObjectStorage(
+                        delegate = delegate,
+                        allowImmutableCreates = true,
+                        allowRootPointerWrite = false,
+                    )
+            }
         }
     }
 }

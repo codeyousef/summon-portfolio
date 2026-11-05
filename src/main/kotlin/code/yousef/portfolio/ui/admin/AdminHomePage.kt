@@ -21,10 +21,15 @@ private data class AdminLinkItem(
 
 private val adminLinks = listOf(
     AdminLinkItem(
+        title = "Spending",
+        description = "See every studio expense, Samurai user cost, budget, and reconciliation gap.",
+        href = "/admin/spending",
+        primary = true
+    ),
+    AdminLinkItem(
         title = "Photography",
         description = "Upload photos and manage the public photography page.",
         href = "/admin/photography",
-        primary = true
     ),
     AdminLinkItem("Projects", "Edit portfolio project entries.", "/admin/projects"),
     AdminLinkItem("Services", "Edit service cards.", "/admin/services"),

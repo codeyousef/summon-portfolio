@@ -554,7 +554,7 @@ private val FifthWallGuidanceByLevel = mapOf(
     )
 )
 
-private val FifthWallColors = listOf(
+internal val FifthWallColors = listOf(
     FifthWallColor("red", "#ff6b6b"),
     FifthWallColor("blue", "#5aa9ff"),
     FifthWallColor("green", "#45e0a8"),
