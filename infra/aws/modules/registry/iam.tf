@@ -16,6 +16,7 @@ data "aws_iam_policy_document" "ecs_tasks_trust" {
 }
 
 # Lets the same signer role, and so the same KMS key grants, run on Lambda.
+# Lambda rejects a trust statement conditioned on aws:SourceAccount.
 data "aws_iam_policy_document" "signer_trust" {
   source_policy_documents = [data.aws_iam_policy_document.ecs_tasks_trust.json]
 
@@ -25,12 +26,6 @@ data "aws_iam_policy_document" "signer_trust" {
     principals {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "aws:SourceAccount"
-      values   = [var.aws_account_id]
     }
   }
 }
