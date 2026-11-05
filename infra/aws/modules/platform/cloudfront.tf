@@ -16,6 +16,13 @@ data "aws_cloudfront_origin_request_policy" "all_viewer" {
   name = "Managed-AllViewer"
 }
 
+# A function URL rejects any Host header but its own.
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
+  count = local.enabled
+
+  name = "Managed-AllViewerExceptHostHeader"
+}
+
 resource "aws_cloudfront_origin_access_control" "buckets" {
   count = local.enabled
 
@@ -73,6 +80,29 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   dynamic "origin" {
+    for_each = local.site_lambda ? [aws_lambda_function_url.site[0].function_url] : []
+
+    content {
+      origin_id   = "site-lambda"
+      domain_name = trimsuffix(trimprefix(origin.value, "https://"), "/")
+
+      custom_header {
+        name  = "X-Origin-Verify"
+        value = var.site_lambda_origin_secret
+      }
+
+      custom_origin_config {
+        http_port                = 80
+        https_port               = 443
+        origin_protocol_policy   = "https-only"
+        origin_ssl_protocols     = ["TLSv1.2"]
+        origin_read_timeout      = 60
+        origin_keepalive_timeout = 60
+      }
+    }
+  }
+
+  dynamic "origin" {
     for_each = local.cdn_buckets
 
     content {
@@ -83,13 +113,22 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   default_cache_behavior {
-    target_origin_id         = "alb"
+    target_origin_id         = local.site_lambda_serving ? "site-lambda" : "alb"
     viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods           = ["GET", "HEAD"]
     compress                 = true
     cache_policy_id          = data.aws_cloudfront_cache_policy.origin_controlled[0].id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer[0].id
+    origin_request_policy_id = local.site_lambda_serving ? data.aws_cloudfront_origin_request_policy.all_viewer_except_host[0].id : data.aws_cloudfront_origin_request_policy.all_viewer[0].id
+
+    dynamic "function_association" {
+      for_each = local.site_lambda_serving ? [aws_cloudfront_function.site_request[0].arn] : []
+
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
   }
 
   dynamic "ordered_cache_behavior" {

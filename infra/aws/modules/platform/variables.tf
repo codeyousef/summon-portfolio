@@ -69,6 +69,27 @@ variable "images" {
   }
 }
 
+variable "site_lambda" {
+  description = "Run the site on Lambda. serving moves CloudFront traffic to it."
+  type = object({
+    enabled = optional(bool, false)
+    serving = optional(bool, false)
+  })
+  default = {}
+}
+
+variable "site_lambda_origin_secret" {
+  description = "Secret CloudFront sends to the site Lambda."
+  type        = string
+  default     = null
+  sensitive   = true
+
+  validation {
+    condition     = var.site_lambda_origin_secret == null || length(coalesce(var.site_lambda_origin_secret, "")) >= 32
+    error_message = "The origin secret must be at least 32 characters."
+  }
+}
+
 variable "service_sizes" {
   description = "Fargate sizing and desired counts."
   type = object({
