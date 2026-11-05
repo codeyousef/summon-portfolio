@@ -51,6 +51,15 @@ locals {
     "review-artifact-index" = "rw"
   }
 
+  # Publishing rebuilds targets from current releases and their review evidence.
+  coordinator_tables = {
+    state                   = "lease"
+    packages                = "r"
+    releases                = "r"
+    "review-artifacts"      = "r"
+    "review-artifact-index" = "r"
+  }
+
   # Grants: q/p/m = quarantine/public/metadata; r read, put, del delete;
   # m:put covers versioned metadata only; m:root and m:timestamp are pointers.
   runtime_catalog = {
@@ -178,7 +187,7 @@ locals {
       host      = null
       operation = "release"
       roles     = ["releases", "snapshot", "timestamp"]
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -193,7 +202,7 @@ locals {
       host      = null
       operation = "security"
       roles     = ["security", "snapshot", "timestamp"]
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -208,7 +217,7 @@ locals {
       host      = null
       operation = "release"
       roles     = ["releases", "snapshot", "timestamp"]
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -223,7 +232,7 @@ locals {
       host      = null
       operation = "security"
       roles     = ["security", "snapshot", "timestamp"]
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -238,7 +247,7 @@ locals {
       host      = null
       operation = "bootstrap"
       roles     = local.online_roles
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -272,7 +281,7 @@ locals {
       host      = null
       operation = "targets-renewal"
       roles     = ["snapshot", "timestamp"]
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -287,7 +296,7 @@ locals {
       host      = null
       operation = "targets-rotation:releases"
       roles     = ["releases", "snapshot", "timestamp"]
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -302,7 +311,7 @@ locals {
       host      = null
       operation = "targets-rotation:security"
       roles     = ["security", "snapshot", "timestamp"]
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put"]
       cpu       = 256
       memory    = 1024
@@ -317,7 +326,7 @@ locals {
       host      = null
       operation = null
       roles     = []
-      tables    = { state = "lease" }
+      tables    = local.coordinator_tables
       grants    = ["m:r", "m:put", "m:root"]
       cpu       = 256
       memory    = 1024
