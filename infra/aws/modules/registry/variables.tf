@@ -133,6 +133,18 @@ variable "schedules_enabled" {
   default     = false
 }
 
+variable "api_lambda_enabled" {
+  description = "Create the read-only API on Lambda."
+  type        = bool
+  default     = false
+}
+
+variable "api_lambda_serving" {
+  description = "Send gateway traffic to the Lambda API instead of the internal load balancer."
+  type        = bool
+  default     = false
+}
+
 variable "refresh_schedules_enabled" {
   description = "Separately gated refresh schedules."
   type        = bool

@@ -30,12 +30,17 @@ output "signing_keys" {
   value       = { for role, key in aws_kms_key.signing : role => key.arn }
 }
 
+output "api_lambda_url" {
+  description = "Function URL of the read-only API, when it exists."
+  value       = local.api_lambda ? aws_lambda_function_url.api[0].function_url : null
+}
+
 output "gateway_environment" {
   description = "Portfolio SSR gateway settings for the registry upstreams."
   value = local.routine_ready ? merge(
     {
       SEEN_REGISTRY_PUBLIC_HOST       = "seen.${var.network.host_suffix}"
-      SEEN_REGISTRY_UPSTREAM_URL      = "https://${local.internal_hosts.api}"
+      SEEN_REGISTRY_UPSTREAM_URL      = local.api_lambda_serving ? trimsuffix(aws_lambda_function_url.api[0].function_url, "/") : "https://${local.internal_hosts.api}"
       SEEN_REGISTRY_UPSTREAM_IDENTITY = "none"
     },
     local.is_dev ? {
