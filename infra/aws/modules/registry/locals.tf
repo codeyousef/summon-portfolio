@@ -414,7 +414,8 @@ locals {
 
   runtime_environment = {
     for name, runtime in local.runtimes : name => name == "gcp-copy" ? tomap(local.copy_environment) : tomap(merge(
-      local.identity_environment,
+      # Jobs without tables reject the table prefix (rejectMaintenanceEnvironment).
+      { for key, value in local.identity_environment : key => value if key != "REGISTRY_DYNAMODB_TABLE_PREFIX" || length(runtime.tables) > 0 },
       local.public_key_environment,
       {
         for bucket in distinct([for grant in runtime.grants : local.bucket_for_grant[split(":", grant)[0]]]) :
