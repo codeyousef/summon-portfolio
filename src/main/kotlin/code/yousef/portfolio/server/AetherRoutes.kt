@@ -931,7 +931,7 @@ fun Router.docsRoutes(
 
         val origin = run {
             val scheme = "http"
-            val host = request.headers["Host"] ?: "localhost"
+            val host = request.publicHostHeader() ?: "localhost"
             "$scheme://$host"
         }
 

@@ -472,6 +472,9 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         )
     }
 
+    val edgeOriginGuard = appConfig.edgeOriginSecret?.let(::EdgeOriginGuard)
+    EdgeHostTrust.viewerHostTrusted = edgeOriginGuard != null
+
     val pipeline = Pipeline().apply {
         // Final recovery boundary. Detailed failures stay in structured server
         // logs; production clients receive only an opaque correlation ID.
@@ -484,12 +487,13 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         }
         // Health checks and the dev CDN origin bypass logging noise, host routing and sessions.
         use(healthEndpoints::handle)
+        edgeOriginGuard?.let { guard -> use(guard::handle) }
         cdnProxy?.let { proxy -> use(proxy::handle) }
         installCallLogging()
         installContentNegotiation()
 
         this.use { exchange, next ->
-            val host = exchange.request.headers["Host"]
+            val host = exchange.request.publicHostHeader()
             val links = resolveEnvironmentLinks(host)
             EnvironmentLinksRegistry.withLinks(links) {
                 next()
@@ -507,7 +511,7 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
         
         // Admin Site Middleware (only for main portfolio site, not building subdomain)
         val adminMiddleware: codes.yousef.aether.core.pipeline.Middleware = { exchange, next ->
-            val host = exchange.request.headers["Host"]?.substringBefore(":")
+            val host = exchange.request.publicHostHeader()?.substringBefore(":")
             val isBuildingSite = host == "building.yousef.codes" || host == "building.dev.yousef.codes"
             val path = exchange.request.path
             if (
