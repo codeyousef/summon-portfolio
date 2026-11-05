@@ -2,8 +2,8 @@ locals {
   # Hosts that receive an internal listener rule: routine services always,
   # signers once their keys exist.
   routed_hosts = merge(
-    { for name, service in local.services : name => local.internal_hosts[service.host] if local.routine_ready },
-    { for role in local.online_roles : "signer-${role}" => local.internal_hosts[role] if local.signers_ready },
+    { for name, service in local.services : name => local.internal_hosts[service.host] if local.routine_ready && var.ecs_services_enabled },
+    { for role in local.online_roles : "signer-${role}" => local.internal_hosts[role] if local.signers_ready && var.ecs_services_enabled },
   )
 }
 
@@ -100,7 +100,7 @@ resource "aws_vpc_security_group_egress_rule" "signer_https" {
 }
 
 resource "aws_lb" "internal" {
-  count = local.active ? 1 : 0
+  count = local.active && var.ecs_services_enabled ? 1 : 0
 
   name                       = "${local.name}-registry"
   load_balancer_type         = "application"
@@ -144,7 +144,7 @@ resource "aws_acm_certificate_validation" "internal" {
 
 # Signers require X-Forwarded-Proto: https, so TLS terminates here.
 resource "aws_lb_listener" "internal" {
-  count = local.edge_ready ? 1 : 0
+  count = local.edge_ready && var.ecs_services_enabled ? 1 : 0
 
   load_balancer_arn = aws_lb.internal[0].arn
   port              = 443
@@ -164,7 +164,7 @@ resource "aws_lb_listener" "internal" {
 }
 
 resource "aws_route53_record" "internal" {
-  for_each = local.active ? local.internal_hosts : {}
+  for_each = local.active && var.ecs_services_enabled ? local.internal_hosts : {}
 
   zone_id = var.network.zone_id
   name    = each.value
@@ -261,7 +261,7 @@ resource "aws_ecs_task_definition" "runtime" {
 }
 
 resource "aws_ecs_service" "registry" {
-  for_each = local.routine_ready ? toset(keys(local.services)) : toset([])
+  for_each = local.routine_ready && var.ecs_services_enabled ? toset(keys(local.services)) : toset([])
 
   name                              = "app-registry-${each.key}"
   cluster                           = var.network.cluster_arn
@@ -330,7 +330,7 @@ resource "aws_ecs_task_definition" "signer" {
 }
 
 resource "aws_ecs_service" "signer" {
-  for_each = local.signers_ready ? toset(local.online_roles) : toset([])
+  for_each = local.signers_ready && var.ecs_services_enabled ? toset(local.online_roles) : toset([])
 
   name                              = "signer-${each.key}"
   cluster                           = var.network.cluster_arn

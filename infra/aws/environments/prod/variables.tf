@@ -48,6 +48,7 @@ variable "registry" {
     schedules_enabled         = optional(bool, false)
     refresh_schedules_enabled = optional(bool, false)
     api_lambda_enabled        = optional(bool, false)
+    ecs_services_enabled      = optional(bool, true)
     signer_lambda_enabled     = optional(bool, false)
     signer_lambda_serving     = optional(bool, false)
     api_lambda_serving        = optional(bool, false)
