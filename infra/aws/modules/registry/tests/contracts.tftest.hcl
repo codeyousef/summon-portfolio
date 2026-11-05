@@ -222,6 +222,11 @@ run "production_is_read_only" {
   }
 
   assert {
+    condition     = output.gateway_environment.SEEN_REGISTRY_UPSTREAM_IDENTITY == "none"
+    error_message = "The AWS gateway must not request Google identity tokens."
+  }
+
+  assert {
     condition = alltrue([
       for name in ["offline-bootstrap-import", "root-verifier"] :
       !contains(keys(local.runtime_environment[name]), "REGISTRY_DYNAMODB_TABLE_PREFIX")

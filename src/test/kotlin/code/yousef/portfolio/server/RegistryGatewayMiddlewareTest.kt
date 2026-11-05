@@ -125,6 +125,27 @@ class RegistryGatewayMiddlewareTest {
     }
 
     @Test
+    fun `gateway without an identity provider forwards HTTPS upstream requests without a token`() = runBlocking {
+        val forwarded = mutableListOf<String?>()
+        val gateway = RegistryGatewayMiddleware(
+            publicHost = DEV_REGISTRY_PUBLIC_HOST,
+            upstreamUrl = "https://api.registry.example.test",
+            identityTokenProvider = null,
+            proxyForwarder = RegistryProxyForwarder { _, _, identityToken, _ -> forwarded += identityToken },
+        )
+        val exchange = TestExchange(
+            request = TestRequest(
+                path = "/packages",
+                headers = Headers.of("host" to DEV_REGISTRY_PUBLIC_HOST),
+            )
+        )
+
+        gateway.handle(exchange) { error("The registry request must not reach the application") }
+
+        assertEquals(listOf<String?>(null), forwarded)
+    }
+
+    @Test
     fun `API-only gateway strips caller authorization before the upstream network request`() = runBlocking {
         val authorization = CompletableFuture<String?>()
         val executor = Executors.newSingleThreadExecutor()

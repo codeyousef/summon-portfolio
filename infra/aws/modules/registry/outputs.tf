@@ -34,8 +34,9 @@ output "gateway_environment" {
   description = "Portfolio SSR gateway settings for the registry upstreams."
   value = local.routine_ready ? merge(
     {
-      SEEN_REGISTRY_PUBLIC_HOST  = "seen.${var.network.host_suffix}"
-      SEEN_REGISTRY_UPSTREAM_URL = "https://${local.internal_hosts.api}"
+      SEEN_REGISTRY_PUBLIC_HOST       = "seen.${var.network.host_suffix}"
+      SEEN_REGISTRY_UPSTREAM_URL      = "https://${local.internal_hosts.api}"
+      SEEN_REGISTRY_UPSTREAM_IDENTITY = "none"
     },
     local.is_dev ? {
       SEEN_REGISTRY_RELEASE_ACTIONS_UPSTREAM_URL  = "https://${local.internal_hosts["release-actions"]}"

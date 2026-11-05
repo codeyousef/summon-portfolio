@@ -463,7 +463,12 @@ fun buildApplication(appConfig: AppConfig): ApplicationResources {
             publicHost = requireNotNull(appConfig.registryPublicHost),
             upstreamUrl = publicUpstream,
             releaseActionsUpstreamUrl = appConfig.registryReleaseActionsUpstreamUrl,
-            securityActionsUpstreamUrl = appConfig.registrySecurityActionsUpstreamUrl
+            securityActionsUpstreamUrl = appConfig.registrySecurityActionsUpstreamUrl,
+            identityTokenProvider = if (appConfig.registryUpstreamIdentityEnabled) {
+                GoogleAdcRegistryIdentityTokenProvider()
+            } else {
+                null
+            },
         )
     }
 

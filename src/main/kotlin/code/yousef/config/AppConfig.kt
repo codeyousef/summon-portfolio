@@ -30,6 +30,7 @@ data class AppConfig(
     val finOpsShardedRollupsReady: Boolean = false,
     val registryPublicHost: String? = null,
     val registryUpstreamUrl: String? = null,
+    val registryUpstreamIdentityEnabled: Boolean = true,
     val registryReleaseActionsUpstreamUrl: String? = null,
     val registrySecurityActionsUpstreamUrl: String? = null,
     val dataBackendSelection: PortfolioDataBackend = PortfolioDataBackend.FIRESTORE,
@@ -169,6 +170,11 @@ internal fun loadAppConfig(env: Map<String, String>): AppConfig {
     val registryUpstreamUrl = env["SEEN_REGISTRY_UPSTREAM_URL"]
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
+    val registryUpstreamIdentityEnabled = when (val value = env["SEEN_REGISTRY_UPSTREAM_IDENTITY"]?.trim()) {
+        null, "", "google" -> true
+        "none" -> false
+        else -> throw IllegalArgumentException("SEEN_REGISTRY_UPSTREAM_IDENTITY must be 'google' or 'none': $value")
+    }
     val registryPublicHost = env["SEEN_REGISTRY_PUBLIC_HOST"]
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
@@ -235,6 +241,7 @@ internal fun loadAppConfig(env: Map<String, String>): AppConfig {
         finOpsShardedRollupsReady = finOpsShardedRollupsReady,
         registryPublicHost = registryPublicHost,
         registryUpstreamUrl = registryUpstreamUrl,
+        registryUpstreamIdentityEnabled = registryUpstreamIdentityEnabled,
         registryReleaseActionsUpstreamUrl = registryReleaseActionsUpstreamUrl,
         registrySecurityActionsUpstreamUrl = registrySecurityActionsUpstreamUrl
     )
