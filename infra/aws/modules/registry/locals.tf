@@ -432,7 +432,7 @@ locals {
       },
       merge([
         for role in runtime.roles : {
-          "REGISTRY_TUF_${upper(role)}_SIGNER_URL"      = "${local.signer_audiences[role]}/sign"
+          "REGISTRY_TUF_${upper(role)}_SIGNER_URL"      = local.signer_lambda_serving ? "${trimsuffix(aws_lambda_function_url.signer[role].function_url, "/")}/sign" : "${local.signer_audiences[role]}/sign"
           "REGISTRY_TUF_${upper(role)}_SIGNER_AUDIENCE" = local.signer_audiences[role]
         }
       ]...),

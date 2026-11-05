@@ -316,22 +316,7 @@ resource "aws_ecs_task_definition" "signer" {
     command      = ["serve-tuf-signer"]
     portMappings = [{ containerPort = 8080, protocol = "tcp" }]
     environment = [
-      for name, value in {
-        PORT                                          = "8080"
-        REGISTRY_ENVIRONMENT                          = local.runtime_env
-        REGISTRY_REPOSITORY_ID                        = local.identity_environment.REGISTRY_REPOSITORY_ID
-        REGISTRY_TUF_SIGNER_PROVIDER                  = "aws-kms"
-        REGISTRY_TUF_SIGNER_SERVICE_NAME              = "seen-tuf-${each.key}-${var.environment}"
-        REGISTRY_TUF_SIGNER_ROLE                      = each.key
-        "REGISTRY_AWS_KMS_${upper(each.key)}_KEY_ARN" = aws_kms_key.signing[each.key].arn
-        REGISTRY_TUF_SIGNER_PUBLIC_KEY_HEX            = var.online_public_keys_hex[each.key]
-        REGISTRY_TUF_SIGNER_OBJECT_STORE_PROVIDER     = "s3"
-        REGISTRY_TUF_SIGNER_METADATA_BUCKET           = local.bucket_names.metadata
-        REGISTRY_TUF_SIGNER_OBJECT_PREFIX             = local.object_prefix
-        REGISTRY_TUF_SIGNER_TRUSTED_ROOT_V1_SHA256    = var.trusted_root_v1_sha256
-        REGISTRY_TUF_SIGNER_AUDIENCE                  = local.signer_audiences[each.key]
-        REGISTRY_TUF_SIGNER_CALLER_BINDINGS           = local.signer_caller_bindings[each.key]
-      } : { name = name, value = value }
+      for name, value in local.signer_environment[each.key] : { name = name, value = value }
     ]
     logConfiguration = {
       logDriver = "awslogs"

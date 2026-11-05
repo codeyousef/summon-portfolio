@@ -15,6 +15,26 @@ data "aws_iam_policy_document" "ecs_tasks_trust" {
   }
 }
 
+# Lets the same signer role, and so the same KMS key grants, run on Lambda.
+data "aws_iam_policy_document" "signer_trust" {
+  source_policy_documents = [data.aws_iam_policy_document.ecs_tasks_trust.json]
+
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [var.aws_account_id]
+    }
+  }
+}
+
 # Routine registry roles follow portfolio-<env>-app-*; signer roles follow
 # portfolio-<env>-signer-* so only the signer deploy identity can pass them.
 resource "aws_iam_role" "registry_execution" {
@@ -203,7 +223,7 @@ resource "aws_iam_role" "signer" {
   for_each = local.kms_ready ? toset(local.online_roles) : toset([])
 
   name               = "${local.name}-signer-${each.key}-task"
-  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_trust.json
+  assume_role_policy = var.signer_lambda_enabled ? data.aws_iam_policy_document.signer_trust.json : data.aws_iam_policy_document.ecs_tasks_trust.json
 
   tags = { TufRole = each.key }
 }
