@@ -20,7 +20,7 @@ module "platform" {
   app_secret_names = ["GITHUB_TOKEN"]
 
   service_sizes = {
-    ssr_desired_count = 2
+    ssr_desired_count = 1
   }
 }
 
