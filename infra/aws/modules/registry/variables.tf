@@ -133,6 +133,17 @@ variable "schedules_enabled" {
   default     = false
 }
 
+variable "ecs_services_enabled" {
+  description = "Run the always-on ECS services and their internal load balancer. One-shot jobs stay on ECS."
+  type        = bool
+  default     = true
+
+  validation {
+    condition     = var.ecs_services_enabled || (var.api_lambda_serving && var.signer_lambda_serving)
+    error_message = "Move the API and signers to Lambda before removing the ECS services."
+  }
+}
+
 variable "signer_lambda_enabled" {
   description = "Create the TUF signers on Lambda."
   type        = bool
