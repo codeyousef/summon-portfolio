@@ -141,7 +141,7 @@ jobs:
           rollout() {
             local service="$1" family="$2" container="$3" image="$4"
             if [[ "$(aws ecs describe-services --cluster "${cluster}" --services "${service}" \
-                  --query 'services[?status==`ACTIVE`] | length(@)' --output text)" != "1" ]]; then
+                  --query "services[?status=='ACTIVE'] | length(@)" --output text)" != "1" ]]; then
               echo "Skipping ${service}: not provisioned in ${cluster}."
               return 0
             fi

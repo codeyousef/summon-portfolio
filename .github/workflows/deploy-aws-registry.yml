@@ -163,7 +163,7 @@ jobs:
             fi
             # Jobs have no service; schedulers run the latest ACTIVE revision.
             if [[ "$(aws ecs describe-services --cluster "${cluster}" --services "${service}" \
-                  --query 'services[?status==`ACTIVE`] | length(@)' --output text)" == "1" ]]; then
+                  --query "services[?status=='ACTIVE'] | length(@)" --output text)" == "1" ]]; then
               aws ecs update-service --cluster "${cluster}" --service "${service}" --task-definition "${revision}" >/dev/null
               services+=("${service}")
             fi
