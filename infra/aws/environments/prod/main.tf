@@ -19,6 +19,9 @@ module "platform" {
   # docs token.
   app_secret_names = ["GITHUB_TOKEN"]
 
+  site_lambda               = var.site_lambda
+  site_lambda_origin_secret = var.site_lambda_origin_secret
+
   service_sizes = {
     ssr_desired_count = 1
   }

@@ -52,3 +52,19 @@ variable "registry" {
   })
   default = {}
 }
+
+variable "site_lambda" {
+  description = "Run the site on Lambda."
+  type = object({
+    enabled = optional(bool, false)
+    serving = optional(bool, false)
+  })
+  default = {}
+}
+
+variable "site_lambda_origin_secret" {
+  description = "Secret CloudFront sends to the site Lambda."
+  type        = string
+  default     = null
+  sensitive   = true
+}
