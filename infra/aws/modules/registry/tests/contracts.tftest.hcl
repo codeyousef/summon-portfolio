@@ -220,6 +220,19 @@ run "production_is_read_only" {
     condition     = output.gateway_environment.SEEN_REGISTRY_PUBLIC_HOST == "seen.yousef.codes"
     error_message = "The production gateway serves seen.yousef.codes."
   }
+
+  assert {
+    condition = alltrue([
+      for name in ["offline-bootstrap-import", "root-verifier"] :
+      !contains(keys(local.runtime_environment[name]), "REGISTRY_DYNAMODB_TABLE_PREFIX")
+    ])
+    error_message = "Jobs without tables must not receive the table prefix."
+  }
+
+  assert {
+    condition     = contains(keys(local.runtime_environment["online-bootstrap"]), "REGISTRY_DYNAMODB_TABLE_PREFIX")
+    error_message = "Jobs with a publication lease need the table prefix."
+  }
 }
 
 run "rejects_wrong_signer_repository" {
