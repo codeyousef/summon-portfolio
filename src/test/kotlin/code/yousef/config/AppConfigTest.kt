@@ -355,11 +355,13 @@ class AppConfigTest {
                 "USE_LOCAL_STORE" to "true",
                 "SEEN_REGISTRY_PUBLIC_HOST" to " seen.yousef.codes ",
                 "SEEN_REGISTRY_UPSTREAM_URL" to API_URL,
+                "SEEN_REGISTRY_UPSTREAM_IDENTITY" to "none",
             ),
         )
 
         assertEquals("seen.yousef.codes", config.registryPublicHost)
         assertEquals(API_URL, config.registryUpstreamUrl)
+        assertEquals(false, config.registryUpstreamIdentityEnabled)
         assertNull(config.registryReleaseActionsUpstreamUrl)
         assertNull(config.registrySecurityActionsUpstreamUrl)
     }

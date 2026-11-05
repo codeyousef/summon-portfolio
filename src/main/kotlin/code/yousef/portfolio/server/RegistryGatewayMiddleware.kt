@@ -123,7 +123,7 @@ internal class RegistryGatewayMiddleware(
     upstreamUrl: String,
     releaseActionsUpstreamUrl: String? = null,
     securityActionsUpstreamUrl: String? = null,
-    private val identityTokenProvider: RegistryIdentityTokenProvider = GoogleAdcRegistryIdentityTokenProvider(),
+    private val identityTokenProvider: RegistryIdentityTokenProvider? = GoogleAdcRegistryIdentityTokenProvider(),
     private val proxyForwarder: RegistryProxyForwarder = AetherRegistryProxyForwarder
 ) {
     private data class Upstream(val url: String, val audience: String?, val host: String)
@@ -166,7 +166,7 @@ internal class RegistryGatewayMiddleware(
                 respondUnavailableAction(exchange)
                 return
             }
-            val identityToken = upstream.audience?.let(identityTokenProvider::tokenForAudience)
+            val identityToken = upstream.audience?.let { identityTokenProvider?.tokenForAudience(it) }
             proxyForwarder.forward(exchange, upstream.url, identityToken, callerAuthorization)
         } catch (error: CancellationException) {
             throw error
