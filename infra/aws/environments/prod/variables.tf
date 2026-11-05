@@ -47,6 +47,8 @@ variable "registry" {
     trusted_root_v1_sha256    = optional(string)
     schedules_enabled         = optional(bool, false)
     refresh_schedules_enabled = optional(bool, false)
+    api_lambda_enabled        = optional(bool, false)
+    api_lambda_serving        = optional(bool, false)
   })
   default = {}
 }

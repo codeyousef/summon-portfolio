@@ -40,4 +40,6 @@ module "registry" {
   trusted_root_v1_sha256    = var.registry.trusted_root_v1_sha256
   schedules_enabled         = var.registry.schedules_enabled
   refresh_schedules_enabled = var.registry.refresh_schedules_enabled
+  api_lambda_enabled        = var.registry.api_lambda_enabled
+  api_lambda_serving        = var.registry.api_lambda_serving
 }
