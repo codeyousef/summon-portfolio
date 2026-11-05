@@ -183,6 +183,30 @@ class AwsSignerIdentityTest {
     }
 
     @Test
+    fun `AWS KMS signer accepts only the role credentials Lambda injects`() {
+        val lambda = awsSignerEnvironment() + mapOf(
+            "AWS_LAMBDA_RUNTIME_API" to "127.0.0.1:9001",
+            "AWS_LAMBDA_FUNCTION_NAME" to "portfolio-prod-signer-releases",
+            "AWS_LWA_PORT" to "8080",
+            "AWS_LWA_READINESS_CHECK_PATH" to "/healthz",
+            "JAVA_TOOL_OPTIONS" to "-XX:+UseSerialGC",
+        )
+        val credentials = mapOf(
+            "AWS_ACCESS_KEY_ID" to "ASIAEXAMPLE",
+            "AWS_SECRET_ACCESS_KEY" to "fake-secret-for-tests-only",
+            "AWS_SESSION_TOKEN" to "fake-session-token",
+        )
+
+        assertEquals(TufSignerKeyProvider.AWS_KMS, TufSignerServerConfig.fromEnvironment(lambda + credentials).keyProvider)
+        assertFailsWith<IllegalArgumentException> {
+            TufSignerServerConfig.fromEnvironment(lambda + credentials - "AWS_SESSION_TOKEN")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            TufSignerServerConfig.fromEnvironment(awsSignerEnvironment() + credentials)
+        }
+    }
+
+    @Test
     fun `AWS KMS signer configuration fails closed on foreign authority`() {
         val base = awsSignerEnvironment()
         listOf(
