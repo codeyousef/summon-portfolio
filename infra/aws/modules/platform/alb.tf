@@ -1,5 +1,5 @@
 resource "aws_lb_target_group" "ssr" {
-  count = local.enabled
+  count = var.resources_enabled && var.load_balancer_enabled ? 1 : 0
 
   name                 = "${local.name}-ssr"
   port                 = 8080
@@ -46,7 +46,7 @@ resource "aws_lb_target_group" "playground" {
 
 # The shared listener selects this environment's certificate by SNI.
 resource "aws_lb_listener_certificate" "origin" {
-  count = local.edge
+  count = local.lb
 
   listener_arn    = data.aws_lb_listener.edge[0].arn
   certificate_arn = aws_acm_certificate_validation.origin[0].certificate_arn
@@ -100,7 +100,7 @@ locals {
   host_rule_sets = local.is_dev ? local.host_condition_sets : chunklist(local.host_names, 5)
 
   target_group_arns = merge(
-    var.resources_enabled ? { ssr = aws_lb_target_group.ssr[0].arn } : {},
+    var.resources_enabled && var.load_balancer_enabled ? { ssr = aws_lb_target_group.ssr[0].arn } : {},
     local.playground_enabled ? { playground = aws_lb_target_group.playground[0].arn } : {},
   )
 
@@ -112,7 +112,7 @@ locals {
 }
 
 resource "aws_lb_listener_rule" "paths" {
-  for_each = local.edge_enabled ? local.path_rules : {}
+  for_each = local.lb_enabled ? local.path_rules : {}
 
   listener_arn = data.aws_lb_listener.edge[0].arn
   priority     = each.value.priority
@@ -200,7 +200,7 @@ resource "aws_lb_listener_rule" "paths" {
 }
 
 resource "aws_lb_listener_rule" "hosts" {
-  count = local.edge_enabled ? length(local.host_rule_sets) : 0
+  count = local.lb_enabled ? length(local.host_rule_sets) : 0
 
   listener_arn = data.aws_lb_listener.edge[0].arn
   priority     = local.priority_base + 100 + count.index

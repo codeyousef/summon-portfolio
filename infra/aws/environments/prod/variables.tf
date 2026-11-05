@@ -71,3 +71,9 @@ variable "site_lambda_origin_secret" {
   default     = null
   sensitive   = true
 }
+
+variable "load_balancer_enabled" {
+  description = "Use the shared public load balancer and the ECS site service."
+  type        = bool
+  default     = true
+}

@@ -12,6 +12,7 @@ module "platform" {
   resources_enabled      = var.resources_enabled
   certificates_validated = var.certificates_validated
   images                 = var.images
+  load_balancer_enabled  = var.load_balancer_enabled
   schedules_enabled      = var.schedules_enabled
   app_environment        = merge(var.app_environment, module.registry.gateway_environment)
 

@@ -53,13 +53,13 @@ data "aws_vpc_endpoint" "isolated" {
 }
 
 data "aws_lb" "edge" {
-  count = local.enabled
+  count = var.resources_enabled && var.load_balancer_enabled ? 1 : 0
 
   name = "portfolio-edge"
 }
 
 data "aws_lb_listener" "edge" {
-  count = local.edge
+  count = local.lb
 
   load_balancer_arn = data.aws_lb.edge[0].arn
   port              = 443

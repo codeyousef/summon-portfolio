@@ -69,6 +69,17 @@ variable "images" {
   }
 }
 
+variable "load_balancer_enabled" {
+  description = "Use the shared public load balancer and the ECS site service."
+  type        = bool
+  default     = true
+
+  validation {
+    condition     = var.load_balancer_enabled || var.environment == "dev" || var.site_lambda.serving
+    error_message = "Production must serve from Lambda before the load balancer is removed."
+  }
+}
+
 variable "site_lambda" {
   description = "Run the site on Lambda. serving moves CloudFront traffic to it."
   type = object({

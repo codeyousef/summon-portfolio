@@ -78,3 +78,9 @@ variable "playground_running" {
   type        = bool
   default     = false
 }
+
+variable "load_balancer_enabled" {
+  description = "Use the shared public load balancer and the ECS site service."
+  type        = bool
+  default     = true
+}

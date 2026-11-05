@@ -227,7 +227,7 @@ resource "aws_ecs_task_definition" "ssr" {
 }
 
 resource "aws_ecs_service" "ssr" {
-  count = local.ssr_enabled ? 1 : 0
+  count = local.ssr_enabled && var.load_balancer_enabled ? 1 : 0
 
   name                              = "app-ssr"
   cluster                           = aws_ecs_cluster.main[0].id

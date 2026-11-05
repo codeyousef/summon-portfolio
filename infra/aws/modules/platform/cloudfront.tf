@@ -35,7 +35,7 @@ resource "aws_cloudfront_origin_access_control" "buckets" {
 locals {
   # Dev media stays behind the Cognito gate: in dev the application serves
   # /cdn/* from S3 through the gated ALB instead of CloudFront reading S3.
-  cdn_buckets = local.is_dev || !local.edge_enabled ? {} : { for purpose, spec in local.buckets : purpose => spec if spec.public_via_cdn }
+  cdn_buckets = local.is_dev || !local.site_distribution ? {} : { for purpose, spec in local.buckets : purpose => spec if spec.public_via_cdn }
 }
 
 # /cdn/media/<key> and /cdn/docs/<key> address bucket objects by <key>,
@@ -56,7 +56,7 @@ resource "aws_cloudfront_function" "strip_cdn_prefix" {
 }
 
 resource "aws_cloudfront_distribution" "site" {
-  count = local.edge
+  count = local.site_distribution ? 1 : 0
 
   enabled         = true
   is_ipv6_enabled = true
@@ -65,17 +65,21 @@ resource "aws_cloudfront_distribution" "site" {
   comment         = local.name
   aliases         = local.host_names
 
-  origin {
-    origin_id   = "alb"
-    domain_name = data.aws_lb.edge[0].dns_name
+  dynamic "origin" {
+    for_each = local.lb_enabled ? [data.aws_lb.edge[0].dns_name] : []
 
-    custom_origin_config {
-      http_port                = 80
-      https_port               = 443
-      origin_protocol_policy   = "https-only"
-      origin_ssl_protocols     = ["TLSv1.2"]
-      origin_read_timeout      = 60
-      origin_keepalive_timeout = 60
+    content {
+      origin_id   = "alb"
+      domain_name = origin.value
+
+      custom_origin_config {
+        http_port                = 80
+        https_port               = 443
+        origin_protocol_policy   = "https-only"
+        origin_ssl_protocols     = ["TLSv1.2"]
+        origin_read_timeout      = 60
+        origin_keepalive_timeout = 60
+      }
     }
   }
 

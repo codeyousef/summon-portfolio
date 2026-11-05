@@ -44,6 +44,11 @@ variable "certificates_validated" {
   default = false
 }
 
+variable "load_balancer_enabled" {
+  type    = bool
+  default = true
+}
+
 variable "isolated_endpoints_enabled" {
   type    = bool
   default = false
@@ -59,6 +64,7 @@ module "edge" {
   resources_enabled          = var.resources_enabled
   certificates_validated     = var.certificates_validated
   isolated_endpoints_enabled = var.isolated_endpoints_enabled
+  load_balancer_enabled      = var.load_balancer_enabled
 }
 
 output "names" {
