@@ -84,7 +84,7 @@ class AwsStsTufCallerTokenProvider internal constructor(
                     .putProperty(AwsV4HttpSigner.REGION_NAME, region)
                     .putProperty(AwsV4FamilyHttpSigner.AUTH_LOCATION, AwsV4FamilyHttpSigner.AuthLocation.QUERY_STRING)
                     .putProperty(AwsV4FamilyHttpSigner.EXPIRATION_DURATION, AwsStsCallerToken.MAXIMUM_EXPIRY)
-                    .putProperty(AwsV4FamilyHttpSigner.PAYLOAD_SIGNING_ENABLED, false)
+                    .putProperty(AwsV4FamilyHttpSigner.PAYLOAD_SIGNING_ENABLED, true)
                     .putProperty(HttpSigner.SIGNING_CLOCK, clock)
             }
             AwsStsCallerToken.TOKEN_PREFIX + Base64.getUrlEncoder().withoutPadding()
