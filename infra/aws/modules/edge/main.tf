@@ -189,6 +189,19 @@ data "aws_ec2_managed_prefix_list" "s3" {
   name = "com.amazonaws.${var.region}.s3"
 }
 
+# Private DNS sends all ECR and Logs traffic in the VPC to these endpoints, so
+# tasks in the public subnets have to reach them too.
+resource "aws_vpc_security_group_ingress_rule" "endpoints_from_vpc" {
+  count = var.resources_enabled && var.isolated_endpoints_enabled ? 1 : 0
+
+  security_group_id = aws_security_group.endpoints[0].id
+  description       = "HTTPS from tasks anywhere in the VPC"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+  cidr_ipv4         = aws_vpc.main[0].cidr_block
+}
+
 resource "aws_vpc_security_group_egress_rule" "isolated_to_endpoints" {
   count = local.enabled
 
