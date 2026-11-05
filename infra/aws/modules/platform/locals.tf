@@ -26,6 +26,9 @@ locals {
   # Listeners, CloudFront, public records, and services need issued certificates.
   edge_enabled       = var.resources_enabled && var.certificates_validated
   edge               = local.edge_enabled ? 1 : 0
+  lb_enabled         = local.edge_enabled && var.load_balancer_enabled
+  lb                 = local.lb_enabled ? 1 : 0
+  site_distribution  = local.edge_enabled && (var.load_balancer_enabled || local.site_lambda_serving)
   ssr_enabled        = local.edge_enabled && var.images.ssr != null
   playground_enabled = local.edge_enabled && var.images.playground != null
 

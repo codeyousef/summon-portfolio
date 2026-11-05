@@ -84,7 +84,7 @@ resource "aws_acm_certificate_validation" "origin" {
 }
 
 resource "aws_route53_record" "hosts" {
-  for_each = local.edge_enabled ? {
+  for_each = local.site_distribution ? {
     for pair in setproduct(keys(local.hosts), ["A", "AAAA"]) : "${pair[0]}-${pair[1]}" => {
       host = local.hosts[pair[0]]
       type = pair[1]

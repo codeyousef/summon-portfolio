@@ -38,6 +38,12 @@ variable "availability_zones" {
   }
 }
 
+variable "load_balancer_enabled" {
+  description = "Run the shared public load balancer. Remove the environments' dependency first."
+  type        = bool
+  default     = true
+}
+
 variable "isolated_endpoints_enabled" {
   description = "ECR and Logs interface endpoints for isolated (no-internet) tasks such as the Seen playground. Billed hourly."
   type        = bool
@@ -285,7 +291,7 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_cognito" {
 }
 
 resource "aws_lb" "public" {
-  count = local.enabled
+  count = var.resources_enabled && var.load_balancer_enabled ? 1 : 0
 
   name                       = local.name
   load_balancer_type         = "application"
@@ -337,7 +343,7 @@ resource "aws_acm_certificate_validation" "default" {
 
 # Unknown hosts are rejected; environments add host-scoped rules.
 resource "aws_lb_listener" "https" {
-  count = local.edge
+  count = var.load_balancer_enabled ? local.edge : 0
 
   load_balancer_arn = aws_lb.public[0].arn
   port              = 443

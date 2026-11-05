@@ -50,7 +50,7 @@ output "cluster" {
 }
 
 output "cloudfront_domain" {
-  value = local.edge_enabled ? aws_cloudfront_distribution.site[0].domain_name : null
+  value = local.site_distribution ? aws_cloudfront_distribution.site[0].domain_name : null
 }
 
 output "certificate_validation_records" {

@@ -29,6 +29,7 @@ module "platform" {
   certificates_validated = var.certificates_validated
   dev_gate_owner_email   = var.dev_gate_owner_email
   images                 = var.images
+  load_balancer_enabled  = var.load_balancer_enabled
   service_sizes          = { ssr_desired_count = var.ssr_running ? 1 : 0 }
   use_fargate_spot       = true
   schedules_enabled      = var.schedules_enabled

@@ -79,6 +79,25 @@ resource "aws_ecr_repository" "images" {
   }
 }
 
+# Lets the portfolio's Lambda functions pull images from these repositories.
+resource "aws_ecr_repository_policy" "lambda_pull" {
+  for_each = aws_ecr_repository.images
+
+  repository = each.value.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "LambdaImagePull"
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
+      Condition = {
+        StringLike = { "aws:sourceArn" = "arn:aws:lambda:${var.region}:${var.aws_account_id}:function:portfolio-*" }
+      }
+    }]
+  })
+}
+
 resource "aws_ecr_lifecycle_policy" "images" {
   for_each = aws_ecr_repository.images
 
