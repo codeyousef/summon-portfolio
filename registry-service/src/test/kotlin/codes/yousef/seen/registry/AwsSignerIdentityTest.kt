@@ -3,11 +3,14 @@ package codes.yousef.seen.registry
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import java.net.URI
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Base64
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -52,6 +55,38 @@ class AwsSignerIdentityTest {
                 .accessToken(URI("https://other.signers.seen-registry-dev.internal/sign"))
         }
     }
+
+    /** STS rejects `UNSIGNED-PAYLOAD`, so the signature must cover the empty body hash. */
+    @Test
+    fun `presigned token signature covers the empty payload hash STS recomputes`() {
+        val uri = URI(String(Base64.getUrlDecoder().decode(token().removePrefix("seen-aws-sts-v1."))))
+        val pairs = uri.rawQuery.split('&').map { it.substringBefore('=') to it.substringAfter('=') }
+        val canonicalQuery = pairs.filter { it.first != "X-Amz-Signature" }.sortedBy { it.first }
+            .joinToString("&") { "${it.first}=${it.second}" }
+        val canonicalRequest = listOf(
+            "GET",
+            "/",
+            canonicalQuery,
+            "host:sts.eu-north-1.amazonaws.com",
+            "${AwsStsCallerToken.AUDIENCE_HEADER}:${target.audience}",
+            "",
+            "host;${AwsStsCallerToken.AUDIENCE_HEADER}",
+            hex(sha256(ByteArray(0))),
+        ).joinToString("\n")
+        val scope = "20261021/eu-north-1/sts/aws4_request"
+        val stringToSign = listOf("AWS4-HMAC-SHA256", "20261021T120000Z", scope, hex(sha256(canonicalRequest.toByteArray())))
+            .joinToString("\n")
+        val signingKey = scope.split('/').fold("AWS4fake-secret-for-tests-only".toByteArray()) { key, part -> hmac(key, part) }
+
+        assertEquals(hex(hmac(signingKey, stringToSign)), pairs.toMap()["X-Amz-Signature"])
+    }
+
+    private fun sha256(value: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(value)
+
+    private fun hmac(key: ByteArray, value: String): ByteArray =
+        Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(key, "HmacSHA256")) }.doFinal(value.toByteArray())
+
+    private fun hex(value: ByteArray): String = value.joinToString("") { "%02x".format(it) }
 
     @Test
     fun `verifier forwards the configured audience and normalizes the caller role`() {
