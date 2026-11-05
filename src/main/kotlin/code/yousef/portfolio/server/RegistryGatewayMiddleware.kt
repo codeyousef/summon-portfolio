@@ -35,6 +35,8 @@ private val REGISTRY_STRIPPED_REQUEST_HEADERS = listOf(
     "Forwarded",
     "X-Forwarded-For",
     "X-Forwarded-Host",
+    EDGE_VIEWER_HOST_HEADER,
+    EDGE_ORIGIN_VERIFY_HEADER,
     "X-Forwarded-Proto",
     "X-Forwarded-Prefix",
     "X-Real-IP"
@@ -186,7 +188,7 @@ internal class RegistryGatewayMiddleware(
     }
 
     private fun isRegistryRequest(exchange: Exchange): Boolean {
-        val host = exchange.request.headers["Host"]
+        val host = exchange.request.publicHostHeader()
             ?.trim()
             ?.substringBefore(':')
             ?.lowercase()

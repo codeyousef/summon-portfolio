@@ -146,6 +146,38 @@ class RegistryGatewayMiddlewareTest {
     }
 
     @Test
+    fun `edge origin guard admits only requests carrying the secret`() = runBlocking {
+        val guard = EdgeOriginGuard("edge-secret")
+        var admitted = 0
+        val rejected = TestExchange(request = TestRequest(path = "/"))
+        guard.handle(rejected) { admitted += 1 }
+        assertEquals(403, rejected.testResponse.statusCode)
+        assertEquals(0, admitted)
+
+        val trusted = TestExchange(
+            request = TestRequest(path = "/", headers = Headers.of(EDGE_ORIGIN_VERIFY_HEADER to "edge-secret")),
+        )
+        guard.handle(trusted) { admitted += 1 }
+        assertEquals(1, admitted)
+    }
+
+    @Test
+    fun `viewer host applies only when the edge is trusted`() {
+        val request = TestRequest(
+            path = "/",
+            headers = Headers.of("host" to "abc.lambda-url.test", EDGE_VIEWER_HOST_HEADER to "seen.yousef.codes"),
+        )
+        try {
+            EdgeHostTrust.viewerHostTrusted = false
+            assertEquals("abc.lambda-url.test", request.publicHostHeader())
+            EdgeHostTrust.viewerHostTrusted = true
+            assertEquals("seen.yousef.codes", request.publicHostHeader())
+        } finally {
+            EdgeHostTrust.viewerHostTrusted = false
+        }
+    }
+
+    @Test
     fun `API-only gateway strips caller authorization before the upstream network request`() = runBlocking {
         val authorization = CompletableFuture<String?>()
         val executor = Executors.newSingleThreadExecutor()

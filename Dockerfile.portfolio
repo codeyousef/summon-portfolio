@@ -15,12 +15,14 @@ RUN /workspace/gradlew \
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
+# Lets the same image run on Lambda. Ignored outside Lambda.
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter@sha256:46d6625e68cbbdd2efab4a20245977664513f13ffef47915b000d431adcea0b4 /lambda-adapter /opt/extensions/lambda-adapter
 COPY --from=build /workspace/build/libs/*-all.jar /app/app.jar
 COPY --from=build /workspace/src/main/resources/ /app/resources/
 
 RUN mkdir -p /app/storage && chmod 755 /app/storage
 
-ENV PORT=8080
+ENV PORT=8080 AWS_LWA_PORT=8080 AWS_LWA_READINESS_CHECK_PATH=/health/ready
 
 VOLUME ["/app/storage"]
 EXPOSE 8080

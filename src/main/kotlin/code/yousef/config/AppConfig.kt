@@ -30,6 +30,7 @@ data class AppConfig(
     val finOpsShardedRollupsReady: Boolean = false,
     val registryPublicHost: String? = null,
     val registryUpstreamUrl: String? = null,
+    val edgeOriginSecret: String? = null,
     val registryUpstreamIdentityEnabled: Boolean = true,
     val registryReleaseActionsUpstreamUrl: String? = null,
     val registrySecurityActionsUpstreamUrl: String? = null,
@@ -167,6 +168,7 @@ internal fun loadAppConfig(env: Map<String, String>): AppConfig {
             "FINOPS_SHARDED_ROLLUPS_READY must be 'true' or 'false'"
         }
     } ?: false
+    val edgeOriginSecret = env["PORTFOLIO_EDGE_ORIGIN_SECRET"]?.trim()?.takeIf { it.isNotEmpty() }
     val registryUpstreamUrl = env["SEEN_REGISTRY_UPSTREAM_URL"]
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
@@ -241,6 +243,7 @@ internal fun loadAppConfig(env: Map<String, String>): AppConfig {
         finOpsShardedRollupsReady = finOpsShardedRollupsReady,
         registryPublicHost = registryPublicHost,
         registryUpstreamUrl = registryUpstreamUrl,
+        edgeOriginSecret = edgeOriginSecret,
         registryUpstreamIdentityEnabled = registryUpstreamIdentityEnabled,
         registryReleaseActionsUpstreamUrl = registryReleaseActionsUpstreamUrl,
         registrySecurityActionsUpstreamUrl = registrySecurityActionsUpstreamUrl
