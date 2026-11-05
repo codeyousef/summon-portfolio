@@ -215,6 +215,13 @@ private val AWS_STATIC_CREDENTIAL_NAMES = setOf(
     "AWS_CONFIG_FILE",
 )
 
+/**
+ * Lambda always supplies its execution role as temporary credentials in these
+ * variables and reserves the names, so they cannot carry configured static keys.
+ */
+private fun hasLambdaRoleCredentials(env: Map<String, String>): Boolean =
+    !env["AWS_LAMBDA_RUNTIME_API"].isNullOrBlank() && !env["AWS_SESSION_TOKEN"].isNullOrBlank()
+
 private fun rejectCrossProviderSignerEnvironment(
     env: Map<String, String>,
     provider: TufSignerKeyProvider,
@@ -229,8 +236,8 @@ private fun rejectCrossProviderSignerEnvironment(
             TufSignerKeyProvider.AWS_KMS ->
                 (name.startsWith("REGISTRY_AWS_KMS_") && name != ownArn) ||
                     name == "REGISTRY_TUF_SIGNER_KMS_KEY_VERSION" ||
-                    // The ECS task role is the only AWS authority a signer may hold.
-                    name in AWS_STATIC_CREDENTIAL_NAMES
+                    // The task or function role is the only AWS authority a signer may hold.
+                    (name in AWS_STATIC_CREDENTIAL_NAMES && !hasLambdaRoleCredentials(env))
         }
     }.sorted()
     require(forbidden.isEmpty()) {
