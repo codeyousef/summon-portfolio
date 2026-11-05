@@ -19,7 +19,6 @@ locals {
     "dynamodb:TransactGetItems",
     "dynamodb:TransactWriteItems",
     "dynamodb:UpdateItem",
-    "kms:Decrypt",
     "kms:GenerateMac",
     "kms:Sign",
     "secretsmanager:GetSecretValue",
@@ -81,6 +80,21 @@ data "aws_iam_policy_document" "ci_guardrails" {
     effect    = "Deny"
     actions   = local.denied_data_plane_actions
     resources = ["*"]
+  }
+
+  # Enabling TTL on an encrypted table decrypts through DynamoDB as the caller.
+  # Every DynamoDB item action above stays denied, so no data is readable.
+  statement {
+    sid       = "DenyDecryptOutsideDynamoDb"
+    effect    = "Deny"
+    actions   = ["kms:Decrypt"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringNotEquals"
+      variable = "kms:ViaService"
+      values   = ["dynamodb.${var.region}.amazonaws.com"]
+    }
   }
 
   statement {
