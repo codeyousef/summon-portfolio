@@ -149,7 +149,7 @@ class StaticResourceHandler(
 
 class HostRouter(private val hostMap: Map<String, Middleware>) {
     suspend fun handle(exchange: Exchange, next: suspend () -> Unit) {
-        val host = exchange.request.headers["Host"]?.substringBefore(":")
+        val host = exchange.request.publicHostHeader()?.substringBefore(":")
         val handler = hostMap.entries.find { (key, _) -> 
             key == "*" || host == key || (key.startsWith("*.") && host?.endsWith(key.removePrefix("*.")) == true)
         }?.value
@@ -174,7 +174,7 @@ internal fun PlatformRenderer.renderSummonDocument(page: SummonPage): String {
 
 suspend fun Exchange.respondSummonPage(page: SummonPage, status: Int = 200) {
     // Resolve environment links from the Host header for proper URL generation
-    val host = request.headers["Host"]
+    val host = request.publicHostHeader()
     val links = resolveEnvironmentLinks(host)
 
     // Create stable callback context for this request to ensure callbacks

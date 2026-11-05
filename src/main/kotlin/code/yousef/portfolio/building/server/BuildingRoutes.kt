@@ -1,5 +1,6 @@
 package code.yousef.portfolio.building.server
 
+import code.yousef.portfolio.server.publicHostHeader
 import code.yousef.portfolio.building.auth.BuildingAuthProvider
 import code.yousef.portfolio.building.auth.BuildingSession
 import code.yousef.portfolio.building.auth.PasswordResetService
@@ -173,7 +174,7 @@ fun Router.buildingRoutes(
         
         val users = authProvider.listUsers()
         if (token != null) {
-            val host = exchange.request.headers["Host"] ?: "building.yousef.codes"
+            val host = exchange.request.publicHostHeader() ?: "building.yousef.codes"
             val scheme = if (host.contains("localhost")) "http" else "https"
             val resetLink = "$scheme://$host/reset-password?token=$token"
             exchange.respondSummonPage(userManagementPage(session.username, users, resetLink, targetUsername))
