@@ -67,6 +67,12 @@ variable "registry" {
   default = {}
 }
 
+variable "ssr_running" {
+  description = "Run the dev portfolio site. Off by default to save cost."
+  type        = bool
+  default     = false
+}
+
 variable "playground_running" {
   description = "Run the dev Seen playground task. Off by default to save cost."
   type        = bool

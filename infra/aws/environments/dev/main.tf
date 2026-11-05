@@ -29,6 +29,7 @@ module "platform" {
   certificates_validated = var.certificates_validated
   dev_gate_owner_email   = var.dev_gate_owner_email
   images                 = var.images
+  service_sizes          = { ssr_desired_count = var.ssr_running ? 1 : 0 }
   use_fargate_spot       = true
   schedules_enabled      = var.schedules_enabled
   app_environment        = merge(local.finops_environment, var.app_environment, module.registry.gateway_environment)
