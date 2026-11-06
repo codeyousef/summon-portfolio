@@ -16,7 +16,40 @@ data "aws_cloudfront_origin_request_policy" "all_viewer" {
   name = "Managed-AllViewer"
 }
 
-# A function URL rejects any Host header but its own.
+# A function URL rejects any Host header but its own, and CloudFront forwards
+# every header in the cache key whatever the origin request policy says. The
+# managed origin_controlled policy keys on host, so the site keys on the host
+# the viewer function records instead. Without that key, hosts share pages.
+resource "aws_cloudfront_cache_policy" "site_lambda" {
+  count = local.site_lambda ? 1 : 0
+
+  name        = "${local.name}-site-lambda"
+  min_ttl     = 0
+  default_ttl = 0
+  max_ttl     = 31536000
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    enable_accept_encoding_brotli = true
+    enable_accept_encoding_gzip   = true
+
+    cookies_config {
+      cookie_behavior = "all"
+    }
+
+    headers_config {
+      header_behavior = "whitelist"
+
+      headers {
+        items = ["x-viewer-host", "origin", "x-http-method", "x-http-method-override", "x-method-override"]
+      }
+    }
+
+    query_strings_config {
+      query_string_behavior = "all"
+    }
+  }
+}
+
 data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
   count = local.enabled
 
@@ -122,7 +155,7 @@ resource "aws_cloudfront_distribution" "site" {
     allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods           = ["GET", "HEAD"]
     compress                 = true
-    cache_policy_id          = data.aws_cloudfront_cache_policy.origin_controlled[0].id
+    cache_policy_id          = local.site_lambda_serving ? aws_cloudfront_cache_policy.site_lambda[0].id : data.aws_cloudfront_cache_policy.origin_controlled[0].id
     origin_request_policy_id = local.site_lambda_serving ? data.aws_cloudfront_origin_request_policy.all_viewer_except_host[0].id : data.aws_cloudfront_origin_request_policy.all_viewer[0].id
 
     dynamic "function_association" {
@@ -131,6 +164,27 @@ resource "aws_cloudfront_distribution" "site" {
       content {
         event_type   = "viewer-request"
         function_arn = function_association.value
+      }
+    }
+  }
+
+  # Exercises the whole viewer-to-Lambda path before default traffic moves.
+  dynamic "ordered_cache_behavior" {
+    for_each = local.site_lambda && var.site_lambda.canary ? [local.site_check_path] : []
+
+    content {
+      path_pattern             = "${ordered_cache_behavior.value}*"
+      target_origin_id         = "site-lambda"
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods           = ["GET", "HEAD"]
+      compress                 = true
+      cache_policy_id          = aws_cloudfront_cache_policy.site_lambda[0].id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host[0].id
+
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.site_request[0].arn
       }
     }
   }

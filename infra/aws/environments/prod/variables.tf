@@ -60,6 +60,7 @@ variable "site_lambda" {
   description = "Run the site on Lambda."
   type = object({
     enabled = optional(bool, false)
+    canary  = optional(bool, false)
     serving = optional(bool, false)
   })
   default = {}

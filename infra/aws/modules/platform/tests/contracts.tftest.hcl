@@ -407,6 +407,48 @@ run "production_shape" {
   }
 }
 
+run "site_lambda_never_receives_the_viewer_host" {
+  command = plan
+
+  variables {
+    environment            = "prod"
+    resources_enabled      = true
+    certificates_validated = true
+    images = {
+      ssr = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/portfolio-ssr@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+    site_lambda = {
+      enabled = true
+      canary  = true
+      serving = true
+    }
+    site_lambda_origin_secret = "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+
+  assert {
+    condition = alltrue(flatten([
+      for policy in aws_cloudfront_cache_policy.site_lambda : [
+        for config in policy.parameters_in_cache_key_and_forwarded_to_origin : [
+          for headers in config.headers_config : [
+            for block in headers.headers : !contains(block.items, "host") && contains(block.items, "x-viewer-host")
+          ]
+        ]
+      ]
+    ]))
+    error_message = "CloudFront forwards cache key headers, and a function URL rejects a viewer Host. Hosts must stay apart through x-viewer-host."
+  }
+
+  assert {
+    condition     = length(aws_cloudfront_cache_policy.site_lambda) == 1
+    error_message = "The site on Lambda needs its own cache policy."
+  }
+
+  assert {
+    condition     = strcontains(aws_cloudfront_function.site_request[0].code, "/__site-check")
+    error_message = "The check path must strip its prefix in the viewer function."
+  }
+}
+
 run "rejects_mutable_image_tags" {
   command = plan
 

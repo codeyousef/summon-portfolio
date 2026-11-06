@@ -118,6 +118,9 @@ resource "aws_cloudfront_function" "site_request" {
     function handler(event) {
       var request = event.request;
       var host = request.headers.host.value;
+      if (request.uri.indexOf("${local.site_check_path}") === 0) {
+        request.uri = request.uri.slice(${length(local.site_check_path)}) || "/";
+      }
       if (request.uri.indexOf("/internal/") === 0) {
         return { statusCode: 404, statusDescription: "Not Found" };
       }
