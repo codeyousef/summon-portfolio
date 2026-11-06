@@ -110,13 +110,8 @@ fun Router.buildingRoutes(
             return@post
         }
         
-        // Debug: Check raw body
-        val rawBody = exchange.request.bodyText()
-        println("DEBUG: Raw body length = ${rawBody.length}, content = '${rawBody.take(200)}'")
-        
         val params = exchange.receiveParameters()
-        println("DEBUG: Parsed params = $params")
-        
+
         val password = params["password"] ?: ""
         val confirm = params["confirm"] ?: ""
         

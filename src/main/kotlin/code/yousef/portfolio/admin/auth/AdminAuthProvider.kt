@@ -12,6 +12,7 @@ interface AdminAuthProvider {
 
     sealed class AuthResult {
         object Invalid : AuthResult()
+        object NotConfigured : AuthResult()
         data class Success(val mustChangePassword: Boolean) : AuthResult()
     }
 }

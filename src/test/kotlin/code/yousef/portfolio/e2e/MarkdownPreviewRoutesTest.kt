@@ -78,6 +78,14 @@ class MarkdownPreviewRoutesTest {
             set("mustChangePassword", "false")
         }
         runBlocking { sessionStore.save(authenticatedSession) }
+        val mustChangeSession = DefaultSession(
+            id = MUST_CHANGE_SESSION_ID,
+            createdAt = System.currentTimeMillis(),
+        ).apply {
+            set("username", "preview-admin")
+            set("mustChangePassword", "true")
+        }
+        runBlocking { sessionStore.save(mustChangeSession) }
 
         val pipeline = Pipeline().apply {
             use(SessionMiddleware(sessionStore, sessionConfig).asMiddleware())
@@ -94,6 +102,23 @@ class MarkdownPreviewRoutesTest {
     @AfterTest
     fun stopServer() {
         runBlocking { server.stop() }
+    }
+
+    @Test
+    fun `changing the password releases the session from the change password page`() {
+        val cookie = "$SESSION_COOKIE_NAME=$MUST_CHANGE_SESSION_ID"
+        val save = HttpRequest.newBuilder(URI("$baseUrl/admin/change-password"))
+            .header("Cookie", cookie)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString("password=replacement&confirm=replacement"))
+            .build()
+        val saved = client.send(save, HttpResponse.BodyHandlers.ofString())
+        assertEquals(302, saved.statusCode())
+        assertEquals("/admin", saved.headers().firstValue("Location").orElse(null))
+
+        val next = HttpRequest.newBuilder(URI("$baseUrl/admin")).header("Cookie", cookie).GET().build()
+        val home = client.send(next, HttpResponse.BodyHandlers.ofString())
+        assertEquals(null, home.headers().firstValue("Location").orElse(null))
     }
 
     @Test
@@ -211,5 +236,6 @@ class MarkdownPreviewRoutesTest {
     private companion object {
         const val SESSION_COOKIE_NAME = "admin_session"
         const val AUTHENTICATED_SESSION_ID = "markdown-preview-test-session"
+        const val MUST_CHANGE_SESSION_ID = "must-change-test-session"
     }
 }

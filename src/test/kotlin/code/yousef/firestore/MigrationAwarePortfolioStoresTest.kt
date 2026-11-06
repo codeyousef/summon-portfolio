@@ -3,6 +3,7 @@ package code.yousef.firestore
 import code.yousef.config.FirestoreWriteMode
 import code.yousef.firestore.migration.PortfolioFirestoreMigrationCollections
 import code.yousef.firestore.migration.FirestoreCanonicalHash
+import code.yousef.portfolio.admin.auth.AdminAuthProvider
 import code.yousef.portfolio.admin.auth.FirestoreAdminAuthService
 import code.yousef.portfolio.ai.FirestoreAiProgressStore
 import code.yousef.portfolio.building.auth.BuildingAuthProvider
@@ -202,6 +203,10 @@ class MigrationAwarePortfolioStoresTest {
         assertFailsWith<IllegalStateException> {
             missingCredentials.currentUsername()
         }
+        assertEquals(
+            AdminAuthProvider.AuthResult.NotConfigured,
+            missingCredentials.authenticate("admin", "anything"),
+        )
         assertNull(source.get(PortfolioFirestoreCollections.ADMIN_SETTINGS, "credentials"))
 
         val bootstrapped = FirestoreAdminAuthService(source, allowBootstrapCredentials = true)
