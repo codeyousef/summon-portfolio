@@ -81,9 +81,10 @@ variable "load_balancer_enabled" {
 }
 
 variable "site_lambda" {
-  description = "Run the site on Lambda. serving moves CloudFront traffic to it."
+  description = "Run the site on Lambda. canary adds a test path through CloudFront; serving moves traffic."
   type = object({
     enabled = optional(bool, false)
+    canary  = optional(bool, false)
     serving = optional(bool, false)
   })
   default = {}

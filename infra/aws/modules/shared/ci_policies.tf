@@ -84,6 +84,9 @@ data "aws_iam_policy_document" "ci_guardrails" {
 
   # Enabling TTL on an encrypted table decrypts through DynamoDB as the caller.
   # Every DynamoDB item action above stays denied, so no data is readable.
+  # Reading or changing Lambda environment variables decrypts through Lambda as
+  # the caller. Without it plans see them as empty and applies leave them as
+  # they were. Those values are already in state, which these roles can read.
   statement {
     sid       = "DenyDecryptOutsideDynamoDb"
     effect    = "Deny"
@@ -93,7 +96,7 @@ data "aws_iam_policy_document" "ci_guardrails" {
     condition {
       test     = "StringNotEquals"
       variable = "kms:ViaService"
-      values   = ["dynamodb.${var.region}.amazonaws.com"]
+      values   = ["dynamodb.${var.region}.amazonaws.com", "lambda.${var.region}.amazonaws.com"]
     }
   }
 
