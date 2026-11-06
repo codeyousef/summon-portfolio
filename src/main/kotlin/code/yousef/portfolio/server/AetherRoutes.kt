@@ -450,6 +450,15 @@ internal fun Router.portfolioRoutes(
                     401
                 )
             }
+            is AuthResult.NotConfigured -> {
+                exchange.respondSummonPage(
+                    adminLoginPage(
+                        errorMessage = "Admin login isn't set up yet. No admin account exists in this environment.",
+                        nextPath = next,
+                    ),
+                    503
+                )
+            }
             is AuthResult.Success -> {
                 exchange.setAdminSession(AdminSession(username, result.mustChangePassword))
                 if (result.mustChangePassword) {
@@ -568,7 +577,6 @@ internal fun Router.portfolioRoutes(
         }
         
         val params = exchange.receiveParameters()
-        LoggerFactory.getLogger("AetherRoutes").info("change-password params: {}", params)
 
         val rawUsername = params["username"].orEmpty().trim()
         val password = params["password"].orEmpty()
@@ -592,6 +600,7 @@ internal fun Router.portfolioRoutes(
             }
             else -> {
                 adminAuthService.updateCredentials(username, password)
+                exchange.setAdminSession(AdminSession(username, mustChangePassword = false))
                 exchange.redirect("/admin")
             }
         }

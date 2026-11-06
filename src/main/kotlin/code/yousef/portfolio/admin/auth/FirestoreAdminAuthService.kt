@@ -11,6 +11,11 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.*
 
+internal class AdminCredentialsMissingException : IllegalStateException(
+    "Admin credentials are missing or malformed; run an explicit one-instance bootstrap instead of " +
+        "creating default credentials during scalable startup",
+)
+
 /**
  * Firestore-backed admin authentication service.
  * Credentials persist across deployments in Firestore.
@@ -72,10 +77,7 @@ class FirestoreAdminAuthService(
             "Admin credentials are missing or malformed in ${store.writeMode.environmentValue} mode; " +
                 "complete and reconcile the Firestore backfill before startup"
         }
-        check(allowBootstrapCredentials) {
-            "Admin credentials are missing or malformed; run an explicit one-instance bootstrap instead of " +
-                "creating default credentials during scalable startup"
-        }
+        if (!allowBootstrapCredentials) throw AdminCredentialsMissingException()
         log.warn("No valid credentials found in source Firestore; creating bootstrap credentials")
         return createDefaultCredentials()
     }
@@ -94,7 +96,12 @@ class FirestoreAdminAuthService(
     }
 
     override fun authenticate(username: String, password: String): AdminAuthProvider.AuthResult {
-        val creds = currentCredentials()
+        val creds = try {
+            currentCredentials()
+        } catch (failure: AdminCredentialsMissingException) {
+            log.warn(failure.message)
+            return AdminAuthProvider.AuthResult.NotConfigured
+        }
         val attemptedHash = hashPassword(password, creds.salt)
         return if (creds.username == username && creds.passwordHash == attemptedHash) {
             log.info("Successful authentication for user '$username', mustChangePassword=${creds.mustChange}")
